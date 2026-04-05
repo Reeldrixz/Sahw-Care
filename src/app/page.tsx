@@ -98,8 +98,9 @@ export default function DiscoverPage() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-      {/* Fixed header */}
-      <div style={{ background: "var(--white)" }}>
+      {/* Mobile header / Desktop search bar */}
+      <div className="discover-desktop">
+      <div style={{ background: "var(--white)" }} className="discover-mobile-header">
         <div className="topbar">
           <div className="location-pill">
             <span>📍</span>
@@ -134,7 +135,9 @@ export default function DiscoverPage() {
           ))}
         </div>
       </div>
+      </div>{/* end discover-desktop */}
 
+      <div className="discover-desktop">
       <div className="scroll">
         {/* TOP PICKS */}
         {topItems.length > 0 && (
@@ -241,20 +244,23 @@ export default function DiscoverPage() {
               )}
             </div>
           ) : (
-            filtered.map((item) => (
-              <ListCard
-                key={item.id}
-                item={item}
-                requested={requested[item.id]}
-                favourited={favs[item.id]}
-                onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
-                onFavourite={() => setFavs((f) => ({ ...f, [item.id]: !f[item.id] }))}
-                onClick={() => router.push(`/items/${item.id}`)}
-              />
-            ))
+            <div className="items-grid">
+              {filtered.map((item) => (
+                <ListCard
+                  key={item.id}
+                  item={item}
+                  requested={requested[item.id]}
+                  favourited={favs[item.id]}
+                  onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
+                  onFavourite={() => setFavs((f) => ({ ...f, [item.id]: !f[item.id] }))}
+                  onClick={() => router.push(`/items/${item.id}`)}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
+      </div>{/* end discover-desktop scroll */}
 
       {/* Donate FAB for donors */}
       {user && (user.role === "DONOR" || user.role === "ADMIN") && (

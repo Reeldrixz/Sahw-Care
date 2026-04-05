@@ -111,7 +111,8 @@ export default function ItemDetailPage() {
 
   return (
     <div className="detail">
-      {/* Hero */}
+      {/* Mobile layout */}
+      <div className="detail-mobile-view">
       <div className="detail-hero" style={{ background: bg }}>
         <button className="detail-back" onClick={() => router.back()}>←</button>
         <button className="detail-share" onClick={() => setToast("Link copied!")}>⬆</button>
@@ -123,8 +124,6 @@ export default function ItemDetailPage() {
           <span style={{ fontSize: 80 }}>{CAT_EMOJI[item.category] ?? "📦"}</span>
         )}
       </div>
-
-      {/* Body */}
       <div style={{ overflowY: "auto", height: "calc(100vh - 260px)", paddingBottom: 100 }}>
         <div className="detail-body">
           <span className="detail-cat">{item.category}</span>
@@ -206,18 +205,97 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
-      {/* Reserve bar */}
+      {/* Mobile reserve bar */}
       {user?.id !== item.donor.id && (
         <div className="reserve-bar">
-          <button
-            className={`btn-big ${requested ? "done" : ""}`}
-            onClick={handleRequest}
-            disabled={requested}
-          >
+          <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
             {requested ? "✓ Request Sent — Awaiting donor" : "Request this item — Free"}
           </button>
         </div>
       )}
+      </div>{/* end detail-mobile-view */}
+
+      {/* Desktop 2-column layout */}
+      <div className="detail-desktop-view">
+        <div className="detail-desktop-wrap">
+          {/* Left: hero image */}
+          <div>
+            <button className="detail-back" style={{ position: "relative", top: "auto", left: "auto", marginBottom: 12, display: "flex" }} onClick={() => router.back()}>←</button>
+            <div className="detail-hero" style={{ background: bg, position: "relative" }}>
+              <button className="detail-share" onClick={() => setToast("Link copied!")}>⬆</button>
+              <button className="detail-fav" onClick={() => setFav((f) => !f)}>{fav ? "❤️" : "🤍"}</button>
+              {item.urgent && <div className="detail-qty-badge">⚡ Urgent</div>}
+              {item.images[0] ? (
+                <Image src={item.images[0]} alt={item.title} fill style={{ objectFit: "cover" }} sizes="500px" />
+              ) : (
+                <span style={{ fontSize: 80 }}>{CAT_EMOJI[item.category] ?? "📦"}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: details */}
+          <div>
+            <div className="detail-body">
+              <span className="detail-cat">{item.category}</span>
+              <div className="detail-title">{item.title}</div>
+              <div className="detail-meta-row">📦 <strong>{item.quantity}</strong> available · <strong>{item.condition}</strong></div>
+              <div className="detail-meta-row">👥 <strong>{item._count.requests}</strong> people interested</div>
+
+              <div className="detail-divider" />
+              <div className="detail-section-title">What you&apos;ll get</div>
+              <div className="detail-desc">{item.description ?? "No description provided."}</div>
+
+              <div className="detail-divider" />
+              <div className="detail-section-title">Pickup location</div>
+              <div className="detail-location-row" onClick={() => setToast("Exact location shared after approval")}>
+                <div className="detail-location-icon">📍</div>
+                <div className="detail-location-text">
+                  <div className="detail-location-main">{item.location}</div>
+                  <div className="detail-location-sub">Exact address shared after approval</div>
+                </div>
+                <div className="detail-location-arrow">›</div>
+              </div>
+
+              <div className="detail-divider" />
+              <div className="detail-section-title">About the donor</div>
+              <div className="donor-card" onClick={() => router.push(`/donors/${item.donor.id}`)}>
+                <div className="donor-avatar-lg">
+                  {item.donor.avatar ? (
+                    <Image src={item.donor.avatar} alt={item.donor.name} width={48} height={48} style={{ objectFit: "cover" }} />
+                  ) : donorInitials}
+                </div>
+                <div className="donor-info">
+                  <div className="donor-name-lg">{item.donor.name}</div>
+                  <div className="donor-stats">
+                    <div className="donor-stat">⭐ {item.donor.trustRating.toFixed(1)}</div>
+                    <div className="donor-stat">📍 {item.donor.location ?? item.location}</div>
+                  </div>
+                </div>
+                <span className="donor-verified">✓ Verified</span>
+                <div className="donor-arrow">›</div>
+              </div>
+
+              {(avgRatings.pickup > 0 || avgRatings.quality > 0) && (
+                <>
+                  <div className="detail-divider" />
+                  <div className="detail-section-title">Experience ratings</div>
+                  <RatingBar label="Pickup" value={avgRatings.pickup} />
+                  <RatingBar label="Quality" value={avgRatings.quality} />
+                  <RatingBar label="Quantity" value={avgRatings.quantity} />
+                </>
+              )}
+
+              {user?.id !== item.donor.id && (
+                <div className="reserve-bar">
+                  <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
+                    {requested ? "✓ Request Sent — Awaiting donor" : "Request this item — Free"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <Toast message={toast} onClose={() => setToast(null)} />
     </div>

@@ -73,6 +73,7 @@ export default function DonorProfilePage() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+    <div className="donor-desktop-wrap">
       <div className="profile-hero" style={{ position: "relative" }}>
         <button
           style={{ position: "absolute", top: 16, left: 16, width: 38, height: 38, background: "rgba(255,255,255,0.2)", borderRadius: "50%", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 18, color: "white" }}
@@ -176,6 +177,7 @@ export default function DonorProfilePage() {
           Member since {memberYear}
         </div>
       </div>
+    </div>{/* end donor-desktop-wrap */}
     </div>
   );
 }

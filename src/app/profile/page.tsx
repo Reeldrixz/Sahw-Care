@@ -103,6 +103,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+    <div className="profile-desktop-wrap">
       <div className="profile-hero">
         <div className="profile-av">
           {user.avatar ? (
@@ -234,6 +235,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
+    </div>{/* end profile-desktop-wrap */}
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
       <Toast message={toast} onClose={() => setToast(null)} />
