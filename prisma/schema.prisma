@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String     @id @default(cuid())
+  name        String
+  email       String?    @unique
+  phone       String?    @unique
+  password    String
+  role        Role       @default(RECIPIENT)
+  avatar      String?
+  location    String?
+  isPremium   Boolean    @default(false)
+  trustRating Float      @default(5.0)
+  status      UserStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  items                  Item[]
+  requests               Request[]
+  sentMessages           Message[]                 @relation("SentMessages")
+  conversationParticipants ConversationParticipant[]
+  reports                Report[]                  @relation("ReporterReports")
+  reportedItems          Report[]                  @relation("ReportedUserReports")
+  reviewsGiven           Review[]                  @relation("ReviewerReviews")
+  reviewsReceived        Review[]                  @relation("DonorReviews")
+}
+
+model Item {
+  id          String     @id @default(cuid())
+  title       String
+  category    String
+  condition   String
+  quantity    String
+  location    String
+  description String?
+  images      String[]
+  urgent      Boolean    @default(false)
+  status      ItemStatus @default(PENDING)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  donorId  String
+  donor    User      @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  requests Request[]
+  reports  Report[]  @relation("ReportedItemReports")
+}
+
+model Review {
+  id              String   @id @default(cuid())
+  pickupRating    Float
+  qualityRating   Float
+  quantityRating  Float
+  comment         String?
+  createdAt       DateTime @default(now())
+
+  reviewerId String
+  reviewer   User    @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  donorId    String
+  donor      User    @relation("DonorReviews", fields: [donorId], references: [id], onDelete: Cascade)
+  requestId  String  @unique
+  request    Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model Request {
+  id        String        @id @default(cuid())
+  note      String?
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  itemId      String
+  item        Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  conversation Conversation?
+  review       Review?
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  requestId    String                    @unique
+  request      Request                   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  userId         String
+  conversationId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, conversationId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id       String       @id @default(cuid())
+  reason   String
+  status   ReportStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+
+  reporterId     String
+  reporter       User   @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  itemId         String?
+  item           Item?  @relation("ReportedItemReports", fields: [itemId], references: [id], onDelete: SetNull)
+  targetUserId   String?
+  targetUser     User?  @relation("ReportedUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
+}
+
+enum Role {
+  DONOR
+  RECIPIENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  FLAGGED
+  SUSPENDED
+}
+
+enum ItemStatus {
+  PENDING
+  ACTIVE
+  FULFILLED
+  REMOVED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}

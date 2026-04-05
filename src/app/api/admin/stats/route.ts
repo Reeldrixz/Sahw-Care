@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+  const [
+    totalItems,
+    activeItems,
+    totalUsers,
+    activeUsers,
+    totalRequests,
+    fulfilledRequests,
+    pendingReports,
+  ] = await Promise.all([
+    prisma.item.count(),
+    prisma.item.count({ where: { status: "ACTIVE" } }),
+    prisma.user.count(),
+    prisma.user.count({ where: { status: "ACTIVE" } }),
+    prisma.request.count(),
+    prisma.request.count({ where: { status: "FULFILLED" } }),
+    prisma.report.count({ where: { status: "PENDING" } }),
+  ]);
+
+  const fulfilmentRate =
+    totalRequests > 0 ? Math.round((fulfilledRequests / totalRequests) * 100) : 0;
+
+  const recentActivity = await prisma.item.findMany({
+    take: 10,
+    orderBy: { createdAt: "desc" },
+    include: {
+      donor: { select: { name: true } },
+    },
+  });
+
+  return NextResponse.json({
+    stats: {
+      totalItems,
+      activeItems,
+      totalUsers,
+      activeUsers,
+      totalRequests,
+      fulfilledRequests,
+      fulfilmentRate,
+      pendingReports,
+    },
+    recentActivity,
+  });
+}
