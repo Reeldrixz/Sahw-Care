@@ -9,13 +9,14 @@ export async function PATCH(req: NextRequest) {
   const user = token ? await verifyToken(token) : null;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { location, name } = await req.json();
+  const { location, name, role } = await req.json();
 
   const updated = await prisma.user.update({
     where: { id: user.userId },
     data: {
       ...(location !== undefined && { location }),
       ...(name && { name }),
+      ...(role && ["DONOR", "RECIPIENT"].includes(role) && { role }),
     },
     select: {
       id: true,

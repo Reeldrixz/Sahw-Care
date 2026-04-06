@@ -8,7 +8,7 @@ cloudinary.config({
 
 export async function uploadImage(
   file: Buffer,
-  folder = "carecircle"
+  folder = "kradel"
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     cloudinary.uploader

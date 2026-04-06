@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const url = await uploadImage(buffer, "carecircle/items");
+    const url = await uploadImage(buffer, "kradel/items");
 
     return NextResponse.json({ url });
   } catch (error) {

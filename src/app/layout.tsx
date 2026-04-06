@@ -4,7 +4,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import DesktopNav from "@/components/DesktopNav";
 
 export const metadata: Metadata = {
-  title: "CareCircle — Free baby & maternal items near you",
+  title: "Kradel — Free baby & maternal items near you",
   description:
     "Discover free baby formula, diapers, maternity items and more from mothers in your community.",
 };

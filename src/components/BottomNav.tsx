@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const TABS = [
   { path: "/", label: "Discover", icon: "🧭" },
+  { path: "/registers", label: "Registers", icon: "📋" },
   { path: "/browse", label: "Browse", icon: "🔍" },
   { path: "/favourites", label: "Favourites", icon: "🤍", activeIcon: "❤️" },
   { path: "/profile", label: "Profile", icon: "👤" },
@@ -16,7 +17,7 @@ export default function BottomNav() {
   return (
     <div className="bnav">
       {TABS.map(({ path, label, icon, activeIcon }) => {
-        const isActive = pathname === path;
+        const isActive = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
         return (
           <div
             key={path}

@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationInput, setLocationInput] = useState("");
+  const [switchingRole, setSwitchingRole] = useState(false);
 
   useEffect(() => {
     if (!user) router.push("/auth");
@@ -89,6 +90,17 @@ export default function ProfilePage() {
       body: JSON.stringify({ location: locationInput }),
     });
     if (res.ok) { await refreshUser(); setEditingLocation(false); setToast("Location updated!"); }
+  };
+
+  const switchRole = async (newRole: "DONOR" | "RECIPIENT") => {
+    setSwitchingRole(true);
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: newRole }),
+    });
+    if (res.ok) { await refreshUser(); setToast("Role updated!"); }
+    setSwitchingRole(false);
   };
 
   const handleLogout = async () => {
@@ -153,6 +165,44 @@ export default function ProfilePage() {
       </div>
 
       <div className="profile-body">
+        {/* Role Switcher */}
+        {user.role !== "ADMIN" && (
+          <div className="profile-section">
+            <div className="profile-section-title">My mode</div>
+            <p style={{ fontSize: 12, color: "var(--mid)", marginBottom: 12 }}>You can both donate and receive items — switch your primary mode here.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                disabled={switchingRole}
+                onClick={() => switchRole("DONOR")}
+                style={{
+                  flex: 1, padding: "10px 0", borderRadius: 10, border: "2px solid",
+                  borderColor: user.role === "DONOR" ? "var(--green)" : "var(--border)",
+                  background: user.role === "DONOR" ? "var(--green-light)" : "var(--white)",
+                  color: user.role === "DONOR" ? "var(--green)" : "var(--mid)",
+                  fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  transition: "all 0.2s",
+                }}
+              >
+                🎁 Donor
+              </button>
+              <button
+                disabled={switchingRole}
+                onClick={() => switchRole("RECIPIENT")}
+                style={{
+                  flex: 1, padding: "10px 0", borderRadius: 10, border: "2px solid",
+                  borderColor: user.role === "RECIPIENT" ? "var(--green)" : "var(--border)",
+                  background: user.role === "RECIPIENT" ? "var(--green-light)" : "var(--white)",
+                  color: user.role === "RECIPIENT" ? "var(--green)" : "var(--mid)",
+                  fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  transition: "all 0.2s",
+                }}
+              >
+                🤱 Recipient
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Ratings */}
         {ratings.pickup > 0 && (
           <div className="profile-section">
@@ -190,38 +240,47 @@ export default function ProfilePage() {
         )}
 
         {/* My listings */}
-        {(user.role === "DONOR" || user.role === "ADMIN") && (
-          <div className="profile-section">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div className="profile-section-title" style={{ marginBottom: 0 }}>My listings</div>
-              <button
-                onClick={() => setShowDonate(true)}
-                style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
-              >
-                + Add item
-              </button>
-            </div>
-            {myItems.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--mid)", fontSize: 13 }}>
-                No items listed yet
-              </div>
-            ) : myItems.map((item) => (
-              <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }}
-                onClick={() => router.push(`/items/${item.id}`)}>
-                <div style={{ width: 44, height: 44, background: CAT_BG[item.category] ?? "#f5f5f5", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-                  {CAT_EMOJI[item.category] ?? "📦"}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800 }}>{item.title}</div>
-                  <div style={{ fontSize: 11, color: "var(--mid)", fontWeight: 600 }}>{item.quantity} · {item.condition}</div>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: item.status === "ACTIVE" ? "var(--green-light)" : "var(--bg)", color: item.status === "ACTIVE" ? "var(--green)" : "var(--mid)" }}>
-                  {item.status}
-                </span>
-              </div>
-            ))}
+        <div className="profile-section">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div className="profile-section-title" style={{ marginBottom: 0 }}>My listings</div>
+            <button
+              onClick={() => setShowDonate(true)}
+              style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+            >
+              + Add item
+            </button>
           </div>
-        )}
+          {myItems.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--mid)", fontSize: 13 }}>
+              No items listed yet
+            </div>
+          ) : myItems.map((item) => (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }}
+              onClick={() => router.push(`/items/${item.id}`)}>
+              <div style={{ width: 44, height: 44, background: CAT_BG[item.category] ?? "#f5f5f5", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+                {CAT_EMOJI[item.category] ?? "📦"}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>{item.title}</div>
+                <div style={{ fontSize: 11, color: "var(--mid)", fontWeight: 600 }}>{item.quantity} · {item.condition}</div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: item.status === "ACTIVE" ? "var(--green-light)" : "var(--bg)", color: item.status === "ACTIVE" ? "var(--green)" : "var(--mid)" }}>
+                {item.status}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* My Registers shortcut */}
+        <div className="profile-section" style={{ cursor: "pointer" }} onClick={() => router.push("/registers/my")}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div className="profile-section-title" style={{ marginBottom: 2 }}>📋 My Registers</div>
+              <div style={{ fontSize: 12, color: "var(--mid)" }}>Manage your needs register & commitments</div>
+            </div>
+            <span style={{ fontSize: 18, color: "var(--mid)" }}>›</span>
+          </div>
+        </div>
 
         {/* Settings */}
         <div className="profile-section">

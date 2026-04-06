@@ -10,6 +10,7 @@ export default function DesktopNav() {
 
   const links = [
     { label: "Discover", href: "/" },
+    { label: "Registers", href: "/registers" },
     { label: "Browse", href: "/browse" },
     { label: "Messages", href: "/chat" },
     { label: "Favourites", href: "/favourites" },
@@ -19,13 +20,13 @@ export default function DesktopNav() {
     <nav className="dnav">
       <div className="dnav-inner">
         <div className="dnav-logo" onClick={() => router.push("/")}>
-          🤱 CareCircle
+          🤲 Kradel
         </div>
         <div className="dnav-links">
           {links.map((l) => (
             <button
               key={l.href}
-              className={`dnav-link ${pathname === l.href ? "active" : ""}`}
+              className={`dnav-link ${pathname === l.href || (l.href !== "/" && pathname.startsWith(l.href)) ? "active" : ""}`}
               onClick={() => router.push(l.href)}
             >
               {l.label}

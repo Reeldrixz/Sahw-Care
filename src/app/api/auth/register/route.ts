@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         email: isEmail ? identifier : null,
         phone: !isEmail ? identifier : null,
         password: hashedPassword,
-        role: role === "DONOR" ? "DONOR" : "RECIPIENT",
+        role: "DONOR",
       },
     });
 

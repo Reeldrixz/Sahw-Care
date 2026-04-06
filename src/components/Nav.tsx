@@ -21,7 +21,7 @@ export default function Nav({ onDonate }: NavProps) {
   return (
     <nav className="nav">
       <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>
-        <span>🤱</span> CareCircle
+        <span>🤲</span> Kradel
       </Link>
 
       {user ? (
@@ -48,7 +48,7 @@ export default function Nav({ onDonate }: NavProps) {
               </button>
             </Link>
           )}
-          {(user.role === "DONOR" || user.role === "ADMIN") && onDonate && (
+          {onDonate && (
             <button className="btn-primary" onClick={onDonate}>
               + Donate Item
             </button>

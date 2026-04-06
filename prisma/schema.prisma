@@ -13,7 +13,7 @@ model User {
   email       String?    @unique
   phone       String?    @unique
   password    String
-  role        Role       @default(RECIPIENT)
+  role        Role       @default(DONOR)
   avatar      String?
   location    String?
   isPremium   Boolean    @default(false)
@@ -22,14 +22,17 @@ model User {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  items                  Item[]
-  requests               Request[]
-  sentMessages           Message[]                 @relation("SentMessages")
+  items                    Item[]
+  requests                 Request[]
+  sentMessages             Message[]                 @relation("SentMessages")
   conversationParticipants ConversationParticipant[]
-  reports                Report[]                  @relation("ReporterReports")
-  reportedItems          Report[]                  @relation("ReportedUserReports")
-  reviewsGiven           Review[]                  @relation("ReviewerReviews")
-  reviewsReceived        Review[]                  @relation("DonorReviews")
+  reports                  Report[]                  @relation("ReporterReports")
+  reportedItems            Report[]                  @relation("ReportedUserReports")
+  reviewsGiven             Review[]                  @relation("ReviewerReviews")
+  reviewsReceived          Review[]                  @relation("DonorReviews")
+  registers                Register[]                @relation("CreatorRegisters")
+  donorAssignments         ItemAssignment[]          @relation("DonorAssignments")
+  sentRegisterMessages     RegisterMessage[]         @relation("SentRegisterMessages")
 }
 
 model Item {
@@ -128,6 +131,62 @@ model Report {
   targetUser     User?  @relation("ReportedUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
 }
 
+// ==================== REGISTERS ====================
+
+model Register {
+  id        String   @id @default(cuid())
+  title     String
+  city      String
+  dueDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creatorId String
+  creator   User           @relation("CreatorRegisters", fields: [creatorId], references: [id], onDelete: Cascade)
+  items     RegisterItem[]
+}
+
+model RegisterItem {
+  id         String             @id @default(cuid())
+  name       String
+  quantity   String             @default("1")
+  note       String?
+  storeLinks String[]           @default([])
+  status     RegisterItemStatus @default(AVAILABLE)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  registerId String
+  register   Register        @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  assignment ItemAssignment?
+}
+
+model ItemAssignment {
+  id        String               @id @default(cuid())
+  status    ItemAssignmentStatus @default(RESERVED)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  itemId   String        @unique
+  item     RegisterItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  donorId  String
+  donor    User          @relation("DonorAssignments", fields: [donorId], references: [id], onDelete: Cascade)
+  messages RegisterMessage[]
+}
+
+model RegisterMessage {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+
+  senderId     String
+  sender       User           @relation("SentRegisterMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  assignmentId String
+  assignment   ItemAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+// ==================== ENUMS ====================
+
 enum Role {
   DONOR
   RECIPIENT
@@ -159,4 +218,16 @@ enum ReportStatus {
   PENDING
   RESOLVED
   DISMISSED
+}
+
+enum RegisterItemStatus {
+  AVAILABLE
+  RESERVED
+  FULFILLED
+}
+
+enum ItemAssignmentStatus {
+  RESERVED
+  PURCHASED
+  DELIVERED
 }

@@ -35,10 +35,36 @@ export default function DiscoverPage() {
   const [cat, setCat] = useState("All");
   const [toast, setToast] = useState<string | null>(null);
   const [showDonate, setShowDonate] = useState(false);
+  const [detectedCity, setDetectedCity] = useState<string | null>(null);
 
   const CATS = ["All", "Baby Milk", "Diapers", "Maternity", "Clothing", "Accessories"];
 
   const showToast = (msg: string) => setToast(msg);
+
+  // Auto-detect city via geolocation
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.county;
+          if (city) setDetectedCity(city);
+        } catch {
+          // silently fail
+        }
+      },
+      () => {} // permission denied — do nothing
+    );
+  }, []);
 
   const fetchItems = useCallback(async () => {
     const res = await fetch("/api/items?limit=50");
@@ -52,11 +78,14 @@ export default function DiscoverPage() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const filtered = allItems.filter((i) =>
-    (cat === "All" || i.category === cat) &&
-    (i.title.toLowerCase().includes(search.toLowerCase()) ||
-      i.category.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = allItems.filter((i) => {
+    const matchCat = cat === "All" || i.category === cat;
+    const matchSearch =
+      i.title.toLowerCase().includes(search.toLowerCase()) ||
+      i.category.toLowerCase().includes(search.toLowerCase());
+    const matchCity = !detectedCity || i.location.toLowerCase().includes(detectedCity.toLowerCase());
+    return matchCat && matchSearch && (search ? true : matchCity || !detectedCity);
+  });
 
   const handleRequest = async (item: ItemData) => {
     if (!user) { router.push("/auth"); return; }
@@ -96,15 +125,17 @@ export default function DiscoverPage() {
     else { const d = await res.json(); showToast(d.error ?? "Failed"); }
   };
 
+  const locationLabel = detectedCity ?? "Lagos, Nigeria";
+
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
       {/* Mobile header / Desktop search bar */}
       <div className="discover-desktop">
       <div style={{ background: "var(--white)" }} className="discover-mobile-header">
         <div className="topbar">
-          <div className="location-pill">
+          <div className="location-pill" onClick={() => {}}>
             <span>📍</span>
-            <span>Lagos, Nigeria</span>
+            <span>{locationLabel}</span>
             <span className="location-arrow">▾</span>
           </div>
           <div className="topbar-right">
@@ -143,7 +174,7 @@ export default function DiscoverPage() {
         {topItems.length > 0 && (
           <div className="section">
             <div className="section-head">
-              <div className="section-title">Top picks near you</div>
+              <div className="section-title">Top picks {detectedCity ? `in ${detectedCity}` : "near you"}</div>
               <div className="see-all" onClick={() => router.push("/browse")}>See all</div>
             </div>
             <div className="hscroll">
@@ -237,7 +268,7 @@ export default function DiscoverPage() {
               <div className="empty-icon">📦</div>
               <div className="empty-title">No items yet</div>
               <div>Be the first to donate!</div>
-              {user && (user.role === "DONOR" || user.role === "ADMIN") && (
+              {user && (
                 <button className="btn-primary" style={{ marginTop: 16, width: "auto", padding: "10px 24px" }} onClick={() => setShowDonate(true)}>
                   + Donate Item
                 </button>
@@ -262,8 +293,8 @@ export default function DiscoverPage() {
       </div>
       </div>{/* end discover-desktop scroll */}
 
-      {/* Donate FAB for donors */}
-      {user && (user.role === "DONOR" || user.role === "ADMIN") && (
+      {/* Donate FAB for all logged-in users */}
+      {user && (
         <button
           onClick={() => setShowDonate(true)}
           style={{

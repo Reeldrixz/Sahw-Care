@@ -11,10 +11,10 @@ function AuthForm() {
   const [authMode, setAuthMode] = useState<"login" | "signup">(
     searchParams.get("mode") === "signup" ? "signup" : "login"
   );
-  const [role, setRole] = useState<"DONOR" | "RECIPIENT">("RECIPIENT");
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +33,7 @@ function AuthForm() {
       if (authMode === "login") {
         await login(identifier, password);
       } else {
-        await register(name, identifier, password, role);
+        await register(name, identifier, password);
       }
       router.push("/");
     } catch (err) {
@@ -46,7 +46,7 @@ function AuthForm() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">🤱 CareCircle</div>
+        <div className="auth-logo">🤲 Kradel</div>
         <div className="auth-sub">Free baby &amp; maternal items near you</div>
 
         <div className="auth-tabs">
@@ -55,25 +55,10 @@ function AuthForm() {
         </div>
 
         {authMode === "signup" && (
-          <>
-            <p style={{ fontSize: 13, color: "var(--mid)", marginBottom: 12, fontWeight: 600 }}>I want to...</p>
-            <div className="role-picker">
-              <div className={`role-card ${role === "DONOR" ? "selected" : ""}`} onClick={() => setRole("DONOR")}>
-                <div className="role-icon">🎁</div>
-                <div className="role-label">Donate Items</div>
-                <div className="role-desc">I have items to give</div>
-              </div>
-              <div className={`role-card ${role === "RECIPIENT" ? "selected" : ""}`} onClick={() => setRole("RECIPIENT")}>
-                <div className="role-icon">🤱</div>
-                <div className="role-label">Receive Items</div>
-                <div className="role-desc">I need baby items</div>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input className="form-input" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-          </>
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input className="form-input" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
         )}
 
         <div className="form-group">
@@ -82,8 +67,37 @@ function AuthForm() {
         </div>
         <div className="form-group">
           <label className="form-label">Password</label>
-          <input className="form-input" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
+          <div style={{ position: "relative" }}>
+            <input
+              className="form-input"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              style={{ paddingRight: 44, width: "100%" }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--mid)", padding: 0, lineHeight: 1 }}
+              tabIndex={-1}
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </button>
+          </div>
         </div>
+
+        {authMode === "login" && (
+          <div style={{ textAlign: "right", marginBottom: 12, marginTop: -4 }}>
+            <span
+              style={{ fontSize: 12, color: "var(--green)", cursor: "pointer", fontWeight: 700 }}
+              onClick={() => router.push("/auth/forgot-password")}
+            >
+              Forgot password?
+            </span>
+          </div>
+        )}
 
         {error && <div style={{ color: "#dc3232", fontSize: 13, marginBottom: 12, textAlign: "center", fontWeight: 600 }}>{error}</div>}
 
