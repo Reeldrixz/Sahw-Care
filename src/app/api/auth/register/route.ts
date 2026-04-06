@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, identifier, password, role } = await req.json();
+    const { name, identifier, password } = await req.json();
 
     if (!name || !identifier || !password) {
       return NextResponse.json({ error: "Name, email/phone and password are required" }, { status: 400 });
@@ -42,6 +42,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Log device/IP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+               req.headers.get("x-real-ip") ?? null;
+    const ua = req.headers.get("user-agent") ?? null;
+    prisma.deviceLog.create({
+      data: { userId: user.id, ipAddress: ip, userAgent: ua, action: "register" },
+    }).catch(() => {});
+
     const token = await signToken({ userId: user.id, role: user.role, name: user.name });
 
     const response = NextResponse.json(
@@ -56,6 +64,10 @@ export async function POST(req: NextRequest) {
           location: user.location,
           isPremium: user.isPremium,
           trustRating: user.trustRating,
+          trustScore: user.trustScore,
+          verificationLevel: user.verificationLevel,
+          phoneVerified: user.phoneVerified,
+          emailVerified: user.emailVerified,
           createdAt: user.createdAt,
         },
       },

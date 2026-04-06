@@ -23,13 +23,21 @@ export async function POST(req: NextRequest) {
     }
 
     if (user.status === "SUSPENDED") {
-      return NextResponse.json({ error: "Your account has been suspended" }, { status: 403 });
+      return NextResponse.json({ error: "Your account has been suspended. Contact support." }, { status: 403 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
+
+    // Log device/IP (fire-and-forget — never block login on this)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+               req.headers.get("x-real-ip") ?? null;
+    const ua = req.headers.get("user-agent") ?? null;
+    prisma.deviceLog.create({
+      data: { userId: user.id, ipAddress: ip, userAgent: ua, action: "login" },
+    }).catch(() => {}); // non-blocking
 
     const token = await signToken({ userId: user.id, role: user.role, name: user.name });
 
@@ -44,6 +52,10 @@ export async function POST(req: NextRequest) {
         location: user.location,
         isPremium: user.isPremium,
         trustRating: user.trustRating,
+        trustScore: user.trustScore,
+        verificationLevel: user.verificationLevel,
+        phoneVerified: user.phoneVerified,
+        emailVerified: user.emailVerified,
         createdAt: user.createdAt,
       },
     });

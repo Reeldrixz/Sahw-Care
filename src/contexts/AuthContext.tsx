@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string | null;
@@ -12,6 +12,13 @@ interface User {
   location: string | null;
   isPremium: boolean;
   trustRating: number;
+  trustScore: number;
+  verificationLevel: number;
+  phoneVerified: boolean;
+  emailVerified: boolean;
+  urgentOverridesUsed: number;
+  urgentOverridesResetAt: string | null;
+  status: string;
   createdAt: string;
   _count?: { items: number; requests: number };
 }
@@ -55,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ identifier, password }),
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Login failed");
     setUser(data.user);
@@ -67,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, identifier, password }),
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Registration failed");
     setUser(data.user);

@@ -7,6 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== CORE USER ====================
+
 model User {
   id          String     @id @default(cuid())
   name        String
@@ -17,11 +19,23 @@ model User {
   avatar      String?
   location    String?
   isPremium   Boolean    @default(false)
-  trustRating Float      @default(5.0)
-  status      UserStatus @default(ACTIVE)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
 
+  // legacy 0-5 display rating (kept for donor card UI)
+  trustRating Float      @default(5.0)
+
+  // anti-abuse system
+  trustScore             Int       @default(50)   // 0-100 computed score
+  verificationLevel      Int       @default(0)    // 0=none 1=phone 2=email 3=both 4=ID
+  phoneVerified          Boolean   @default(false)
+  emailVerified          Boolean   @default(false)
+  urgentOverridesUsed    Int       @default(0)
+  urgentOverridesResetAt DateTime?
+
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // existing relations
   items                    Item[]
   requests                 Request[]
   sentMessages             Message[]                 @relation("SentMessages")
@@ -33,7 +47,15 @@ model User {
   registers                Register[]                @relation("CreatorRegisters")
   donorAssignments         ItemAssignment[]          @relation("DonorAssignments")
   sentRegisterMessages     RegisterMessage[]         @relation("SentRegisterMessages")
+
+  // trust system relations
+  otpVerifications  OtpVerification[]
+  categoryCooldowns CategoryCooldown[]
+  urgentOverrides   UrgentOverride[]
+  deviceLogs        DeviceLog[]
 }
+
+// ==================== ITEMS ====================
 
 model Item {
   id          String     @id @default(cuid())
@@ -56,12 +78,12 @@ model Item {
 }
 
 model Review {
-  id              String   @id @default(cuid())
-  pickupRating    Float
-  qualityRating   Float
-  quantityRating  Float
-  comment         String?
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  pickupRating   Float
+  qualityRating  Float
+  quantityRating Float
+  comment        String?
+  createdAt      DateTime @default(now())
 
   reviewerId String
   reviewer   User    @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
@@ -118,17 +140,18 @@ model Message {
 }
 
 model Report {
-  id       String       @id @default(cuid())
-  reason   String
-  status   ReportStatus @default(PENDING)
-  createdAt DateTime    @default(now())
+  id        String       @id @default(cuid())
+  reason    String
+  status    ReportStatus @default(PENDING)
+  adminNote String?
+  createdAt DateTime     @default(now())
 
-  reporterId     String
-  reporter       User   @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
-  itemId         String?
-  item           Item?  @relation("ReportedItemReports", fields: [itemId], references: [id], onDelete: SetNull)
-  targetUserId   String?
-  targetUser     User?  @relation("ReportedUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
+  reporterId   String
+  reporter     User   @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  itemId       String?
+  item         Item?  @relation("ReportedItemReports", fields: [itemId], references: [id], onDelete: SetNull)
+  targetUserId String?
+  targetUser   User?  @relation("ReportedUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
 }
 
 // ==================== REGISTERS ====================
@@ -149,6 +172,7 @@ model Register {
 model RegisterItem {
   id         String             @id @default(cuid())
   name       String
+  category   String             @default("Other")
   quantity   String             @default("1")
   note       String?
   storeLinks String[]           @default([])
@@ -172,6 +196,7 @@ model ItemAssignment {
   donorId  String
   donor    User          @relation("DonorAssignments", fields: [donorId], references: [id], onDelete: Cascade)
   messages RegisterMessage[]
+  fulfillmentLog FulfillmentLog?
 }
 
 model RegisterMessage {
@@ -183,6 +208,73 @@ model RegisterMessage {
   sender       User           @relation("SentRegisterMessages", fields: [senderId], references: [id], onDelete: Cascade)
   assignmentId String
   assignment   ItemAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+// ==================== TRUST & ANTI-ABUSE ====================
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      OtpType
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CategoryCooldown {
+  id              String   @id @default(cuid())
+  userId          String
+  category        String
+  lastFulfilledAt DateTime
+  nextEligibleAt  DateTime
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+}
+
+model FulfillmentLog {
+  id               String    @id @default(cuid())
+  assignmentId     String    @unique
+  donorConfirmed   Boolean   @default(false)
+  momConfirmed     Boolean   @default(false)
+  mismatch         Boolean   @default(false)
+  donorConfirmedAt DateTime?
+  momConfirmedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  assignment ItemAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+}
+
+model UrgentOverride {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  reason    String
+  month     Int
+  year      Int
+  reviewed  Boolean  @default(false)
+  approved  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DeviceLog {
+  id          String   @id @default(cuid())
+  userId      String
+  ipAddress   String?
+  userAgent   String?
+  action      String   // "login" | "register"
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ==================== ENUMS ====================
@@ -230,4 +322,9 @@ enum ItemAssignmentStatus {
   RESERVED
   PURCHASED
   DELIVERED
+}
+
+enum OtpType {
+  PHONE
+  EMAIL
 }

@@ -12,6 +12,10 @@ export async function GET() {
     totalRequests,
     fulfilledRequests,
     pendingReports,
+    verifiedUsers,
+    lowTrustUsers,
+    pendingOverrides,
+    totalRegisters,
   ] = await Promise.all([
     prisma.item.count(),
     prisma.item.count({ where: { status: "ACTIVE" } }),
@@ -20,6 +24,10 @@ export async function GET() {
     prisma.request.count(),
     prisma.request.count({ where: { status: "FULFILLED" } }),
     prisma.report.count({ where: { status: "PENDING" } }),
+    prisma.user.count({ where: { verificationLevel: { gte: 1 } } }),
+    prisma.user.count({ where: { trustScore: { lt: 40 } } }),
+    prisma.urgentOverride.count({ where: { reviewed: false } }),
+    prisma.register.count(),
   ]);
 
   const fulfilmentRate =
@@ -28,9 +36,7 @@ export async function GET() {
   const recentActivity = await prisma.item.findMany({
     take: 10,
     orderBy: { createdAt: "desc" },
-    include: {
-      donor: { select: { name: true } },
-    },
+    include: { donor: { select: { name: true } } },
   });
 
   return NextResponse.json({
@@ -43,6 +49,10 @@ export async function GET() {
       fulfilledRequests,
       fulfilmentRate,
       pendingReports,
+      verifiedUsers,
+      lowTrustUsers,
+      pendingOverrides,
+      totalRegisters,
     },
     recentActivity,
   });

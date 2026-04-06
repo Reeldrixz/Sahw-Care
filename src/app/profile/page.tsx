@@ -29,6 +29,9 @@ interface Review {
   reviewer: { id: string; name: string; avatar: string | null };
 }
 
+const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
+const TRUST_LABEL = (s: number) => s >= 70 ? "High trust" : s >= 40 ? "Building trust" : "Low trust";
+
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
@@ -40,6 +43,14 @@ export default function ProfilePage() {
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [switchingRole, setSwitchingRole] = useState(false);
+
+  // OTP verification state
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyType, setVerifyType] = useState<"PHONE" | "EMAIL">("PHONE");
+  const [otpStep, setOtpStep] = useState<"send" | "confirm">("send");
+  const [otpCode, setOtpCode] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
   useEffect(() => {
     if (!user) router.push("/auth");
@@ -103,24 +114,54 @@ export default function ProfilePage() {
     setSwitchingRole(false);
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
+  const sendOtp = async () => {
+    setVerifyLoading(true);
+    const res = await fetch("/api/verify/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: verifyType }),
+    });
+    const d = await res.json();
+    if (!res.ok) { setToast(d.error); setVerifyLoading(false); return; }
+    setOtpStep("confirm");
+    if (d.devCode) setDevOtp(d.devCode); // dev mode only
+    setVerifyLoading(false);
   };
+
+  const confirmOtp = async () => {
+    if (!otpCode.trim()) return;
+    setVerifyLoading(true);
+    const res = await fetch("/api/verify/confirm-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: verifyType, code: otpCode }),
+    });
+    const d = await res.json();
+    if (!res.ok) { setToast(d.error); setVerifyLoading(false); return; }
+    await refreshUser();
+    setShowVerify(false); setOtpStep("send"); setOtpCode(""); setDevOtp(null);
+    setToast(`✅ ${verifyType === "PHONE" ? "Phone" : "Email"} verified! Trust score updated.`);
+    setVerifyLoading(false);
+  };
+
+  const openVerify = (type: "PHONE" | "EMAIL") => {
+    setVerifyType(type); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true);
+  };
+
+  const handleLogout = async () => { await logout(); router.push("/"); };
 
   if (!user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
   const initials = user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
   const memberYear = new Date(user.createdAt).getFullYear();
+  const trustColor = TRUST_COLOR(user.trustScore);
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
     <div className="profile-desktop-wrap">
       <div className="profile-hero">
         <div className="profile-av">
-          {user.avatar ? (
-            <Image src={user.avatar} alt={user.name} width={80} height={80} style={{ objectFit: "cover" }} />
-          ) : initials}
+          {user.avatar ? <Image src={user.avatar} alt={user.name} width={80} height={80} style={{ objectFit: "cover" }} /> : initials}
         </div>
         <div className="profile-name">{user.name}</div>
         <div className="profile-role-badge">
@@ -132,12 +173,8 @@ export default function ProfilePage() {
         <div style={{ marginTop: 10, fontSize: 13 }}>
           {editingLocation ? (
             <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
-              <input
-                value={locationInput}
-                onChange={(e) => setLocationInput(e.target.value)}
-                placeholder="e.g. Ikeja, Lagos"
-                style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, outline: "none", fontFamily: "Nunito, sans-serif" }}
-              />
+              <input value={locationInput} onChange={(e) => setLocationInput(e.target.value)} placeholder="e.g. Ikeja, Lagos"
+                style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, outline: "none", fontFamily: "Nunito, sans-serif" }} />
               <button onClick={saveLocation} style={{ padding: "4px 12px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.25)", color: "white", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Save</button>
               <button onClick={() => setEditingLocation(false)} style={{ padding: "4px 10px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 12 }}>Cancel</button>
             </div>
@@ -149,66 +186,99 @@ export default function ProfilePage() {
         </div>
 
         <div className="profile-stats-row">
+          <div className="p-stat"><div className="p-stat-num">{user._count?.items ?? 0}</div><div className="p-stat-label">Donated</div></div>
           <div className="p-stat">
-            <div className="p-stat-num">{user._count?.items ?? 0}</div>
-            <div className="p-stat-label">Donated</div>
+            <div className="p-stat-num" style={{ color: "white", fontSize: 16 }}>
+              <span style={{ fontSize: 12, opacity: 0.8 }}>Trust </span>{user.trustScore}
+            </div>
+            <div className="p-stat-label">{TRUST_LABEL(user.trustScore)}</div>
           </div>
-          <div className="p-stat">
-            <div className="p-stat-num">⭐{user.trustRating.toFixed(1)}</div>
-            <div className="p-stat-label">Rating</div>
-          </div>
-          <div className="p-stat">
-            <div className="p-stat-num">{user._count?.requests ?? 0}</div>
-            <div className="p-stat-label">Requests</div>
-          </div>
+          <div className="p-stat"><div className="p-stat-num">{user._count?.requests ?? 0}</div><div className="p-stat-label">Requests</div></div>
         </div>
       </div>
 
       <div className="profile-body">
-        {/* Role Switcher */}
+
+        {/* ── Verification section ─────────────────────────────────── */}
+        <div className="profile-section">
+          <div className="profile-section-title">🛡️ Account verification</div>
+          <p style={{ fontSize: 12, color: "var(--mid)", marginBottom: 14, lineHeight: 1.6 }}>
+            Verifying your phone and email increases your trust score and unlocks more visibility for your register.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {/* Phone */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
+              <span style={{ fontSize: 20 }}>📱</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>Phone number</div>
+                <div style={{ fontSize: 12, color: "var(--mid)" }}>{user.phone ?? "Not added"}</div>
+              </div>
+              {user.phoneVerified ? (
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", padding: "3px 10px", borderRadius: 20 }}>✓ Verified</span>
+              ) : user.phone ? (
+                <button onClick={() => openVerify("PHONE")} style={{ fontSize: 12, fontWeight: 700, background: "var(--green)", color: "white", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Verify</button>
+              ) : (
+                <span style={{ fontSize: 11, color: "var(--light)" }}>Add phone first</span>
+              )}
+            </div>
+            {/* Email */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
+              <span style={{ fontSize: 20 }}>📧</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>Email address</div>
+                <div style={{ fontSize: 12, color: "var(--mid)" }}>{user.email ?? "Not added"}</div>
+              </div>
+              {user.emailVerified ? (
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", padding: "3px 10px", borderRadius: 20 }}>✓ Verified</span>
+              ) : user.email ? (
+                <button onClick={() => openVerify("EMAIL")} style={{ fontSize: 12, fontWeight: 700, background: "var(--green)", color: "white", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Verify</button>
+              ) : (
+                <span style={{ fontSize: 11, color: "var(--light)" }}>Add email first</span>
+              )}
+            </div>
+          </div>
+          {/* Trust score bar */}
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5, fontWeight: 600 }}>
+              <span style={{ color: "var(--mid)" }}>Trust score</span>
+              <span style={{ color: trustColor, fontWeight: 700 }}>{user.trustScore}/100 — {TRUST_LABEL(user.trustScore)}</span>
+            </div>
+            <div style={{ background: "var(--border)", borderRadius: 6, height: 8 }}>
+              <div style={{ width: `${user.trustScore}%`, height: "100%", background: trustColor, borderRadius: 6, transition: "width 0.5s" }} />
+            </div>
+            <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 5, lineHeight: 1.5 }}>
+              Level {user.verificationLevel} · {user.phoneVerified ? "Phone ✓" : "Phone ✗"} · {user.emailVerified ? "Email ✓" : "Email ✗"}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Mode switcher ────────────────────────────────────────── */}
         {user.role !== "ADMIN" && (
           <div className="profile-section">
             <div className="profile-section-title">My mode</div>
-            <p style={{ fontSize: 12, color: "var(--mid)", marginBottom: 12 }}>You can both donate and receive items — switch your primary mode here.</p>
+            <p style={{ fontSize: 12, color: "var(--mid)", marginBottom: 12 }}>You can both donate and receive — switch your primary mode here.</p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button
-                disabled={switchingRole}
-                onClick={() => switchRole("DONOR")}
-                style={{
+              {(["DONOR", "RECIPIENT"] as const).map((r) => (
+                <button key={r} disabled={switchingRole} onClick={() => switchRole(r)} style={{
                   flex: 1, padding: "10px 0", borderRadius: 10, border: "2px solid",
-                  borderColor: user.role === "DONOR" ? "var(--green)" : "var(--border)",
-                  background: user.role === "DONOR" ? "var(--green-light)" : "var(--white)",
-                  color: user.role === "DONOR" ? "var(--green)" : "var(--mid)",
-                  fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                  transition: "all 0.2s",
-                }}
-              >
-                🎁 Donor
-              </button>
-              <button
-                disabled={switchingRole}
-                onClick={() => switchRole("RECIPIENT")}
-                style={{
-                  flex: 1, padding: "10px 0", borderRadius: 10, border: "2px solid",
-                  borderColor: user.role === "RECIPIENT" ? "var(--green)" : "var(--border)",
-                  background: user.role === "RECIPIENT" ? "var(--green-light)" : "var(--white)",
-                  color: user.role === "RECIPIENT" ? "var(--green)" : "var(--mid)",
-                  fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                  transition: "all 0.2s",
-                }}
-              >
-                🤱 Recipient
-              </button>
+                  borderColor: user.role === r ? "var(--green)" : "var(--border)",
+                  background: user.role === r ? "var(--green-light)" : "var(--white)",
+                  color: user.role === r ? "var(--green)" : "var(--mid)",
+                  fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", transition: "all 0.2s",
+                }}>
+                  {r === "DONOR" ? "🎁 Donor" : "🤱 Recipient"}
+                </button>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Ratings */}
+        {/* ── Ratings ──────────────────────────────────────────────── */}
         {ratings.pickup > 0 && (
           <div className="profile-section">
             <div className="profile-section-title">My experience ratings</div>
             {[["Pickup", ratings.pickup], ["Quality", ratings.quality], ["Quantity", ratings.quantity]].map(([l, v]) => (
-              <div key={l} className="rating-row">
+              <div key={l as string} className="rating-row">
                 <div className="rating-label">{l}</div>
                 <div className="rating-bar-wrap"><div className="rating-bar" style={{ width: `${((v as number) / 5) * 100}%` }} /></div>
                 <div className="rating-num">{(v as number).toFixed(1)}</div>
@@ -217,7 +287,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Reviews */}
+        {/* ── Reviews ──────────────────────────────────────────────── */}
         {reviews.length > 0 && (
           <div className="profile-section">
             <div className="profile-section-title">Recent reviews about me</div>
@@ -239,24 +309,16 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* My listings */}
+        {/* ── My listings ──────────────────────────────────────────── */}
         <div className="profile-section">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div className="profile-section-title" style={{ marginBottom: 0 }}>My listings</div>
-            <button
-              onClick={() => setShowDonate(true)}
-              style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
-            >
-              + Add item
-            </button>
+            <button onClick={() => setShowDonate(true)} style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>+ Add item</button>
           </div>
           {myItems.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--mid)", fontSize: 13 }}>
-              No items listed yet
-            </div>
+            <div style={{ textAlign: "center", padding: "20px 0", color: "var(--mid)", fontSize: 13 }}>No items listed yet</div>
           ) : myItems.map((item) => (
-            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }}
-              onClick={() => router.push(`/items/${item.id}`)}>
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }} onClick={() => router.push(`/items/${item.id}`)}>
               <div style={{ width: 44, height: 44, background: CAT_BG[item.category] ?? "#f5f5f5", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
                 {CAT_EMOJI[item.category] ?? "📦"}
               </div>
@@ -271,7 +333,7 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        {/* My Registers shortcut */}
+        {/* ── My Registers shortcut ────────────────────────────────── */}
         <div className="profile-section" style={{ cursor: "pointer" }} onClick={() => router.push("/registers/my")}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
@@ -282,7 +344,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Settings */}
+        {/* ── Account ──────────────────────────────────────────────── */}
         <div className="profile-section">
           <div className="profile-section-title">Account</div>
           <div style={{ fontSize: 13, color: "var(--mid)", marginBottom: 8 }}>
@@ -293,8 +355,63 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+    </div>
 
-    </div>{/* end profile-desktop-wrap */}
+    {/* ── OTP Verification Sheet ─────────────────────────────────────── */}
+    {showVerify && (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        onClick={(e) => { if (e.target === e.currentTarget) setShowVerify(false); }}>
+        <div style={{ background: "var(--white)", borderRadius: "24px 24px 0 0", padding: "24px 20px 48px", width: "100%", maxWidth: 430, animation: "sheetUp 0.3s ease" }}>
+          <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "0 auto 20px" }} />
+          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+            Verify your {verifyType === "PHONE" ? "phone" : "email"}
+          </div>
+          {otpStep === "send" ? (
+            <>
+              <p style={{ fontSize: 13, color: "var(--mid)", marginBottom: 20, lineHeight: 1.6 }}>
+                We&apos;ll send a 6-digit code to{" "}
+                <strong>{verifyType === "PHONE" ? (user.phone ?? "") : (user.email ?? "")}</strong>.
+              </p>
+              <button className="btn-primary" onClick={sendOtp} disabled={verifyLoading}>
+                {verifyLoading ? "Sending..." : "Send code"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: "var(--mid)", marginBottom: 16, lineHeight: 1.6 }}>
+                Enter the 6-digit code sent to{" "}
+                <strong>{verifyType === "PHONE" ? (user.phone ?? "") : (user.email ?? "")}</strong>.
+              </p>
+              {devOtp && (
+                <div style={{ background: "var(--yellow-light)", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 13, color: "#b8860b", fontWeight: 700 }}>
+                  🛠️ Dev mode — code: <strong>{devOtp}</strong>
+                </div>
+              )}
+              <div className="form-group">
+                <input
+                  className="form-input"
+                  placeholder="000000"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onKeyDown={(e) => e.key === "Enter" && confirmOtp()}
+                  style={{ letterSpacing: 6, fontSize: 22, textAlign: "center", fontWeight: 800 }}
+                  maxLength={6}
+                  inputMode="numeric"
+                />
+              </div>
+              <button className="btn-primary" onClick={confirmOtp} disabled={verifyLoading || otpCode.length < 6}>
+                {verifyLoading ? "Verifying..." : "Confirm"}
+              </button>
+              <button style={{ background: "none", border: "none", color: "var(--mid)", fontSize: 13, display: "block", margin: "12px auto 0", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                onClick={() => { setOtpStep("send"); setDevOtp(null); setOtpCode(""); }}>
+                ← Resend code
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
       <Toast message={toast} onClose={() => setToast(null)} />
