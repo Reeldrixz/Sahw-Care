@@ -7,6 +7,7 @@ import ListCard, { ItemData } from "@/components/ListCard";
 import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "@/components/Avatar";
 
 const BUNDLES = [
   { id: 1, emoji: "🎀", title: "Full Newborn Starter Kit", items: "Formula · Diapers · Clothes · Bath set", count: "4 items", tag: "Bundle", tagColor: "#e8f5f1", tagText: "#1a7a5e", bg: "#e8f5f1" },
@@ -141,7 +142,11 @@ export default function DiscoverPage() {
           <div className="topbar-right">
             <button className="icon-btn notif-dot">🔔</button>
             {user ? (
-              <button className="icon-btn" onClick={() => router.push("/profile")}>👤</button>
+              <button className="icon-btn" onClick={() => router.push("/profile")} style={{ padding: 2, background: "none", border: "none" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden" }}>
+                  <Avatar src={user.avatar} name={user.name} size={28} />
+                </div>
+              </button>
             ) : (
               <button className="icon-btn" onClick={() => router.push("/auth")}>🔑</button>
             )}

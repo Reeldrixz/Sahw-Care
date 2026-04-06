@@ -33,8 +33,7 @@ export async function uploadAvatar(file: Buffer, userId: string): Promise<string
       .upload_stream(
         {
           folder: "kradel/avatars",
-          public_id: `user_${userId}`,
-          overwrite: true,
+          public_id: `user_${userId}_${Date.now()}`,
           resource_type: "image",
           transformation: [
             { width: 300, height: 300, crop: "fill", gravity: "face", quality: "auto" },
