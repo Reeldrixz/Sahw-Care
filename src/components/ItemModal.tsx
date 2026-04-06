@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "@/components/Avatar";
 
 interface Item {
   id: string;
@@ -48,13 +49,6 @@ export default function ItemModal({ item, onClose, onRequest, requested }: ItemM
     }
   };
 
-  const initials = item.donor.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -91,11 +85,17 @@ export default function ItemModal({ item, onClose, onRequest, requested }: ItemM
             </p>
           )}
 
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
+            <Avatar src={item.donor.avatar} name={item.donor.name} size={40} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800 }}>{item.donor.name}</div>
+              <div style={{ fontSize: 12, color: "var(--mid)" }}>⭐ {item.donor.trustRating.toFixed(1)} trust rating</div>
+            </div>
+          </div>
+
           {[
             ["Quantity", item.quantity],
             ["Location", item.location],
-            ["Donor", item.donor.name],
-            ["Trust Rating", `⭐ ${item.donor.trustRating.toFixed(1)}`],
             ["Category", item.category],
           ].map(([label, value]) => (
             <div key={label} className="detail-row">

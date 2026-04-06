@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import Image from "next/image";
+import Avatar from "@/components/Avatar";
 
 const CAT_BG: Record<string, string> = {
   "Baby Milk": "#e8f5f1", "Diapers": "#fff3e0", "Maternity": "#f3e5f5",
@@ -67,7 +67,6 @@ export default function DonorProfilePage() {
     </div>
   );
 
-  const initials = donor.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   const memberYear = new Date(donor.createdAt).getFullYear();
   const fulfilRate = donor._count.items > 0 ? "98%" : "—";
 
@@ -80,10 +79,8 @@ export default function DonorProfilePage() {
           onClick={() => router.back()}
         >←</button>
 
-        <div className="profile-av">
-          {donor.avatar ? (
-            <Image src={donor.avatar} alt={donor.name} width={80} height={80} style={{ objectFit: "cover" }} />
-          ) : initials}
+        <div className="profile-av" style={{ overflow: "hidden" }}>
+          <Avatar src={donor.avatar} name={donor.name} size={80} />
         </div>
         <div className="profile-name">{donor.name}</div>
         <div className="profile-role-badge">🎁 Donor · ✓ Verified{donor.isPremium ? " · ✨ Premium" : ""}</div>
@@ -130,13 +127,12 @@ export default function DonorProfilePage() {
           <div className="profile-section">
             <div className="profile-section-title">Recent reviews</div>
             {donor.reviewsReceived.map((r) => {
-              const reviewInitials = r.reviewer.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
               const avg = Math.round((r.pickupRating + r.qualityRating + r.quantityRating) / 3);
               const time = new Date(r.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
               return (
                 <div key={r.id} className="review-item">
                   <div className="review-header">
-                    <div className="review-av">{reviewInitials}</div>
+                    <Avatar src={r.reviewer.avatar} name={r.reviewer.name} size={32} />
                     <div>
                       <div className="review-name">{r.reviewer.name}</div>
                       <div className="review-stars">{"⭐".repeat(avg)}</div>

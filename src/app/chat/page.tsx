@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "@/components/Avatar";
 
 interface Message {
   id: string;
@@ -133,7 +134,6 @@ export default function ChatPage() {
               {conversations.map((conv) => {
                 const other = getOtherParticipant(conv);
                 const lastMsg = conv.messages[0];
-                const initials = other?.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "?";
 
                 return (
                   <div
@@ -141,7 +141,7 @@ export default function ChatPage() {
                     className={`chat-item ${activeId === conv.id ? "active" : ""}`}
                     onClick={() => setActiveId(conv.id)}
                   >
-                    <div className="avatar">{initials}</div>
+                    <Avatar src={other?.avatar} name={other?.name ?? "?"} size={36} />
                     <div className="chat-item-info">
                       <div className="chat-item-name">{other?.name ?? "Unknown"}</div>
                       <div className="chat-item-preview">{lastMsg?.text ?? "No messages yet"}</div>
@@ -162,9 +162,7 @@ export default function ChatPage() {
               {activeConv ? (
                 <>
                   <div className="chat-header">
-                    <div className="avatar">
-                      {otherUser?.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                    </div>
+                    <Avatar src={otherUser?.avatar} name={otherUser?.name ?? "?"} size={36} />
                     <div className="chat-header-info">
                       <div className="chat-header-name">{otherUser?.name}</div>
                       <div className="chat-header-item">re: {activeConv.request.item.title}</div>

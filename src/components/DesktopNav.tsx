@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "@/components/Avatar";
 
 export default function DesktopNav() {
   const router = useRouter();
@@ -36,8 +37,9 @@ export default function DesktopNav() {
         <div className="dnav-right">
           {user ? (
             <>
-              <span className="dnav-user" onClick={() => router.push("/profile")}>
-                👤 {user.name.split(" ")[0]}
+              <span className="dnav-user" onClick={() => router.push("/profile")} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <Avatar src={user.avatar} name={user.name} size={28} />
+                {user.name.split(" ")[0]}
               </span>
               {user.role === "ADMIN" && (
                 <button className="dnav-btn-outline" onClick={() => router.push("/admin")}>

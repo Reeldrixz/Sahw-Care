@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import BottomNav from "@/components/BottomNav";
+import Avatar from "@/components/Avatar";
 import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +43,7 @@ export default function ProfilePage() {
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationInput, setLocationInput] = useState("");
   const [switchingRole, setSwitchingRole] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // OTP verification state
   const [showVerify, setShowVerify] = useState(false);
@@ -148,11 +149,23 @@ export default function ProfilePage() {
     setVerifyType(type); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/user/avatar", { method: "POST", body: fd });
+    if (res.ok) { await refreshUser(); setToast("Profile photo updated!"); }
+    else { const d = await res.json(); setToast(d.error ?? "Upload failed"); }
+    setUploadingAvatar(false);
+    e.target.value = "";
+  };
+
   const handleLogout = async () => { await logout(); router.push("/"); };
 
   if (!user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
-  const initials = user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
   const memberYear = new Date(user.createdAt).getFullYear();
   const trustColor = TRUST_COLOR(user.trustScore);
 
@@ -160,9 +173,27 @@ export default function ProfilePage() {
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
     <div className="profile-desktop-wrap">
       <div className="profile-hero">
-        <div className="profile-av">
-          {user.avatar ? <Image src={user.avatar} alt={user.name} width={80} height={80} style={{ objectFit: "cover" }} /> : initials}
-        </div>
+        <label htmlFor="avatar-upload" style={{ cursor: "pointer", position: "relative", display: "inline-block" }}>
+          <div className="profile-av" style={{ overflow: "hidden", position: "relative" }}>
+            <Avatar src={user.avatar} name={user.name} size={80} />
+            <div style={{
+              position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: "50%", opacity: uploadingAvatar ? 1 : 0,
+              transition: "opacity 0.2s",
+            }}
+              className="avatar-overlay"
+            >
+              {uploadingAvatar ? (
+                <div style={{ width: 18, height: 18, border: "2px solid white", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+              ) : (
+                <span style={{ fontSize: 20 }}>📷</span>
+              )}
+            </div>
+          </div>
+          <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+        </label>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 4, fontWeight: 600 }}>Tap to change photo</div>
         <div className="profile-name">{user.name}</div>
         <div className="profile-role-badge">
           {user.role === "DONOR" ? "🎁 Donor" : "🤱 Recipient"} · ✓ Verified
@@ -292,13 +323,12 @@ export default function ProfilePage() {
           <div className="profile-section">
             <div className="profile-section-title">Recent reviews about me</div>
             {reviews.slice(0, 5).map((r) => {
-              const ri = r.reviewer.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
               const avg = Math.round((r.pickupRating + r.qualityRating + r.quantityRating) / 3);
               const time = new Date(r.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
               return (
                 <div key={r.id} className="review-item">
                   <div className="review-header">
-                    <div className="review-av">{ri}</div>
+                    <Avatar src={r.reviewer.avatar} name={r.reviewer.name} size={32} />
                     <div><div className="review-name">{r.reviewer.name}</div><div className="review-stars">{"⭐".repeat(avg)}</div></div>
                     <div className="review-time">{time}</div>
                   </div>

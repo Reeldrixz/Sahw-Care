@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Avatar from "@/components/Avatar";
 
 interface Item {
   id: string;
@@ -31,12 +32,6 @@ const CATEGORY_EMOJI: Record<string, string> = {
 };
 
 export default function ItemCard({ item, requested, onRequest, onClick }: ItemCardProps) {
-  const initials = item.donor.name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   return (
     <div className="item-card" onClick={onClick}>
@@ -69,14 +64,8 @@ export default function ItemCard({ item, requested, onRequest, onClick }: ItemCa
       </div>
       <div className="item-footer">
         <div className="donor-info">
-          <div className="avatar">
-            {item.donor.avatar ? (
-              <Image src={item.donor.avatar} alt={item.donor.name} width={28} height={28} style={{ borderRadius: "50%" }} />
-            ) : (
-              initials
-            )}
-          </div>
-          <div className="donor-name">{item.donor.name}</div>
+          <Avatar src={item.donor.avatar} name={item.donor.name} size={28} />
+          <div className="donor-name">{item.donor.name.split(" ")[0]}</div>
         </div>
         <button
           className={`btn-request ${requested ? "requested" : ""}`}

@@ -27,6 +27,28 @@ export async function uploadImage(
   });
 }
 
+export async function uploadAvatar(file: Buffer, userId: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder: "kradel/avatars",
+          public_id: `user_${userId}`,
+          overwrite: true,
+          resource_type: "image",
+          transformation: [
+            { width: 300, height: 300, crop: "fill", gravity: "face", quality: "auto" },
+          ],
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result!.secure_url);
+        }
+      )
+      .end(file);
+  });
+}
+
 export async function deleteImage(publicId: string): Promise<void> {
   await cloudinary.uploader.destroy(publicId);
 }

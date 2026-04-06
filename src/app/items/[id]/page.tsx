@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "@/components/Avatar";
 
 interface Item {
   id: string;
@@ -107,7 +108,6 @@ export default function ItemDetailPage() {
   );
 
   const bg = CAT_BG[item.category] ?? "#f5f5f5";
-  const donorInitials = item.donor.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="detail">
@@ -152,10 +152,8 @@ export default function ItemDetailPage() {
 
           <div className="detail-section-title">About the donor</div>
           <div className="donor-card" onClick={() => router.push(`/donors/${item.donor.id}`)}>
-            <div className="donor-avatar-lg">
-              {item.donor.avatar ? (
-                <Image src={item.donor.avatar} alt={item.donor.name} width={48} height={48} style={{ objectFit: "cover" }} />
-              ) : donorInitials}
+            <div className="donor-avatar-lg" style={{ overflow: "hidden" }}>
+              <Avatar src={item.donor.avatar} name={item.donor.name} size={48} />
             </div>
             <div className="donor-info">
               <div className="donor-name-lg">{item.donor.name}</div>
@@ -184,12 +182,11 @@ export default function ItemDetailPage() {
               <div className="detail-section-title">Reviews</div>
               {reviews.slice(0, 3).map((r) => {
                 const avg = ((r.pickupRating + r.qualityRating + r.quantityRating) / 3).toFixed(1);
-                const initials = r.reviewer.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
                 const time = new Date(r.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
                 return (
                   <div key={r.id} className="review-item">
                     <div className="review-header">
-                      <div className="review-av">{initials}</div>
+                      <Avatar src={r.reviewer.avatar} name={r.reviewer.name} size={32} />
                       <div>
                         <div className="review-name">{r.reviewer.name}</div>
                         <div className="review-stars">{"⭐".repeat(Math.round(parseFloat(avg)))}</div>
@@ -259,10 +256,8 @@ export default function ItemDetailPage() {
               <div className="detail-divider" />
               <div className="detail-section-title">About the donor</div>
               <div className="donor-card" onClick={() => router.push(`/donors/${item.donor.id}`)}>
-                <div className="donor-avatar-lg">
-                  {item.donor.avatar ? (
-                    <Image src={item.donor.avatar} alt={item.donor.name} width={48} height={48} style={{ objectFit: "cover" }} />
-                  ) : donorInitials}
+                <div className="donor-avatar-lg" style={{ overflow: "hidden" }}>
+                  <Avatar src={item.donor.avatar} name={item.donor.name} size={48} />
                 </div>
                 <div className="donor-info">
                   <div className="donor-name-lg">{item.donor.name}</div>

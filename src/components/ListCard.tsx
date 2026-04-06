@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Avatar from "@/components/Avatar";
 
 export interface ItemData {
   id: string;
@@ -44,7 +45,6 @@ interface ListCardProps {
 }
 
 export default function ListCard({ item, requested, favourited, onRequest, onFavourite, onClick, badge }: ListCardProps) {
-  const initials = item.donor.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   const bg = CAT_BG[item.category] ?? "#f5f5f5";
 
   return (
@@ -58,12 +58,8 @@ export default function ListCard({ item, requested, favourited, onRequest, onFav
         </button>
 
         <div className="list-card-donor">
-          <div className="list-card-avatar">
-            {item.donor.avatar ? (
-              <Image src={item.donor.avatar} alt={item.donor.name} width={24} height={24} style={{ objectFit: "cover" }} />
-            ) : initials}
-          </div>
-          <div className="list-card-donor-name">{item.donor.name}</div>
+          <Avatar src={item.donor.avatar} name={item.donor.name} size={24} />
+          <div className="list-card-donor-name">{item.donor.name.split(" ")[0]}</div>
         </div>
 
         {item.images[0] ? (
