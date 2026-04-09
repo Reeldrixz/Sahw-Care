@@ -34,6 +34,54 @@ function isNewMember(joinedAt: string): boolean {
   return Date.now() - new Date(joinedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
+async function detectAndJoin(): Promise<{ circle: Circle; member: Member } | null> {
+  // Already have a circle from profile location?
+  const myRes = await fetch("/api/circles/my", { cache: "no-store" });
+  const myData = await myRes.json();
+  if (myData.circle) return { circle: myData.circle, member: myData.member };
+
+  // No circle yet — try browser geolocation
+  if (!navigator.geolocation) return null;
+
+  const position = await new Promise<GeolocationPosition | null>((resolve) => {
+    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 8000 });
+  });
+  if (!position) return null;
+
+  try {
+    const { latitude, longitude } = position.coords;
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+    );
+    const geoData = await geoRes.json();
+    const city =
+      geoData.address?.city ||
+      geoData.address?.town ||
+      geoData.address?.village ||
+      geoData.address?.county;
+    const country = geoData.address?.country;
+    if (!country) return null;
+
+    const location = city ? `${city}, ${country}` : country;
+
+    // Save to profile (this also triggers autoJoinCircle server-side)
+    await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ location }),
+    });
+
+    // Re-fetch circle after joining
+    const refreshed = await fetch("/api/circles/my", { cache: "no-store" });
+    const refreshedData = await refreshed.json();
+    if (refreshedData.circle) return { circle: refreshedData.circle, member: refreshedData.member };
+  } catch {
+    // Nominatim or network error — fall through
+  }
+
+  return null;
+}
+
 export default function CirclesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -45,21 +93,39 @@ export default function CirclesPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingCircle, setLoadingCircle] = useState(true);
+  const [geoDetecting, setGeoDetecting] = useState(false);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
 
-  // Load circle membership
   useEffect(() => {
     if (!user) return;
-    fetch("/api/circles/my", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        setCircle(d.circle ?? null);
-        setMember(d.member ?? null);
+
+    (async () => {
+      // First: quick check for existing circle (covers users who already have location)
+      const myRes = await fetch("/api/circles/my", { cache: "no-store" });
+      const myData = await myRes.json();
+
+      if (myData.circle) {
+        setCircle(myData.circle);
+        setMember(myData.member);
         setLoadingCircle(false);
-      });
-    // Mark as viewed
-    fetch("/api/circles/my", { method: "PATCH" }).catch(() => {});
+        fetch("/api/circles/my", { method: "PATCH" }).catch(() => {});
+        return;
+      }
+
+      // No circle — attempt geolocation silently
+      setGeoDetecting(true);
+      const result = await detectAndJoin();
+      setGeoDetecting(false);
+
+      if (result) {
+        setCircle(result.circle);
+        setMember(result.member);
+        fetch("/api/circles/my", { method: "PATCH" }).catch(() => {});
+      }
+      // If result is null, circle stays null → show manual fallback
+      setLoadingCircle(false);
+    })();
   }, [user]);
 
   const loadPosts = useCallback(async (reset = false) => {
@@ -94,16 +160,22 @@ export default function CirclesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPinned: pin }),
     });
-    setPosts((p) => p.map((x) => x.id === postId ? { ...x, isPinned: pin } : x).sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }));
+    setPosts((p) =>
+      p
+        .map((x) => (x.id === postId ? { ...x, isPinned: pin } : x))
+        .sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        })
+    );
   };
 
   const isAdminOrLeader = user?.role === "ADMIN" || member?.isLeader === true;
 
-  if (authLoading || loadingCircle) {
+  // ── Loading states ───────────────────────────────────────────────────────
+
+  if (authLoading) {
     return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
   }
 
@@ -112,24 +184,41 @@ export default function CirclesPage() {
       <div style={{ padding: "60px 20px", textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🤝</div>
         <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Join the Circle</div>
-        <p style={{ color: "var(--mid)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>Sign in to connect with mothers and donors in your community.</p>
+        <p style={{ color: "var(--mid)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+          Sign in to connect with mothers and donors in your community.
+        </p>
         <button className="btn-primary" onClick={() => router.push("/auth")}>Sign in to join</button>
       </div>
     );
   }
 
-  // No circle — user hasn't set their location
+  if (loadingCircle || geoDetecting) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <div className="browse-header"><div className="browse-title">Circles</div></div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", gap: 16 }}>
+          <div style={{ fontSize: 40 }}>🌍</div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Finding your circle…</div>
+          <div style={{ fontSize: 13, color: "var(--mid)" }}>Detecting your location</div>
+          <div className="spinner" style={{ marginTop: 8 }} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── No circle — geolocation unavailable or denied ────────────────────────
+
   if (!circle) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
         <div className="browse-header"><div className="browse-title">Circles</div></div>
         <div style={{ padding: "40px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>🌍</div>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>📍</div>
           <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>
-            You're not in a circle yet
+            We couldn't detect your location
           </div>
-          <p style={{ color: "var(--mid)", fontSize: 14, lineHeight: 1.6, marginBottom: 24, maxWidth: 320, margin: "0 auto 24px" }}>
-            Add your location in your profile and we'll place you in your country's circle automatically.
+          <p style={{ color: "var(--mid)", fontSize: 14, lineHeight: 1.6, maxWidth: 300, margin: "0 auto 24px" }}>
+            Add your city and country in your profile and we'll place you in your country's circle automatically.
           </p>
           <button className="btn-primary" onClick={() => router.push("/profile")}>
             Go to profile settings
@@ -141,6 +230,8 @@ export default function CirclesPage() {
       </div>
     );
   }
+
+  // ── Circle feed ──────────────────────────────────────────────────────────
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
@@ -248,7 +339,7 @@ export default function CirclesPage() {
           postId={commentsPostId}
           onClose={() => {
             setCommentsPostId(null);
-            loadPosts(true); // refresh comment counts
+            loadPosts(true);
           }}
         />
       )}
