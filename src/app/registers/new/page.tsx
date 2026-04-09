@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from "@/components/Toast";
+import DocumentUploadSheet from "@/components/DocumentUploadSheet";
 import { ALL_CATEGORIES } from "@/lib/cooldown";
 
 interface DraftItem {
@@ -41,6 +42,7 @@ export default function NewRegisterPage() {
   const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showDocUpload, setShowDocUpload] = useState(false);
 
   useEffect(() => { if (!user) router.push("/auth?mode=signup"); }, [user, router]);
   useEffect(() => { if (user?.location && !city) setCity(user.location.split(",")[0].trim()); }, [user, city]);
@@ -141,6 +143,106 @@ export default function NewRegisterPage() {
   };
 
   if (!user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
+
+  // Layer 1 check
+  const layer1Done = (user.phoneVerified || user.emailVerified) && !!user.avatar;
+  // Layer 2 check
+  const layer2Done = user.docStatus === "VERIFIED";
+
+  if (!layer1Done) {
+    return (
+      <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+        <div className="discover-desktop">
+          <div style={{ background: "var(--white)", padding: "16px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid var(--border)" }}>
+            <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--bg)", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Create Register</div>
+          </div>
+          <div style={{ padding: "40px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Complete your profile first</div>
+            <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 24 }}>
+              Before creating a Register, please verify your phone or email and add a profile photo. This helps protect our community and ensures donations reach real families.
+            </p>
+            <div style={{ background: "var(--white)", borderRadius: 14, padding: "14px 16px", marginBottom: 20, textAlign: "left" }}>
+              {[
+                { done: user.phoneVerified || user.emailVerified, label: user.phoneVerified ? "Phone verified ✓" : user.emailVerified ? "Email verified ✓" : "Verify your phone or email" },
+                { done: !!user.avatar, label: user.avatar ? "Profile photo added ✓" : "Add a profile photo" },
+              ].map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i === 0 ? "1px solid var(--border)" : "none" }}>
+                  <span style={{ fontSize: 18 }}>{s.done ? "✅" : "⭕"}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: s.done ? "var(--green)" : "var(--ink)" }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn-primary" onClick={() => router.push("/profile")}>
+              Go to profile settings →
+            </button>
+          </div>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (!layer2Done) {
+    return (
+      <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+        <div className="discover-desktop">
+          <div style={{ background: "var(--white)", padding: "16px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid var(--border)" }}>
+            <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--bg)", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Create Register</div>
+          </div>
+          <div style={{ padding: "40px 24px", textAlign: "center" }}>
+            {user.docStatus === "PENDING" ? (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Document under review</div>
+                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 20 }}>
+                  Your {user.documentType} is being reviewed by our team. This usually takes less than 24 hours. We'll notify you as soon as it's confirmed!
+                </p>
+                <div style={{ background: "var(--yellow-light)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "#7a5500", fontWeight: 600 }}>
+                  ✉️ You'll be able to create your Register as soon as your document is verified.
+                </div>
+              </>
+            ) : user.docStatus === "REJECTED" ? (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>💌</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Document needs resubmission</div>
+                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 16 }}>
+                  {user.documentNote ?? "We weren't able to verify your document. Please try uploading a clearer version."}
+                </p>
+                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>
+                  Upload new document
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🤱</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>One more step to protect you</div>
+                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 16 }}>
+                  To create a Register, we ask all mothers to upload one document — a hospital letter, pregnancy scan, birth certificate, or immunisation card. This helps ensure every donation goes to a real family.
+                </p>
+                <div style={{ background: "var(--green-light)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--green)", fontWeight: 600, marginBottom: 20 }}>
+                  💛 Your document is kept private and only seen by our small verification team.
+                </div>
+                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>
+                  Upload a document →
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        <BottomNav />
+        {showDocUpload && (
+          <DocumentUploadSheet
+            onClose={() => setShowDocUpload(false)}
+            onSuccess={() => { setShowDocUpload(false); setToast("Document submitted! We'll review it within 24 hours 💛"); }}
+          />
+        )}
+        <Toast message={toast} onClose={() => setToast(null)} />
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>

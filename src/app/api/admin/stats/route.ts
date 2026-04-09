@@ -16,6 +16,7 @@ export async function GET() {
     lowTrustUsers,
     pendingOverrides,
     totalRegisters,
+    pendingDocuments,
   ] = await Promise.all([
     prisma.item.count(),
     prisma.item.count({ where: { status: "ACTIVE" } }),
@@ -28,6 +29,7 @@ export async function GET() {
     prisma.user.count({ where: { trustScore: { lt: 40 } } }),
     prisma.urgentOverride.count({ where: { reviewed: false } }),
     prisma.register.count(),
+    prisma.user.count({ where: { docStatus: "PENDING" } }),
   ]);
 
   const fulfilmentRate =
@@ -53,6 +55,7 @@ export async function GET() {
       lowTrustUsers,
       pendingOverrides,
       totalRegisters,
+      pendingDocuments,
     },
     recentActivity,
   });

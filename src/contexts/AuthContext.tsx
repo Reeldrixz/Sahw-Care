@@ -18,6 +18,11 @@ export interface User {
   emailVerified: boolean;
   urgentOverridesUsed: number;
   urgentOverridesResetAt: string | null;
+  docStatus: "UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED";
+  documentUrl: string | null;
+  documentType: string | null;
+  documentNote: string | null;
+  verifiedAt: string | null;
   status: string;
   createdAt: string;
   _count?: { items: number; requests: number };

@@ -42,10 +42,17 @@ interface Stats {
   totalItems: number; activeItems: number; totalUsers: number; activeUsers: number;
   totalRequests: number; fulfilledRequests: number; fulfilmentRate: number;
   pendingReports: number; verifiedUsers: number; lowTrustUsers: number;
-  pendingOverrides: number; totalRegisters: number;
+  pendingOverrides: number; totalRegisters: number; pendingDocuments: number;
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust";
+interface VerifUser {
+  id: string; name: string; email: string | null; phone: string | null; avatar: string | null;
+  docStatus: string; documentUrl: string | null; documentType: string | null;
+  documentNote: string | null; verifiedAt: string | null; createdAt: string;
+  phoneVerified: boolean; emailVerified: boolean;
+}
+
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification";
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
@@ -63,6 +70,9 @@ export default function AdminPage() {
   const [items, setItems] = useState<AdminItem[]>([]);
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [trustUsers, setTrustUsers] = useState<TrustUser[]>([]);
+  const [verifUsers, setVerifUsers] = useState<VerifUser[]>([]);
+  const [verifFilter, setVerifFilter] = useState("PENDING");
+  const [rejectNote, setRejectNote] = useState<Record<string, string>>({});
   const [userSearch, setUserSearch] = useState("");
   const [itemSearch, setItemSearch] = useState("");
   const [reportFilter, setReportFilter] = useState("PENDING");
@@ -78,12 +88,14 @@ export default function AdminPage() {
   const fetchItems    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/items?search=${encodeURIComponent(itemSearch)}`); if (r.ok) { const d = await r.json(); setItems(d.items ?? []); } setLoading(false); }, [itemSearch]);
   const fetchReports  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/reports?status=${reportFilter}`); if (r.ok) { const d = await r.json(); setReports(d.reports ?? []); } setLoading(false); }, [reportFilter]);
   const fetchTrust    = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/trust"); if (r.ok) { const d = await r.json(); setTrustUsers(d.users ?? []); } setLoading(false); }, []);
+  const fetchVerif    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/verification?status=${verifFilter}`); if (r.ok) { const d = await r.json(); setVerifUsers(d.users ?? []); } setLoading(false); }, [verifFilter]);
 
   useEffect(() => { if (user?.role === "ADMIN") fetchStats(); }, [user, fetchStats]);
   useEffect(() => { if (section === "users")    fetchUsers(); }, [section, fetchUsers, userSearch]);
   useEffect(() => { if (section === "listings") fetchItems(); }, [section, fetchItems, itemSearch]);
   useEffect(() => { if (section === "reports")  fetchReports(); }, [section, fetchReports, reportFilter]);
-  useEffect(() => { if (section === "trust")    fetchTrust(); }, [section, fetchTrust]);
+  useEffect(() => { if (section === "trust")        fetchTrust(); }, [section, fetchTrust]);
+  useEffect(() => { if (section === "verification") fetchVerif(); }, [section, fetchVerif, verifFilter]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -103,6 +115,19 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/reports/${reportId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, adminNote: note, userAction }) });
     if (res.ok) { fetchReports(); fetchStats(); setToast(`Report ${status.toLowerCase()}`); }
   };
+  const reviewDoc = async (userId: string, action: "approve" | "reject") => {
+    const note = action === "reject" ? rejectNote[userId] : undefined;
+    const res = await fetch(`/api/admin/verification/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, note }),
+    });
+    if (res.ok) {
+      fetchVerif(); fetchStats();
+      setToast(action === "approve" ? "✅ Document approved — mother notified!" : "Document rejected with feedback.");
+    }
+  };
+
   const recalcTrust = async (userId: string) => {
     const res = await fetch("/api/admin/trust", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
     if (res.ok) { const d = await res.json(); setTrustUsers((p) => p.map((u) => u.id === userId ? { ...u, trustScore: d.trustScore } : u)); setToast(`Trust score updated: ${d.trustScore}`); }
@@ -111,11 +136,12 @@ export default function AdminPage() {
   if (authLoading || !user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
   const NAV_ITEMS: [Section, string][] = [
-    ["overview", "📊 Overview"],
-    ["users",    "👥 Users"],
-    ["listings", "📦 Listings"],
-    ["reports",  "🚩 Reports" + (stats?.pendingReports ? ` (${stats.pendingReports})` : "")],
-    ["trust",    "🛡️ Trust"],
+    ["overview",     "📊 Overview"],
+    ["users",        "👥 Users"],
+    ["listings",     "📦 Listings"],
+    ["reports",      "🚩 Reports" + (stats?.pendingReports ? ` (${stats.pendingReports})` : "")],
+    ["trust",        "🛡️ Trust"],
+    ["verification", "✅ Verify" + (stats?.pendingDocuments ? ` (${stats.pendingDocuments})` : "")],
   ];
 
   return (
@@ -151,6 +177,7 @@ export default function AdminPage() {
                     [stats.lowTrustUsers.toString(), "Low Trust Users"],
                     [stats.pendingOverrides.toString(), "Override Reviews"],
                     [stats.totalRegisters.toString(), "Registers"],
+                    [stats.pendingDocuments.toString(), "Docs Pending Review"],
                   ].map(([num, label]) => (
                     <div key={label} className="admin-card">
                       <div className="admin-card-num">{num}</div>
@@ -345,6 +372,100 @@ export default function AdminPage() {
                     </table>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* ── VERIFICATION QUEUE ──────────────────────────────── */}
+            {section === "verification" && (
+              <div>
+                {/* Filter tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {(["PENDING", "VERIFIED", "REJECTED"] as const).map((s) => (
+                    <button key={s} onClick={() => setVerifFilter(s)} style={{
+                      padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer",
+                      fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700,
+                      background: verifFilter === s ? "var(--green)" : "var(--bg)",
+                      color: verifFilter === s ? "white" : "var(--mid)",
+                    }}>{s.charAt(0) + s.slice(1).toLowerCase()}</button>
+                  ))}
+                </div>
+
+                {loading ? <div className="loading"><div className="spinner" /></div>
+                  : verifUsers.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "40px 0", color: "var(--mid)" }}>
+                      <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>No {verifFilter.toLowerCase()} documents</div>
+                    </div>
+                  ) : verifUsers.map((u) => (
+                    <div key={u.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)" }}>
+                      {/* Header row */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "var(--green)", flexShrink: 0, overflow: "hidden" }}>
+                          {u.avatar
+                            ? <img src={u.avatar} alt={u.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />  // eslint-disable-line @next/next/no-img-element
+                            : u.name[0].toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 800, fontSize: 14 }}>{u.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--mid)" }}>{u.email ?? u.phone} · Joined {new Date(u.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}</div>
+                        </div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                          background: u.docStatus === "VERIFIED" ? "var(--green-light)" : u.docStatus === "REJECTED" ? "var(--terra-light)" : "var(--yellow-light)",
+                          color: u.docStatus === "VERIFIED" ? "var(--green)" : u.docStatus === "REJECTED" ? "var(--terra)" : "#b8860b",
+                        }}>{u.docStatus}</span>
+                      </div>
+
+                      {/* Document info */}
+                      <div style={{ background: "var(--bg)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>📄 {u.documentType ?? "Unknown type"}</div>
+                        {u.documentUrl && (
+                          <a href={u.documentUrl} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 12, color: "var(--green)", fontWeight: 700, textDecoration: "none" }}>
+                            View document ↗
+                          </a>
+                        )}
+                        {u.documentNote && (
+                          <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 6, lineHeight: 1.4 }}>{u.documentNote}</div>
+                        )}
+                      </div>
+
+                      {/* L1 verification badges */}
+                      <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: u.phoneVerified ? "var(--green-light)" : "var(--bg)", color: u.phoneVerified ? "var(--green)" : "var(--mid)" }}>
+                          {u.phoneVerified ? "📱 Phone ✓" : "📱 Phone ✗"}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: u.emailVerified ? "var(--green-light)" : "var(--bg)", color: u.emailVerified ? "var(--green)" : "var(--mid)" }}>
+                          {u.emailVerified ? "📧 Email ✓" : "📧 Email ✗"}
+                        </span>
+                      </div>
+
+                      {/* Action buttons — only show for PENDING */}
+                      {u.docStatus === "PENDING" && (
+                        <div>
+                          <textarea
+                            placeholder="Rejection message (optional — default will be used if blank)"
+                            value={rejectNote[u.id] ?? ""}
+                            onChange={(e) => setRejectNote((p) => ({ ...p, [u.id]: e.target.value }))}
+                            style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", resize: "vertical", marginBottom: 10, boxSizing: "border-box" }}
+                            rows={2}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => reviewDoc(u.id, "approve")} style={{
+                              flex: 1, padding: "10px", borderRadius: 10, border: "none",
+                              background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800,
+                              cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                            }}>✅ Approve</button>
+                            <button onClick={() => reviewDoc(u.id, "reject")} style={{
+                              flex: 1, padding: "10px", borderRadius: 10, border: "1.5px solid var(--terra)",
+                              background: "white", color: "var(--terra)", fontSize: 13, fontWeight: 800,
+                              cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                            }}>✗ Reject</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
               </div>
             )}
 

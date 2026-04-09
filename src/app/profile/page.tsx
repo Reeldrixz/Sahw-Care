@@ -7,6 +7,8 @@ import Avatar from "@/components/Avatar";
 import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import ShareImpactModal from "@/components/ShareImpactModal";
+import VerificationBanner from "@/components/VerificationBanner";
+import DocumentUploadSheet from "@/components/DocumentUploadSheet";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CAT_BG: Record<string, string> = {
@@ -46,6 +48,7 @@ export default function ProfilePage() {
   const [switchingRole, setSwitchingRole] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showShareImpact, setShowShareImpact] = useState(false);
+  const [showDocUpload, setShowDocUpload] = useState(false);
 
   // OTP verification state
   const [showVerify, setShowVerify] = useState(false);
@@ -245,6 +248,49 @@ export default function ProfilePage() {
       </div>
 
       <div className="profile-body">
+
+        {/* ── Verification progress banner ─────────────────────────── */}
+        <VerificationBanner
+          onUploadDocument={() => setShowDocUpload(true)}
+          onVerifyPhone={() => { setVerifyType("PHONE"); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true); }}
+          onVerifyEmail={() => { setVerifyType("EMAIL"); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true); }}
+        />
+
+        {/* Pending doc status card */}
+        {user.docStatus === "PENDING" && (
+          <div style={{ background: "var(--yellow-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 22 }}>⏳</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#b8860b", marginBottom: 3 }}>Document under review</div>
+              <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>Your {user.documentType} is being reviewed by our team. This usually takes less than 24 hours. We'll notify you once it's confirmed!</div>
+            </div>
+          </div>
+        )}
+
+        {/* Rejected doc status card */}
+        {user.docStatus === "REJECTED" && (
+          <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 22 }}>💌</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--terra)", marginBottom: 3 }}>Document needs resubmission</div>
+              <div style={{ fontSize: 12, color: "var(--terra)", lineHeight: 1.5, marginBottom: 10 }}>{user.documentNote ?? "Please upload a clearer version of your document."}</div>
+              <button onClick={() => setShowDocUpload(true)} style={{ fontSize: 12, fontWeight: 800, background: "var(--terra)", color: "white", border: "none", padding: "6px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                Upload new document
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Approved verification badge */}
+        {user.docStatus === "VERIFIED" && (
+          <div style={{ background: "var(--green-light)", borderRadius: 14, padding: "12px 16px", marginBottom: 20, display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontSize: 22 }}>✅</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--green)" }}>Motherhood verified</div>
+              <div style={{ fontSize: 12, color: "var(--green)", opacity: 0.8 }}>{user.documentNote ?? "Welcome to Kradel! You can now create your Register of Needs. 💛"}</div>
+            </div>
+          </div>
+        )}
 
         {/* ── Verification section ─────────────────────────────────── */}
         <div className="profile-section">
@@ -461,6 +507,12 @@ export default function ProfilePage() {
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
       {showShareImpact && <ShareImpactModal onClose={() => setShowShareImpact(false)} />}
+      {showDocUpload && (
+        <DocumentUploadSheet
+          onClose={() => setShowDocUpload(false)}
+          onSuccess={() => { setShowDocUpload(false); setToast("Document submitted! We'll review it within 24 hours 💛"); }}
+        />
+      )}
       <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );
