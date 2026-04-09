@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
 import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
+import ShareImpactModal from "@/components/ShareImpactModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 const CAT_BG: Record<string, string> = {
@@ -44,6 +45,7 @@ export default function ProfilePage() {
   const [locationInput, setLocationInput] = useState("");
   const [switchingRole, setSwitchingRole] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showShareImpact, setShowShareImpact] = useState(false);
 
   // OTP verification state
   const [showVerify, setShowVerify] = useState(false);
@@ -226,6 +228,20 @@ export default function ProfilePage() {
           </div>
           <div className="p-stat"><div className="p-stat-num">{user._count?.requests ?? 0}</div><div className="p-stat-label">Requests</div></div>
         </div>
+
+        {(user._count?.items ?? 0) > 0 && (
+          <button
+            onClick={() => setShowShareImpact(true)}
+            style={{
+              marginTop: 16, padding: "10px 24px", borderRadius: 20,
+              border: "none", background: "rgba(255,255,255,0.18)", color: "white",
+              fontSize: 13, fontWeight: 800, cursor: "pointer",
+              fontFamily: "Nunito, sans-serif",
+            }}
+          >
+            ✨ Share your impact
+          </button>
+        )}
       </div>
 
       <div className="profile-body">
@@ -444,6 +460,7 @@ export default function ProfilePage() {
 
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
+      {showShareImpact && <ShareImpactModal onClose={() => setShowShareImpact(false)} />}
       <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );

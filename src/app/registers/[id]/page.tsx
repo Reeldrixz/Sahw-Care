@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
+import ShareImpactModal from "@/components/ShareImpactModal";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface RegisterMessage {
@@ -55,6 +56,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [confirming, setConfirming] = useState(false);
   const [showDisputeForm, setShowDisputeForm] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
+  const [showShareImpact, setShowShareImpact] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [addingItem, setAddingItem] = useState(false);
   const [newItemName, setNewItemName] = useState("");
@@ -105,8 +107,14 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ status }),
     });
     if (res.ok) {
-      setToast(status === "DELIVERED" ? "Marked as delivered! Waiting for mom's confirmation 🎁" : "Marked as purchased!");
-      await fetchRegister(); setSelectedItem(null);
+      if (status === "DELIVERED") {
+        setToast("Marked as delivered! 🎁 Share your impact with the world.");
+        await fetchRegister(); setSelectedItem(null);
+        setShowShareImpact(true);
+      } else {
+        setToast("Marked as purchased!");
+        await fetchRegister(); setSelectedItem(null);
+      }
     } else { const d = await res.json(); setToast(d.error ?? "Failed"); }
     setUpdatingStatus(false);
   };
@@ -401,6 +409,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
       <BottomNav />
       <Toast message={toast} onClose={() => setToast(null)} />
+      {showShareImpact && <ShareImpactModal onClose={() => setShowShareImpact(false)} />}
     </div>
   );
 }
