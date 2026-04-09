@@ -1,48 +1,36 @@
-import crypto from "crypto";
+import twilio from "twilio";
 
-export function generateOtp(): string {
-  // 6-digit numeric OTP
-  return crypto.randomInt(100000, 999999).toString();
+function getClient() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!accountSid || !authToken) throw new Error("Twilio credentials not configured");
+  return twilio(accountSid, authToken);
 }
 
-export function getOtpExpiry(minutes = 10): Date {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + minutes);
-  return d;
-}
-
-export function isOtpExpired(expiresAt: Date): boolean {
-  return new Date() > expiresAt;
-}
-
-/**
- * Send OTP via SMS.
- * In development: logs to console and returns the OTP so the UI can surface it.
- * In production: integrate Termii / Africa's Talking / Twilio here.
- */
-export async function sendOtpSms(phone: string, otp: string): Promise<string | null> {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[OTP-SMS] ${phone} → ${otp}`);
-    return otp; // returned so dev UI can show it
-  }
-
-  // Production: call your SMS provider
-  // const res = await termii.sendSms({ to: phone, sms: `Your Kradel code: ${otp}` });
-  throw new Error("SMS provider not configured. Set NODE_ENV=development or integrate a provider.");
+function getServiceSid(): string {
+  const sid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (!sid) throw new Error("TWILIO_VERIFY_SERVICE_SID not configured");
+  return sid;
 }
 
 /**
- * Send OTP via email.
- * In development: logs to console and returns the OTP.
- * In production: integrate Resend / Nodemailer here.
+ * Send an OTP via Twilio Verify.
+ * channel: "sms" for phone numbers, "email" for email addresses.
+ * `to` must be E.164 format for SMS (e.g. +2348012345678), or an email address.
  */
-export async function sendOtpEmail(email: string, otp: string): Promise<string | null> {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[OTP-EMAIL] ${email} → ${otp}`);
-    return otp;
-  }
+export async function sendVerification(to: string, channel: "sms" | "email"): Promise<void> {
+  const client = getClient();
+  await client.verify.v2.services(getServiceSid()).verifications.create({ to, channel });
+}
 
-  // Production: call your email provider
-  // await resend.emails.send({ to: email, subject: "Your Kradel verification code", text: `Code: ${otp}` });
-  throw new Error("Email provider not configured. Set NODE_ENV=development or integrate a provider.");
+/**
+ * Check a Twilio Verify OTP.
+ * Returns true if the code is correct and the verification is approved.
+ */
+export async function checkVerification(to: string, code: string): Promise<boolean> {
+  const client = getClient();
+  const check = await client.verify.v2
+    .services(getServiceSid())
+    .verificationChecks.create({ to, code });
+  return check.status === "approved";
 }
