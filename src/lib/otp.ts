@@ -59,7 +59,7 @@ export function isOtpExpired(expiresAt: Date): boolean {
 /** Send a verification code to an email address via Resend. */
 export async function sendEmailOtp(email: string, code: string): Promise<void> {
   const resend = getResend();
-  const from = process.env.RESEND_FROM_EMAIL ?? "Kradel <noreply@kradel.ng>";
+  const from = process.env.RESEND_FROM_EMAIL ?? "onboarding@resend.dev";
 
   const { error } = await resend.emails.send({
     from,
