@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
+import { autoJoinCircle } from "@/lib/countryCircle";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,9 @@ export async function POST(req: NextRequest) {
         role: "DONOR",
       },
     });
+
+    // Auto-join circle if location provided at registration
+    autoJoinCircle(user.id, user.location).catch(() => {});
 
     // Log device/IP
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

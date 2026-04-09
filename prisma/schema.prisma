@@ -60,6 +60,13 @@ model User {
   categoryCooldowns CategoryCooldown[]
   urgentOverrides   UrgentOverride[]
   deviceLogs        DeviceLog[]
+
+  // circles
+  circleMembers     CircleMember[]
+  circlePosts       CirclePost[]
+  postReactions     PostReaction[]
+  postComments      PostComment[]
+  postReports       PostReport[]
 }
 
 // ==================== ITEMS ====================
@@ -341,4 +348,114 @@ enum DocStatus {
   PENDING
   VERIFIED
   REJECTED
+}
+
+// ==================== CIRCLES ====================
+
+model Circle {
+  id        String   @id @default(cuid())
+  name      String
+  country   String   @unique
+  createdAt DateTime @default(now())
+
+  members CircleMember[]
+  posts   CirclePost[]
+}
+
+model CircleMember {
+  userId      String
+  circleId    String
+  joinedAt    DateTime @default(now())
+  isLeader    Boolean  @default(false)
+  lastViewedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, circleId])
+}
+
+model CirclePost {
+  id        String       @id @default(cuid())
+  circleId  String
+  userId    String
+  content   String
+  category  PostCategory
+  photoUrl  String?
+  isPinned  Boolean      @default(false)
+  isHidden  Boolean      @default(false)
+  createdAt DateTime     @default(now())
+
+  circle      Circle        @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions   PostReaction[]
+  comments    PostComment[]
+  reports     PostReport[]
+  flaggedPost FlaggedPost?
+}
+
+model PostReaction {
+  id     String       @id @default(cuid())
+  postId String
+  userId String
+  type   ReactionType
+
+  post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PostReport {
+  id         String   @id @default(cuid())
+  postId     String
+  reportedBy String
+  reason     String
+  createdAt  DateTime @default(now())
+
+  post     CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter User       @relation(fields: [reportedBy], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reportedBy])
+}
+
+model FlaggedPost {
+  id         String     @id @default(cuid())
+  postId     String     @unique
+  reason     String
+  status     FlagStatus @default(PENDING)
+  reviewedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+enum PostCategory {
+  TIP
+  STORY
+  GRATITUDE
+  QUESTION
+}
+
+enum ReactionType {
+  HEART
+  HUG
+  CLAP
+}
+
+enum FlagStatus {
+  PENDING
+  APPROVED
+  REMOVED
 }

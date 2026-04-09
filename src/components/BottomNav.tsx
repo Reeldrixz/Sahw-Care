@@ -7,8 +7,8 @@ import Avatar from "@/components/Avatar";
 const TABS = [
   { path: "/", label: "Discover", icon: "🧭" },
   { path: "/registers", label: "Registers", icon: "📋" },
+  { path: "/circles", label: "Circles", icon: "🤝" },
   { path: "/browse", label: "Browse", icon: "🔍" },
-  { path: "/favourites", label: "Favourites", icon: "🤍", activeIcon: "❤️" },
   { path: "/profile", label: "Profile", icon: "👤" },
 ];
 
@@ -19,7 +19,7 @@ export default function BottomNav() {
 
   return (
     <div className="bnav">
-      {TABS.map(({ path, label, icon, activeIcon }) => {
+      {TABS.map(({ path, label, icon }) => {
         const isActive = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
         const isProfile = path === "/profile";
 
@@ -35,7 +35,7 @@ export default function BottomNav() {
                   <Avatar src={user.avatar} name={user.name} size={24} />
                 </div>
               ) : (
-                isActive && activeIcon ? activeIcon : icon
+                icon
               )}
             </div>
             <div className="bnav-label">{label}</div>

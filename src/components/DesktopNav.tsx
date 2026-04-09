@@ -12,6 +12,7 @@ export default function DesktopNav() {
   const links = [
     { label: "Discover", href: "/" },
     { label: "Registers", href: "/registers" },
+    { label: "Circles 🤝", href: "/circles" },
     { label: "Browse", href: "/browse" },
     { label: "Messages", href: "/chat" },
     { label: "Favourites", href: "/favourites" },

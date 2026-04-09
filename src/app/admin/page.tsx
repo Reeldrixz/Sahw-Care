@@ -52,7 +52,23 @@ interface VerifUser {
   phoneVerified: boolean; emailVerified: boolean;
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification";
+interface CircleInfo {
+  id: string; name: string; country: string;
+  _count: { members: number; posts: number };
+  members: { isLeader: boolean; user: { id: string; name: string; trustScore: number } }[];
+}
+
+interface FlaggedPostInfo {
+  id: string; reason: string; status: string; createdAt: string;
+  post: {
+    id: string; content: string; userId: string;
+    user: { id: string; name: string; avatar: string | null };
+    circle: { name: string };
+    reports: { reason: string; reportedBy: string }[];
+  };
+}
+
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles";
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
@@ -73,6 +89,10 @@ export default function AdminPage() {
   const [verifUsers, setVerifUsers] = useState<VerifUser[]>([]);
   const [verifFilter, setVerifFilter] = useState("PENDING");
   const [rejectNote, setRejectNote] = useState<Record<string, string>>({});
+  const [circles, setCircles] = useState<CircleInfo[]>([]);
+  const [flaggedPosts, setFlaggedPosts] = useState<FlaggedPostInfo[]>([]);
+  const [flaggedFilter, setFlaggedFilter] = useState("PENDING");
+  const [leaderUserId, setLeaderUserId] = useState<Record<string, string>>({});
   const [userSearch, setUserSearch] = useState("");
   const [itemSearch, setItemSearch] = useState("");
   const [reportFilter, setReportFilter] = useState("PENDING");
@@ -89,6 +109,8 @@ export default function AdminPage() {
   const fetchReports  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/reports?status=${reportFilter}`); if (r.ok) { const d = await r.json(); setReports(d.reports ?? []); } setLoading(false); }, [reportFilter]);
   const fetchTrust    = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/trust"); if (r.ok) { const d = await r.json(); setTrustUsers(d.users ?? []); } setLoading(false); }, []);
   const fetchVerif    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/verification?status=${verifFilter}`); if (r.ok) { const d = await r.json(); setVerifUsers(d.users ?? []); } setLoading(false); }, [verifFilter]);
+  const fetchCircles  = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/circles"); if (r.ok) { const d = await r.json(); setCircles(d.circles ?? []); } setLoading(false); }, []);
+  const fetchFlagged  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/circles/flagged?status=${flaggedFilter}`); if (r.ok) { const d = await r.json(); setFlaggedPosts(d.flagged ?? []); } setLoading(false); }, [flaggedFilter]);
 
   useEffect(() => { if (user?.role === "ADMIN") fetchStats(); }, [user, fetchStats]);
   useEffect(() => { if (section === "users")    fetchUsers(); }, [section, fetchUsers, userSearch]);
@@ -96,6 +118,7 @@ export default function AdminPage() {
   useEffect(() => { if (section === "reports")  fetchReports(); }, [section, fetchReports, reportFilter]);
   useEffect(() => { if (section === "trust")        fetchTrust(); }, [section, fetchTrust]);
   useEffect(() => { if (section === "verification") fetchVerif(); }, [section, fetchVerif, verifFilter]);
+  useEffect(() => { if (section === "circles") { fetchCircles(); fetchFlagged(); } }, [section, fetchCircles, fetchFlagged, flaggedFilter]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -115,6 +138,29 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/reports/${reportId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status, adminNote: note, userAction }) });
     if (res.ok) { fetchReports(); fetchStats(); setToast(`Report ${status.toLowerCase()}`); }
   };
+  const reviewFlaggedPost = async (flagId: string, action: "approve" | "remove") => {
+    const res = await fetch(`/api/admin/circles/flagged/${flagId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (res.ok) {
+      fetchFlagged();
+      setToast(action === "approve" ? "Post approved — visible in circle" : "Post removed");
+    }
+  };
+
+  const assignLeader = async (circleId: string, userId: string, action: "assign" | "remove") => {
+    const res = await fetch("/api/admin/circles/leaders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ circleId, userId, action }),
+    });
+    const d = await res.json();
+    if (res.ok) { fetchCircles(); setToast(action === "assign" ? "Circle Leader assigned! 🌟" : "Leader role removed"); }
+    else setToast(d.error ?? "Failed");
+  };
+
   const reviewDoc = async (userId: string, action: "approve" | "reject") => {
     const note = action === "reject" ? rejectNote[userId] : undefined;
     const res = await fetch(`/api/admin/verification/${userId}`, {
@@ -142,6 +188,7 @@ export default function AdminPage() {
     ["reports",      "🚩 Reports" + (stats?.pendingReports ? ` (${stats.pendingReports})` : "")],
     ["trust",        "🛡️ Trust"],
     ["verification", "✅ Verify" + (stats?.pendingDocuments ? ` (${stats.pendingDocuments})` : "")],
+    ["circles",      "🤝 Circles"],
   ];
 
   return (
@@ -466,6 +513,114 @@ export default function AdminPage() {
                       )}
                     </div>
                   ))}
+              </div>
+            )}
+
+            {/* ── CIRCLES ──────────────────────────────────────────────── */}
+            {section === "circles" && (
+              <div>
+                {/* Circle stats */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Circles ({circles.length})</div>
+                  {circles.map((c) => (
+                    <div key={c.id} style={{ background: "var(--white)", borderRadius: 14, padding: "14px 16px", marginBottom: 10, boxShadow: "var(--shadow)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 14 }}>{c.name}</div>
+                          <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 2 }}>
+                            {c._count.members} members · {c._count.posts} posts
+                          </div>
+                        </div>
+                      </div>
+                      {/* Leaders */}
+                      {c.members.filter((m) => m.isLeader).length > 0 && (
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 11, color: "var(--mid)", marginBottom: 6, fontWeight: 700 }}>Circle Leaders</div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {c.members.filter((m) => m.isLeader).map((m) => (
+                              <div key={m.user.id} style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--green-light)", borderRadius: 20, padding: "4px 10px" }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green)" }}>⭐ {m.user.name}</span>
+                                <button onClick={() => assignLeader(c.id, m.user.id, "remove")}
+                                  style={{ background: "none", border: "none", color: "var(--terra)", cursor: "pointer", fontSize: 12, padding: 0 }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Assign leader */}
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          placeholder="User ID to make Leader"
+                          value={leaderUserId[c.id] ?? ""}
+                          onChange={(e) => setLeaderUserId((p) => ({ ...p, [c.id]: e.target.value }))}
+                          style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif" }}
+                        />
+                        <button
+                          onClick={() => { if (leaderUserId[c.id]) assignLeader(c.id, leaderUserId[c.id], "assign"); }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "var(--green)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                        >
+                          Assign Leader
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {circles.length === 0 && !loading && (
+                    <div style={{ color: "var(--mid)", fontSize: 13, padding: "20px 0" }}>No circles yet. Circles are created automatically when users add their location.</div>
+                  )}
+                </div>
+
+                {/* Flagged posts queue */}
+                <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Flagged & Reported Posts</div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                  {["PENDING", "APPROVED", "REMOVED"].map((s) => (
+                    <button key={s} onClick={() => setFlaggedFilter(s)} style={{
+                      padding: "5px 14px", borderRadius: 20, border: "none", cursor: "pointer",
+                      fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700,
+                      background: flaggedFilter === s ? "var(--green)" : "var(--bg)",
+                      color: flaggedFilter === s ? "white" : "var(--mid)",
+                    }}>{s.charAt(0) + s.slice(1).toLowerCase()}</button>
+                  ))}
+                </div>
+
+                {loading ? <div className="loading"><div className="spinner" /></div>
+                  : flaggedPosts.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "30px 0", color: "var(--mid)" }}>
+                      <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
+                      <div style={{ fontSize: 13 }}>No {flaggedFilter.toLowerCase()} posts</div>
+                    </div>
+                  ) : flaggedPosts.map((f) => (
+                    <div key={f.id} style={{ background: "var(--white)", borderRadius: 14, padding: "14px 16px", marginBottom: 10, boxShadow: "var(--shadow)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>
+                            {f.post.user.name} · {f.post.circle.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--light)", marginTop: 2 }}>
+                            {f.reason}
+                            {f.post.reports.length > 0 && ` · ${f.post.reports.length} user report${f.post.reports.length > 1 ? "s" : ""}`}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, color: "var(--light)" }}>{new Date(f.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div style={{ background: "var(--bg)", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+                        {f.post.content}
+                      </div>
+                      {f.post.reports.length > 0 && (
+                        <div style={{ marginBottom: 10 }}>
+                          {f.post.reports.map((r, i) => (
+                            <div key={i} style={{ fontSize: 11, color: "var(--terra)", marginBottom: 3 }}>🚩 "{r.reason}"</div>
+                          ))}
+                        </div>
+                      )}
+                      {f.status === "PENDING" && (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => reviewFlaggedPost(f.id, "approve")} className="action-btn action-approve">✓ Approve</button>
+                          <button onClick={() => reviewFlaggedPost(f.id, "remove")} className="action-btn action-remove">✕ Remove</button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                }
               </div>
             )}
 
