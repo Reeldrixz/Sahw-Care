@@ -32,9 +32,9 @@ export async function PATCH(req: NextRequest) {
     },
   });
 
-  // Auto-join circle when location is set for the first time
+  // Auto-join circle when location changes — awaited so the circle exists before we return
   if (location !== undefined) {
-    autoJoinCircle(user.userId, location ?? updated.location).catch(() => {});
+    await autoJoinCircle(user.userId, location ?? updated.location).catch(() => {});
   }
 
   return NextResponse.json({ user: updated });

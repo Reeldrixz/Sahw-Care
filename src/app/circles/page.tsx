@@ -34,52 +34,46 @@ function isNewMember(joinedAt: string): boolean {
   return Date.now() - new Date(joinedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
 }
 
-async function detectAndJoin(): Promise<{ circle: Circle; member: Member } | null> {
-  // Already have a circle from profile location?
-  const myRes = await fetch("/api/circles/my", { cache: "no-store" });
-  const myData = await myRes.json();
-  if (myData.circle) return { circle: myData.circle, member: myData.member };
+async function fetchMyCircle(): Promise<{ circle: Circle; member: Member } | null> {
+  const res = await fetch("/api/circles/my", { cache: "no-store" });
+  const data = await res.json();
+  if (data.circle) return { circle: data.circle, member: data.member };
+  return null;
+}
 
-  // No circle yet — try browser geolocation
+async function joinViaLocation(location: string): Promise<{ circle: Circle; member: Member } | null> {
+  // PATCH saves location AND awaits autoJoinCircle server-side before returning
+  await fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ location }),
+  });
+  return fetchMyCircle();
+}
+
+async function detectLocationFromBrowser(): Promise<string | null> {
   if (!navigator.geolocation) return null;
-
   const position = await new Promise<GeolocationPosition | null>((resolve) => {
     navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 8000 });
   });
   if (!position) return null;
-
   try {
     const { latitude, longitude } = position.coords;
-    const geoRes = await fetch(
+    const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
     );
-    const geoData = await geoRes.json();
+    const data = await res.json();
     const city =
-      geoData.address?.city ||
-      geoData.address?.town ||
-      geoData.address?.village ||
-      geoData.address?.county;
-    const country = geoData.address?.country;
+      data.address?.city ||
+      data.address?.town ||
+      data.address?.village ||
+      data.address?.county;
+    const country = data.address?.country;
     if (!country) return null;
-
-    const location = city ? `${city}, ${country}` : country;
-
-    // Save to profile (this also triggers autoJoinCircle server-side)
-    await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ location }),
-    });
-
-    // Re-fetch circle after joining
-    const refreshed = await fetch("/api/circles/my", { cache: "no-store" });
-    const refreshedData = await refreshed.json();
-    if (refreshedData.circle) return { circle: refreshedData.circle, member: refreshedData.member };
+    return city ? `${city}, ${country}` : country;
   } catch {
-    // Nominatim or network error — fall through
+    return null;
   }
-
-  return null;
 }
 
 export default function CirclesPage() {
@@ -101,29 +95,33 @@ export default function CirclesPage() {
     if (!user) return;
 
     (async () => {
-      // First: quick check for existing circle (covers users who already have location)
-      const myRes = await fetch("/api/circles/my", { cache: "no-store" });
-      const myData = await myRes.json();
+      // Step 1: check for existing circle (server also calls autoJoinCircle on stored location)
+      let result = await fetchMyCircle();
 
-      if (myData.circle) {
-        setCircle(myData.circle);
-        setMember(myData.member);
-        setLoadingCircle(false);
-        fetch("/api/circles/my", { method: "PATCH" }).catch(() => {});
-        return;
+      if (!result && user.location) {
+        // Step 2: profile already has a location but circle wasn't created yet
+        // (e.g. user signed up before Circles launched). Re-PATCH the same location
+        // so the server awaits autoJoinCircle and the circle exists when we refetch.
+        setGeoDetecting(true);
+        result = await joinViaLocation(user.location);
+        setGeoDetecting(false);
       }
 
-      // No circle — attempt geolocation silently
-      setGeoDetecting(true);
-      const result = await detectAndJoin();
-      setGeoDetecting(false);
+      if (!result) {
+        // Step 3: no stored location — try browser geolocation silently
+        setGeoDetecting(true);
+        const detectedLocation = await detectLocationFromBrowser();
+        if (detectedLocation) {
+          result = await joinViaLocation(detectedLocation);
+        }
+        setGeoDetecting(false);
+      }
 
       if (result) {
         setCircle(result.circle);
         setMember(result.member);
         fetch("/api/circles/my", { method: "PATCH" }).catch(() => {});
       }
-      // If result is null, circle stays null → show manual fallback
       setLoadingCircle(false);
     })();
   }, [user]);
