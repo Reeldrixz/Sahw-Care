@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Baby, Users, Gift, Mars, Venus, CircleUser, type LucideIcon } from "lucide-react";
+import { Baby, Users, Gift } from "lucide-react";
 
 interface Props {
   onComplete: () => void;
 }
 
 type Journey = "pregnant" | "postpartum" | "donor" | null;
-type Gender  = "male" | "female" | "unspecified" | null;
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -33,95 +32,50 @@ const BABY_AGE_OPTIONS: { label: string; months: number }[] = [
   { label: "19–24 months",   months: 21  },
 ];
 
-const SUB_TAGS: { label: string; emoji: string; value: string }[] = [
-  { emoji: "🌟", label: "First-time mom",    value: "First-time mom"    },
-  { emoji: "👯", label: "Twins / multiples", value: "Twins / multiples" },
-  { emoji: "🤱", label: "Breastfeeding",      value: "Breastfeeding"      },
-  { emoji: "🍼", label: "Formula feeding",    value: "Formula feeding"    },
-  { emoji: "💪", label: "Single parent",      value: "Single parent"      },
-];
-
-const GENDER_OPTIONS: { value: "male" | "female" | "unspecified"; label: string; Icon: LucideIcon }[] = [
-  { value: "male",        label: "Male",              Icon: Mars       },
-  { value: "female",      label: "Female",            Icon: Venus      },
-  { value: "unspecified", label: "Prefer not to say", Icon: CircleUser },
-];
-
 const now = new Date();
 const currentYear = now.getFullYear();
 const DUE_YEARS = [currentYear, currentYear + 1];
 
 // Steps:
 // 0 → role picker (all users)
-// 1 → gender (all users; donor submits here, others continue)
-// 2 → due date / baby age (pregnant / postpartum only)
-// 3 → sub-tags (pregnant / postpartum only)
+// 1 → due date (pregnant) or baby age (postpartum) — skipped for donor
+// Donor submits immediately after step 0.
 
 export default function OnboardingModal({ onComplete }: Props) {
-  const [step, setStep]                 = useState(0);
-  const [journey, setJourney]           = useState<Journey>(null);
-  const [gender, setGender]             = useState<Gender>(null);
-  const [dueMonth, setDueMonth]         = useState<number>(now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2);
-  const [dueYear, setDueYear]           = useState<number>(currentYear);
-  const [babyAge, setBabyAge]           = useState<number | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [saving, setSaving]             = useState(false);
-  const [error, setError]               = useState<string | null>(null);
+  const [step, setStep]         = useState(0);
+  const [journey, setJourney]   = useState<Journey>(null);
+  const [dueMonth, setDueMonth] = useState<number>(now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2);
+  const [dueYear, setDueYear]   = useState<number>(currentYear);
+  const [babyAge, setBabyAge]   = useState<number | null>(null);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState<string | null>(null);
 
-  // Donor: 2 steps (role + gender). Mom/pregnant: 4 steps.
-  const totalSteps = journey === "donor" ? 2 : 4;
+  const totalSteps = journey === "donor" ? 1 : 2;
 
-  const toggleTag = (v: string) =>
-    setSelectedTags((t) => t.includes(v) ? t.filter((x) => x !== v) : [...t, v]);
-
-  // Step 0 → Step 1 (gender)
-  const selectRole = (j: Journey) => {
+  const selectRole = async (j: Journey) => {
     setJourney(j);
     setError(null);
-    setStep(1);
-  };
-
-  // Step 1: gender selected → continue
-  const goFromGender = async () => {
-    if (!gender) {
-      setError("Please select an option to continue.");
-      return;
-    }
-    setError(null);
-    if (journey === "donor") {
-      await submitOnboarding(journey, [], true);
+    if (j === "donor") {
+      await submitOnboarding(j);
     } else {
-      setStep(2);
+      setStep(1);
     }
   };
 
-  // Step 2 → Step 3
-  const goStep3 = () => {
-    if (journey === "postpartum" && babyAge === null) {
-      setError("Please select your baby's age.");
-      return;
-    }
-    setError(null);
-    setStep(3);
-  };
-
-  const submitOnboarding = async (
-    jType: Journey,
-    tags: string[],
-    skip = false,
-  ) => {
+  const submitOnboarding = async (jType: Journey) => {
     setSaving(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = {
-        journeyType: jType,
-        gender: gender ?? "unspecified",
-        subTags: skip ? [] : tags,
-      };
+      const body: Record<string, unknown> = { journeyType: jType, subTags: [] };
       if (jType === "pregnant") {
         body.dueMonth = dueMonth;
         body.dueYear  = dueYear;
       } else if (jType === "postpartum") {
+        if (babyAge === null) {
+          setError("Please select your baby's age.");
+          setSaving(false);
+          return;
+        }
         body.babyAgeMonths = babyAge;
       }
 
@@ -152,7 +106,7 @@ export default function OnboardingModal({ onComplete }: Props) {
         maxHeight: "92vh", overflowY: "auto",
         boxShadow: "0 -8px 40px rgba(0,0,0,0.25)",
       }}>
-        {/* Progress dots — hidden while saving donor path */}
+        {/* Progress dots */}
         {!saving && (
           <div style={{ display: "flex", justifyContent: "center", gap: 6, padding: "18px 0 0" }}>
             {Array.from({ length: totalSteps }).map((_, i) => (
@@ -189,9 +143,9 @@ export default function OnboardingModal({ onComplete }: Props) {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {[
-                    { j: "pregnant"   as Journey, Icon: Baby,  title: "I'm pregnant",     sub: "Join a private circle for your pregnancy stage"  },
-                    { j: "postpartum" as Journey, Icon: Users, title: "I'm a mother",     sub: "Connect with moms in your baby's stage"          },
-                    { j: "donor"      as Journey, Icon: Gift,  title: "I want to donate", sub: "Give essential items to mothers in need"         },
+                    { j: "pregnant"   as Journey, Icon: Baby,  title: "I'm pregnant",     sub: "Get support and access items for your pregnancy" },
+                    { j: "postpartum" as Journey, Icon: Users, title: "I'm a mother",     sub: "Find items and connect with others on your journey" },
+                    { j: "donor"      as Journey, Icon: Gift,  title: "I want to donate", sub: "Give essential items to mothers in need"           },
                   ].map(({ j, Icon, title, sub }) => (
                     <button
                       key={j!}
@@ -227,66 +181,7 @@ export default function OnboardingModal({ onComplete }: Props) {
                 )}
               </div>
 
-              {/* ── Step 1: Gender ────────────────────────────────────────── */}
-              <div style={{ minWidth: "100%", padding: "24px 24px 32px" }}>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 6, textAlign: "center" }}>
-                  Just one more thing
-                </div>
-                <div style={{ fontSize: 14, color: "var(--mid)", textAlign: "center", marginBottom: 28, lineHeight: 1.6 }}>
-                  This helps us personalise your experience
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-                  {GENDER_OPTIONS.map(({ value, label, Icon }) => {
-                    const active = gender === value;
-                    return (
-                      <button
-                        key={value}
-                        onClick={() => { setGender(value); setError(null); }}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 16,
-                          padding: "16px 20px", borderRadius: 16,
-                          border: `2px solid ${active ? "var(--green)" : "var(--border)"}`,
-                          background: active ? "var(--green-light)" : "var(--white)",
-                          cursor: "pointer", textAlign: "left", width: "100%",
-                          transition: "border-color 0.15s, background 0.15s",
-                        }}
-                      >
-                        <div style={{ width: 36, height: 36, borderRadius: 10, background: active ? "var(--green)" : "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }}>
-                          <Icon size={18} strokeWidth={1.75} color={active ? "white" : "var(--mid)"} />
-                        </div>
-                        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: active ? "var(--green)" : "var(--ink)" }}>
-                          {label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {error && (
-                  <div style={{ fontSize: 12, color: "var(--terra)", background: "#fdf0e8", padding: "8px 12px", borderRadius: 8, marginBottom: 12, fontWeight: 600 }}>
-                    {error}
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={() => { setStep(0); setError(null); }}
-                    style={{ flex: 1, padding: "12px", borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "var(--mid)" }}
-                  >
-                    ← Back
-                  </button>
-                  <button
-                    onClick={goFromGender}
-                    disabled={saving}
-                    style={{ flex: 2, padding: "12px", borderRadius: 14, border: "none", background: "var(--green)", color: "white", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif", opacity: saving ? 0.7 : 1 }}
-                  >
-                    {saving ? "Setting up…" : "Continue →"}
-                  </button>
-                </div>
-              </div>
-
-              {/* ── Step 2: Due date or Baby age ─────────────────────────── */}
+              {/* ── Step 1: Due date or Baby age ─────────────────────────── */}
               <div style={{ minWidth: "100%", padding: "24px 24px 32px" }}>
                 {journey === "pregnant" ? (
                   <>
@@ -364,72 +259,19 @@ export default function OnboardingModal({ onComplete }: Props) {
 
                 <div style={{ display: "flex", gap: 10 }}>
                   <button
-                    onClick={() => { setStep(1); setError(null); }}
+                    onClick={() => { setStep(0); setError(null); }}
                     style={{ flex: 1, padding: "12px", borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "var(--mid)" }}
                   >
                     ← Back
                   </button>
                   <button
-                    onClick={goStep3}
-                    style={{ flex: 2, padding: "12px", borderRadius: 14, border: "none", background: "var(--green)", color: "white", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                    onClick={() => submitOnboarding(journey)}
+                    disabled={saving}
+                    style={{ flex: 2, padding: "12px", borderRadius: 14, border: "none", background: "var(--green)", color: "white", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif", opacity: saving ? 0.7 : 1 }}
                   >
-                    Continue →
+                    {saving ? "Setting up…" : "Let's go →"}
                   </button>
                 </div>
-              </div>
-
-              {/* ── Step 3: Sub-tags ─────────────────────────────────────── */}
-              <div style={{ minWidth: "100%", padding: "24px 24px 32px" }}>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 6, textAlign: "center" }}>
-                  A little more about you ✨
-                </div>
-                <div style={{ fontSize: 13, color: "var(--mid)", textAlign: "center", marginBottom: 24, lineHeight: 1.6 }}>
-                  Optional — helps others connect with you better.
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 28 }}>
-                  {SUB_TAGS.map((t) => {
-                    const active = selectedTags.includes(t.value);
-                    return (
-                      <button
-                        key={t.value}
-                        onClick={() => toggleTag(t.value)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 6,
-                          padding: "10px 18px", borderRadius: 24,
-                          border: `2px solid ${active ? "var(--green)" : "var(--border)"}`,
-                          background: active ? "var(--green-light)" : "var(--white)",
-                          color: active ? "var(--green)" : "var(--mid)",
-                          fontSize: 13, fontWeight: 700, cursor: "pointer",
-                          fontFamily: "Nunito, sans-serif", transition: "all 0.15s",
-                        }}
-                      >
-                        <span>{t.emoji}</span> {t.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {error && (
-                  <div style={{ fontSize: 12, color: "var(--terra)", background: "#fdf0e8", padding: "8px 12px", borderRadius: 8, marginBottom: 12, fontWeight: 600 }}>
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  onClick={() => submitOnboarding(journey, selectedTags)}
-                  disabled={saving}
-                  style={{ width: "100%", padding: "14px", borderRadius: 14, border: "none", background: "var(--green)", color: "white", fontSize: 15, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif", marginBottom: 10 }}
-                >
-                  {saving ? "Joining your circle…" : "Join my circle 💛"}
-                </button>
-                <button
-                  onClick={() => submitOnboarding(journey, [], true)}
-                  disabled={saving}
-                  style={{ width: "100%", padding: "10px", borderRadius: 14, border: "none", background: "transparent", color: "var(--mid)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
-                >
-                  Skip for now
-                </button>
               </div>
 
             </div>
