@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Baby, Users, Gift } from "lucide-react";
 
 interface Props {
   onComplete: () => void;
@@ -156,18 +157,18 @@ export default function OnboardingModal({ onComplete }: Props) {
               {/* ── Step 0: Role ──────────────────────────────────────────── */}
               <div style={{ minWidth: "100%", padding: "24px 24px 32px" }}>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 6, textAlign: "center" }}>
-                  Welcome to Kradəl 💛
+                  Welcome to Kradəl
                 </div>
                 <div style={{ fontSize: 14, color: "var(--mid)", textAlign: "center", marginBottom: 28, lineHeight: 1.6 }}>
-                  Which best describes you?
+                  How would you like to use Kradəl?
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {[
-                    { j: "pregnant"  as Journey, emoji: "🤰", title: "I'm pregnant",          sub: "Join your pregnancy stage circle"        },
-                    { j: "postpartum"as Journey, emoji: "🤱", title: "I'm a mother",           sub: "Join your baby's age-stage circle"       },
-                    { j: "donor"     as Journey, emoji: "🎁", title: "I'm a supporter / donor", sub: "Browse and donate items to families" },
-                  ].map(({ j, emoji, title, sub }) => (
+                    { j: "pregnant"   as Journey, Icon: Baby,  title: "I'm pregnant",     sub: "Join a private circle for your pregnancy stage"   },
+                    { j: "postpartum" as Journey, Icon: Users, title: "I'm a mother",     sub: "Connect with moms in your baby's stage"           },
+                    { j: "donor"      as Journey, Icon: Gift,  title: "I want to donate", sub: "Give essential items to mothers in need"          },
+                  ].map(({ j, Icon, title, sub }) => (
                     <button
                       key={j!}
                       disabled={saving}
@@ -184,7 +185,9 @@ export default function OnboardingModal({ onComplete }: Props) {
                       onMouseEnter={(e) => { if (!saving) { e.currentTarget.style.borderColor = "var(--green)"; e.currentTarget.style.background = "var(--green-light)"; }}}
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--white)"; }}
                     >
-                      <span style={{ fontSize: 36 }}>{emoji}</span>
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Icon size={22} strokeWidth={1.75} color="var(--green)" />
+                      </div>
                       <div>
                         <div style={{ fontSize: 16, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>{title}</div>
                         <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 2 }}>{sub}</div>

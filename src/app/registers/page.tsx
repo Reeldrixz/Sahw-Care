@@ -28,6 +28,13 @@ export default function RegistersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // Donors have no access to Registers
+  useEffect(() => {
+    if (user?.onboardingComplete && user.journeyType === "donor") {
+      router.replace("/");
+    }
+  }, [user, router]);
+
   const fetchRegisters = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/registers");

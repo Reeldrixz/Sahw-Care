@@ -5,19 +5,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import { Compass, ClipboardList, Users, Search, Heart, MessageCircle } from "lucide-react";
 
-const NAV_LINKS = [
-  { label: "Discover",   href: "/",           Icon: Compass       },
-  { label: "Registers",  href: "/registers",  Icon: ClipboardList },
-  { label: "Circles",    href: "/circles",    Icon: Users         },
-  { label: "Browse",     href: "/browse",     Icon: Search        },
-  { label: "Messages",   href: "/chat",       Icon: MessageCircle },
-  { label: "Favourites", href: "/favourites", Icon: Heart         },
+const ALL_NAV_LINKS = [
+  { label: "Discover",   href: "/",           Icon: Compass,       donorOnly: false, momOnly: false  },
+  { label: "Registers",  href: "/registers",  Icon: ClipboardList, donorOnly: false, momOnly: true   },
+  { label: "Circles",    href: "/circles",    Icon: Users,         donorOnly: false, momOnly: true   },
+  { label: "Browse",     href: "/browse",     Icon: Search,        donorOnly: false, momOnly: false  },
+  { label: "Messages",   href: "/chat",       Icon: MessageCircle, donorOnly: false, momOnly: false  },
+  { label: "Favourites", href: "/favourites", Icon: Heart,         donorOnly: false, momOnly: false  },
 ];
 
 export default function DesktopNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  const isDonor = user?.journeyType === "donor";
+  const NAV_LINKS = ALL_NAV_LINKS.filter(({ momOnly }) => !(isDonor && momOnly));
 
   return (
     <nav className="dnav">
