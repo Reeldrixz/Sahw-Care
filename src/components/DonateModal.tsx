@@ -7,7 +7,7 @@ interface DonateModalProps {
   onSubmit: (data: FormData) => Promise<void>;
 }
 
-const CATEGORIES = ["Baby Milk", "Diapers", "Maternity", "Clothing", "Accessories", "Other"];
+const CATEGORIES = ["Feeding", "Diapering", "Maternity", "Clothing", "Hygiene", "Other"];
 
 export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
   const [loading, setLoading] = useState(false);
@@ -15,7 +15,7 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
-    category: "Baby Milk",
+    category: "Feeding",
     condition: "New (unopened)",
     quantity: "",
     location: "",

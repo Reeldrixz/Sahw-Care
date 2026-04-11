@@ -26,11 +26,11 @@ interface ItemModalProps {
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  "Baby Milk": "🍼",
-  Diapers: "👶",
+  "Feeding": "🍼",
+  Diapering: "👶",
   Maternity: "🤱",
   Clothing: "👗",
-  Accessories: "🧸",
+  Hygiene: "🧴",
   Other: "📦",
 };
 

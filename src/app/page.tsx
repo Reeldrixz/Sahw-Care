@@ -10,18 +10,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 
 const BUNDLES = [
-  { id: 1, emoji: "🎀", title: "Full Newborn Starter Kit", items: "Formula · Diapers · Clothes · Bath set", count: "4 items", tag: "Bundle", tagColor: "#e8f5f1", tagText: "#1a7a5e", bg: "#e8f5f1" },
+  { id: 1, emoji: "🎀", title: "Full Newborn Starter Kit", items: "Formula · Diapering · Clothes · Bath set", count: "4 items", tag: "Bundle", tagColor: "#e8f5f1", tagText: "#1a7a5e", bg: "#e8f5f1" },
   { id: 2, emoji: "🤰", title: "Complete Maternity Kit", items: "Maternity pads · Breast pump · Nursing bra", count: "3 items", tag: "Popular", tagColor: "#fff3e0", tagText: "#c4622d", bg: "#fff3e0" },
-  { id: 3, emoji: "👼", title: "Baby Essentials Pack", items: "Clothes · Toys · Accessories · Wipes", count: "6 items", tag: "New", tagColor: "#f3e5f5", tagText: "#7b1fa2", bg: "#f3e5f5" },
+  { id: 3, emoji: "👼", title: "Baby Essentials Pack", items: "Clothes · Toys · Hygiene · Wipes", count: "6 items", tag: "New", tagColor: "#f3e5f5", tagText: "#7b1fa2", bg: "#f3e5f5" },
 ];
 
 const CAT_BG: Record<string, string> = {
-  "Baby Milk": "#e8f5f1", "Diapers": "#fff3e0", "Maternity": "#f3e5f5",
-  "Clothing": "#e3f2fd", "Accessories": "#e8f5e9", "Other": "#f5f5f5",
+  "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
+  "Clothing": "#e3f2fd", "Hygiene": "#e8f5e9", "Other": "#f5f5f5",
 };
 const CAT_EMOJI: Record<string, string> = {
-  "Baby Milk": "🍼", "Diapers": "👶", "Maternity": "🤱",
-  "Clothing": "👗", "Accessories": "🧸", "Other": "📦",
+  "Feeding": "🍼", "Diapering": "👶", "Maternity": "🤱",
+  "Clothing": "👗", "Hygiene": "🧴", "Other": "📦",
 };
 
 export default function DiscoverPage() {
@@ -38,7 +38,7 @@ export default function DiscoverPage() {
   const [showDonate, setShowDonate] = useState(false);
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
 
-  const CATS = ["All", "Baby Milk", "Diapers", "Maternity", "Clothing", "Accessories"];
+  const CATS = ["All", "Feeding", "Diapering", "Maternity", "Clothing", "Hygiene"];
 
   const showToast = (msg: string) => setToast(msg);
 

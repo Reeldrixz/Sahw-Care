@@ -62,7 +62,7 @@ export async function getImpactStats(userId: string): Promise<ImpactStats> {
   const families = familyIds.size || donations; // fallback to donation count
 
   // Estimate babies fed: baby-related categories count for slightly more
-  const babyCategories = new Set(["Baby Milk", "Diapers", "Clothing"]);
+  const babyCategories = new Set(["Feeding", "Diapering", "Clothing"]);
   let babiesFed = 0;
   for (const a of assignments) {
     babiesFed += babyCategories.has(a.item.category ?? "") ? 2 : 1;

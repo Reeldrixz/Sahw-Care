@@ -32,12 +32,12 @@ interface Review {
 }
 
 const CAT_BG: Record<string, string> = {
-  "Baby Milk": "#e8f5f1", "Diapers": "#fff3e0", "Maternity": "#f3e5f5",
-  "Clothing": "#e3f2fd", "Accessories": "#e8f5e9", "Other": "#f5f5f5",
+  "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
+  "Clothing": "#e3f2fd", "Hygiene": "#e8f5e9", "Other": "#f5f5f5",
 };
 const CAT_EMOJI: Record<string, string> = {
-  "Baby Milk": "🍼", "Diapers": "👶", "Maternity": "🤱",
-  "Clothing": "👗", "Accessories": "🧸", "Other": "📦",
+  "Feeding": "🍼", "Diapering": "👶", "Maternity": "🤱",
+  "Clothing": "👗", "Hygiene": "🧴", "Other": "📦",
 };
 
 function RatingBar({ label, value, wide }: { label: string; value: number; wide?: boolean }) {

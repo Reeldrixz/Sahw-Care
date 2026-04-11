@@ -260,7 +260,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             <div className="form-group">
               <label className="form-label">Category</label>
               <select className="form-input" value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ fontFamily: "Nunito, sans-serif" }}>
-                {["Diapers","Baby Milk","Clothing","Maternity","Accessories","Other"].map((c) => <option key={c}>{c}</option>)}
+                {["Diapering","Feeding","Clothing","Maternity","Hygiene","Other"].map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

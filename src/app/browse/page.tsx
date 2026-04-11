@@ -8,7 +8,7 @@ import FilterSheet from "@/components/FilterSheet";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 
-const CATS = ["All", "Baby Milk", "Diapers", "Maternity", "Clothing", "Accessories"];
+const CATS = ["All", "Feeding", "Diapering", "Maternity", "Clothing", "Hygiene"];
 const CONDITIONS = ["New", "Slightly used", "Well used"];
 
 export default function BrowsePage() {

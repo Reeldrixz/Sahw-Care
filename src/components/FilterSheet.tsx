@@ -1,6 +1,6 @@
 "use client";
 
-const CATEGORIES = ["Baby Milk", "Diapers", "Maternity", "Clothing", "Accessories"];
+const CATEGORIES = ["Feeding", "Diapering", "Maternity", "Clothing", "Hygiene"];
 const CONDITIONS = ["New (unopened)", "Slightly used"];
 const DISTANCES = ["Under 1km", "Under 3km", "Under 5km", "Any"];
 

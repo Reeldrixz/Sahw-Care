@@ -5,11 +5,11 @@ export const CATEGORY_CONFIG: Record<
   string,
   { cooldownDays: number; supplyDays: number; maxQty: number; label: string }
 > = {
-  "Diapers":     { cooldownDays: 10, supplyDays: 21,  maxQty: 3, label: "Diapers" },
-  "Baby Milk":   { cooldownDays:  7, supplyDays: 30,  maxQty: 4, label: "Baby Milk / Formula" },
+  "Diapering":     { cooldownDays: 10, supplyDays: 21,  maxQty: 3, label: "Diapering" },
+  "Feeding":   { cooldownDays:  7, supplyDays: 30,  maxQty: 4, label: "Feeding / Formula" },
   "Clothing":    { cooldownDays: 21, supplyDays: 90,  maxQty: 5, label: "Clothing" },
   "Maternity":   { cooldownDays: 30, supplyDays: 90,  maxQty: 2, label: "Maternity" },
-  "Accessories": { cooldownDays: 14, supplyDays: 60,  maxQty: 3, label: "Accessories" },
+  "Hygiene": { cooldownDays: 14, supplyDays: 60,  maxQty: 3, label: "Hygiene" },
   "Other":       { cooldownDays: 14, supplyDays: 30,  maxQty: 3, label: "Other" },
 };
 
