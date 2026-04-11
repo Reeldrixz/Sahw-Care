@@ -21,7 +21,7 @@ export default function Nav({ onDonate }: NavProps) {
   return (
     <nav className="nav">
       <Link href="/" className="nav-logo" style={{ textDecoration: "none" }}>
-        <span>🤲</span> Kradel
+        Krad\u0259l
       </Link>
 
       {user ? (

@@ -46,7 +46,7 @@ function AuthForm() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">🤲 Kradel</div>
+        <div className="auth-logo">Krad\u0259l</div>
         <div className="auth-sub">Free baby &amp; maternal items near you</div>
 
         <div className="auth-tabs">

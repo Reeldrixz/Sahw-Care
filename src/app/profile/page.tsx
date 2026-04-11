@@ -287,7 +287,7 @@ export default function ProfilePage() {
             <span style={{ fontSize: 22 }}>✅</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 800, color: "var(--green)" }}>Motherhood verified</div>
-              <div style={{ fontSize: 12, color: "var(--green)", opacity: 0.8 }}>{user.documentNote ?? "Welcome to Kradel! You can now create your Register of Needs. 💛"}</div>
+              <div style={{ fontSize: 12, color: "var(--green)", opacity: 0.8 }}>{user.documentNote ?? "Welcome to Krad\u0259l! You can now create your Register of Needs. 💛"}</div>
             </div>
           </div>
         )}

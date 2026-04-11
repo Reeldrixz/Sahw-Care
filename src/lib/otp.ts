@@ -64,12 +64,12 @@ export async function sendEmailOtp(email: string, code: string): Promise<void> {
   const { error } = await resend.emails.send({
     from,
     to: email,
-    subject: `Your Kradel verification code: ${code}`,
+    subject: `Your Krad\u0259l verification code: ${code}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#2d6a4f;margin-bottom:8px">Verify your email</h2>
         <p style="color:#555;margin-bottom:24px">
-          Enter the code below in the Kradel app to verify your email address.
+          Enter the code below in the Krad\u0259l app to verify your email address.
           It expires in 10 minutes.
         </p>
         <div style="background:#f0faf4;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px">

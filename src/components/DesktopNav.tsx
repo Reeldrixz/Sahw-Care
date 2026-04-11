@@ -22,7 +22,7 @@ export default function DesktopNav() {
     <nav className="dnav">
       <div className="dnav-inner">
         <div className="dnav-logo" onClick={() => router.push("/")}>
-          🤲 Kradel
+          Krad\u0259l
         </div>
         <div className="dnav-links">
           {links.map((l) => (
