@@ -39,6 +39,7 @@ model User {
   verifiedAt   DateTime?
 
   status    UserStatus @default(ACTIVE)
+  deletedAt DateTime?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 

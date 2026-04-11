@@ -50,6 +50,9 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showShareImpact, setShowShareImpact] = useState(false);
   const [showDocUpload, setShowDocUpload] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // OTP verification state
   const [showVerify, setShowVerify] = useState(false);
@@ -508,8 +511,100 @@ export default function ProfilePage() {
             Sign out
           </button>
         </div>
+
+        {/* ── Delete Account ──────────────────────────────────────── */}
+        <div style={{ padding: "0 16px 40px" }}>
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+            <button
+              onClick={() => { setDeleteConfirmText(""); setShowDeleteModal(true); }}
+              style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #fca5a5", background: "var(--white)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "#dc2626" }}
+            >
+              Delete account
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+
+    {/* ── Delete Account Modal ──────────────────────────────────────── */}
+    {showDeleteModal && (
+      <div
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        onClick={(e) => { if (e.target === e.currentTarget && !deleting) setShowDeleteModal(false); }}
+      >
+        <div style={{ background: "var(--white)", borderRadius: 20, width: "100%", maxWidth: 400, padding: "28px 24px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+          <div style={{ fontSize: 32, textAlign: "center", marginBottom: 12 }}>⚠️</div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, textAlign: "center", marginBottom: 10 }}>
+            Delete your account?
+          </div>
+          <p style={{ fontSize: 13, color: "var(--mid)", textAlign: "center", lineHeight: 1.6, marginBottom: 20 }}>
+            This will permanently delete your profile, listings, and all your data. This cannot be undone.
+          </p>
+
+          <div style={{ background: "#fef2f2", borderRadius: 12, padding: "12px 14px", marginBottom: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#dc2626", marginBottom: 8 }}>
+              Type <strong>DELETE</strong> to confirm
+            </div>
+            <input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              disabled={deleting}
+              style={{
+                width: "100%", padding: "10px 12px", borderRadius: 8,
+                border: `1.5px solid ${deleteConfirmText === "DELETE" ? "#dc2626" : "var(--border)"}`,
+                fontSize: 14, fontFamily: "Nunito, sans-serif", outline: "none",
+                background: "var(--white)", boxSizing: "border-box",
+                fontWeight: 700, letterSpacing: "1px",
+              }}
+              autoCapitalize="characters"
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleting}
+              style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "var(--white)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "var(--mid)" }}
+            >
+              Cancel
+            </button>
+            <button
+              disabled={deleteConfirmText !== "DELETE" || deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  const res = await fetch("/api/user/account", {
+                    method:  "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ confirmation: "DELETE" }),
+                  });
+                  if (res.ok) {
+                    window.location.href = "/";
+                  } else {
+                    const d = await res.json();
+                    setToast(d.error ?? "Something went wrong");
+                    setDeleting(false);
+                  }
+                } catch {
+                  setToast("Something went wrong");
+                  setDeleting(false);
+                }
+              }}
+              style={{
+                flex: 2, padding: "12px", borderRadius: 12, border: "none",
+                background: deleteConfirmText === "DELETE" && !deleting ? "#dc2626" : "#fca5a5",
+                color: "white", fontSize: 14, fontWeight: 800,
+                cursor: deleteConfirmText === "DELETE" && !deleting ? "pointer" : "not-allowed",
+                fontFamily: "Nunito, sans-serif", transition: "background 0.15s",
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete my account"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* ── OTP Verification Sheet ─────────────────────────────────────── */}
     {showVerify && (
