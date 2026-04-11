@@ -459,9 +459,51 @@ export default function ProfilePage() {
         {/* ── Account ──────────────────────────────────────────────── */}
         <div className="profile-section">
           <div className="profile-section-title">Account</div>
-          <div style={{ fontSize: 13, color: "var(--mid)", marginBottom: 8 }}>
+          <div style={{ fontSize: 13, color: "var(--mid)", marginBottom: 12 }}>
             {user.email ?? user.phone} · Member since {memberYear}
           </div>
+
+          {/* Update journey type */}
+          {user.onboardingComplete && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>My Journey</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  { value: "pregnant",   emoji: "🤰", label: "I'm pregnant"           },
+                  { value: "postpartum", emoji: "🤱", label: "I'm a mother"            },
+                  { value: "donor",      emoji: "🎁", label: "I'm a supporter / donor" },
+                ].map(({ value, emoji, label }) => (
+                  <button
+                    key={value}
+                    onClick={async () => {
+                      if (user.journeyType === value) return;
+                      if (!confirm(`Switch your journey to "${label}"? Your circle assignment will reset.`)) return;
+                      const res = await fetch("/api/user/onboarding", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ journeyType: value, subTags: user.subTags ?? [] }),
+                      });
+                      if (res.ok) { refreshUser(); setToast("Journey updated!"); }
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 14px", borderRadius: 12,
+                      border: `1.5px solid ${user.journeyType === value ? "var(--green)" : "var(--border)"}`,
+                      background: user.journeyType === value ? "var(--green-light)" : "var(--white)",
+                      color: user.journeyType === value ? "var(--green)" : "var(--ink)",
+                      fontSize: 13, fontWeight: 700, cursor: user.journeyType === value ? "default" : "pointer",
+                      fontFamily: "Nunito, sans-serif", textAlign: "left",
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>{emoji}</span>
+                    <span>{label}</span>
+                    {user.journeyType === value && <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--green)" }}>Current</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <button onClick={handleLogout} style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "var(--white)", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>
             Sign out
           </button>

@@ -3,14 +3,18 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
-import { Compass, ClipboardList, Users, Search, CircleUser } from "lucide-react";
+import {
+  Compass, ClipboardList, Users, Search,
+  CircleUser, Heart, MessageCircle,
+} from "lucide-react";
 
-const ACTIVE_COLOR = "#1a7a5e";
+const ACTIVE_COLOR   = "#1a7a5e";
 const INACTIVE_COLOR = "#9ca3af";
 const STROKE = 1.75;
-const SIZE = 24;
+const SIZE   = 24;
 
-const TABS = [
+// Tabs shown to pregnant / postpartum users (Circles access)
+const MOM_TABS = [
   { path: "/",          label: "Discover",  Icon: Compass       },
   { path: "/registers", label: "Registers", Icon: ClipboardList },
   { path: "/circles",   label: "Circles",   Icon: Users         },
@@ -18,17 +22,29 @@ const TABS = [
   { path: "/profile",   label: "Profile",   Icon: CircleUser    },
 ];
 
+// Tabs shown to donor users (no Circles, no Registers)
+const DONOR_TABS = [
+  { path: "/",           label: "Discover",   Icon: Compass       },
+  { path: "/browse",     label: "Browse",     Icon: Search        },
+  { path: "/chat",       label: "Messages",   Icon: MessageCircle },
+  { path: "/favourites", label: "Favourites", Icon: Heart         },
+  { path: "/profile",    label: "Profile",    Icon: CircleUser    },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
   const { user } = useAuth();
+
+  const isDonor = user?.journeyType === "donor";
+  const TABS    = isDonor ? DONOR_TABS : MOM_TABS;
 
   return (
     <nav className="bnav" aria-label="Main navigation">
       {TABS.map(({ path, label, Icon }) => {
-        const isActive = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
+        const isActive  = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
         const isProfile = path === "/profile";
-        const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
+        const color     = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
 
         return (
           <button
@@ -47,12 +63,7 @@ export default function BottomNav() {
                   <Avatar src={user.avatar} name={user.name} size={SIZE} />
                 </div>
               ) : (
-                <Icon
-                  size={SIZE}
-                  strokeWidth={STROKE}
-                  color={color}
-                  style={{ transition: "color 0.2s" }}
-                />
+                <Icon size={SIZE} strokeWidth={STROKE} color={color} style={{ transition: "color 0.2s" }} />
               )}
             </div>
             <span className="bnav-label" style={{ color }}>{label}</span>

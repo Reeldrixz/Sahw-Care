@@ -18,8 +18,28 @@ export async function POST(req: NextRequest) {
     subTags,       // string[]
   } = await req.json();
 
-  if (!["pregnant", "postpartum"].includes(journeyType)) {
+  if (!["pregnant", "postpartum", "donor"].includes(journeyType)) {
     return NextResponse.json({ error: "Invalid journeyType" }, { status: 400 });
+  }
+
+  // ── Donors skip stage assignment entirely ────────────────────────────────
+  if (journeyType === "donor") {
+    const updated = await prisma.user.update({
+      where: { id: auth.userId },
+      data:  { onboardingComplete: true, journeyType, subTags: subTags ?? [] },
+      select: {
+        id: true, name: true, email: true, phone: true, role: true,
+        avatar: true, location: true, isPremium: true, trustRating: true,
+        trustScore: true, verificationLevel: true, phoneVerified: true,
+        emailVerified: true, urgentOverridesUsed: true, urgentOverridesResetAt: true,
+        docStatus: true, documentUrl: true, documentType: true, documentNote: true,
+        verifiedAt: true, status: true, createdAt: true,
+        onboardingComplete: true, journeyType: true, currentStage: true,
+        countryFlag: true, subTags: true, currentCircleId: true,
+        _count: { select: { items: true, requests: true } },
+      },
+    });
+    return NextResponse.json({ user: updated, circleId: null });
   }
 
   // ── Compute dueDate / babyBirthDate ─────────────────────────────────────
@@ -28,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   if (journeyType === "pregnant") {
     if (!dueMonth || !dueYear) return NextResponse.json({ error: "dueMonth and dueYear required" }, { status: 400 });
-    dueDate = new Date(dueYear, dueMonth - 1, 15); // mid-month approximation
+    dueDate = new Date(dueYear, dueMonth - 1, 15);
   } else {
     if (babyAgeMonths === undefined || babyAgeMonths === null) {
       return NextResponse.json({ error: "babyAgeMonths required" }, { status: 400 });

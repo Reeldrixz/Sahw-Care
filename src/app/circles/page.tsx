@@ -222,11 +222,17 @@ export default function CirclesPage() {
         <div style={{ fontSize: 40, marginBottom: 12 }}>🤝</div>
         <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Join the Circle</div>
         <p style={{ color: "var(--mid)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-          Sign in to connect with mothers and donors in your community.
+          Sign in to connect with mothers in your community.
         </p>
         <button className="btn-primary" onClick={() => router.push("/auth")}>Sign in to join</button>
       </div>
     );
+  }
+
+  // Donors have no circles access — redirect to discover
+  if (user.onboardingComplete && user.journeyType === "donor") {
+    router.replace("/");
+    return null;
   }
 
   // ── Not onboarded & no country circle yet ────────────────────────────────
