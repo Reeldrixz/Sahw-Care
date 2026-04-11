@@ -39,8 +39,8 @@ export default function ShareImpactModal({ onClose }: Props) {
   const firstName = user.name.split(" ")[0];
 
   const shareText = stats?.donations
-    ? `I've helped ${stats.families} ${stats.families === 1 ? "family" : "families"} through Krad\u0259l 💛 ${stats.donations} donation${stats.donations !== 1 ? "s" : ""} and counting. Every baby deserves support. Join me:`
-    : `I just joined Krad\u0259l 💛 — a community helping mothers and babies get essentials they need. Join us:`;
+    ? `I've helped ${stats.families} ${stats.families === 1 ? "family" : "families"} through Kradəl 💛 ${stats.donations} donation${stats.donations !== 1 ? "s" : ""} and counting. Every baby deserves support. Join me:`
+    : `I just joined Kradəl 💛 — a community helping mothers and babies get essentials they need. Join us:`;
 
   const encodedText = encodeURIComponent(shareText);
   const encodedUrl = encodeURIComponent(profileUrl);

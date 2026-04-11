@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">Krad\u0259l</div>
+        <div className="auth-logo">Kradəl</div>
         <div className="auth-sub" style={{ marginBottom: 24 }}>Password reset</div>
 
         {submitted ? (
