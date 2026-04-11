@@ -45,7 +45,8 @@ model User {
 
   // ── cohort / onboarding ──────────────────────────
   onboardingComplete Boolean  @default(false)
-  journeyType        String?   // "pregnant" | "postpartum"
+  journeyType        String?   // "pregnant" | "postpartum" | "donor"
+  gender             String   @default("unspecified") // "male" | "female" | "unspecified" — internal only, never shown publicly
   dueDate            DateTime?
   babyBirthDate      DateTime?
   currentStage       String?   // stageKey e.g. "pregnancy-4-6"

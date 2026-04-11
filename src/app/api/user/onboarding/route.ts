@@ -11,7 +11,8 @@ export async function POST(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const {
-    journeyType,   // "pregnant" | "postpartum"
+    journeyType,   // "pregnant" | "postpartum" | "donor"
+    gender,        // "male" | "female" | "unspecified" — required
     dueMonth,      // 1-12 (pregnant only)
     dueYear,       // full year e.g. 2025 (pregnant only)
     babyAgeMonths, // decimal months old (postpartum only)
@@ -22,11 +23,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid journeyType" }, { status: 400 });
   }
 
+  // Only update gender if explicitly provided (preserve existing value on journey-type switches)
+  const safeGender = ["male", "female", "unspecified"].includes(gender) ? gender : undefined;
+
   // ── Donors skip stage assignment entirely ────────────────────────────────
   if (journeyType === "donor") {
     const updated = await prisma.user.update({
       where: { id: auth.userId },
-      data:  { onboardingComplete: true, journeyType, subTags: subTags ?? [] },
+      data:  { onboardingComplete: true, journeyType, ...(safeGender && { gender: safeGender }), subTags: subTags ?? [] },
       select: {
         id: true, name: true, email: true, phone: true, role: true,
         avatar: true, location: true, isPremium: true, trustRating: true,
@@ -87,6 +91,7 @@ export async function POST(req: NextRequest) {
     data: {
       onboardingComplete: true,
       journeyType,
+      ...(safeGender && { gender: safeGender }),
       dueDate,
       babyBirthDate,
       currentStage: stageKey,
