@@ -3,13 +3,19 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
+import { Compass, ClipboardList, Users, Search, CircleUser } from "lucide-react";
+
+const ACTIVE_COLOR = "#1a7a5e";
+const INACTIVE_COLOR = "#9ca3af";
+const STROKE = 1.75;
+const SIZE = 24;
 
 const TABS = [
-  { path: "/", label: "Discover", icon: "🧭" },
-  { path: "/registers", label: "Registers", icon: "📋" },
-  { path: "/circles", label: "Circles", icon: "🤝" },
-  { path: "/browse", label: "Browse", icon: "🔍" },
-  { path: "/profile", label: "Profile", icon: "👤" },
+  { path: "/",          label: "Discover",  Icon: Compass       },
+  { path: "/registers", label: "Registers", Icon: ClipboardList },
+  { path: "/circles",   label: "Circles",   Icon: Users         },
+  { path: "/browse",    label: "Browse",    Icon: Search        },
+  { path: "/profile",   label: "Profile",   Icon: CircleUser    },
 ];
 
 export default function BottomNav() {
@@ -18,30 +24,41 @@ export default function BottomNav() {
   const { user } = useAuth();
 
   return (
-    <div className="bnav">
-      {TABS.map(({ path, label, icon }) => {
+    <nav className="bnav" aria-label="Main navigation">
+      {TABS.map(({ path, label, Icon }) => {
         const isActive = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
         const isProfile = path === "/profile";
+        const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
 
         return (
-          <div
+          <button
             key={path}
-            className={`bnav-item ${isActive ? "active" : ""}`}
+            className={`bnav-item${isActive ? " active" : ""}`}
             onClick={() => router.push(path)}
+            aria-current={isActive ? "page" : undefined}
           >
             <div className="bnav-icon">
               {isProfile && user ? (
-                <div style={{ width: 24, height: 24, borderRadius: "50%", overflow: "hidden", border: isActive ? "2px solid var(--green)" : "2px solid transparent", flexShrink: 0 }}>
-                  <Avatar src={user.avatar} name={user.name} size={24} />
+                <div style={{
+                  width: SIZE, height: SIZE, borderRadius: "50%", overflow: "hidden",
+                  border: `2px solid ${isActive ? ACTIVE_COLOR : "transparent"}`,
+                  flexShrink: 0, transition: "border-color 0.2s",
+                }}>
+                  <Avatar src={user.avatar} name={user.name} size={SIZE} />
                 </div>
               ) : (
-                icon
+                <Icon
+                  size={SIZE}
+                  strokeWidth={STROKE}
+                  color={color}
+                  style={{ transition: "color 0.2s" }}
+                />
               )}
             </div>
-            <div className="bnav-label">{label}</div>
-          </div>
+            <span className="bnav-label" style={{ color }}>{label}</span>
+          </button>
         );
       })}
-    </div>
+    </nav>
   );
 }
