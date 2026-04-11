@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import DesktopNav from "@/components/DesktopNav";
+import OnboardingGate from "@/components/OnboardingGate";
 
 export const metadata: Metadata = {
   title: "Kradəl \u2014 Free baby & maternal items near you",
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <DesktopNav />
-          {children}
+          <OnboardingGate>
+            {children}
+          </OnboardingGate>
         </AuthProvider>
       </body>
     </html>

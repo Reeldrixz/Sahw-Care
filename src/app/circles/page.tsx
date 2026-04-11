@@ -6,14 +6,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
+import { STAGE_META } from "@/lib/stage";
 
-type Category = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION";
+// ── Types ────────────────────────────────────────────────────────────────────
 
-interface Circle {
+type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION";
+
+interface CohortCircle {
   id: string;
   name: string;
-  country: string;
+  emoji: string | null;
+  stageKey: string | null;
+  groupLetter: string | null;
   _count: { members: number; posts: number };
+}
+
+interface Channel {
+  id: string;
+  name: string;
+  emoji: string;
+  order: number;
 }
 
 interface Member {
@@ -22,52 +34,49 @@ interface Member {
   lastViewedAt: string | null;
 }
 
-const FILTERS: { value: Category; label: string }[] = [
-  { value: "ALL",       label: "All" },
-  { value: "TIP",       label: "💡 Tips" },
-  { value: "STORY",     label: "📖 Stories" },
-  { value: "GRATITUDE", label: "🙏 Gratitude" },
-  { value: "QUESTION",  label: "❓ Questions" },
-];
+interface CountryCircle {
+  id: string;
+  name: string;
+  country: string;
+  _count: { members: number; posts: number };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function daysAgo(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / (86400 * 1000));
+}
 
 function isNewMember(joinedAt: string): boolean {
-  return Date.now() - new Date(joinedAt).getTime() < 7 * 24 * 60 * 60 * 1000;
+  return daysAgo(joinedAt) < 7;
 }
 
-async function fetchMyCircle(): Promise<{ circle: Circle; member: Member } | null> {
+async function fetchCountryCircle(): Promise<{ circle: CountryCircle; member: Member } | null> {
   const res = await fetch("/api/circles/my", { cache: "no-store" });
-  const data = await res.json();
-  if (data.circle) return { circle: data.circle, member: data.member };
-  return null;
+  const d   = await res.json();
+  return d.circle ? { circle: d.circle, member: d.member } : null;
 }
 
-async function joinViaLocation(location: string): Promise<{ circle: Circle; member: Member } | null> {
-  // PATCH saves location AND awaits autoJoinCircle server-side before returning
+async function joinViaLocation(location: string): Promise<{ circle: CountryCircle; member: Member } | null> {
   await fetch("/api/profile", {
-    method: "PATCH",
+    method:  "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ location }),
+    body:    JSON.stringify({ location }),
   });
-  return fetchMyCircle();
+  return fetchCountryCircle();
 }
 
 async function detectLocationFromBrowser(): Promise<string | null> {
   if (!navigator.geolocation) return null;
-  const position = await new Promise<GeolocationPosition | null>((resolve) => {
+  const pos = await new Promise<GeolocationPosition | null>((resolve) => {
     navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 8000 });
   });
-  if (!position) return null;
+  if (!pos) return null;
   try {
-    const { latitude, longitude } = position.coords;
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-    );
+    const { latitude, longitude } = pos.coords;
+    const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
     const data = await res.json();
-    const city =
-      data.address?.city ||
-      data.address?.town ||
-      data.address?.village ||
-      data.address?.county;
+    const city    = data.address?.city || data.address?.town || data.address?.village || data.address?.county;
     const country = data.address?.country;
     if (!country) return null;
     return city ? `${city}, ${country}` : country;
@@ -76,61 +85,91 @@ async function detectLocationFromBrowser(): Promise<string | null> {
   }
 }
 
+// ── Main page ────────────────────────────────────────────────────────────────
+
 export default function CirclesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [circle, setCircle] = useState<Circle | null>(null);
-  const [member, setMember] = useState<Member | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [category, setCategory] = useState<Category>("ALL");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingCircle, setLoadingCircle] = useState(true);
-  const [geoDetecting, setGeoDetecting] = useState(false);
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
+  // Cohort circle state
+  const [cohortCircle,   setCohortCircle]   = useState<CohortCircle | null>(null);
+  const [cohortChannels, setCohortChannels] = useState<Channel[]>([]);
+  const [cohortMember,   setCohortMember]   = useState<Member | null>(null);
+  const [activeChannel,  setActiveChannel]  = useState<string>("ALL");
+  const [loadingCohort,  setLoadingCohort]  = useState(false);
 
+  // Country circle state (fallback)
+  const [countryCircle,   setCountryCircle]   = useState<CountryCircle | null>(null);
+  const [countryMember,   setCountryMember]   = useState<Member | null>(null);
+  const [geoDetecting,    setGeoDetecting]    = useState(false);
+  const [loadingCountry,  setLoadingCountry]  = useState(false);
+
+  // Shared post state
+  const [posts,           setPosts]           = useState<Post[]>([]);
+  const [postCategory,    setPostCategory]    = useState<PostCategory>("ALL");
+  const [cursor,          setCursor]          = useState<string | null>(null);
+  const [hasMore,         setHasMore]         = useState(false);
+  const [loadingPosts,    setLoadingPosts]    = useState(false);
+  const [commentsPostId,  setCommentsPostId]  = useState<string | null>(null);
+
+  // Which circle are we showing the feed for?
+  const activeCircle = cohortCircle ?? countryCircle;
+  const activeMember = cohortCircle ? cohortMember : countryMember;
+
+  // ── Load cohort circle ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user) return;
+    if (!user?.currentCircleId) return;
+    setLoadingCohort(true);
+    fetch("/api/circles/cohort", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.circle) {
+          setCohortCircle(d.circle);
+          setCohortChannels(d.channels ?? []);
+          setCohortMember(d.member);
+        }
+      })
+      .finally(() => setLoadingCohort(false));
+  }, [user?.currentCircleId]);
 
+  // ── Load country circle (fallback if no cohort circle) ───────────────────
+  useEffect(() => {
+    if (!user || user.currentCircleId) return; // skip if cohort circle exists
+
+    setLoadingCountry(true);
     (async () => {
-      // Step 1: check for existing circle (server also calls autoJoinCircle on stored location)
-      let result = await fetchMyCircle();
+      let result = await fetchCountryCircle();
 
       if (!result && user.location) {
-        // Step 2: profile already has a location but circle wasn't created yet
-        // (e.g. user signed up before Circles launched). Re-PATCH the same location
-        // so the server awaits autoJoinCircle and the circle exists when we refetch.
         setGeoDetecting(true);
         result = await joinViaLocation(user.location);
         setGeoDetecting(false);
       }
-
       if (!result) {
-        // Step 3: no stored location — try browser geolocation silently
         setGeoDetecting(true);
-        const detectedLocation = await detectLocationFromBrowser();
-        if (detectedLocation) {
-          result = await joinViaLocation(detectedLocation);
-        }
+        const detected = await detectLocationFromBrowser();
+        if (detected) result = await joinViaLocation(detected);
         setGeoDetecting(false);
       }
 
       if (result) {
-        setCircle(result.circle);
-        setMember(result.member);
+        setCountryCircle(result.circle);
+        setCountryMember(result.member);
         fetch("/api/circles/my", { method: "PATCH" }).catch(() => {});
       }
-      setLoadingCircle(false);
+      setLoadingCountry(false);
     })();
   }, [user]);
 
+  // ── Load posts ────────────────────────────────────────────────────────────
   const loadPosts = useCallback(async (reset = false) => {
-    if (!circle) return;
+    if (!activeCircle) return;
     setLoadingPosts(true);
     const cur = reset ? null : cursor;
-    const url = `/api/circles/${circle.id}/posts?category=${category}${cur ? `&cursor=${cur}` : ""}`;
+    const params = new URLSearchParams({ category: postCategory });
+    if (cohortCircle && activeChannel !== "ALL") params.set("channelId", activeChannel);
+    if (cur) params.set("cursor", cur);
+    const url = `/api/circles/${activeCircle.id}/posts?${params}`;
     const res = await fetch(url, { cache: "no-store" });
     if (res.ok) {
       const d = await res.json();
@@ -139,12 +178,13 @@ export default function CirclesPage() {
       setHasMore(!!d.nextCursor && d.posts.length === 20);
     }
     setLoadingPosts(false);
-  }, [circle, category, cursor]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCircle, postCategory, activeChannel, cursor]);
 
   useEffect(() => {
-    if (circle) { setPosts([]); setCursor(null); loadPosts(true); }
+    if (activeCircle) { setPosts([]); setCursor(null); loadPosts(true); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [circle, category]);
+  }, [activeCircle?.id, postCategory, activeChannel]);
 
   const handleDelete = async (postId: string) => {
     if (!confirm("Delete this post?")) return;
@@ -154,24 +194,23 @@ export default function CirclesPage() {
 
   const handlePin = async (postId: string, pin: boolean) => {
     await fetch(`/api/circles/posts/${postId}`, {
-      method: "PATCH",
+      method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isPinned: pin }),
+      body:    JSON.stringify({ isPinned: pin }),
     });
     setPosts((p) =>
-      p
-        .map((x) => (x.id === postId ? { ...x, isPinned: pin } : x))
-        .sort((a, b) => {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        })
+      p.map((x) => (x.id === postId ? { ...x, isPinned: pin } : x))
+       .sort((a, b) => {
+         if (a.isPinned && !b.isPinned) return -1;
+         if (!a.isPinned && b.isPinned) return 1;
+         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+       })
     );
   };
 
-  const isAdminOrLeader = user?.role === "ADMIN" || member?.isLeader === true;
+  const isAdminOrLeader = user?.role === "ADMIN" || activeMember?.isLeader === true;
 
-  // ── Loading states ───────────────────────────────────────────────────────
+  // ── Loading / auth guards ─────────────────────────────────────────────────
 
   if (authLoading) {
     return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
@@ -190,156 +229,403 @@ export default function CirclesPage() {
     );
   }
 
-  if (loadingCircle || geoDetecting) {
+  // ── Not onboarded & no country circle yet ────────────────────────────────
+
+  if (!user.onboardingComplete && !user.currentCircleId) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
+        <div className="browse-header">
+          <div className="browse-title">Circles</div>
+        </div>
+        <div style={{ padding: "20px 16px" }}>
+          {/* Onboarding prompt card */}
+          <div
+            onClick={() => {/* OnboardingGate in layout handles the modal */}}
+            style={{
+              background: "linear-gradient(135deg, #1a7a5e 0%, #2a9d7f 100%)",
+              borderRadius: 18, padding: "22px 20px", marginBottom: 20, cursor: "pointer",
+              color: "white",
+            }}
+          >
+            <div style={{ fontSize: 26, marginBottom: 8 }}>💛</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+              Join your stage group
+            </div>
+            <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9, marginBottom: 14 }}>
+              Complete your profile to be placed in a circle with moms at exactly your stage of pregnancy or parenthood.
+            </p>
+            <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700 }}>
+              Complete your profile →
+            </div>
+          </div>
+
+          {/* Country circle fallback below prompt */}
+          <CountryCircleFallback
+            user={user}
+            loadingCountry={loadingCountry}
+            geoDetecting={geoDetecting}
+            countryCircle={countryCircle}
+            countryMember={countryMember}
+            posts={posts}
+            loadingPosts={loadingPosts}
+            hasMore={hasMore}
+            postCategory={postCategory}
+            setPostCategory={setPostCategory}
+            isAdminOrLeader={isAdminOrLeader}
+            commentsPostId={commentsPostId}
+            setCommentsPostId={setCommentsPostId}
+            onDelete={handleDelete}
+            onPin={handlePin}
+            onLoadMore={() => loadPosts(false)}
+            onPosted={() => loadPosts(true)}
+            router={router}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Loading cohort circle ─────────────────────────────────────────────────
+
+  if (loadingCohort || geoDetecting || (loadingCountry && !countryCircle)) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
         <div className="browse-header"><div className="browse-title">Circles</div></div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", gap: 16 }}>
           <div style={{ fontSize: 40 }}>🌍</div>
           <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Finding your circle…</div>
-          <div style={{ fontSize: 13, color: "var(--mid)" }}>Detecting your location</div>
           <div className="spinner" style={{ marginTop: 8 }} />
         </div>
       </div>
     );
   }
 
-  // ── No circle — geolocation unavailable or denied ────────────────────────
+  // ── Cohort circle view ────────────────────────────────────────────────────
 
-  if (!circle) {
+  if (cohortCircle) {
+    const stageMeta = cohortCircle.stageKey ? STAGE_META[cohortCircle.stageKey as keyof typeof STAGE_META] : null;
+    const joined    = cohortMember ? daysAgo(cohortMember.joinedAt) : 0;
+
+    const POST_FILTERS: { value: PostCategory; label: string }[] = [
+      { value: "ALL",       label: "All"          },
+      { value: "TIP",       label: "💡 Tips"      },
+      { value: "STORY",     label: "📖 Stories"   },
+      { value: "GRATITUDE", label: "🙏 Gratitude" },
+      { value: "QUESTION",  label: "❓ Questions" },
+    ];
+
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
-        <div className="browse-header"><div className="browse-title">Circles</div></div>
-        <div style={{ padding: "40px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>📍</div>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>
-            We couldn't detect your location
+        {/* Circle header */}
+        <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 0" }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>
+            YOUR CIRCLE · GROUP {cohortCircle.groupLetter ?? "A"}
           </div>
-          <p style={{ color: "var(--mid)", fontSize: 14, lineHeight: 1.6, maxWidth: 300, margin: "0 auto 24px" }}>
-            Add your city and country in your profile and we'll place you in your country's circle automatically.
-          </p>
-          <button className="btn-primary" onClick={() => router.push("/profile")}>
-            Go to profile settings
-          </button>
-          <p style={{ fontSize: 11, color: "var(--light)", marginTop: 16, lineHeight: 1.5 }}>
-            As our community grows, circles will split into cities and neighbourhoods.
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 28 }}>{cohortCircle.emoji ?? "🤝"}</span>
+            <div>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white" }}>
+                {cohortCircle.name}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+                {cohortCircle._count.members.toLocaleString()} members
+                {cohortMember && ` · Joined ${joined === 0 ? "today" : `${joined}d ago`}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Stage badge */}
+          {stageMeta && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "4px 12px", marginBottom: 12 }}>
+              <span style={{ fontSize: 13 }}>{stageMeta.emoji}</span>
+              <span style={{ fontSize: 11, color: "white", fontWeight: 700 }}>{stageMeta.label}</span>
+            </div>
+          )}
+
+          {/* Sub-channel tabs */}
+          {cohortChannels.length > 0 && (
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 14, scrollbarWidth: "none" }}>
+              <button
+                onClick={() => setActiveChannel("ALL")}
+                style={{
+                  flexShrink: 0, padding: "7px 16px", borderRadius: 20, border: "none",
+                  background: activeChannel === "ALL" ? "white" : "rgba(255,255,255,0.15)",
+                  color: activeChannel === "ALL" ? "var(--green)" : "rgba(255,255,255,0.85)",
+                  fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  transition: "all 0.15s",
+                }}
+              >
+                All
+              </button>
+              {cohortChannels.map((ch) => (
+                <button
+                  key={ch.id}
+                  onClick={() => setActiveChannel(ch.id)}
+                  style={{
+                    flexShrink: 0, padding: "7px 14px", borderRadius: 20, border: "none",
+                    background: activeChannel === ch.id ? "white" : "rgba(255,255,255,0.15)",
+                    color: activeChannel === ch.id ? "var(--green)" : "rgba(255,255,255,0.85)",
+                    fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                    transition: "all 0.15s", whiteSpace: "nowrap",
+                  }}
+                >
+                  {ch.emoji} {ch.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        <div style={{ padding: "16px 16px 0" }}>
+          {/* Welcome banner for new members */}
+          {cohortMember && isNewMember(cohortMember.joinedAt) && (
+            <div style={{ background: "var(--green-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, border: "1.5px solid var(--green)" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "var(--green)", marginBottom: 4 }}>
+                👋 Welcome to your circle!
+              </div>
+              <div style={{ fontSize: 13, color: "var(--green)", lineHeight: 1.6, opacity: 0.9 }}>
+                You&apos;re now connected with moms at the same stage as you. Share tips, ask questions, and support each other.
+              </div>
+            </div>
+          )}
+
+          {/* Composer */}
+          <CircleComposer
+            circleId={cohortCircle.id}
+            userAvatar={user.avatar}
+            userName={user.name}
+            channels={cohortChannels}
+            activeChannelId={activeChannel !== "ALL" ? activeChannel : null}
+            onPosted={() => loadPosts(true)}
+          />
+
+          {/* Post type filter */}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
+            {POST_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setPostCategory(f.value)}
+                style={{
+                  flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1.5px solid",
+                  borderColor: postCategory === f.value ? "var(--green)" : "var(--border)",
+                  background: postCategory === f.value ? "var(--green)" : "var(--white)",
+                  color: postCategory === f.value ? "white" : "var(--mid)",
+                  fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Community note */}
+          <div style={{ fontSize: 11, color: "var(--mid)", background: "var(--green-light)", borderRadius: 10, padding: "8px 12px", marginBottom: 16, lineHeight: 1.5 }}>
+            💛 This is a space for sharing, support and connection — not for requesting items. Posts that ask for donations are blocked.
+          </div>
+
+          <PostFeed
+            posts={posts}
+            loading={loadingPosts}
+            hasMore={hasMore}
+            circleName={cohortCircle.name}
+            currentUserId={user.id}
+            isAdminOrLeader={isAdminOrLeader}
+            commentsPostId={commentsPostId}
+            setCommentsPostId={setCommentsPostId}
+            onDelete={handleDelete}
+            onPin={handlePin}
+            onLoadMore={() => loadPosts(false)}
+            onPosted={() => loadPosts(true)}
+          />
+        </div>
+
+        {commentsPostId && (
+          <CircleComments postId={commentsPostId} onClose={() => { setCommentsPostId(null); loadPosts(true); }} />
+        )}
       </div>
     );
   }
 
-  // ── Circle feed ──────────────────────────────────────────────────────────
+  // ── No cohort circle → country circle fallback ────────────────────────────
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
-      {/* Header */}
       <div className="browse-header" style={{ paddingBottom: 12 }}>
-        <div className="browse-title">{circle.name}</div>
-        <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 4 }}>
-          {circle._count.members.toLocaleString()} {circle._count.members === 1 ? "member" : "members"} · Neighbourhood circle
-        </div>
-      </div>
-
-      <div style={{ padding: "16px 16px 0" }}>
-        {/* New member welcome banner */}
-        {member && isNewMember(member.joinedAt) && (
-          <div style={{ background: "linear-gradient(135deg, #1a7a5e 0%, #2a9d7f 100%)", borderRadius: 16, padding: "16px 18px", marginBottom: 16, color: "white" }}>
-            <div style={{ fontSize: 18, marginBottom: 6 }}>👋 Welcome to {circle.name}!</div>
-            <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9 }}>
-              This is a warm space to share tips, stories and encouragement — not a place to request donations. Be yourself, be kind.
-            </div>
-            {member.isLeader && (
-              <div style={{ marginTop: 10, fontSize: 12, background: "rgba(255,255,255,0.2)", borderRadius: 8, padding: "6px 10px", fontWeight: 700 }}>
-                ⭐ You're a Circle Leader — you can pin and remove posts.
-              </div>
-            )}
+        <div className="browse-title">{countryCircle?.name ?? "Circles"}</div>
+        {countryCircle && (
+          <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 4 }}>
+            {countryCircle._count.members.toLocaleString()} members · Neighbourhood circle
           </div>
         )}
+      </div>
 
-        {/* Post composer */}
-        <CircleComposer
-          circleId={circle.id}
-          userAvatar={user.avatar}
-          userName={user.name}
+      {!countryCircle ? (
+        <div style={{ padding: "40px 20px", textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 16 }}>📍</div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>
+            We couldn&apos;t detect your location
+          </div>
+          <p style={{ color: "var(--mid)", fontSize: 14, lineHeight: 1.6, maxWidth: 300, margin: "0 auto 24px" }}>
+            Add your city and country in your profile settings to join your country circle.
+          </p>
+          <button className="btn-primary" onClick={() => router.push("/profile")}>Go to profile settings</button>
+        </div>
+      ) : (
+        <CountryCircleFallback
+          user={user}
+          loadingCountry={false}
+          geoDetecting={false}
+          countryCircle={countryCircle}
+          countryMember={countryMember}
+          posts={posts}
+          loadingPosts={loadingPosts}
+          hasMore={hasMore}
+          postCategory={postCategory}
+          setPostCategory={setPostCategory}
+          isAdminOrLeader={isAdminOrLeader}
+          commentsPostId={commentsPostId}
+          setCommentsPostId={setCommentsPostId}
+          onDelete={handleDelete}
+          onPin={handlePin}
+          onLoadMore={() => loadPosts(false)}
           onPosted={() => loadPosts(true)}
+          router={router}
         />
+      )}
+    </div>
+  );
+}
 
-        {/* Category filter chips */}
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setCategory(f.value)}
-              style={{
-                flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1.5px solid",
-                borderColor: category === f.value ? "var(--green)" : "var(--border)",
-                background: category === f.value ? "var(--green)" : "var(--white)",
-                color: category === f.value ? "white" : "var(--mid)",
-                fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+const POST_FILTERS: { value: PostCategory; label: string }[] = [
+  { value: "ALL",       label: "All"          },
+  { value: "TIP",       label: "💡 Tips"      },
+  { value: "STORY",     label: "📖 Stories"   },
+  { value: "GRATITUDE", label: "🙏 Gratitude" },
+  { value: "QUESTION",  label: "❓ Questions" },
+];
+
+interface PostFeedProps {
+  posts: Post[];
+  loading: boolean;
+  hasMore: boolean;
+  circleName: string;
+  currentUserId: string;
+  isAdminOrLeader: boolean;
+  commentsPostId: string | null;
+  setCommentsPostId: (id: string | null) => void;
+  onDelete: (id: string) => void;
+  onPin: (id: string, pin: boolean) => void;
+  onLoadMore: () => void;
+  onPosted: () => void;
+}
+
+function PostFeed({ posts, loading, hasMore, circleName, currentUserId, isAdminOrLeader, commentsPostId, setCommentsPostId, onDelete, onPin, onLoadMore }: PostFeedProps) {
+  if (loading && posts.length === 0) {
+    return <div className="loading" style={{ minHeight: 200 }}><div className="spinner" /></div>;
+  }
+  if (posts.length === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: "50px 20px", color: "var(--mid)" }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>✨</div>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
+          Be the first to post in {circleName} 🌟
         </div>
+        <div style={{ fontSize: 13, lineHeight: 1.6 }}>Share a tip, a story, or something you&apos;re grateful for today.</div>
+      </div>
+    );
+  }
+  return (
+    <>
+      {posts.map((post) => (
+        <CirclePostCard
+          key={post.id}
+          post={post}
+          currentUserId={currentUserId}
+          isAdminOrLeader={isAdminOrLeader}
+          onOpenComments={setCommentsPostId}
+          onDelete={onDelete}
+          onPin={onPin}
+        />
+      ))}
+      {hasMore && (
+        <button
+          onClick={onLoadMore}
+          disabled={loading}
+          style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "var(--white)", color: "var(--mid)", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", marginBottom: 16 }}
+        >
+          {loading ? "Loading…" : "Load more"}
+        </button>
+      )}
+    </>
+  );
+}
 
-        {/* Community note */}
-        <div style={{ fontSize: 11, color: "var(--mid)", background: "var(--green-light)", borderRadius: 10, padding: "8px 12px", marginBottom: 16, lineHeight: 1.5 }}>
-          💛 This is a space for sharing, support and connection — not for requesting items or donations. Posts that ask for donations are automatically blocked.
-        </div>
-
-        {/* Feed */}
-        {loadingPosts && posts.length === 0 ? (
-          <div className="loading" style={{ minHeight: 200 }}><div className="spinner" /></div>
-        ) : posts.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "50px 20px", color: "var(--mid)" }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>✨</div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
-              Be the first to post in {circle.name} 🌟
-            </div>
-            <div style={{ fontSize: 13, lineHeight: 1.6 }}>Share a tip, a story, or something you're grateful for today.</div>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CountryCircleFallback({ user, countryCircle, countryMember, posts, loadingPosts, hasMore, postCategory, setPostCategory, isAdminOrLeader, commentsPostId, setCommentsPostId, onDelete, onPin, onLoadMore, onPosted }: any) {
+  if (!countryCircle) return null;
+  const joined = countryMember ? daysAgo(countryMember.joinedAt) : 0;
+  return (
+    <div style={{ padding: "16px 16px 0" }}>
+      {countryMember && isNewMember(countryMember.joinedAt) && (
+        <div style={{ background: "linear-gradient(135deg, #1a7a5e 0%, #2a9d7f 100%)", borderRadius: 16, padding: "16px 18px", marginBottom: 16, color: "white" }}>
+          <div style={{ fontSize: 18, marginBottom: 6 }}>👋 Welcome to {countryCircle.name}!</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9 }}>
+            {countryCircle._count.members.toLocaleString()} members
+            {countryMember && ` · Joined ${joined === 0 ? "today" : `${joined}d ago`}`}
           </div>
-        ) : (
-          <>
-            {posts.map((post) => (
-              <CirclePostCard
-                key={post.id}
-                post={post}
-                currentUserId={user.id}
-                isAdminOrLeader={isAdminOrLeader}
-                onOpenComments={setCommentsPostId}
-                onDelete={handleDelete}
-                onPin={handlePin}
-              />
-            ))}
+        </div>
+      )}
 
-            {hasMore && (
-              <button
-                onClick={() => loadPosts(false)}
-                disabled={loadingPosts}
-                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "var(--white)", color: "var(--mid)", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", marginBottom: 16 }}
-              >
-                {loadingPosts ? "Loading…" : "Load more"}
-              </button>
-            )}
-          </>
-        )}
+      <CircleComposer
+        circleId={countryCircle.id}
+        userAvatar={user.avatar}
+        userName={user.name}
+        channels={[]}
+        activeChannelId={null}
+        onPosted={onPosted}
+      />
 
-        <p style={{ fontSize: 11, color: "var(--light)", textAlign: "center", lineHeight: 1.6, marginTop: 8, paddingBottom: 16 }}>
-          As our community grows, circles will split into cities and neighbourhoods.
-        </p>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
+        {POST_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setPostCategory(f.value)}
+            style={{
+              flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1.5px solid",
+              borderColor: postCategory === f.value ? "var(--green)" : "var(--border)",
+              background: postCategory === f.value ? "var(--green)" : "var(--white)",
+              color: postCategory === f.value ? "white" : "var(--mid)",
+              fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
-      {/* Comments sheet */}
+      <div style={{ fontSize: 11, color: "var(--mid)", background: "var(--green-light)", borderRadius: 10, padding: "8px 12px", marginBottom: 16, lineHeight: 1.5 }}>
+        💛 This is a space for sharing, support and connection — not for requesting items or donations.
+      </div>
+
+      <PostFeed
+        posts={posts}
+        loading={loadingPosts}
+        hasMore={hasMore}
+        circleName={countryCircle.name}
+        currentUserId={user.id}
+        isAdminOrLeader={isAdminOrLeader}
+        commentsPostId={commentsPostId}
+        setCommentsPostId={setCommentsPostId}
+        onDelete={onDelete}
+        onPin={onPin}
+        onLoadMore={onLoadMore}
+        onPosted={onPosted}
+      />
+
       {commentsPostId && (
-        <CircleComments
-          postId={commentsPostId}
-          onClose={() => {
-            setCommentsPostId(null);
-            loadPosts(true);
-          }}
-        />
+        <CircleComments postId={commentsPostId} onClose={() => setCommentsPostId(null)} />
       )}
     </div>
   );

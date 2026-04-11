@@ -36,6 +36,12 @@ export async function GET(req: NextRequest) {
       verifiedAt: true,
       status: true,
       createdAt: true,
+      onboardingComplete: true,
+      journeyType: true,
+      currentStage: true,
+      countryFlag: true,
+      subTags: true,
+      currentCircleId: true,
       _count: { select: { items: true, requests: true } },
     },
   });

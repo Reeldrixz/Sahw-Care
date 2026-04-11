@@ -10,6 +10,8 @@ interface Author {
   name: string;
   avatar: string | null;
   city: string | null;
+  countryFlag: string | null;
+  subTags: string[];
   trustScore: number;
   isLeader: boolean;
 }
@@ -28,6 +30,8 @@ export interface Post {
   photoUrl: string | null;
   isPinned: boolean;
   createdAt: string;
+  channelName: string | null;
+  channelEmoji: string | null;
   author: Author;
   reactions: Reactions;
   commentCount: number;
@@ -145,11 +149,26 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
               </span>
             )}
             <span style={{ fontSize: 12 }}>{rankFromScore(post.author.trustScore)}</span>
+            {post.channelName && (
+              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "var(--bg)", color: "var(--mid)" }}>
+                {post.channelEmoji} {post.channelName}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 11, color: "var(--mid)" }}>
+            {post.author.countryFlag && <span style={{ marginRight: 3 }}>{post.author.countryFlag}</span>}
             {post.author.city ?? ""}
             {post.author.city ? " · " : ""}{timeAgo(post.createdAt)}
           </div>
+          {post.author.subTags?.length > 0 && (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+              {post.author.subTags.map((tag) => (
+                <span key={tag} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "var(--green-light)", color: "var(--green)" }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {/* Category pill */}
         <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: cat.bg, color: cat.color, flexShrink: 0 }}>

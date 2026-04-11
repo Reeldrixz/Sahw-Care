@@ -25,6 +25,13 @@ export interface User {
   verifiedAt: string | null;
   status: string;
   createdAt: string;
+  // cohort / onboarding
+  onboardingComplete: boolean;
+  journeyType: string | null;
+  currentStage: string | null;
+  countryFlag: string | null;
+  subTags: string[];
+  currentCircleId: string | null;
   _count?: { items: number; requests: number };
 }
 

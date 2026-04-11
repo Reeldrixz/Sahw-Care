@@ -5,10 +5,14 @@ import Avatar from "./Avatar";
 
 type Category = "TIP" | "STORY" | "GRATITUDE" | "QUESTION";
 
+interface Channel { id: string; name: string; emoji: string; }
+
 interface Props {
   circleId: string;
   userAvatar: string | null;
   userName: string;
+  channels?: Channel[];
+  activeChannelId?: string | null;
   onPosted: () => void;
 }
 
@@ -19,10 +23,11 @@ const CATEGORIES: { value: Category; label: string; desc: string }[] = [
   { value: "QUESTION",  label: "❓ Question",  desc: "Ask the circle" },
 ];
 
-export default function CircleComposer({ circleId, userAvatar, userName, onPosted }: Props) {
+export default function CircleComposer({ circleId, userAvatar, userName, channels = [], activeChannelId, onPosted }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [category, setCategory] = useState<Category>("STORY");
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(activeChannelId ?? null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
@@ -43,6 +48,7 @@ export default function CircleComposer({ circleId, userAvatar, userName, onPoste
     const fd = new FormData();
     fd.append("content", content.trim());
     fd.append("category", category);
+    if (selectedChannelId) fd.append("channelId", selectedChannelId);
     if (photo) fd.append("photo", photo);
 
     const res = await fetch(`/api/circles/${circleId}/posts`, { method: "POST", body: fd });
@@ -91,6 +97,30 @@ export default function CircleComposer({ circleId, userAvatar, userName, onPoste
             <Avatar src={userAvatar} name={userName} size={36} />
             <div style={{ fontSize: 13, fontWeight: 700 }}>{userName.split(" ")[0]}</div>
           </div>
+
+          {/* Channel selector (cohort circles only) */}
+          {channels.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Post in</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {channels.map((ch) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => setSelectedChannelId(selectedChannelId === ch.id ? null : ch.id)}
+                    style={{
+                      padding: "5px 12px", borderRadius: 20, border: "1.5px solid",
+                      borderColor: selectedChannelId === ch.id ? "var(--green)" : "var(--border)",
+                      background: selectedChannelId === ch.id ? "var(--green-light)" : "transparent",
+                      color: selectedChannelId === ch.id ? "var(--green)" : "var(--mid)",
+                      fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                    }}
+                  >
+                    {ch.emoji} {ch.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Category selector */}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>

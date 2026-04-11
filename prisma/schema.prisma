@@ -24,8 +24,8 @@ model User {
   trustRating Float      @default(5.0)
 
   // anti-abuse system
-  trustScore             Int       @default(50)   // 0-100 computed score
-  verificationLevel      Int       @default(0)    // 0=none 1=phone 2=email 3=both 4=ID
+  trustScore             Int       @default(50)
+  verificationLevel      Int       @default(0)
   phoneVerified          Boolean   @default(false)
   emailVerified          Boolean   @default(false)
   urgentOverridesUsed    Int       @default(0)
@@ -35,14 +35,26 @@ model User {
   docStatus    DocStatus @default(UNVERIFIED)
   documentUrl  String?
   documentType String?
-  documentNote String?   // admin message (rejection reason etc.)
+  documentNote String?
   verifiedAt   DateTime?
 
   status    UserStatus @default(ACTIVE)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
-  // existing relations
+  // ── cohort / onboarding ──────────────────────────
+  onboardingComplete Boolean  @default(false)
+  journeyType        String?   // "pregnant" | "postpartum"
+  dueDate            DateTime?
+  babyBirthDate      DateTime?
+  currentStage       String?   // stageKey e.g. "pregnancy-4-6"
+  countryCode        String?   // ISO 3166-1 alpha-2
+  countryFlag        String?   // flag emoji derived from countryCode
+  subTags            String[]  @default([])
+  currentCircleId    String?   // FK (soft) to Circle — user's active cohort circle
+  graduatedCircleIds String[]  @default([])
+
+  // relations
   items                    Item[]
   requests                 Request[]
   sentMessages             Message[]                 @relation("SentMessages")
@@ -55,18 +67,16 @@ model User {
   donorAssignments         ItemAssignment[]          @relation("DonorAssignments")
   sentRegisterMessages     RegisterMessage[]         @relation("SentRegisterMessages")
 
-  // trust system relations
   otpVerifications  OtpVerification[]
   categoryCooldowns CategoryCooldown[]
   urgentOverrides   UrgentOverride[]
   deviceLogs        DeviceLog[]
 
-  // circles
-  circleMembers     CircleMember[]
-  circlePosts       CirclePost[]
-  postReactions     PostReaction[]
-  postComments      PostComment[]
-  postReports       PostReport[]
+  circleMembers CircleMember[]
+  circlePosts   CirclePost[]
+  postReactions PostReaction[]
+  postComments  PostComment[]
+  postReports   PostReport[]
 }
 
 // ==================== ITEMS ====================
@@ -285,7 +295,7 @@ model DeviceLog {
   userId      String
   ipAddress   String?
   userAgent   String?
-  action      String   // "login" | "register"
+  action      String
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -353,20 +363,35 @@ enum DocStatus {
 // ==================== CIRCLES ====================
 
 model Circle {
-  id        String   @id @default(cuid())
-  name      String
-  country   String   @unique
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  name        String
+  emoji       String?
+  country     String?  @unique   // country-based circles
+  stageKey    String?  @unique   // cohort circles e.g. "pregnancy-4-6"
+  groupLetter String?            // cohort group letter e.g. "A"
+  createdAt   DateTime @default(now())
 
-  members CircleMember[]
-  posts   CirclePost[]
+  members  CircleMember[]
+  posts    CirclePost[]
+  channels CircleChannel[]
+}
+
+model CircleChannel {
+  id       String @id @default(cuid())
+  circleId String
+  name     String
+  emoji    String
+  order    Int    @default(0)
+
+  circle Circle      @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  posts  CirclePost[]
 }
 
 model CircleMember {
-  userId      String
-  circleId    String
-  joinedAt    DateTime @default(now())
-  isLeader    Boolean  @default(false)
+  userId       String
+  circleId     String
+  joinedAt     DateTime  @default(now())
+  isLeader     Boolean   @default(false)
   lastViewedAt DateTime?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -382,12 +407,14 @@ model CirclePost {
   content   String
   category  PostCategory
   photoUrl  String?
+  channelId String?
   isPinned  Boolean      @default(false)
   isHidden  Boolean      @default(false)
   createdAt DateTime     @default(now())
 
-  circle      Circle        @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  circle      Circle         @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel     CircleChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
   reactions   PostReaction[]
   comments    PostComment[]
   reports     PostReport[]

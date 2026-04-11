@@ -15,8 +15,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { id: circleId } = await params;
   const { searchParams } = new URL(req.url);
-  const category = searchParams.get("category"); // null = all
-  const cursor = searchParams.get("cursor") ?? undefined;
+  const category  = searchParams.get("category");  // null = all
+  const channelId = searchParams.get("channelId"); // null = all channels
+  const cursor    = searchParams.get("cursor") ?? undefined;
 
   // Verify membership
   const membership = await prisma.circleMember.findFirst({
@@ -28,7 +29,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     where: {
       circleId,
       isHidden: false,
-      ...(category && category !== "ALL" ? { category: category as never } : {}),
+      ...(category  && category  !== "ALL"  ? { category:  category as never } : {}),
+      ...(channelId && channelId !== "ALL"  ? { channelId } : {}),
     },
     orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
     take: 20,
@@ -41,14 +43,17 @@ export async function GET(req: NextRequest, { params }: Params) {
           avatar: true,
           location: true,
           trustScore: true,
+          countryFlag: true,
+          subTags: true,
           circleMembers: {
             where: { circleId },
             select: { isLeader: true },
           },
         },
       },
+      channel:   { select: { id: true, name: true, emoji: true } },
       reactions: { select: { type: true, userId: true } },
-      _count: { select: { comments: true } },
+      _count:    { select: { comments: true } },
     },
   });
 
@@ -62,21 +67,26 @@ export async function GET(req: NextRequest, { params }: Params) {
     const loc = p.user.location ?? "";
     const city = loc.includes(",") ? loc.split(",")[0].trim() : null;
     return {
-      id: p.id,
-      content: p.content,
-      category: p.category,
-      photoUrl: p.photoUrl,
-      isPinned: p.isPinned,
+      id:        p.id,
+      content:   p.content,
+      category:  p.category,
+      photoUrl:  p.photoUrl,
+      isPinned:  p.isPinned,
       createdAt: p.createdAt,
+      channelId:   p.channel?.id   ?? null,
+      channelName: p.channel?.name ?? null,
+      channelEmoji: p.channel?.emoji ?? null,
       author: {
-        id: p.user.id,
-        name: p.user.name,
-        avatar: p.user.avatar,
+        id:          p.user.id,
+        name:        p.user.name,
+        avatar:      p.user.avatar,
         city,
-        trustScore: p.user.trustScore,
-        isLeader: p.user.circleMembers[0]?.isLeader ?? false,
+        countryFlag: p.user.countryFlag ?? null,
+        subTags:     p.user.subTags ?? [],
+        trustScore:  p.user.trustScore,
+        isLeader:    p.user.circleMembers[0]?.isLeader ?? false,
       },
-      reactions: { ...reactionCounts, myReaction },
+      reactions:    { ...reactionCounts, myReaction },
       commentCount: p._count.comments,
     };
   });
@@ -99,12 +109,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const contentType = req.headers.get("content-type") ?? "";
   let content = "";
   let category = "";
+  let channelId: string | null = null;
   let photoUrl: string | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     const fd = await req.formData();
-    content = (fd.get("content") as string) ?? "";
-    category = (fd.get("category") as string) ?? "";
+    content   = (fd.get("content")   as string) ?? "";
+    category  = (fd.get("category")  as string) ?? "";
+    channelId = (fd.get("channelId") as string) || null;
     const file = fd.get("photo") as File | null;
     if (file && file.size > 0) {
       const buf = Buffer.from(await file.arrayBuffer());
@@ -112,8 +124,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   } else {
     const body = await req.json();
-    content = body.content ?? "";
-    category = body.category ?? "";
+    content   = body.content   ?? "";
+    category  = body.category  ?? "";
+    channelId = body.channelId ?? null;
   }
 
   content = content.trim();
@@ -126,14 +139,21 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Keyword filter
   const flagged = checkCircleContent(content);
 
+  // Validate channelId belongs to this circle (if provided)
+  if (channelId) {
+    const ch = await prisma.circleChannel.findFirst({ where: { id: channelId, circleId } });
+    if (!ch) channelId = null;
+  }
+
   const post = await prisma.circlePost.create({
     data: {
       circleId,
       userId: auth.userId,
       content,
       category: category as never,
+      channelId,
       photoUrl,
-      isHidden: !!flagged, // hide flagged posts pending review
+      isHidden: !!flagged,
     },
   });
 

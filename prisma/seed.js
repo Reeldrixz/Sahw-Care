@@ -98,6 +98,97 @@ async function main() {
   }
   console.log(`✓ ${reviewsCreated} reviews created`);
 
+  // ── Cohort circles ──────────────────────────────────────────────────────────
+  console.log("Seeding cohort circles...");
+
+  const COHORT_CIRCLES = [
+    {
+      stageKey: "pregnancy-0-3",    name: "0–3 Months Pregnant",       emoji: "🤰", groupLetter: "A",
+      channels: [
+        { name: "Body Changes",             emoji: "🤱", order: 1 },
+        { name: "Food & Diet",              emoji: "🍽️", order: 2 },
+        { name: "Emotions & Mental Health", emoji: "🧠", order: 3 },
+        { name: "Doctor & Health",          emoji: "🏥", order: 4 },
+        { name: "General Chat",             emoji: "💬", order: 5 },
+      ],
+    },
+    {
+      stageKey: "pregnancy-4-6",    name: "4–6 Months Pregnant",       emoji: "🤰", groupLetter: "A",
+      channels: [
+        { name: "Body Changes",             emoji: "🤱", order: 1 },
+        { name: "Food & Diet",              emoji: "🍽️", order: 2 },
+        { name: "Emotions & Mental Health", emoji: "🧠", order: 3 },
+        { name: "Doctor & Health",          emoji: "🏥", order: 4 },
+        { name: "General Chat",             emoji: "💬", order: 5 },
+      ],
+    },
+    {
+      stageKey: "pregnancy-7-9",    name: "7–9 Months Pregnant",       emoji: "🤰", groupLetter: "A",
+      channels: [
+        { name: "Body Changes",             emoji: "🤱", order: 1 },
+        { name: "Food & Diet",              emoji: "🍽️", order: 2 },
+        { name: "Emotions & Mental Health", emoji: "🧠", order: 3 },
+        { name: "Doctor & Health",          emoji: "🏥", order: 4 },
+        { name: "General Chat",             emoji: "💬", order: 5 },
+      ],
+    },
+    {
+      stageKey: "postpartum-0-3",   name: "Newborn Stage (0–3 months)",  emoji: "👶", groupLetter: "A",
+      channels: [
+        { name: "Recovery & Wellness", emoji: "💪", order: 1 },
+        { name: "Feeding",             emoji: "🍼", order: 2 },
+        { name: "Sleep",               emoji: "😴", order: 3 },
+        { name: "Baby Development",    emoji: "🌱", order: 4 },
+        { name: "General Chat",        emoji: "💬", order: 5 },
+      ],
+    },
+    {
+      stageKey: "postpartum-4-6",   name: "Infant Stage (4–6 months)",   emoji: "🍼", groupLetter: "A",
+      channels: [
+        { name: "Recovery & Wellness", emoji: "💪", order: 1 },
+        { name: "Feeding",             emoji: "🍼", order: 2 },
+        { name: "Sleep",               emoji: "😴", order: 3 },
+        { name: "Baby Development",    emoji: "🌱", order: 4 },
+        { name: "General Chat",        emoji: "💬", order: 5 },
+      ],
+    },
+    {
+      stageKey: "postpartum-7-12",  name: "Infant Stage (7–12 months)",  emoji: "🍼", groupLetter: "A",
+      channels: [
+        { name: "Recovery & Wellness", emoji: "💪", order: 1 },
+        { name: "Feeding",             emoji: "🍼", order: 2 },
+        { name: "Sleep",               emoji: "😴", order: 3 },
+        { name: "Baby Development",    emoji: "🌱", order: 4 },
+        { name: "General Chat",        emoji: "💬", order: 5 },
+      ],
+    },
+    {
+      stageKey: "postpartum-13-24", name: "Toddler Stage (1–2 years)",   emoji: "🧸", groupLetter: "A",
+      channels: [
+        { name: "Recovery & Wellness", emoji: "💪", order: 1 },
+        { name: "Feeding",             emoji: "🍼", order: 2 },
+        { name: "Sleep",               emoji: "😴", order: 3 },
+        { name: "Baby Development",    emoji: "🌱", order: 4 },
+        { name: "General Chat",        emoji: "💬", order: 5 },
+      ],
+    },
+  ];
+
+  for (const c of COHORT_CIRCLES) {
+    const circle = await prisma.circle.upsert({
+      where: { stageKey: c.stageKey },
+      create:  { name: c.name, emoji: c.emoji, stageKey: c.stageKey, groupLetter: c.groupLetter },
+      update:  { name: c.name, emoji: c.emoji, groupLetter: c.groupLetter },
+    });
+    for (const ch of c.channels) {
+      const exists = await prisma.circleChannel.findFirst({ where: { circleId: circle.id, name: ch.name } });
+      if (!exists) {
+        await prisma.circleChannel.create({ data: { circleId: circle.id, name: ch.name, emoji: ch.emoji, order: ch.order } });
+      }
+    }
+    console.log(`  ✓ ${c.emoji} ${c.name}`);
+  }
+
   console.log("\n✅ Seed complete! Visit http://localhost:3000");
   console.log("   Test accounts (password: password123):");
   console.log("   Donor:     amara@carecircle.ng");
