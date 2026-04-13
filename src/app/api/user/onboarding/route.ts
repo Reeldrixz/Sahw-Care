@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateStage, countryCodeToFlag, countryNameToCode, extractCountryFromLocation } from "@/lib/stage";
+import { sendNewSignupNotification } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
         _count: { select: { items: true, requests: true } },
       },
     });
+    fireSignupNotification(updated.name, journeyType, updated.createdAt);
     return NextResponse.json({ user: updated, circleId: null });
   }
 
@@ -133,5 +135,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  fireSignupNotification(updated.name, journeyType, updated.createdAt);
   return NextResponse.json({ user: updated, circleId: circle.id });
+}
+
+// ── Fire-and-forget signup notification ─────────────────────────────────────
+function fireSignupNotification(name: string, journeyType: string, createdAt: Date) {
+  prisma.user.count({ where: { onboardingComplete: true } })
+    .then((total) =>
+      sendNewSignupNotification({
+        firstName:   name.split(" ")[0],
+        journeyType,
+        signedUpAt:  createdAt,
+        totalUsers:  total,
+      })
+    )
+    .catch(() => {}); // never let notification errors affect the response
 }
