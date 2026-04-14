@@ -53,8 +53,9 @@ model User {
   countryCode        String?   // ISO 3166-1 alpha-2
   countryFlag        String?   // flag emoji derived from countryCode
   subTags            String[]  @default([])
-  currentCircleId    String?   // FK (soft) to Circle — user's active cohort circle
+  currentCircleId    String?   // FK (soft) to Circle — user's active cohort circle (= primaryCircleId)
   graduatedCircleIds String[]  @default([])
+  lastStageCheck     DateTime?
 
   // relations
   items                    Item[]
@@ -392,9 +393,11 @@ model CircleChannel {
 model CircleMember {
   userId       String
   circleId     String
-  joinedAt     DateTime  @default(now())
-  isLeader     Boolean   @default(false)
+  joinedAt     DateTime         @default(now())
+  isLeader     Boolean          @default(false)
   lastViewedAt DateTime?
+  accessType   CircleAccessType @default(FULL)
+  isGraduated  Boolean          @default(false)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
@@ -436,11 +439,12 @@ model PostReaction {
 }
 
 model PostComment {
-  id        String   @id @default(cuid())
-  postId    String
-  userId    String
-  content   String
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  postId        String
+  userId        String
+  content       String
+  identityLabel String?  // computed at creation: "Previously in this stage" | "Mom in [stage]" | null
+  createdAt     DateTime @default(now())
 
   post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -487,4 +491,9 @@ enum FlagStatus {
   PENDING
   APPROVED
   REMOVED
+}
+
+enum CircleAccessType {
+  FULL
+  READ_COMMENT
 }

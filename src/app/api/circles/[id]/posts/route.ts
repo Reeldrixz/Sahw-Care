@@ -15,22 +15,35 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { id: circleId } = await params;
   const { searchParams } = new URL(req.url);
-  const category  = searchParams.get("category");  // null = all
-  const channelId = searchParams.get("channelId"); // null = all channels
+  const category  = searchParams.get("category");
+  const channelId = searchParams.get("channelId");
   const cursor    = searchParams.get("cursor") ?? undefined;
 
-  // Verify membership
-  const membership = await prisma.circleMember.findFirst({
+  // ── Access gate: donors cannot view circles ──────────────────────────────
+  const user = await prisma.user.findUnique({
+    where:  { id: auth.userId },
+    select: { journeyType: true, onboardingComplete: true },
+  });
+  if (user?.journeyType === "donor") {
+    return NextResponse.json({ error: "Circles are only available for mothers." }, { status: 403 });
+  }
+
+  // ── Auto-join as READ_COMMENT if not yet a member ────────────────────────
+  const existing = await prisma.circleMember.findFirst({
     where: { userId: auth.userId, circleId },
   });
-  if (!membership) return NextResponse.json({ error: "Not a member of this circle" }, { status: 403 });
+  if (!existing) {
+    await prisma.circleMember.create({
+      data: { userId: auth.userId, circleId, accessType: "READ_COMMENT" },
+    }).catch(() => {}); // ignore if race condition creates duplicate
+  }
 
   const posts = await prisma.circlePost.findMany({
     where: {
       circleId,
       isHidden: false,
-      ...(category  && category  !== "ALL"  ? { category:  category as never } : {}),
-      ...(channelId && channelId !== "ALL"  ? { channelId } : {}),
+      ...(category  && category  !== "ALL" ? { category: category as never } : {}),
+      ...(channelId && channelId !== "ALL" ? { channelId } : {}),
     },
     orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
     take: 20,
@@ -64,17 +77,17 @@ export async function GET(req: NextRequest, { params }: Params) {
       reactionCounts[r.type]++;
       if (r.userId === auth.userId) myReaction = r.type;
     }
-    const loc = p.user.location ?? "";
+    const loc  = p.user.location ?? "";
     const city = loc.includes(",") ? loc.split(",")[0].trim() : null;
     return {
-      id:        p.id,
-      content:   p.content,
-      category:  p.category,
-      photoUrl:  p.photoUrl,
-      isPinned:  p.isPinned,
-      createdAt: p.createdAt,
-      channelId:   p.channel?.id   ?? null,
-      channelName: p.channel?.name ?? null,
+      id:           p.id,
+      content:      p.content,
+      category:     p.category,
+      photoUrl:     p.photoUrl,
+      isPinned:     p.isPinned,
+      createdAt:    p.createdAt,
+      channelId:    p.channel?.id    ?? null,
+      channelName:  p.channel?.name  ?? null,
       channelEmoji: p.channel?.emoji ?? null,
       author: {
         id:          p.user.id,
@@ -91,7 +104,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     };
   });
 
-  return NextResponse.json({ posts: formatted, nextCursor: formatted[formatted.length - 1]?.id ?? null });
+  return NextResponse.json({
+    posts:      formatted,
+    nextCursor: formatted[formatted.length - 1]?.id ?? null,
+  });
 }
 
 export async function POST(req: NextRequest, { params }: Params) {
@@ -101,16 +117,29 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { id: circleId } = await params;
 
-  const membership = await prisma.circleMember.findFirst({
-    where: { userId: auth.userId, circleId },
+  // ── Access enforcement ───────────────────────────────────────────────────
+  const user = await prisma.user.findUnique({
+    where:  { id: auth.userId },
+    select: { journeyType: true, currentCircleId: true },
   });
-  if (!membership) return NextResponse.json({ error: "Not a member of this circle" }, { status: 403 });
 
+  if (user?.journeyType === "donor") {
+    return NextResponse.json({ error: "Donors cannot post in circles." }, { status: 403 });
+  }
+
+  if (!user?.currentCircleId || user.currentCircleId !== circleId) {
+    return NextResponse.json(
+      { error: "You can only create posts in your current stage circle." },
+      { status: 403 },
+    );
+  }
+
+  // ── Parse body ───────────────────────────────────────────────────────────
   const contentType = req.headers.get("content-type") ?? "";
   let content = "";
   let category = "";
   let channelId: string | null = null;
-  let photoUrl: string | null = null;
+  let photoUrl:  string | null = null;
 
   if (contentType.includes("multipart/form-data")) {
     const fd = await req.formData();
@@ -136,25 +165,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   const VALID_CATS = ["TIP", "STORY", "GRATITUDE", "QUESTION"];
   if (!VALID_CATS.includes(category)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
 
-  // Keyword filter
   const flagged = checkCircleContent(content);
 
-  // Validate channelId belongs to this circle (if provided)
   if (channelId) {
     const ch = await prisma.circleChannel.findFirst({ where: { id: channelId, circleId } });
     if (!ch) channelId = null;
   }
 
   const post = await prisma.circlePost.create({
-    data: {
-      circleId,
-      userId: auth.userId,
-      content,
-      category: category as never,
-      channelId,
-      photoUrl,
-      isHidden: !!flagged,
-    },
+    data: { circleId, userId: auth.userId, content, category: category as never, channelId, photoUrl, isHidden: !!flagged },
   });
 
   if (flagged) {
@@ -164,5 +183,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ post: null, flagged: true, message: "Your post is under review before it appears in the circle." });
   }
 
-  return NextResponse.json({ post: { id: post.id, content: post.content, category: post.category, photoUrl: post.photoUrl, isPinned: false, createdAt: post.createdAt }, flagged: false });
+  return NextResponse.json({
+    post: { id: post.id, content: post.content, category: post.category, photoUrl: post.photoUrl, isPinned: false, createdAt: post.createdAt },
+    flagged: false,
+  });
 }

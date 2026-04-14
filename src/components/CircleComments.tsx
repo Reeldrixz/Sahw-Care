@@ -6,6 +6,7 @@ import Avatar from "./Avatar";
 interface Comment {
   id: string;
   content: string;
+  identityLabel: string | null;
   createdAt: string;
   author: { id: string; name: string; avatar: string | null; city: string | null };
 }
@@ -81,11 +82,16 @@ export default function CircleComments({ postId, onClose }: Props) {
               <div key={c.id} style={{ display: "flex", gap: 10, marginBottom: 14 }}>
                 <Avatar src={c.author.avatar} name={c.author.name} size={30} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: c.identityLabel ? 1 : 3 }}>
                     <span style={{ fontSize: 13, fontWeight: 800 }}>{c.author.name.split(" ")[0]}</span>
                     {c.author.city && <span style={{ fontSize: 11, color: "var(--mid)" }}>{c.author.city}</span>}
                     <span style={{ fontSize: 11, color: "var(--light)", marginLeft: "auto" }}>{timeAgo(c.createdAt)}</span>
                   </div>
+                  {c.identityLabel && (
+                    <div style={{ fontSize: 11, color: "var(--mid)", fontStyle: "italic", marginBottom: 4 }}>
+                      {c.identityLabel}
+                    </div>
+                  )}
                   <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--ink)", background: "var(--bg)", padding: "8px 12px", borderRadius: "4px 12px 12px 12px" }}>
                     {c.content}
                   </div>

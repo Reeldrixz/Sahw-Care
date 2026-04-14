@@ -6,11 +6,24 @@ import { useAuth } from "@/contexts/AuthContext";
 import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
-import { STAGE_META } from "@/lib/stage";
+import { STAGE_META, StageKey } from "@/lib/stage";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION";
+
+interface StageCircle {
+  id:          string;
+  name:        string;
+  emoji:       string | null;
+  stageKey:    string;
+  groupLetter: string | null;
+  memberCount: number;
+  postCount:   number;
+  isPrimary:   boolean;
+  isGraduated: boolean;
+  accessType:  string | null;
+}
 
 interface CohortCircle {
   id: string;
@@ -98,6 +111,17 @@ export default function CirclesPage() {
   const [activeChannel,  setActiveChannel]  = useState<string>("ALL");
   const [loadingCohort,  setLoadingCohort]  = useState(false);
 
+  // Explore / previous circles
+  const [allStages,    setAllStages]    = useState<StageCircle[]>([]);
+  const [exploreOpen,  setExploreOpen]  = useState(false);
+  const [prevOpen,     setPrevOpen]     = useState(false);
+
+  // Visiting (non-primary circle browse)
+  const [visitingCircle,     setVisitingCircle]     = useState<StageCircle | null>(null);
+  const [visitPosts,         setVisitPosts]         = useState<Post[]>([]);
+  const [visitLoading,       setVisitLoading]       = useState(false);
+  const [visitCommentsPostId,setVisitCommentsPostId]= useState<string | null>(null);
+
   // Country circle state (fallback)
   const [countryCircle,   setCountryCircle]   = useState<CountryCircle | null>(null);
   const [countryMember,   setCountryMember]   = useState<Member | null>(null);
@@ -160,6 +184,37 @@ export default function CirclesPage() {
       setLoadingCountry(false);
     })();
   }, [user]);
+
+  // ── Load all stage circles for Explore section ───────────────────────────
+  useEffect(() => {
+    if (!user?.currentCircleId) return;
+    fetch("/api/circles/stages", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setAllStages(d.circles ?? []));
+  }, [user?.currentCircleId]);
+
+  // ── Visit a non-primary circle ────────────────────────────────────────────
+  const openVisiting = useCallback(async (circle: StageCircle) => {
+    setVisitingCircle(circle);
+    setVisitPosts([]);
+    setVisitLoading(true);
+    const res = await fetch(`/api/circles/${circle.id}/posts?category=ALL`, { cache: "no-store" });
+    if (res.ok) {
+      const d = await res.json();
+      setVisitPosts(d.posts ?? []);
+    }
+    setVisitLoading(false);
+  }, []);
+
+  const closeVisiting = useCallback(() => {
+    setVisitingCircle(null);
+    setVisitPosts([]);
+    setVisitCommentsPostId(null);
+    // refresh allStages so accessType updates after auto-join
+    fetch("/api/circles/stages", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setAllStages(d.circles ?? []));
+  }, []);
 
   // ── Load posts ────────────────────────────────────────────────────────────
   const loadPosts = useCallback(async (reset = false) => {
@@ -306,6 +361,89 @@ export default function CirclesPage() {
     );
   }
 
+  // ── Visiting a non-primary circle ────────────────────────────────────────
+
+  if (visitingCircle) {
+    const meta = STAGE_META[visitingCircle.stageKey as StageKey];
+    const bannerText = visitingCircle.isGraduated
+      ? "You previously belonged to this circle. Your posts are still here and you can still comment!"
+      : "You are visiting this circle — you can read and comment, but posting is for members at this stage.";
+
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
+        {/* Header */}
+        <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "16px 16px 14px" }}>
+          <button
+            onClick={closeVisiting}
+            style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 20, padding: "6px 14px", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 10, fontFamily: "Nunito, sans-serif" }}
+          >
+            ← Back to my circle
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 28 }}>{visitingCircle.emoji ?? "🤝"}</span>
+            <div>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "white" }}>
+                {visitingCircle.name}
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
+                {visitingCircle.memberCount.toLocaleString()} members · {visitingCircle.isGraduated ? "Previous circle" : "Visiting"}
+              </div>
+            </div>
+          </div>
+          {meta && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "4px 12px", marginTop: 8 }}>
+              <span style={{ fontSize: 13 }}>{meta.emoji}</span>
+              <span style={{ fontSize: 11, color: "white", fontWeight: 700 }}>{meta.label}</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: "14px 16px 0" }}>
+          {/* Visiting / graduated banner */}
+          <div style={{
+            background: visitingCircle.isGraduated ? "#f0f7ff" : "#fdf8e8",
+            border: `1.5px solid ${visitingCircle.isGraduated ? "#90c4f9" : "#f6c90e"}`,
+            borderRadius: 14, padding: "12px 16px", marginBottom: 16, fontSize: 13, lineHeight: 1.6,
+            color: visitingCircle.isGraduated ? "#1a5c9e" : "#8a6800",
+          }}>
+            {visitingCircle.isGraduated ? "📚 " : "👀 "}{bannerText}
+          </div>
+
+          {/* Post feed — no composer */}
+          {visitLoading ? (
+            <div className="loading" style={{ minHeight: 200 }}><div className="spinner" /></div>
+          ) : visitPosts.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--mid)" }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>✨</div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>No posts here yet</div>
+            </div>
+          ) : (
+            <>
+              {visitPosts.map((post) => (
+                <CirclePostCard
+                  key={post.id}
+                  post={post}
+                  currentUserId={user!.id}
+                  isAdminOrLeader={false}
+                  onOpenComments={setVisitCommentsPostId}
+                  onDelete={() => {}}
+                  onPin={() => {}}
+                />
+              ))}
+            </>
+          )}
+        </div>
+
+        {visitCommentsPostId && (
+          <CircleComments
+            postId={visitCommentsPostId}
+            onClose={() => setVisitCommentsPostId(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
   // ── Cohort circle view ────────────────────────────────────────────────────
 
   if (cohortCircle) {
@@ -445,6 +583,65 @@ export default function CirclesPage() {
           />
         </div>
 
+          {/* ── Explore All Circles ─────────────────────────────────── */}
+          {allStages.filter((c) => !c.isPrimary).length > 0 && (
+            <div style={{ marginTop: 24, marginBottom: 8 }}>
+              <button
+                onClick={() => setExploreOpen((v) => !v)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 16px", borderRadius: 14, border: "1.5px solid var(--border)",
+                  background: "var(--white)", cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  fontSize: 14, fontWeight: 800, color: "var(--ink)",
+                }}
+              >
+                <span>🌍 Explore All Circles</span>
+                <span style={{ fontSize: 12, color: "var(--mid)" }}>{exploreOpen ? "↑ Hide" : "↓ Show"}</span>
+              </button>
+              {exploreOpen && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                  {allStages.filter((c) => !c.isPrimary && !c.isGraduated).map((c) => (
+                    <StageCircleCard key={c.id} circle={c} onVisit={() => openVisiting(c)} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Previous Circles ─────────────────────────────────────── */}
+          {allStages.filter((c) => c.isGraduated).length > 0 && (
+            <div style={{ marginTop: 12, marginBottom: 24 }}>
+              <button
+                onClick={() => setPrevOpen((v) => !v)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 16px", borderRadius: 14, border: "1.5px solid var(--border)",
+                  background: "var(--white)", cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  fontSize: 14, fontWeight: 800, color: "var(--ink)",
+                }}
+              >
+                <span>📚 Previous Circles</span>
+                <span style={{ fontSize: 12, color: "var(--mid)" }}>{prevOpen ? "↑ Hide" : `↓ ${allStages.filter((c) => c.isGraduated).length} circle${allStages.filter((c) => c.isGraduated).length > 1 ? "s" : ""}`}</span>
+              </button>
+              {prevOpen && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                  {allStages.filter((c) => c.isGraduated).map((c) => (
+                    <StageCircleCard key={c.id} circle={c} isGraduated onVisit={() => openVisiting(c)} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+        {/* Toddler stage special message */}
+        {user?.currentStage === "postpartum-13-24" && (
+          <div style={{ margin: "0 16px 16px", background: "linear-gradient(135deg, #fdf3e0, #fef9ef)", borderRadius: 14, padding: "14px 16px", border: "1.5px solid #f6c90e" }}>
+            <span style={{ fontSize: 14, color: "#8a6800", fontWeight: 700 }}>
+              🧸 You&apos;re in the Toddler stage — our most experienced moms! Thank you for being here.
+            </span>
+          </div>
+        )}
+
         {commentsPostId && (
           <CircleComments postId={commentsPostId} onClose={() => { setCommentsPostId(null); loadPosts(true); }} />
         )}
@@ -565,6 +762,49 @@ function PostFeed({ posts, loading, hasMore, circleName, currentUserId, isAdminO
         </button>
       )}
     </>
+  );
+}
+
+// ── Stage Circle Card (used in Explore + Previous sections) ──────────────────
+
+function StageCircleCard({ circle, isGraduated, onVisit }: { circle: StageCircle; isGraduated?: boolean; onVisit: () => void }) {
+  const meta = STAGE_META[circle.stageKey as StageKey];
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 14,
+        padding: "14px 16px", borderRadius: 14,
+        border: `1.5px solid ${isGraduated ? "#e5e7eb" : "var(--border)"}`,
+        background: isGraduated ? "#f9fafb" : "var(--white)",
+      }}
+    >
+      <div style={{ fontSize: 28, flexShrink: 0 }}>{circle.emoji ?? "🤝"}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--ink)", marginBottom: 2 }}>
+          {circle.name}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--mid)" }}>
+          {circle.memberCount.toLocaleString()} members
+          {isGraduated && <span style={{ marginLeft: 6, color: "#9ca3af", fontStyle: "italic" }}>• Previously here</span>}
+        </div>
+        {meta && (
+          <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, marginTop: 2 }}>
+            {meta.emoji} {meta.label}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={onVisit}
+        style={{
+          flexShrink: 0, padding: "7px 14px", borderRadius: 20,
+          border: "none", background: isGraduated ? "var(--bg)" : "var(--green-light)",
+          color: isGraduated ? "var(--mid)" : "var(--green)",
+          fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+        }}
+      >
+        {isGraduated ? "Visit" : "Visit →"}
+      </button>
+    </div>
   );
 }
 
