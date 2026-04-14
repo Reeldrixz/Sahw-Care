@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
   });
 
   const meta = STAGE_META[newStageKey as StageKey];
-  const newStageName = meta ? `${meta.emoji} ${meta.label}` : newStageKey;
+  const newStageName = meta?.label ?? newStageKey;
 
   const isToddler = newStageKey === "postpartum-13-24";
 
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     circleId:     newCircle.id,
     toddler:      isToddler,
     message:      isToddler
-      ? "You're in the Toddler stage — our most experienced moms! 🧸"
+      ? "You're in the Little Steps circle — our most experienced moms!"
       : `Your circle has updated! Welcome to ${newStageName} 🎉 Your journey continues…`,
   });
 }

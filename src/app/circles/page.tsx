@@ -7,6 +7,24 @@ import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
 import { STAGE_META, StageKey } from "@/lib/stage";
+import { HeartPulse, Heart, Smile, Star, LayoutGrid, type LucideIcon } from "lucide-react";
+
+// ── Stage icon mapping ────────────────────────────────────────────────────────
+
+const STAGE_ICONS: Record<string, LucideIcon> = {
+  "pregnancy-0-3":    HeartPulse,
+  "pregnancy-4-6":    HeartPulse,
+  "pregnancy-7-9":    HeartPulse,
+  "postpartum-0-3":   Heart,
+  "postpartum-4-6":   Smile,
+  "postpartum-7-12":  Smile,
+  "postpartum-13-24": Star,
+};
+
+function StageIcon({ stageKey, size = 20, color = "#1a7a5e" }: { stageKey: string; size?: number; color?: string }) {
+  const Icon = STAGE_ICONS[stageKey] ?? Heart;
+  return <Icon size={size} strokeWidth={1.75} color={color} />;
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,7 +132,6 @@ export default function CirclesPage() {
   // Explore / previous circles
   const [allStages,    setAllStages]    = useState<StageCircle[]>([]);
   const [exploreOpen,  setExploreOpen]  = useState(false);
-  const [prevOpen,     setPrevOpen]     = useState(false);
 
   // Visiting (non-primary circle browse)
   const [visitingCircle,     setVisitingCircle]     = useState<StageCircle | null>(null);
@@ -379,23 +396,19 @@ export default function CirclesPage() {
           >
             ← Back to my circle
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 28 }}>{visitingCircle.emoji ?? "🤝"}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <StageIcon stageKey={visitingCircle.stageKey} size={22} color="white" />
+            </div>
             <div>
-              <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "white" }}>
-                {visitingCircle.name}
+              <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "white", lineHeight: 1.2 }}>
+                {meta?.label ?? visitingCircle.name}
               </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
-                {visitingCircle.memberCount.toLocaleString()} members · {visitingCircle.isGraduated ? "Previous circle" : "Visiting"}
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>
+                {meta?.description ?? `${visitingCircle.memberCount.toLocaleString()} members`}
               </div>
             </div>
           </div>
-          {meta && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "4px 12px", marginTop: 8 }}>
-              <span style={{ fontSize: 13 }}>{meta.emoji}</span>
-              <span style={{ fontSize: 11, color: "white", fontWeight: 700 }}>{meta.label}</span>
-            </div>
-          )}
         </div>
 
         <div style={{ padding: "14px 16px 0" }}>
@@ -462,29 +475,31 @@ export default function CirclesPage() {
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
         {/* Circle header */}
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 0" }}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 4 }}>
-            YOUR CIRCLE · GROUP {cohortCircle.groupLetter ?? "A"}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 28 }}>{cohortCircle.emoji ?? "🤝"}</span>
-            <div>
-              <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white" }}>
-                {cohortCircle.name}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <StageIcon stageKey={cohortCircle.stageKey ?? ""} size={22} color="white" />
               </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
-                {cohortCircle._count.members.toLocaleString()} members
-                {cohortMember && ` · Joined ${joined === 0 ? "today" : `${joined}d ago`}`}
+              <div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 2 }}>
+                  YOUR CIRCLE
+                </div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.2 }}>
+                  {stageMeta?.label ?? cohortCircle.name}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 3 }}>
+                  {stageMeta?.description ?? `${cohortCircle._count.members.toLocaleString()} members`}
+                </div>
               </div>
             </div>
+            <button
+              onClick={() => setExploreOpen(true)}
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, marginTop: 2 }}
+              title="Explore all circles"
+            >
+              <LayoutGrid size={18} color="white" />
+            </button>
           </div>
-
-          {/* Stage badge */}
-          {stageMeta && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "4px 12px", marginBottom: 12 }}>
-              <span style={{ fontSize: 13 }}>{stageMeta.emoji}</span>
-              <span style={{ fontSize: 11, color: "white", fontWeight: 700 }}>{stageMeta.label}</span>
-            </div>
-          )}
 
           {/* Sub-channel tabs */}
           {cohortChannels.length > 0 && (
@@ -571,7 +586,7 @@ export default function CirclesPage() {
             posts={posts}
             loading={loadingPosts}
             hasMore={hasMore}
-            circleName={cohortCircle.name}
+            circleName={stageMeta?.label ?? cohortCircle.name}
             currentUserId={user.id}
             isAdminOrLeader={isAdminOrLeader}
             commentsPostId={commentsPostId}
@@ -583,67 +598,39 @@ export default function CirclesPage() {
           />
         </div>
 
-          {/* ── Explore All Circles ─────────────────────────────────── */}
-          {allStages.filter((c) => !c.isPrimary).length > 0 && (
-            <div style={{ marginTop: 24, marginBottom: 8 }}>
-              <button
-                onClick={() => setExploreOpen((v) => !v)}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 16px", borderRadius: 14, border: "1.5px solid var(--border)",
-                  background: "var(--white)", cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                  fontSize: 14, fontWeight: 800, color: "var(--ink)",
-                }}
-              >
-                <span>🌍 Explore All Circles</span>
-                <span style={{ fontSize: 12, color: "var(--mid)" }}>{exploreOpen ? "↑ Hide" : "↓ Show"}</span>
-              </button>
-              {exploreOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                  {allStages.filter((c) => !c.isPrimary && !c.isGraduated).map((c) => (
-                    <StageCircleCard key={c.id} circle={c} onVisit={() => openVisiting(c)} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── Previous Circles ─────────────────────────────────────── */}
-          {allStages.filter((c) => c.isGraduated).length > 0 && (
-            <div style={{ marginTop: 12, marginBottom: 24 }}>
-              <button
-                onClick={() => setPrevOpen((v) => !v)}
-                style={{
-                  width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 16px", borderRadius: 14, border: "1.5px solid var(--border)",
-                  background: "var(--white)", cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                  fontSize: 14, fontWeight: 800, color: "var(--ink)",
-                }}
-              >
-                <span>📚 Previous Circles</span>
-                <span style={{ fontSize: 12, color: "var(--mid)" }}>{prevOpen ? "↑ Hide" : `↓ ${allStages.filter((c) => c.isGraduated).length} circle${allStages.filter((c) => c.isGraduated).length > 1 ? "s" : ""}`}</span>
-              </button>
-              {prevOpen && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                  {allStages.filter((c) => c.isGraduated).map((c) => (
-                    <StageCircleCard key={c.id} circle={c} isGraduated onVisit={() => openVisiting(c)} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-        {/* Toddler stage special message */}
-        {user?.currentStage === "postpartum-13-24" && (
-          <div style={{ margin: "0 16px 16px", background: "linear-gradient(135deg, #fdf3e0, #fef9ef)", borderRadius: 14, padding: "14px 16px", border: "1.5px solid #f6c90e" }}>
-            <span style={{ fontSize: 14, color: "#8a6800", fontWeight: 700 }}>
-              🧸 You&apos;re in the Toddler stage — our most experienced moms! Thank you for being here.
-            </span>
-          </div>
-        )}
-
         {commentsPostId && (
           <CircleComments postId={commentsPostId} onClose={() => { setCommentsPostId(null); loadPosts(true); }} />
+        )}
+
+        {/* ExploreSheet — full-screen overlay */}
+        {exploreOpen && (
+          <div style={{ position: "fixed", inset: 0, background: "var(--bg)", zIndex: 1000, display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 16px", position: "sticky", top: 0, zIndex: 1001 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white" }}>All Circles</div>
+                <button
+                  onClick={() => setExploreOpen(false)}
+                  style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 20, padding: "6px 14px", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                >
+                  Close
+                </button>
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
+                Explore every stage of the journey
+              </div>
+            </div>
+            <div style={{ padding: "16px 16px 80px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {allStages.map((c) => (
+                <StageCircleCard
+                  key={c.id}
+                  circle={c}
+                  isGraduated={c.isGraduated}
+                  isPrimary={c.isPrimary}
+                  onVisit={() => { setExploreOpen(false); openVisiting(c); }}
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
     );
@@ -767,43 +754,54 @@ function PostFeed({ posts, loading, hasMore, circleName, currentUserId, isAdminO
 
 // ── Stage Circle Card (used in Explore + Previous sections) ──────────────────
 
-function StageCircleCard({ circle, isGraduated, onVisit }: { circle: StageCircle; isGraduated?: boolean; onVisit: () => void }) {
+function StageCircleCard({ circle, isGraduated, isPrimary, onVisit }: { circle: StageCircle; isGraduated?: boolean; isPrimary?: boolean; onVisit: () => void }) {
   const meta = STAGE_META[circle.stageKey as StageKey];
   return (
     <div
       style={{
         display: "flex", alignItems: "center", gap: 14,
         padding: "14px 16px", borderRadius: 14,
-        border: `1.5px solid ${isGraduated ? "#e5e7eb" : "var(--border)"}`,
-        background: isGraduated ? "#f9fafb" : "var(--white)",
+        border: `1.5px solid ${isPrimary ? "var(--green)" : isGraduated ? "#e5e7eb" : "var(--border)"}`,
+        background: isPrimary ? "var(--green-light)" : isGraduated ? "#f9fafb" : "var(--white)",
       }}
     >
-      <div style={{ fontSize: 28, flexShrink: 0 }}>{circle.emoji ?? "🤝"}</div>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: isPrimary ? "var(--green)" : isGraduated ? "#e5e7eb" : "#f0f4f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <StageIcon stageKey={circle.stageKey} size={20} color={isPrimary ? "white" : isGraduated ? "#9ca3af" : "var(--green)"} />
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 800, fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--ink)", marginBottom: 2 }}>
-          {circle.name}
-        </div>
-        <div style={{ fontSize: 11, color: "var(--mid)" }}>
-          {circle.memberCount.toLocaleString()} members
-          {isGraduated && <span style={{ marginLeft: 6, color: "#9ca3af", fontStyle: "italic" }}>• Previously here</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+          <div style={{ fontWeight: 800, fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>
+            {meta?.label ?? circle.name}
+          </div>
+          {isPrimary && (
+            <span style={{ fontSize: 10, fontWeight: 800, color: "var(--green)", background: "rgba(26,122,94,0.12)", borderRadius: 20, padding: "1px 8px", fontFamily: "Nunito, sans-serif" }}>
+              Your Circle
+            </span>
+          )}
         </div>
         {meta && (
-          <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, marginTop: 2 }}>
-            {meta.emoji} {meta.label}
+          <div style={{ fontSize: 11, color: "var(--mid)", lineHeight: 1.4 }}>
+            {meta.description}
           </div>
         )}
+        <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 2 }}>
+          {circle.memberCount.toLocaleString()} members
+          {isGraduated && <span style={{ marginLeft: 6, color: "#9ca3af", fontStyle: "italic" }}>· Previously here</span>}
+        </div>
       </div>
-      <button
-        onClick={onVisit}
-        style={{
-          flexShrink: 0, padding: "7px 14px", borderRadius: 20,
-          border: "none", background: isGraduated ? "var(--bg)" : "var(--green-light)",
-          color: isGraduated ? "var(--mid)" : "var(--green)",
-          fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif",
-        }}
-      >
-        {isGraduated ? "Visit" : "Visit →"}
-      </button>
+      {!isPrimary && (
+        <button
+          onClick={onVisit}
+          style={{
+            flexShrink: 0, padding: "7px 14px", borderRadius: 20,
+            border: "none", background: isGraduated ? "var(--bg)" : "var(--green-light)",
+            color: isGraduated ? "var(--mid)" : "var(--green)",
+            fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+          }}
+        >
+          Visit
+        </button>
+      )}
     </div>
   );
 }

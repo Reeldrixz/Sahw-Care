@@ -7,22 +7,22 @@ export type StageKey =
   | "postpartum-7-12"
   | "postpartum-13-24";
 
-export const STAGE_META: Record<StageKey, { label: string; emoji: string }> = {
-  "pregnancy-0-3":    { label: "0–3 Months Pregnant",       emoji: "🤰" },
-  "pregnancy-4-6":    { label: "4–6 Months Pregnant",       emoji: "🤰" },
-  "pregnancy-7-9":    { label: "7–9 Months Pregnant",       emoji: "🤰" },
-  "postpartum-0-3":   { label: "Newborn Stage (0–3 months)", emoji: "👶" },
-  "postpartum-4-6":   { label: "Infant Stage (4–6 months)",  emoji: "🍼" },
-  "postpartum-7-12":  { label: "Infant Stage (7–12 months)", emoji: "🍼" },
-  "postpartum-13-24": { label: "Toddler Stage (1–2 years)",  emoji: "🧸" },
+export const STAGE_META: Record<StageKey, { label: string; description: string }> = {
+  "pregnancy-0-3":    { label: "The Quiet Beginning",  description: "0–3 months pregnant · First trimester"    },
+  "pregnancy-4-6":    { label: "Growing Into It",      description: "4–6 months pregnant · Second trimester"   },
+  "pregnancy-7-9":    { label: "Almost There",         description: "7–9 months pregnant · Third trimester"    },
+  "postpartum-0-3":   { label: "The Golden Hours",     description: "Newborn stage · Baby 0–3 months"          },
+  "postpartum-4-6":   { label: "Finding Your Rhythm",  description: "Infant stage · Baby 4–6 months"           },
+  "postpartum-7-12":  { label: "Into the World",       description: "Infant stage · Baby 7–12 months"          },
+  "postpartum-13-24": { label: "Little Steps",         description: "Toddler stage · Baby 1–2 years"           },
 };
 
 /** The 7 cohort circles with their sub-channel definitions. */
 export const COHORT_CIRCLES = [
   {
     stageKey: "pregnancy-0-3" as StageKey,
-    label: "0–3 Months Pregnant",
-    emoji: "🤰",
+    label: "The Quiet Beginning",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Body Changes",            emoji: "🤱", order: 1 },
@@ -34,8 +34,8 @@ export const COHORT_CIRCLES = [
   },
   {
     stageKey: "pregnancy-4-6" as StageKey,
-    label: "4–6 Months Pregnant",
-    emoji: "🤰",
+    label: "Growing Into It",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Body Changes",            emoji: "🤱", order: 1 },
@@ -47,8 +47,8 @@ export const COHORT_CIRCLES = [
   },
   {
     stageKey: "pregnancy-7-9" as StageKey,
-    label: "7–9 Months Pregnant",
-    emoji: "🤰",
+    label: "Almost There",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Body Changes",            emoji: "🤱", order: 1 },
@@ -60,8 +60,8 @@ export const COHORT_CIRCLES = [
   },
   {
     stageKey: "postpartum-0-3" as StageKey,
-    label: "Newborn Stage (0–3 months)",
-    emoji: "👶",
+    label: "The Golden Hours",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Recovery & Wellness", emoji: "💪", order: 1 },
@@ -73,8 +73,8 @@ export const COHORT_CIRCLES = [
   },
   {
     stageKey: "postpartum-4-6" as StageKey,
-    label: "Infant Stage (4–6 months)",
-    emoji: "🍼",
+    label: "Finding Your Rhythm",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Recovery & Wellness", emoji: "💪", order: 1 },
@@ -86,8 +86,8 @@ export const COHORT_CIRCLES = [
   },
   {
     stageKey: "postpartum-7-12" as StageKey,
-    label: "Infant Stage (7–12 months)",
-    emoji: "🍼",
+    label: "Into the World",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Recovery & Wellness", emoji: "💪", order: 1 },
@@ -99,8 +99,8 @@ export const COHORT_CIRCLES = [
   },
   {
     stageKey: "postpartum-13-24" as StageKey,
-    label: "Toddler Stage (1–2 years)",
-    emoji: "🧸",
+    label: "Little Steps",
+    emoji: "",
     groupLetter: "A",
     channels: [
       { name: "Recovery & Wellness", emoji: "💪", order: 1 },

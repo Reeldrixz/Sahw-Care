@@ -103,7 +103,7 @@ async function main() {
 
   const COHORT_CIRCLES = [
     {
-      stageKey: "pregnancy-0-3",    name: "0–3 Months Pregnant",       emoji: "🤰", groupLetter: "A",
+      stageKey: "pregnancy-0-3",    name: "The Quiet Beginning",   emoji: null, groupLetter: "A",
       channels: [
         { name: "Body Changes",             emoji: "🤱", order: 1 },
         { name: "Food & Diet",              emoji: "🍽️", order: 2 },
@@ -113,7 +113,7 @@ async function main() {
       ],
     },
     {
-      stageKey: "pregnancy-4-6",    name: "4–6 Months Pregnant",       emoji: "🤰", groupLetter: "A",
+      stageKey: "pregnancy-4-6",    name: "Growing Into It",       emoji: null, groupLetter: "A",
       channels: [
         { name: "Body Changes",             emoji: "🤱", order: 1 },
         { name: "Food & Diet",              emoji: "🍽️", order: 2 },
@@ -123,7 +123,7 @@ async function main() {
       ],
     },
     {
-      stageKey: "pregnancy-7-9",    name: "7–9 Months Pregnant",       emoji: "🤰", groupLetter: "A",
+      stageKey: "pregnancy-7-9",    name: "Almost There",          emoji: null, groupLetter: "A",
       channels: [
         { name: "Body Changes",             emoji: "🤱", order: 1 },
         { name: "Food & Diet",              emoji: "🍽️", order: 2 },
@@ -133,7 +133,7 @@ async function main() {
       ],
     },
     {
-      stageKey: "postpartum-0-3",   name: "Newborn Stage (0–3 months)",  emoji: "👶", groupLetter: "A",
+      stageKey: "postpartum-0-3",   name: "The Golden Hours",      emoji: null, groupLetter: "A",
       channels: [
         { name: "Recovery & Wellness", emoji: "💪", order: 1 },
         { name: "Feeding",             emoji: "🍼", order: 2 },
@@ -143,7 +143,7 @@ async function main() {
       ],
     },
     {
-      stageKey: "postpartum-4-6",   name: "Infant Stage (4–6 months)",   emoji: "🍼", groupLetter: "A",
+      stageKey: "postpartum-4-6",   name: "Finding Your Rhythm",   emoji: null, groupLetter: "A",
       channels: [
         { name: "Recovery & Wellness", emoji: "💪", order: 1 },
         { name: "Feeding",             emoji: "🍼", order: 2 },
@@ -153,7 +153,7 @@ async function main() {
       ],
     },
     {
-      stageKey: "postpartum-7-12",  name: "Infant Stage (7–12 months)",  emoji: "🍼", groupLetter: "A",
+      stageKey: "postpartum-7-12",  name: "Into the World",        emoji: null, groupLetter: "A",
       channels: [
         { name: "Recovery & Wellness", emoji: "💪", order: 1 },
         { name: "Feeding",             emoji: "🍼", order: 2 },
@@ -163,7 +163,7 @@ async function main() {
       ],
     },
     {
-      stageKey: "postpartum-13-24", name: "Toddler Stage (1–2 years)",   emoji: "🧸", groupLetter: "A",
+      stageKey: "postpartum-13-24", name: "Little Steps",          emoji: null, groupLetter: "A",
       channels: [
         { name: "Recovery & Wellness", emoji: "💪", order: 1 },
         { name: "Feeding",             emoji: "🍼", order: 2 },

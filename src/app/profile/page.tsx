@@ -226,8 +226,7 @@ export default function ProfilePage() {
 
           {/* Stage badge */}
           {user.currentStage && STAGE_META[user.currentStage as keyof typeof STAGE_META] && (
-            <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "5px 14px" }}>
-              <span style={{ fontSize: 14 }}>{STAGE_META[user.currentStage as keyof typeof STAGE_META].emoji}</span>
+            <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "5px 14px" }}>
               <span style={{ fontSize: 12, color: "white", fontWeight: 700 }}>{STAGE_META[user.currentStage as keyof typeof STAGE_META].label}</span>
             </div>
           )}
