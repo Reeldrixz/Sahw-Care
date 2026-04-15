@@ -18,6 +18,7 @@ interface DonorUser {
   name: string;
   avatar: string | null;
   location: string | null;
+  countryFlag: string | null;
   isPremium: boolean;
   trustRating: number;
   createdAt: string;
@@ -82,7 +83,10 @@ export default function DonorProfilePage() {
         <div className="profile-av" style={{ overflow: "hidden" }}>
           <Avatar src={donor.avatar} name={donor.name} size={80} />
         </div>
-        <div className="profile-name">{donor.name}</div>
+        <div className="profile-name">
+          {donor.countryFlag && <span style={{ marginRight: 6 }}>{donor.countryFlag}</span>}
+          {donor.name}
+        </div>
         <div className="profile-role-badge">🎁 Donor · ✓ Verified{donor.isPremium ? " · ✨ Premium" : ""}</div>
 
         <div className="profile-stats-row">

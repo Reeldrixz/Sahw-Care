@@ -12,7 +12,7 @@ interface Item {
   location: string;
   images: string[];
   urgent: boolean;
-  donor: { id: string; name: string; avatar: string | null };
+  donor: { id: string; name: string; avatar: string | null; countryFlag?: string | null };
 }
 
 interface ItemCardProps {
@@ -65,7 +65,10 @@ export default function ItemCard({ item, requested, onRequest, onClick }: ItemCa
       <div className="item-footer">
         <div className="donor-info">
           <Avatar src={item.donor.avatar} name={item.donor.name} size={28} />
-          <div className="donor-name">{item.donor.name.split(" ")[0]}</div>
+          <div className="donor-name">
+            {item.donor.countryFlag && <span style={{ marginRight: 3 }}>{item.donor.countryFlag}</span>}
+            {item.donor.name.split(" ")[0]}
+          </div>
         </div>
         <button
           className={`btn-request ${requested ? "requested" : ""}`}

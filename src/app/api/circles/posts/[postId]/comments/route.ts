@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { STAGE_META, StageKey } from "@/lib/stage";
+import { STAGE_META, StageKey, countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     where:   { postId },
     orderBy: { createdAt: "asc" },
     include: {
-      user: { select: { id: true, name: true, avatar: true, location: true } },
+      user: { select: { id: true, name: true, avatar: true, location: true, countryCode: true } },
     },
   });
 
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       content:       c.content,
       identityLabel: c.identityLabel ?? null,
       createdAt:     c.createdAt,
-      author:        { id: c.user.id, name: c.user.name, avatar: c.user.avatar, city },
+      author:        { id: c.user.id, name: c.user.name, avatar: c.user.avatar, city, countryFlag: c.user.countryCode ? countryCodeToFlag(c.user.countryCode) : null },
     };
   });
 
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // ── Create comment ────────────────────────────────────────────────────────
   const comment = await prisma.postComment.create({
     data: { postId, userId: auth.userId, content: content.trim(), identityLabel },
-    include: { user: { select: { id: true, name: true, avatar: true, location: true } } },
+    include: { user: { select: { id: true, name: true, avatar: true, location: true, countryCode: true } } },
   });
 
   const loc  = comment.user.location ?? "";
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       content:       comment.content,
       identityLabel: comment.identityLabel ?? null,
       createdAt:     comment.createdAt,
-      author:        { id: comment.user.id, name: comment.user.name, avatar: comment.user.avatar, city },
+      author:        { id: comment.user.id, name: comment.user.name, avatar: comment.user.avatar, city, countryFlag: comment.user.countryCode ? countryCodeToFlag(comment.user.countryCode) : null },
     },
   });
 }

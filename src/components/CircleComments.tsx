@@ -8,7 +8,7 @@ interface Comment {
   content: string;
   identityLabel: string | null;
   createdAt: string;
-  author: { id: string; name: string; avatar: string | null; city: string | null };
+  author: { id: string; name: string; avatar: string | null; city: string | null; countryFlag: string | null };
 }
 
 interface Props {
@@ -83,6 +83,7 @@ export default function CircleComments({ postId, onClose }: Props) {
                 <Avatar src={c.author.avatar} name={c.author.name} size={30} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: c.identityLabel ? 1 : 3 }}>
+                    {c.author.countryFlag && <span style={{ fontSize: 13 }}>{c.author.countryFlag}</span>}
                     <span style={{ fontSize: 13, fontWeight: 800 }}>{c.author.name.split(" ")[0]}</span>
                     {c.author.city && <span style={{ fontSize: 11, color: "var(--mid)" }}>{c.author.city}</span>}
                     <span style={{ fontSize: 11, color: "var(--light)", marginLeft: "auto" }}>{timeAgo(c.createdAt)}</span>

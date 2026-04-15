@@ -145,12 +145,15 @@ export function calculateStage(
   return null;
 }
 
-/** Convert ISO 3166-1 alpha-2 country code to flag emoji. */
+/** Convert ISO 3166-1 alpha-2 country code to flag emoji using regional indicator symbols. */
 export function countryCodeToFlag(code: string): string {
   if (!code || code.length !== 2) return "";
-  return [...code.toUpperCase()]
-    .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
-    .join("");
+  const upper = code.toUpperCase();
+  // Regional Indicator A = U+1F1E6 = \uD83C\uDDE6
+  return String.fromCodePoint(
+    0x1f1e6 + upper.charCodeAt(0) - 65,
+    0x1f1e6 + upper.charCodeAt(1) - 65,
+  );
 }
 
 /** Best-effort country name → ISO alpha-2 code lookup. */

@@ -7,7 +7,7 @@ import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
 import { STAGE_META, StageKey } from "@/lib/stage";
-import { HeartPulse, Heart, Smile, Star, LayoutGrid, type LucideIcon } from "lucide-react";
+import { HeartPulse, Heart, Smile, Star, LayoutGrid, ChevronLeft, type LucideIcon } from "lucide-react";
 
 // ── Stage icon mapping ────────────────────────────────────────────────────────
 
@@ -98,22 +98,31 @@ async function joinViaLocation(location: string): Promise<{ circle: CountryCircl
 }
 
 async function detectLocationFromBrowser(): Promise<string | null> {
-  if (!navigator.geolocation) return null;
-  const pos = await new Promise<GeolocationPosition | null>((resolve) => {
-    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 8000 });
-  });
-  if (!pos) return null;
-  try {
-    const { latitude, longitude } = pos.coords;
-    const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-    const data = await res.json();
-    const city    = data.address?.city || data.address?.town || data.address?.village || data.address?.county;
-    const country = data.address?.country;
-    if (!country) return null;
-    return city ? `${city}, ${country}` : country;
-  } catch {
-    return null;
+  // 1. Try browser geolocation (mobile + desktop when permitted)
+  if (typeof navigator !== "undefined" && navigator.geolocation) {
+    const pos = await new Promise<GeolocationPosition | null>((resolve) => {
+      navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 6000 });
+    });
+    if (pos) {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+        const data = await res.json();
+        const city    = data.address?.city || data.address?.town || data.address?.village || data.address?.county;
+        const country = data.address?.country;
+        if (country) return city ? `${city}, ${country}` : country;
+      } catch { /* fall through to IP-based */ }
+    }
   }
+  // 2. Fallback: IP-based geolocation — works on desktop without any permission
+  try {
+    const res  = await fetch("https://ipapi.co/json/", { cache: "no-store" });
+    const data = await res.json();
+    const city    = data.city as string | undefined;
+    const country = data.country_name as string | undefined;
+    if (country) return city ? `${city}, ${country}` : country;
+  } catch { /* ignore */ }
+  return null;
 }
 
 // ── Main page ────────────────────────────────────────────────────────────────
@@ -388,14 +397,17 @@ export default function CirclesPage() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
+        {/* Fixed back button */}
+        <button
+          onClick={closeVisiting}
+          style={{ position: "fixed", top: 16, left: 16, zIndex: 200, width: 38, height: 38, borderRadius: "50%", background: "white", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          aria-label="Back to my circle"
+        >
+          <ChevronLeft size={20} color="var(--ink)" />
+        </button>
+
         {/* Header */}
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "16px 16px 14px" }}>
-          <button
-            onClick={closeVisiting}
-            style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 20, padding: "6px 14px", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 10, fontFamily: "Nunito, sans-serif" }}
-          >
-            ← Back to my circle
-          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <StageIcon stageKey={visitingCircle.stageKey} size={22} color="white" />
@@ -473,6 +485,15 @@ export default function CirclesPage() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
+        {/* Fixed back button */}
+        <button
+          onClick={() => router.back()}
+          style={{ position: "fixed", top: 16, left: 16, zIndex: 200, width: 38, height: 38, borderRadius: "50%", background: "white", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          aria-label="Back"
+        >
+          <ChevronLeft size={20} color="var(--ink)" />
+        </button>
+
         {/* Circle header */}
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 0" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>

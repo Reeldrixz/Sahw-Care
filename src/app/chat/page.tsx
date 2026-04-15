@@ -15,7 +15,7 @@ interface Message {
 
 interface Conversation {
   id: string;
-  participants: Array<{ userId: string; user: { id: string; name: string; avatar: string | null } }>;
+  participants: Array<{ userId: string; user: { id: string; name: string; avatar: string | null; countryFlag: string | null } }>;
   request: { item: { id: string; title: string; images: string[] } };
   messages: Message[];
 }
@@ -143,7 +143,10 @@ export default function ChatPage() {
                   >
                     <Avatar src={other?.avatar} name={other?.name ?? "?"} size={36} />
                     <div className="chat-item-info">
-                      <div className="chat-item-name">{other?.name ?? "Unknown"}</div>
+                      <div className="chat-item-name">
+                        {other?.countryFlag && <span style={{ marginRight: 4 }}>{other.countryFlag}</span>}
+                        {other?.name ?? "Unknown"}
+                      </div>
                       <div className="chat-item-preview">{lastMsg?.text ?? "No messages yet"}</div>
                       <div style={{ fontSize: 11, color: "var(--light)", marginTop: 2 }}>
                         re: {conv.request.item.title}
@@ -164,7 +167,10 @@ export default function ChatPage() {
                   <div className="chat-header">
                     <Avatar src={otherUser?.avatar} name={otherUser?.name ?? "?"} size={36} />
                     <div className="chat-header-info">
-                      <div className="chat-header-name">{otherUser?.name}</div>
+                      <div className="chat-header-name">
+                        {otherUser?.countryFlag && <span style={{ marginRight: 4 }}>{otherUser.countryFlag}</span>}
+                        {otherUser?.name}
+                      </div>
                       <div className="chat-header-item">re: {activeConv.request.item.title}</div>
                     </div>
                     <button

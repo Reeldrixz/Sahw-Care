@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
     prisma.item.findMany({
       where,
       include: {
-        donor: { select: { id: true, name: true, avatar: true, trustRating: true } },
+        donor: { select: { id: true, name: true, avatar: true, trustRating: true, countryCode: true } },
         _count: { select: { requests: true } },
       },
       orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
@@ -45,7 +46,18 @@ export async function GET(req: NextRequest) {
     prisma.item.count({ where }),
   ]);
 
-  return NextResponse.json({ items, total });
+  const formatted = items.map((item) => ({
+    ...item,
+    donor: {
+      id:          item.donor.id,
+      name:        item.donor.name,
+      avatar:      item.donor.avatar,
+      trustRating: item.donor.trustRating,
+      countryFlag: item.donor.countryCode ? countryCodeToFlag(item.donor.countryCode) : null,
+    },
+  }));
+
+  return NextResponse.json({ items: formatted, total });
 }
 
 export async function POST(req: NextRequest) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
+import { countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
     include: {
       participants: {
         include: {
-          user: { select: { id: true, name: true, avatar: true } },
+          user: { select: { id: true, name: true, avatar: true, countryCode: true } },
         },
       },
       request: {
@@ -35,5 +36,20 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ conversations });
+  const formatted = conversations.map((conv) => ({
+    ...conv,
+    participants: conv.participants.map((p) => ({
+      ...p,
+      user: {
+        id:          p.user.id,
+        name:        p.user.name,
+        avatar:      p.user.avatar,
+        countryFlag: (p.user as { countryCode?: string | null }).countryCode
+          ? countryCodeToFlag((p.user as { countryCode: string }).countryCode)
+          : null,
+      },
+    })),
+  }));
+
+  return NextResponse.json({ conversations: formatted });
 }

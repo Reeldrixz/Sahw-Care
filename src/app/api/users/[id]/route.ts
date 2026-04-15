@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       name: true,
       avatar: true,
       location: true,
+      countryCode: true,
       role: true,
       isPremium: true,
       trustRating: true,
@@ -50,7 +52,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const avgQty = reviews.length ? reviews.reduce((s, r) => s + r.quantityRating, 0) / reviews.length : 0;
 
   return NextResponse.json({
-    user,
+    user: { ...user, countryFlag: user.countryCode ? countryCodeToFlag(user.countryCode) : null },
     ratings: { pickup: avgPickup, quality: avgQuality, quantity: avgQty },
   });
 }

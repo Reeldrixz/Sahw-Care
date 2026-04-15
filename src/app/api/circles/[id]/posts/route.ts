@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkCircleContent } from "@/lib/circleFilter";
 import { uploadImage } from "@/lib/cloudinary";
+import { countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest, { params }: Params) {
           avatar: true,
           location: true,
           trustScore: true,
-          countryFlag: true,
+          countryCode: true,
           subTags: true,
           circleMembers: {
             where: { circleId },
@@ -94,7 +95,7 @@ export async function GET(req: NextRequest, { params }: Params) {
         name:        p.user.name,
         avatar:      p.user.avatar,
         city,
-        countryFlag: p.user.countryFlag ?? null,
+        countryFlag: p.user.countryCode ? countryCodeToFlag(p.user.countryCode) : null,
         subTags:     p.user.subTags ?? [],
         trustScore:  p.user.trustScore,
         isLeader:    p.user.circleMembers[0]?.isLeader ?? false,
