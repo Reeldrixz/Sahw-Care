@@ -76,7 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Login failed");
-    setUser(data.user);
+    // Fetch the full user object (includes onboardingComplete, journeyType, countryFlag, etc.)
+    // so the gate never fires on a partial/stale user shape.
+    await refreshUser();
   };
 
   const register = async (name: string, identifier: string, password: string) => {
@@ -87,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Registration failed");
-    setUser(data.user);
+    // Same: use the canonical /api/auth/me response.
+    await refreshUser();
   };
 
   const logout = async () => {
