@@ -7,7 +7,7 @@ import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
 import { STAGE_META, StageKey } from "@/lib/stage";
-import { HeartPulse, Heart, Smile, Star, LayoutGrid, ChevronLeft, type LucideIcon } from "lucide-react";
+import { HeartPulse, Heart, Smile, Star, LayoutGrid, type LucideIcon } from "lucide-react";
 
 // ── Stage icon mapping ────────────────────────────────────────────────────────
 
@@ -97,32 +97,19 @@ async function joinViaLocation(location: string): Promise<{ circle: CountryCircl
   return fetchCountryCircle();
 }
 
-async function detectLocationFromBrowser(): Promise<string | null> {
-  // 1. Try browser geolocation (mobile + desktop when permitted)
-  if (typeof navigator !== "undefined" && navigator.geolocation) {
-    const pos = await new Promise<GeolocationPosition | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(resolve, () => resolve(null), { timeout: 6000 });
-    });
-    if (pos) {
-      try {
-        const { latitude, longitude } = pos.coords;
-        const res  = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-        const data = await res.json();
-        const city    = data.address?.city || data.address?.town || data.address?.village || data.address?.county;
-        const country = data.address?.country;
-        if (country) return city ? `${city}, ${country}` : country;
-      } catch { /* fall through to IP-based */ }
-    }
-  }
-  // 2. Fallback: IP-based geolocation — works on desktop without any permission
+/** Detect location via IP — no browser permissions required, works on all devices. */
+async function detectLocationViaIP(): Promise<{ location: string; countryCode: string } | null> {
   try {
     const res  = await fetch("https://ipapi.co/json/", { cache: "no-store" });
     const data = await res.json();
-    const city    = data.city as string | undefined;
+    const city    = data.city        as string | undefined;
     const country = data.country_name as string | undefined;
-    if (country) return city ? `${city}, ${country}` : country;
-  } catch { /* ignore */ }
-  return null;
+    const code    = data.country_code as string | undefined;
+    if (!country || !code) return null;
+    return { location: city ? `${city}, ${country}` : country, countryCode: code };
+  } catch {
+    return null;
+  }
 }
 
 // ── Main page ────────────────────────────────────────────────────────────────
@@ -195,10 +182,20 @@ export default function CirclesPage() {
         result = await joinViaLocation(user.location);
         setGeoDetecting(false);
       }
+
+      // No circle yet — detect via IP (works on all devices, no permissions)
       if (!result) {
         setGeoDetecting(true);
-        const detected = await detectLocationFromBrowser();
-        if (detected) result = await joinViaLocation(detected);
+        const detected = await detectLocationViaIP();
+        if (detected) {
+          // Save location + countryCode to profile in background
+          fetch("/api/profile", {
+            method:  "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ location: detected.location, countryCode: detected.countryCode }),
+          }).catch(() => {});
+          result = await joinViaLocation(detected.location);
+        }
         setGeoDetecting(false);
       }
 
@@ -397,15 +394,6 @@ export default function CirclesPage() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
-        {/* Fixed back button */}
-        <button
-          onClick={closeVisiting}
-          style={{ position: "fixed", top: 16, left: 16, zIndex: 200, width: 38, height: 38, borderRadius: "50%", background: "white", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-          aria-label="Back to my circle"
-        >
-          <ChevronLeft size={20} color="var(--ink)" />
-        </button>
-
         {/* Header */}
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "16px 16px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -485,15 +473,6 @@ export default function CirclesPage() {
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
-        {/* Fixed back button */}
-        <button
-          onClick={() => router.back()}
-          style={{ position: "fixed", top: 16, left: 16, zIndex: 200, width: 38, height: 38, borderRadius: "50%", background: "white", border: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-          aria-label="Back"
-        >
-          <ChevronLeft size={20} color="var(--ink)" />
-        </button>
-
         {/* Circle header */}
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 0" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>

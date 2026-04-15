@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from "react";
 
 export interface User {
   id: string;
@@ -49,6 +49,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const countryDetectAttempted = useRef(false);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -67,6 +68,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshUser().finally(() => setLoading(false));
   }, [refreshUser]);
+
+  // Auto-detect and save countryCode for users who don't have one yet
+  useEffect(() => {
+    if (!user || user.countryFlag || countryDetectAttempted.current) return;
+    countryDetectAttempted.current = true;
+    (async () => {
+      try {
+        const res  = await fetch("https://ipapi.co/json/", { cache: "no-store" });
+        const data = await res.json();
+        const code    = data.country_code  as string | undefined;
+        const city    = data.city          as string | undefined;
+        const country = data.country_name  as string | undefined;
+        if (!code) return;
+        const location = city && country ? `${city}, ${country}` : country ?? null;
+        await fetch("/api/profile", {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            countryCode: code,
+            ...(!user.location && location ? { location } : {}),
+          }),
+        });
+        await refreshUser();
+      } catch { /* ignore */ }
+    })();
+  }, [user?.id, refreshUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = async (identifier: string, password: string) => {
     const res = await fetch("/api/auth/login", {
