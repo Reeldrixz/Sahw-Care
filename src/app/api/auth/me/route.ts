@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { detectGeoFromRequest } from "@/lib/geoip";
+import { countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,7 @@ export async function GET(req: NextRequest) {
       onboardingComplete: true,
       journeyType: true,
       currentStage: true,
+      countryCode: true,
       countryFlag: true,
       subTags: true,
       currentCircleId: true,
@@ -48,5 +51,27 @@ export async function GET(req: NextRequest) {
 
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  return NextResponse.json({ user });
+  // ── Auto-detect country on first session if missing ──────────────────────
+  let countryFlag = user.countryCode
+    ? countryCodeToFlag(user.countryCode) // always compute fresh from code
+    : (user.countryFlag ?? null);
+
+  if (!user.countryCode) {
+    const geo = await detectGeoFromRequest(req);
+    if (geo) {
+      await prisma.user.update({
+        where: { id: payload.userId },
+        data:  {
+          countryCode: geo.countryCode,
+          countryFlag: geo.countryFlag,
+          ...(!user.location && geo.location ? { location: geo.location } : {}),
+        },
+      });
+      countryFlag = geo.countryFlag;
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { countryCode: _cc, ...userWithoutCode } = user;
+  return NextResponse.json({ user: { ...userWithoutCode, countryFlag } });
 }

@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateStage, countryCodeToFlag, countryNameToCode, extractCountryFromLocation } from "@/lib/stage";
 import { sendNewSignupNotification } from "@/lib/email";
+import { detectGeoFromRequest } from "@/lib/geoip";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,15 @@ export async function POST(req: NextRequest) {
 
   // ── Donors skip stage assignment entirely ────────────────────────────────
   if (journeyType === "donor") {
+    // Detect country from request IP (fire-and-forget — donor path is fast)
+    detectGeoFromRequest(req).then((geo) => {
+      if (!geo) return;
+      return prisma.user.updateMany({
+        where: { id: auth.userId, countryCode: null },
+        data:  { countryCode: geo.countryCode, countryFlag: geo.countryFlag },
+      });
+    }).catch(() => {});
+
     const updated = await prisma.user.update({
       where: { id: auth.userId },
       data:  { onboardingComplete: true, journeyType, ...(safeGender && { gender: safeGender }), subTags: subTags ?? [] },
@@ -71,14 +81,31 @@ export async function POST(req: NextRequest) {
   const circle = await prisma.circle.findUnique({ where: { stageKey } });
   if (!circle) return NextResponse.json({ error: "Cohort circle not found — run seed" }, { status: 500 });
 
-  // ── Derive country flag from existing location ───────────────────────────
+  // ── Derive country code: try location first, fall back to request IP ─────
   const dbUser = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { location: true },
+    select: { location: true, countryCode: true },
   });
-  const countryName = extractCountryFromLocation(dbUser?.location ?? null);
-  const countryCode = countryNameToCode(countryName);
-  const countryFlag = countryCode ? countryCodeToFlag(countryCode) : null;
+
+  let countryCode: string | null = dbUser?.countryCode ?? null;
+  let countryFlag: string | null = countryCode ? countryCodeToFlag(countryCode) : null;
+
+  if (!countryCode) {
+    // Try to derive from stored location string
+    const countryName  = extractCountryFromLocation(dbUser?.location ?? null);
+    const codeFromLoc  = countryNameToCode(countryName);
+    if (codeFromLoc) {
+      countryCode = codeFromLoc;
+      countryFlag = countryCodeToFlag(codeFromLoc);
+    } else {
+      // Last resort: IP-based detection
+      const geo = await detectGeoFromRequest(req);
+      if (geo) {
+        countryCode = geo.countryCode;
+        countryFlag = geo.countryFlag;
+      }
+    }
+  }
 
   // ── Join cohort circle (upsert CircleMember) ────────────────────────────
   await prisma.circleMember.upsert({

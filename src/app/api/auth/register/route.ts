@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 import { autoJoinCircle } from "@/lib/countryCircle";
+import { detectGeoFromRequest } from "@/lib/geoip";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,15 @@ export async function POST(req: NextRequest) {
     const ua = req.headers.get("user-agent") ?? null;
     prisma.deviceLog.create({
       data: { userId: user.id, ipAddress: ip, userAgent: ua, action: "register" },
+    }).catch(() => {});
+
+    // Detect + save country from IP (fire-and-forget — never blocks registration)
+    detectGeoFromRequest(req).then((geo) => {
+      if (!geo) return;
+      prisma.user.update({
+        where: { id: user.id },
+        data:  { countryCode: geo.countryCode, countryFlag: geo.countryFlag, ...(!user.location && geo.location ? { location: geo.location } : {}) },
+      }).catch(() => {});
     }).catch(() => {});
 
     const token = await signToken({ userId: user.id, role: user.role, name: user.name });
