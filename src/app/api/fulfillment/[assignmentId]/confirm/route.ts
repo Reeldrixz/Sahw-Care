@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { recalculateTrustScore, syncTrustRating } from "@/lib/trust";
+import { awardTrust } from "@/lib/trust";
 import { recordFulfilment } from "@/lib/cooldown";
 
 export const dynamic = "force-dynamic";
@@ -85,14 +85,10 @@ export async function POST(
     // Record cooldown for mom
     await recordFulfilment(momId, category);
 
-    // Recalculate trust for both parties
-    const [momScore, donorScore] = await Promise.all([
-      recalculateTrustScore(momId),
-      recalculateTrustScore(assignment.donorId),
-    ]);
+    // Award trust for both parties
     await Promise.all([
-      syncTrustRating(momId, momScore),
-      syncTrustRating(assignment.donorId, donorScore),
+      awardTrust(momId, "REGISTER_ITEM_FULFILLED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register item confirmed received" }),
+      awardTrust(assignment.donorId, "DONATION_FULFILLED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register donation fulfilled" }),
     ]);
   }
 

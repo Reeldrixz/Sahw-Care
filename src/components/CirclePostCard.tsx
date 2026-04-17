@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Avatar from "./Avatar";
+import { Heart } from "lucide-react";
 
 type ReactionType = "HEART" | "HUG" | "CLAP";
 
@@ -34,9 +35,12 @@ export interface Post {
   createdAt: string;
   channelName: string | null;
   channelEmoji: string | null;
+  channelId?: string | null;
   author: Author;
   reactions: Reactions;
   commentCount: number;
+  liked?: boolean;
+  likeCount?: number;
 }
 
 interface Props {
@@ -85,7 +89,20 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
   const [reactions, setReactions] = useState(post.reactions);
   const [reported, setReported] = useState(false);
   const [showReportMenu, setShowReportMenu] = useState(false);
+  const [liked, setLiked] = useState(post.liked ?? false);
+  const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
   const cat = CATEGORY_STYLE[post.category];
+
+  const handleLike = async () => {
+    const newLiked = !liked;
+    setLiked(newLiked);
+    setLikeCount(c => newLiked ? c + 1 : Math.max(0, c - 1));
+    await fetch(`/api/circles/posts/${post.id}/like`, { method: "POST" }).catch(() => {
+      // Revert on error
+      setLiked(liked);
+      setLikeCount(post.likeCount ?? 0);
+    });
+  };
 
   const handleReact = async (type: ReactionType) => {
     const prev = reactions.myReaction;
@@ -198,6 +215,21 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
 
       {/* Action bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+        <button
+          onClick={handleLike}
+          style={{
+            display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
+            borderRadius: 20, border: "1.5px solid",
+            borderColor: liked ? "#1a7a5e" : "var(--border)",
+            background: liked ? "#e8f5f1" : "transparent",
+            cursor: "pointer", fontSize: 12, fontWeight: 700,
+            fontFamily: "Nunito, sans-serif",
+            color: liked ? "#1a7a5e" : "var(--mid)",
+          }}
+        >
+          <Heart size={13} strokeWidth={liked ? 0 : 1.75} fill={liked ? "#1a7a5e" : "none"} />
+          {likeCount > 0 && <span>{likeCount}</span>}
+        </button>
         {REACTIONS.map(({ type, emoji }) => (
           <button
             key={type}

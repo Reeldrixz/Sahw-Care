@@ -51,12 +51,24 @@ export async function POST(req: NextRequest) {
   // Enforce Layer 1 before requesting items
   const requester = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { phoneVerified: true, emailVerified: true, avatar: true },
+    select: { phoneVerified: true, emailVerified: true, avatar: true, trustScore: true },
   });
   if (requester && !(requester.phoneVerified || requester.emailVerified) || !requester?.avatar) {
     return NextResponse.json({
       error: "Please complete your profile first — verify your phone or email and add a profile photo.",
       code: "LAYER1_INCOMPLETE",
+    }, { status: 403 });
+  }
+
+  // Trust gate: score must be >= 60 to request items
+  if (!requester) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  if ((requester.trustScore ?? 0) < 60) {
+    return NextResponse.json({
+      error: `You need a trust score of 60 to request items. Your current score is ${requester.trustScore ?? 0}. Keep engaging to unlock this.`,
+      code: "TRUST_SCORE_TOO_LOW",
+      required: 60,
+      current: requester.trustScore ?? 0,
     }, { status: 403 });
   }
 

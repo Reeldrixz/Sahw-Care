@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { awardTrust } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,10 @@ export async function PUT(
     },
     select: { id: true, name: true, docStatus: true, documentNote: true, verifiedAt: true },
   });
+
+  if (action === "approve") {
+    awardTrust(userId, "DOC_VERIFIED", { reason: "motherhood document verified" }).catch(() => {});
+  }
 
   return NextResponse.json({ user });
 }

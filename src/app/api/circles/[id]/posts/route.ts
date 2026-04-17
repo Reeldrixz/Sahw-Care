@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { checkCircleContent } from "@/lib/circleFilter";
 import { uploadImage } from "@/lib/cloudinary";
 import { countryCodeToFlag } from "@/lib/stage";
+import { awardTrust, checkAndFreezeIfAbuse } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       },
       channel:   { select: { id: true, name: true, emoji: true } },
       reactions: { select: { type: true, userId: true } },
+      postLikes: { where: { userId: auth.userId }, select: { id: true } },
       _count:    { select: { comments: true } },
     },
   });
@@ -106,6 +108,8 @@ export async function GET(req: NextRequest, { params }: Params) {
       },
       reactions:    { ...reactionCounts, myReaction },
       commentCount: p._count.comments,
+      liked:        p.postLikes.length > 0,
+      likeCount:    p.likeCount,
     };
   });
 
@@ -145,6 +149,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   let category = "";
   let channelId: string | null = null;
   let photoUrl:  string | null = null;
+  let isIntroPost = false;
 
   if (contentType.includes("multipart/form-data")) {
     const fd = await req.formData();
@@ -158,9 +163,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   } else {
     const body = await req.json();
-    content   = body.content   ?? "";
-    category  = body.category  ?? "";
-    channelId = body.channelId ?? null;
+    content      = body.content      ?? "";
+    category     = body.category     ?? "";
+    channelId    = body.channelId    ?? null;
+    isIntroPost  = !!body.isIntroPost;
   }
 
   content = content.trim();
@@ -178,7 +184,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const post = await prisma.circlePost.create({
-    data: { circleId, userId: auth.userId, content, category: category as never, channelId, photoUrl, isHidden: !!flagged },
+    data: { circleId, userId: auth.userId, content, category: category as never, channelId, photoUrl, isHidden: !!flagged, isIntroPost },
   });
 
   if (flagged) {
@@ -216,6 +222,17 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (notifData.length > 0) {
         await prisma.notification.createMany({ data: notifData });
       }
+    } catch {}
+  })();
+
+  // Award trust for posting (fire-and-forget)
+  (async () => {
+    try {
+      await awardTrust(auth.userId, post.isIntroPost ? "INTRO_POST" : "CIRCLE_POST", {
+        referenceId: post.id, referenceType: "CirclePost",
+        reason: post.isIntroPost ? "wrote a circle intro post" : "posted in circle",
+      });
+      await checkAndFreezeIfAbuse(auth.userId);
     } catch {}
   })();
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendPhoneVerification, checkPhoneVerification } from "@/lib/otp";
-import { recalculateTrustScore, syncTrustRating } from "@/lib/trust";
+import { awardTrust } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +72,7 @@ export async function POST(req: NextRequest) {
     data:  { phone, phoneVerified: true, verificationLevel },
   });
 
-  const newScore = await recalculateTrustScore(auth.userId);
-  await syncTrustRating(auth.userId, newScore);
-
-  return NextResponse.json({ verified: true, verificationLevel, trustScore: newScore });
+  await awardTrust(auth.userId, "PHONE_VERIFIED", { reason: "phone number verified" });
+  const updatedUser = await prisma.user.findUnique({ where: { id: auth.userId }, select: { trustScore: true } });
+  return NextResponse.json({ verified: true, verificationLevel, trustScore: updatedUser?.trustScore ?? 0 });
 }

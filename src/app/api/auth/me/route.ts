@@ -47,6 +47,8 @@ export async function GET(req: NextRequest) {
       currentCircleId: true,
       lastBundleCompletedAt: true,
       activeBundleId: true,
+      trustFrozen: true,
+      trustFrozenUntil: true,
       circleIdentitySet: true,
       circleContext: true,
       circleDisplayName: true,

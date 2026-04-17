@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { STAGE_META } from "@/lib/stage";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
 import PhoneSetupSheet from "@/components/PhoneSetupSheet";
+import TrustScoreBar from "@/components/TrustScoreBar";
 
 const CAT_BG: Record<string, string> = {
   "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
@@ -338,6 +339,9 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ── Trust Score ──────────────────────────────────────────── */}
+        <TrustScoreBar currentScore={user.trustScore} />
+
         {/* ── Verification section ─────────────────────────────────── */}
         <div className="profile-section">
           <div className="profile-section-title">🛡️ Account verification</div>
@@ -383,19 +387,6 @@ export default function ProfilePage() {
               ) : (
                 <span style={{ fontSize: 11, color: "var(--light)" }}>Add email first</span>
               )}
-            </div>
-          </div>
-          {/* Trust score bar */}
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 5, fontWeight: 600 }}>
-              <span style={{ color: "var(--mid)" }}>Trust score</span>
-              <span style={{ color: trustColor, fontWeight: 700 }}>{user.trustScore}/100 — {TRUST_LABEL(user.trustScore)}</span>
-            </div>
-            <div style={{ background: "var(--border)", borderRadius: 6, height: 8 }}>
-              <div style={{ width: `${user.trustScore}%`, height: "100%", background: trustColor, borderRadius: 6, transition: "width 0.5s" }} />
-            </div>
-            <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 5, lineHeight: 1.5 }}>
-              Level {user.verificationLevel} · {user.phoneVerified ? "Phone ✓" : "Phone ✗"} · {user.emailVerified ? "Email ✓" : "Email ✗"}
             </div>
           </div>
         </div>

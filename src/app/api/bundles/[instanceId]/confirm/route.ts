@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { recalculateTrustScore, syncTrustRating } from "@/lib/trust";
+import { awardTrust } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +39,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     },
   });
 
-  // Trust score +10 for confirming receipt
-  const newScore = await recalculateTrustScore(auth.userId);
-  await syncTrustRating(auth.userId, Math.min(100, newScore + 10));
+  await awardTrust(auth.userId, "ITEM_REQUEST_FULFILLED", {
+    referenceId: instanceId, referenceType: "BundleInstance",
+    reason: "confirmed receipt of care bundle",
+  });
 
   return NextResponse.json({ confirmed: true });
 }

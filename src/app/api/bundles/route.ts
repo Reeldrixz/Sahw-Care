@@ -91,7 +91,7 @@ export function checkEligibility(
   if (user.docStatus !== "VERIFIED") {
     return { eligible: false, reason: "not_verified" };
   }
-  if (user.trustScore < 30) {
+  if (user.trustScore < 85) {
     return { eligible: false, reason: "low_trust" };
   }
   if (user.activeBundleId) {
