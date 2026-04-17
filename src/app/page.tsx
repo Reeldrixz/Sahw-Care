@@ -92,18 +92,19 @@ export default function DiscoverPage() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  // Fetch bundle campaigns + user's active bundle (only for logged-in mothers)
+  // Fetch bundle campaigns for all users; fetch active bundle only for logged-in mothers
   useEffect(() => {
-    if (!user || user.journeyType === "donor") return;
     fetch("/api/bundles").then((r) => r.json()).then((d) => setCampaigns(d.campaigns ?? [])).catch(() => {});
-    if (user.activeBundleId) {
-      fetch("/api/bundles/my").then((r) => r.json()).then((d) => {
-        const active = (d.instances ?? []).find((i: MyBundle) =>
-          !["COMPLETED", "REJECTED"].includes(i.status)
-        );
-        setMyBundle(active ?? null);
-      }).catch(() => {});
-    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.journeyType === "donor" || !user.activeBundleId) return;
+    fetch("/api/bundles/my").then((r) => r.json()).then((d) => {
+      const active = (d.instances ?? []).find((i: MyBundle) =>
+        !["COMPLETED", "REJECTED"].includes(i.status)
+      );
+      setMyBundle(active ?? null);
+    }).catch(() => {});
   }, [user]);
 
   const filtered = allItems.filter((i) => {
@@ -265,65 +266,82 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {/* BUNDLES */}
-        {(campaigns.length > 0 || myBundle) && (
-          <div className="section">
-            <div className="section-head">
-              <div className="section-title">Full care bundles</div>
+        {/* BUNDLES — always visible */}
+        <div className="section">
+          <div className="section-head">
+            <div className="section-title">Full care bundles</div>
+          </div>
+
+          {/* Active bundle tracker */}
+          {myBundle && (
+            <div style={{ marginBottom: 14 }}>
+              <BundleStatusTracker
+                instance={myBundle}
+                onConfirmed={() => { setMyBundle(null); setToast("Bundle confirmed! Thank you 💛"); }}
+              />
             </div>
+          )}
 
-            {/* Active bundle tracker */}
-            {myBundle && (
-              <div style={{ marginBottom: 14 }}>
-                <BundleStatusTracker
-                  instance={myBundle}
-                  onConfirmed={() => { setMyBundle(null); setToast("Bundle confirmed! Thank you 💛"); }}
-                />
-              </div>
-            )}
+          {/* Campaign cards */}
+          {!myBundle && campaigns.length > 0 && (
+            <div className="hscroll">
+              {campaigns.map((c) => {
+                const { eligible, reason, daysUntilEligible } = c.eligibility;
+                const CARD_COLORS = ["#e8f5f1", "#fff8e6", "#f0f4ff", "#fdf0e8"];
+                const colorIdx = campaigns.indexOf(c) % CARD_COLORS.length;
+                const bg = CARD_COLORS[colorIdx];
 
-            {/* Campaign cards */}
-            {!myBundle && campaigns.length > 0 && (
-              <div className="hscroll">
-                {campaigns.map((c) => {
-                  const { eligible, reason, daysUntilEligible } = c.eligibility;
-                  const CARD_COLORS = ["#e8f5f1", "#fff8e6", "#f0f4ff", "#fdf0e8"];
-                  const colorIdx = campaigns.indexOf(c) % CARD_COLORS.length;
-                  const bg = CARD_COLORS[colorIdx];
-
-                  return (
-                    <div key={c.id} className="bundle-card" onClick={() => router.push(`/bundles/${c.id}`)}>
-                      <div className="bundle-img" style={{ background: bg }}>
-                        <div className="bundle-tag" style={{ background: "white", color: "var(--green)", border: "1.5px solid var(--green)" }}>
-                          {c.bundlesRemaining} left
-                        </div>
-                        <span style={{ fontSize: 36 }}>🎀</span>
+                return (
+                  <div key={c.id} className="bundle-card" onClick={() => router.push(`/bundles/${c.id}`)}>
+                    <div className="bundle-img" style={{ background: bg }}>
+                      <div className="bundle-tag" style={{ background: "white", color: "var(--green)", border: "1.5px solid var(--green)" }}>
+                        {c.bundlesRemaining} left
                       </div>
-                      <div className="bundle-body">
-                        <div className="bundle-title">{c.template.name}</div>
-                        <div className="bundle-items">Includes: {c.template.itemSummary}</div>
-                        <div className="bundle-footer">
-                          <div className="bundle-count">📦 {c.template.items.length} items</div>
-                          {eligible ? (
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "var(--green)" }}>Request →</div>
-                          ) : reason === "not_verified" ? (
-                            <div style={{ fontSize: 11, color: "var(--mid)" }}>Verify to unlock</div>
-                          ) : reason === "cooldown" ? (
-                            <div style={{ fontSize: 11, color: "var(--mid)" }}>In {daysUntilEligible}d</div>
-                          ) : reason === "active_bundle" ? (
-                            <div style={{ fontSize: 11, color: "var(--mid)" }}>In progress</div>
-                          ) : (
-                            <div style={{ fontSize: 11, color: "var(--mid)" }}>Free 🎁</div>
-                          )}
-                        </div>
+                      <span style={{ fontSize: 36 }}>🎀</span>
+                    </div>
+                    <div className="bundle-body">
+                      <div className="bundle-title">{c.template.name}</div>
+                      <div className="bundle-items">Includes: {c.template.itemSummary}</div>
+                      <div className="bundle-footer">
+                        <div className="bundle-count">📦 {c.template.items.length} items</div>
+                        {eligible ? (
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--green)" }}>Request →</div>
+                        ) : reason === "not_logged_in" ? (
+                          <div style={{ fontSize: 11, color: "var(--mid)" }}>Sign in →</div>
+                        ) : reason === "not_verified" ? (
+                          <div style={{ fontSize: 11, color: "var(--mid)" }}>Verify to unlock</div>
+                        ) : reason === "cooldown" ? (
+                          <div style={{ fontSize: 11, color: "var(--mid)" }}>In {daysUntilEligible}d</div>
+                        ) : reason === "active_bundle" ? (
+                          <div style={{ fontSize: 11, color: "var(--mid)" }}>In progress</div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: "var(--mid)" }}>Free 🎁</div>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Placeholder when no active campaigns */}
+          {!myBundle && campaigns.length === 0 && (
+            <div className="bundle-card" style={{ opacity: 0.6, pointerEvents: "none" }}>
+              <div className="bundle-img" style={{ background: "#e8f5f1" }}>
+                <span style={{ fontSize: 36 }}>🎀</span>
               </div>
-            )}
-          </div>
-        )}
+              <div className="bundle-body">
+                <div className="bundle-title">Kradəl Care Bundle</div>
+                <div className="bundle-items">Free essentials for expecting & new moms</div>
+                <div className="bundle-footer">
+                  <div className="bundle-count">Coming soon</div>
+                  <div style={{ fontSize: 11, color: "var(--mid)" }}>Free 🎁</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ALL ITEMS */}
         <div className="section" style={{ paddingBottom: 20 }}>

@@ -7,17 +7,24 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const auth  = token ? await verifyToken(token) : null;
-  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where:  { id: auth.userId },
-    select: {
-      id: true, journeyType: true, docStatus: true, trustScore: true,
-      currentStage: true, countryCode: true,
-      activeBundleId: true, lastBundleCompletedAt: true,
-    },
-  });
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  // Load user only if authenticated
+  let user: {
+    id: string; journeyType: string | null; docStatus: string; trustScore: number;
+    currentStage: string | null; countryCode: string | null;
+    activeBundleId: string | null; lastBundleCompletedAt: Date | null;
+  } | null = null;
+
+  if (auth) {
+    user = await prisma.user.findUnique({
+      where:  { id: auth.userId },
+      select: {
+        id: true, journeyType: true, docStatus: true, trustScore: true,
+        currentStage: true, countryCode: true,
+        activeBundleId: true, lastBundleCompletedAt: true,
+      },
+    });
+  }
 
   const campaigns = await prisma.campaign.findMany({
     where:  { status: "ACTIVE", bundlesRemaining: { gt: 0 } },
@@ -27,18 +34,20 @@ export async function GET(req: NextRequest) {
 
   // Compute eligibility for each campaign
   const now = Date.now();
-  const daysSinceBundle = user.lastBundleCompletedAt
+  const daysSinceBundle = user?.lastBundleCompletedAt
     ? (now - new Date(user.lastBundleCompletedAt).getTime()) / (86400 * 1000)
     : null;
 
   const formatted = campaigns
     .filter((c) => {
-      // Filter by targetRegion (country code) if set
-      if (c.targetRegion && user.countryCode !== c.targetRegion) return false;
+      // Filter by targetRegion only when user is logged in with a known country
+      if (c.targetRegion && user && user.countryCode !== c.targetRegion) return false;
       return true;
     })
     .map((c) => {
-      const eligible = checkEligibility(user, c, daysSinceBundle);
+      const eligibility = user
+        ? checkEligibility(user, c, daysSinceBundle)
+        : { eligible: false, reason: "not_logged_in" as string, daysUntilEligible: undefined };
       const templateItems = c.template.items as { name: string; quantity: string }[];
       const itemSummary = templateItems.map((i) => i.name).join(", ");
 
@@ -57,7 +66,7 @@ export async function GET(req: NextRequest) {
           itemSummary,
           items:       c.template.items,
         },
-        eligibility:    eligible,
+        eligibility,
       };
     });
 
