@@ -64,6 +64,10 @@ model User {
   circleIdentityUpdatedAt DateTime?
   circleIdentitySkippedAt DateTime?
 
+  // ── care bundles ─────────────────────────────────────────────────────────
+  lastBundleCompletedAt DateTime?
+  activeBundleId        String?
+
   // relations
   items                    Item[]
   requests                 Request[]
@@ -87,6 +91,8 @@ model User {
   postReactions PostReaction[]
   postComments  PostComment[]
   postReports   PostReport[]
+
+  bundleInstances BundleInstance[] @relation("RecipientBundles")
 }
 
 // ==================== ITEMS ====================
@@ -503,4 +509,84 @@ enum FlagStatus {
 enum CircleAccessType {
   FULL
   READ_COMMENT
+}
+
+// ==================== CARE BUNDLES ====================
+
+model Campaign {
+  id               String         @id @default(cuid())
+  title            String
+  description      String
+  sponsorName      String
+  sponsorLogo      String?
+  totalBudget      Float
+  costPerBundle    Float
+  totalBundles     Int
+  bundlesRemaining Int
+  status           CampaignStatus @default(DRAFT)
+  targetStage      String?
+  targetRegion     String?
+  templateId       String
+  startDate        DateTime       @default(now())
+  endDate          DateTime?
+  createdAt        DateTime       @default(now())
+
+  template  BundleTemplate   @relation(fields: [templateId], references: [id])
+  instances BundleInstance[]
+}
+
+model BundleTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  estimatedCost Float
+  items         Json
+  targetStage   String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  campaigns Campaign[]
+  instances BundleInstance[]
+}
+
+model BundleInstance {
+  id              String               @id @default(cuid())
+  campaignId      String
+  templateId      String
+  recipientId     String
+  status          BundleInstanceStatus @default(REQUESTED)
+  requestedAt     DateTime             @default(now())
+  approvedAt      DateTime?
+  orderedAt       DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  confirmedAt     DateTime?
+  trackingNumber  String?
+  orderReference  String?
+  deliveryAddress Json
+  adminNotes      String?
+
+  campaign  Campaign       @relation(fields: [campaignId], references: [id])
+  template  BundleTemplate @relation(fields: [templateId], references: [id])
+  recipient User           @relation("RecipientBundles", fields: [recipientId], references: [id], onDelete: Cascade)
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum BundleInstanceStatus {
+  AVAILABLE
+  REQUESTED
+  APPROVED
+  ORDERED
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  REJECTED
+  DISPUTED
 }

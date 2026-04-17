@@ -32,6 +32,9 @@ export interface User {
   countryFlag: string | null;
   subTags: string[];
   currentCircleId: string | null;
+  // care bundles
+  lastBundleCompletedAt: string | null;
+  activeBundleId: string | null;
   // circle identity
   circleIdentitySet: boolean;
   circleContext: string | null;

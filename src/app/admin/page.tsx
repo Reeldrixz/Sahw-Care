@@ -43,6 +43,32 @@ interface Stats {
   totalRequests: number; fulfilledRequests: number; fulfilmentRate: number;
   pendingReports: number; verifiedUsers: number; lowTrustUsers: number;
   pendingOverrides: number; totalRegisters: number; pendingDocuments: number;
+  bundlesDelivered: number; bundlesPending: number;
+}
+
+interface AdminCampaign {
+  id: string; title: string; description: string; sponsorName: string;
+  status: string; totalBundles: number; bundlesRemaining: number;
+  costPerBundle: number; totalBudget: number; targetStage: string | null;
+  createdAt: string; templateId: string;
+  template: { name: string };
+  _count: { instances: number };
+}
+
+interface AdminInstance {
+  id: string; status: string; requestedAt: string; adminNotes: string | null;
+  trackingNumber: string | null; orderReference: string | null;
+  deliveryAddress: { fullName?: string; address?: string; city?: string; state?: string; country?: string; phone?: string };
+  recipient: { id: string; name: string; email: string | null; location: string | null };
+  campaign: { title: string };
+  template: { name: string };
+}
+
+interface AdminBundleTemplate {
+  id: string; name: string; description: string; estimatedCost: number;
+  targetStage: string | null; isActive: boolean;
+  items: { name: string; quantity: string; notes?: string }[];
+  _count?: { instances: number };
 }
 
 interface VerifUser {
@@ -68,7 +94,7 @@ interface FlaggedPostInfo {
   };
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles";
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
@@ -99,11 +125,27 @@ export default function AdminPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Bundles state
+  const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
+  const [bundleCampaigns,  setBundleCampaigns]  = useState<AdminCampaign[]>([]);
+  const [bundleInstances,  setBundleInstances]  = useState<AdminInstance[]>([]);
+  const [bundleTemplates,  setBundleTemplates]  = useState<AdminBundleTemplate[]>([]);
+  const [instanceFilter,   setInstanceFilter]   = useState("ALL");
+  const [instanceSearch,   setInstanceSearch]   = useState("");
+  const [bundleActionData, setBundleActionData] = useState<Record<string, string>>({});
+  const [showNewCampaign,  setShowNewCampaign]  = useState(false);
+  const [showNewTemplate,  setShowNewTemplate]  = useState(false);
+  const [newCampaign, setNewCampaign] = useState({ title: "", description: "", totalBundles: "10", costPerBundle: "80", totalBudget: "800", targetStage: "", templateId: "" });
+  const [newTemplate, setNewTemplate] = useState({ name: "", description: "", estimatedCost: "0", targetStage: "", items: "" });
+
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "ADMIN")) router.push("/");
   }, [user, authLoading, router]);
 
   const fetchStats    = useCallback(async () => { const r = await fetch("/api/admin/stats"); if (r.ok) { const d = await r.json(); setStats(d.stats); setRecentActivity(d.recentActivity ?? []); } }, []);
+  const fetchBundleCampaigns  = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/bundles?tab=campaigns"); if (r.ok) { const d = await r.json(); setBundleCampaigns(d.campaigns ?? []); } setLoading(false); }, []);
+  const fetchBundleInstances  = useCallback(async () => { setLoading(true); const status = instanceFilter === "ALL" ? "" : instanceFilter; const r = await fetch(`/api/admin/bundles?status=${status}&search=${encodeURIComponent(instanceSearch)}`); if (r.ok) { const d = await r.json(); setBundleInstances(d.instances ?? []); } setLoading(false); }, [instanceFilter, instanceSearch]);
+  const fetchBundleTemplates  = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/bundles/templates"); if (r.ok) { const d = await r.json(); setBundleTemplates(d.templates ?? []); } setLoading(false); }, []);
   const fetchUsers    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/users?search=${encodeURIComponent(userSearch)}`); if (r.ok) { const d = await r.json(); setUsers(d.users ?? []); } setLoading(false); }, [userSearch]);
   const fetchItems    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/items?search=${encodeURIComponent(itemSearch)}`); if (r.ok) { const d = await r.json(); setItems(d.items ?? []); } setLoading(false); }, [itemSearch]);
   const fetchReports  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/reports?status=${reportFilter}`); if (r.ok) { const d = await r.json(); setReports(d.reports ?? []); } setLoading(false); }, [reportFilter]);
@@ -119,6 +161,13 @@ export default function AdminPage() {
   useEffect(() => { if (section === "trust")        fetchTrust(); }, [section, fetchTrust]);
   useEffect(() => { if (section === "verification") fetchVerif(); }, [section, fetchVerif, verifFilter]);
   useEffect(() => { if (section === "circles") { fetchCircles(); fetchFlagged(); } }, [section, fetchCircles, fetchFlagged, flaggedFilter]);
+  useEffect(() => {
+    if (section !== "bundles") return;
+    if (bundleTab === "campaigns")  fetchBundleCampaigns();
+    if (bundleTab === "queue")      fetchBundleInstances();
+    if (bundleTab === "all")        fetchBundleInstances();
+    if (bundleTab === "templates")  fetchBundleTemplates();
+  }, [section, bundleTab, fetchBundleCampaigns, fetchBundleInstances, fetchBundleTemplates, instanceFilter, instanceSearch]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -174,6 +223,55 @@ export default function AdminPage() {
     }
   };
 
+  const updateBundleInstance = async (instanceId: string, update: Record<string, string | null>) => {
+    const res = await fetch(`/api/admin/bundles/${instanceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
+    });
+    if (res.ok) { fetchBundleInstances(); setToast("Updated"); }
+    else { const d = await res.json(); setToast(d.error ?? "Failed"); }
+  };
+
+  const updateCampaign = async (campaignId: string, update: Record<string, unknown>) => {
+    const res = await fetch(`/api/admin/bundles/${campaignId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "campaign", ...update }),
+    });
+    if (res.ok) { fetchBundleCampaigns(); setToast("Campaign updated"); }
+    else { const d = await res.json(); setToast(d.error ?? "Failed"); }
+  };
+
+  const createCampaign = async () => {
+    const res = await fetch("/api/admin/bundles/campaign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "campaign", ...newCampaign }),
+    });
+    if (res.ok) { fetchBundleCampaigns(); setShowNewCampaign(false); setNewCampaign({ title: "", description: "", totalBundles: "10", costPerBundle: "80", totalBudget: "800", targetStage: "", templateId: "" }); setToast("Campaign created!"); }
+    else { const d = await res.json(); setToast(d.error ?? "Failed"); }
+  };
+
+  const createTemplate = async () => {
+    let items: unknown[] = [];
+    try { items = newTemplate.items.split("\n").filter(Boolean).map((l) => { const [name, quantity] = l.split("|").map((s) => s.trim()); return { name: name || l, quantity: quantity || "1" }; }); } catch {}
+    const res = await fetch("/api/admin/bundles/template", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "template", ...newTemplate, estimatedCost: Number(newTemplate.estimatedCost), items }),
+    });
+    if (res.ok) { fetchBundleTemplates(); setShowNewTemplate(false); setNewTemplate({ name: "", description: "", estimatedCost: "0", targetStage: "", items: "" }); setToast("Template created!"); }
+    else { const d = await res.json(); setToast(d.error ?? "Failed"); }
+  };
+
+  const seedBundles = async () => {
+    const res = await fetch("/api/admin/bundles/seed", { method: "POST" });
+    const d = await res.json();
+    setToast(d.message ?? "Done");
+    if (!d.skipped) { fetchBundleCampaigns(); fetchBundleTemplates(); }
+  };
+
   const recalcTrust = async (userId: string) => {
     const res = await fetch("/api/admin/trust", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
     if (res.ok) { const d = await res.json(); setTrustUsers((p) => p.map((u) => u.id === userId ? { ...u, trustScore: d.trustScore } : u)); setToast(`Trust score updated: ${d.trustScore}`); }
@@ -189,6 +287,7 @@ export default function AdminPage() {
     ["trust",        "🛡️ Trust"],
     ["verification", "✅ Verify" + (stats?.pendingDocuments ? ` (${stats.pendingDocuments})` : "")],
     ["circles",      "🤝 Circles"],
+    ["bundles",      "🎀 Bundles" + (stats?.bundlesPending ? ` (${stats.bundlesPending})` : "")],
   ];
 
   return (
@@ -225,6 +324,8 @@ export default function AdminPage() {
                     [stats.pendingOverrides.toString(), "Override Reviews"],
                     [stats.totalRegisters.toString(), "Registers"],
                     [stats.pendingDocuments.toString(), "Docs Pending Review"],
+                    [(stats.bundlesDelivered ?? 0).toString(), "Bundles Delivered"],
+                    [(stats.bundlesPending ?? 0).toString(), "Bundles Pending"],
                   ].map(([num, label]) => (
                     <div key={label} className="admin-card">
                       <div className="admin-card-num">{num}</div>
@@ -621,6 +722,252 @@ export default function AdminPage() {
                     </div>
                   ))
                 }
+              </div>
+            )}
+
+            {/* ── BUNDLES ──────────────────────────────────────────────── */}
+            {section === "bundles" && (
+              <div>
+                {/* Sub-tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {([["campaigns","📣 Campaigns"],["queue","⚡ Queue"],["all","📋 All Bundles"],["templates","📦 Templates"]] as const).map(([key, label]) => (
+                    <button key={key} onClick={() => setBundleTab(key)}
+                      style={{ padding: "7px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 700,
+                        background: bundleTab === key ? "var(--green)" : "var(--bg)",
+                        color: bundleTab === key ? "white" : "var(--mid)" }}>
+                      {label}
+                    </button>
+                  ))}
+                  <button onClick={seedBundles}
+                    style={{ marginLeft: "auto", padding: "7px 16px", borderRadius: 20, border: "1.5px solid var(--border)", background: "var(--white)", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>
+                    🌱 Seed starter data
+                  </button>
+                </div>
+
+                {/* ─ Campaigns tab ─ */}
+                {bundleTab === "campaigns" && (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15 }}>Campaigns</div>
+                      <button onClick={() => setShowNewCampaign((p) => !p)}
+                        style={{ padding: "7px 16px", borderRadius: 20, border: "none", background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                        + New Campaign
+                      </button>
+                    </div>
+
+                    {showNewCampaign && (
+                      <div style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 16, border: "1.5px solid var(--green)" }}>
+                        <div style={{ fontWeight: 800, marginBottom: 12 }}>New Campaign</div>
+                        {[["title","Title"],["description","Description"],["totalBundles","Total bundles"],["costPerBundle","Cost/bundle ($)"],["totalBudget","Total budget ($)"],["targetStage","Target stage (optional)"],["templateId","Template ID"]].map(([k,l]) => (
+                          <div key={k} style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 3 }}>{l}</div>
+                            <input value={newCampaign[k as keyof typeof newCampaign]} onChange={(e) => setNewCampaign((p) => ({ ...p, [k]: e.target.value }))}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, fontFamily: "Nunito, sans-serif", boxSizing: "border-box" as const }} />
+                          </div>
+                        ))}
+                        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                          <button onClick={createCampaign} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Create</button>
+                          <button onClick={() => setShowNewCampaign(false)} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {loading ? <div className="loading"><div className="spinner" /></div>
+                      : bundleCampaigns.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--mid)" }}>
+                          <div style={{ fontSize: 32, marginBottom: 10 }}>🎀</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>No campaigns yet</div>
+                          <button onClick={seedBundles} style={{ padding: "9px 22px", borderRadius: 20, border: "none", background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>🌱 Create starter campaign</button>
+                        </div>
+                      ) : bundleCampaigns.map((c) => (
+                        <div key={c.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: 15 }}>{c.title}</div>
+                              <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 2 }}>{c.sponsorName} · Template: {c.template.name}</div>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20,
+                              background: c.status === "ACTIVE" ? "var(--green-light)" : c.status === "PAUSED" ? "var(--yellow-light)" : "var(--bg)",
+                              color: c.status === "ACTIVE" ? "var(--green)" : c.status === "PAUSED" ? "#b8860b" : "var(--mid)" }}>
+                              {c.status}
+                            </span>
+                          </div>
+                          {/* Progress bar */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--mid)", marginBottom: 4 }}>
+                              <span>{c.totalBundles - c.bundlesRemaining} claimed</span>
+                              <span>{c.bundlesRemaining} / {c.totalBundles} remaining</span>
+                            </div>
+                            <div style={{ background: "var(--border)", borderRadius: 4, height: 6 }}>
+                              <div style={{ width: `${((c.totalBundles - c.bundlesRemaining) / Math.max(c.totalBundles, 1)) * 100}%`, height: "100%", background: "var(--green)", borderRadius: 4 }} />
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const }}>
+                            {c.status !== "ACTIVE"   && <button onClick={() => updateCampaign(c.id, { status: "ACTIVE" })}   className="action-btn action-approve">Activate</button>}
+                            {c.status === "ACTIVE"   && <button onClick={() => updateCampaign(c.id, { status: "PAUSED" })}   className="action-btn" style={{ background: "var(--yellow-light)", color: "#b8860b" }}>Pause</button>}
+                            {c.status !== "COMPLETED" && <button onClick={() => updateCampaign(c.id, { status: "COMPLETED" })} className="action-btn action-remove">Complete</button>}
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+
+                {/* ─ Fulfillment Queue tab ─ */}
+                {bundleTab === "queue" && (
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 16 }}>Fulfillment Queue — Approved bundles ready to order</div>
+                    {loading ? <div className="loading"><div className="spinner" /></div>
+                      : bundleInstances.filter((i) => ["REQUESTED","APPROVED"].includes(i.status)).length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "40px 0", color: "var(--mid)" }}>
+                          <div style={{ fontSize: 28, marginBottom: 8 }}>✅</div>
+                          <div style={{ fontSize: 13 }}>Queue is clear</div>
+                        </div>
+                      ) : bundleInstances.filter((i) => ["REQUESTED","APPROVED"].includes(i.status)).map((inst) => (
+                        <div key={inst.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: 14 }}>{inst.recipient.name.split(" ")[0]} · {inst.template.name}</div>
+                              <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 2 }}>{inst.deliveryAddress?.city}, {inst.deliveryAddress?.country} · {new Date(inst.requestedAt).toLocaleDateString()}</div>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, background: inst.status === "REQUESTED" ? "var(--yellow-light)" : "var(--green-light)", color: inst.status === "REQUESTED" ? "#b8860b" : "var(--green)" }}>{inst.status}</span>
+                          </div>
+                          {/* Delivery address */}
+                          <div style={{ background: "var(--bg)", borderRadius: 8, padding: "10px 12px", fontSize: 12, marginBottom: 12, lineHeight: 1.7 }}>
+                            <strong>{inst.deliveryAddress?.fullName}</strong><br />
+                            {inst.deliveryAddress?.address}<br />
+                            {inst.deliveryAddress?.city}, {inst.deliveryAddress?.state}, {inst.deliveryAddress?.country}<br />
+                            📱 {inst.deliveryAddress?.phone}
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" as const, alignItems: "center" }}>
+                            {inst.status === "REQUESTED" && <button onClick={() => updateBundleInstance(inst.id, { status: "APPROVED" })} className="action-btn action-approve">✓ Approve</button>}
+                            {["REQUESTED","APPROVED"].includes(inst.status) && (
+                              <>
+                                <input placeholder="Order ref" value={bundleActionData[`ref_${inst.id}`] ?? ""}
+                                  onChange={(e) => setBundleActionData((p) => ({ ...p, [`ref_${inst.id}`]: e.target.value }))}
+                                  style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", width: 120 }} />
+                                <button onClick={() => updateBundleInstance(inst.id, { status: "ORDERED", orderReference: bundleActionData[`ref_${inst.id}`] ?? null })} className="action-btn action-approve">Mark Ordered</button>
+                              </>
+                            )}
+                            {inst.status === "ORDERED" && (
+                              <>
+                                <input placeholder="Tracking #" value={bundleActionData[`track_${inst.id}`] ?? ""}
+                                  onChange={(e) => setBundleActionData((p) => ({ ...p, [`track_${inst.id}`]: e.target.value }))}
+                                  style={{ padding: "5px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", width: 140 }} />
+                                <button onClick={() => updateBundleInstance(inst.id, { status: "SHIPPED", trackingNumber: bundleActionData[`track_${inst.id}`] ?? null })} className="action-btn action-approve">Mark Shipped</button>
+                              </>
+                            )}
+                            <button onClick={() => updateBundleInstance(inst.id, { status: "REJECTED" })} className="action-btn action-remove">Reject</button>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+
+                {/* ─ All Bundles tab ─ */}
+                {bundleTab === "all" && (
+                  <div>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" as const, alignItems: "center" }}>
+                      <input className="search-bar" style={{ maxWidth: 200 }} placeholder="Search recipient…" value={instanceSearch} onChange={(e) => setInstanceSearch(e.target.value)} />
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+                        {["ALL","REQUESTED","APPROVED","ORDERED","SHIPPED","COMPLETED","REJECTED"].map((s) => (
+                          <button key={s} onClick={() => setInstanceFilter(s)}
+                            style={{ padding: "5px 12px", borderRadius: 20, border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontSize: 11, fontWeight: 700,
+                              background: instanceFilter === s ? "var(--green)" : "var(--bg)",
+                              color: instanceFilter === s ? "white" : "var(--mid)" }}>
+                            {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {loading ? <div className="loading"><div className="spinner" /></div>
+                      : (
+                        <div className="admin-table">
+                          <table>
+                            <thead><tr><th>Recipient</th><th>Bundle</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                            <tbody>
+                              {bundleInstances.map((inst) => (
+                                <tr key={inst.id}>
+                                  <td><strong>{inst.recipient.name}</strong><br /><span style={{ fontSize: 11, color: "var(--mid)" }}>{inst.deliveryAddress?.city}</span></td>
+                                  <td style={{ fontSize: 12 }}>{inst.template.name}</td>
+                                  <td><span className={`status-pill status-${inst.status.toLowerCase()}`}>{inst.status}</span></td>
+                                  <td style={{ fontSize: 12, color: "var(--mid)" }}>{new Date(inst.requestedAt).toLocaleDateString()}</td>
+                                  <td>
+                                    {inst.status === "SHIPPED" && <button onClick={() => updateBundleInstance(inst.id, { status: "DELIVERED" })} className="action-btn action-approve" style={{ fontSize: 11 }}>Delivered</button>}
+                                    {["REQUESTED","APPROVED","ORDERED"].includes(inst.status) && <button onClick={() => updateBundleInstance(inst.id, { status: "REJECTED" })} className="action-btn action-remove" style={{ fontSize: 11 }}>Reject</button>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {bundleInstances.length === 0 && <div style={{ textAlign: "center", padding: "30px 0", color: "var(--mid)", fontSize: 13 }}>No bundles found</div>}
+                        </div>
+                      )
+                    }
+                  </div>
+                )}
+
+                {/* ─ Templates tab ─ */}
+                {bundleTab === "templates" && (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15 }}>Bundle Templates</div>
+                      <button onClick={() => setShowNewTemplate((p) => !p)}
+                        style={{ padding: "7px 16px", borderRadius: 20, border: "none", background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                        + New Template
+                      </button>
+                    </div>
+
+                    {showNewTemplate && (
+                      <div style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 16, border: "1.5px solid var(--green)" }}>
+                        <div style={{ fontWeight: 800, marginBottom: 12 }}>New Template</div>
+                        {[["name","Name"],["description","Description"],["estimatedCost","Estimated cost ($)"],["targetStage","Target stage (optional)"]].map(([k,l]) => (
+                          <div key={k} style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 3 }}>{l}</div>
+                            <input value={newTemplate[k as keyof typeof newTemplate]} onChange={(e) => setNewTemplate((p) => ({ ...p, [k]: e.target.value }))}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13, fontFamily: "Nunito, sans-serif", boxSizing: "border-box" as const }} />
+                          </div>
+                        ))}
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 3 }}>Items (one per line: Name | Quantity)</div>
+                          <textarea value={newTemplate.items} onChange={(e) => setNewTemplate((p) => ({ ...p, items: e.target.value }))}
+                            placeholder={"Diapers | 1 pack\nWipes | 2 packs\nOnesies | 3"}
+                            rows={5} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", resize: "vertical", boxSizing: "border-box" as const }} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={createTemplate} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Create</button>
+                          <button onClick={() => setShowNewTemplate(false)} style={{ padding: "8px 16px", borderRadius: 10, border: "1px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {loading ? <div className="loading"><div className="spinner" /></div>
+                      : bundleTemplates.map((t) => (
+                        <div key={t.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: 14 }}>{t.name}</div>
+                              <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 2 }}>{t.description}</div>
+                              {t.targetStage && <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 2 }}>Stage: {t.targetStage}</div>}
+                            </div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: t.isActive ? "var(--green)" : "var(--mid)" }}>
+                              {t.isActive ? "Active" : "Inactive"} · {t._count?.instances ?? 0} used
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6 }}>
+                            {(t.items as { name: string; quantity: string }[]).map((item, i) => (
+                              <span key={i} style={{ fontSize: 11, background: "var(--bg)", padding: "3px 10px", borderRadius: 20, color: "var(--ink)" }}>
+                                {item.name} · {item.quantity}
+                              </span>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 8, fontFamily: "monospace" }}>ID: {t.id}</div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
             )}
 

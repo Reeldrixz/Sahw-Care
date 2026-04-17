@@ -45,6 +45,8 @@ export async function GET(req: NextRequest) {
       countryFlag: true,
       subTags: true,
       currentCircleId: true,
+      lastBundleCompletedAt: true,
+      activeBundleId: true,
       circleIdentitySet: true,
       circleContext: true,
       circleDisplayName: true,
