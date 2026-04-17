@@ -12,6 +12,7 @@ import DocumentUploadSheet from "@/components/DocumentUploadSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { STAGE_META } from "@/lib/stage";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
+import PhoneSetupSheet from "@/components/PhoneSetupSheet";
 
 const CAT_BG: Record<string, string> = {
   "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
@@ -52,6 +53,7 @@ export default function ProfilePage() {
   const [showShareImpact, setShowShareImpact] = useState(false);
   const [showDocUpload, setShowDocUpload] = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
+  const [showPhoneSetup, setShowPhoneSetup] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -328,14 +330,23 @@ export default function ProfilePage() {
               <span style={{ fontSize: 20 }}>📱</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>Phone number</div>
-                <div style={{ fontSize: 12, color: "var(--mid)" }}>{user.phone ?? "Not added"}</div>
+                <div style={{ fontSize: 12, color: "var(--mid)" }}>
+                  {user.phone
+                    ? user.phone.length > 4
+                      ? user.phone.slice(0, user.phone.length - 4).replace(/\d/g, "•") + user.phone.slice(-4)
+                      : user.phone
+                    : "Not added"}
+                </div>
               </div>
               {user.phoneVerified ? (
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", padding: "3px 10px", borderRadius: 20 }}>✓ Verified</span>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", padding: "3px 10px", borderRadius: 20 }}>✓ Verified</span>
+                  <button onClick={() => setShowPhoneSetup(true)} style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", background: "none", border: "1.5px solid var(--border)", padding: "3px 10px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Change</button>
+                </div>
               ) : user.phone ? (
-                <button onClick={() => openVerify("PHONE")} style={{ fontSize: 12, fontWeight: 700, background: "var(--green)", color: "white", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Verify</button>
+                <button onClick={() => setShowPhoneSetup(true)} style={{ fontSize: 12, fontWeight: 700, background: "var(--green)", color: "white", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Verify</button>
               ) : (
-                <span style={{ fontSize: 11, color: "var(--light)" }}>Add phone first</span>
+                <button onClick={() => setShowPhoneSetup(true)} style={{ fontSize: 12, fontWeight: 700, background: "var(--green)", color: "white", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>+ Add</button>
               )}
             </div>
             {/* Email */}
@@ -697,6 +708,17 @@ export default function ProfilePage() {
       {showShareImpact && <ShareImpactModal onClose={() => setShowShareImpact(false)} />}
       {showIdentityModal && (
         <CircleIdentityModal onDone={() => { setShowIdentityModal(false); refreshUser(); }} />
+      )}
+      {showPhoneSetup && (
+        <PhoneSetupSheet
+          existingPhone={user.phone}
+          onClose={() => setShowPhoneSetup(false)}
+          onSuccess={async () => {
+            setShowPhoneSetup(false);
+            await refreshUser();
+            setToast("Phone number verified ✓");
+          }}
+        />
       )}
       {showDocUpload && (
         <DocumentUploadSheet
