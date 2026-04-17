@@ -32,6 +32,11 @@ export interface User {
   countryFlag: string | null;
   subTags: string[];
   currentCircleId: string | null;
+  // circle identity
+  circleIdentitySet: boolean;
+  circleContext: string | null;
+  circleDisplayName: string | null;
+  circleIdentitySkippedAt: string | null;
   _count?: { items: number; requests: number };
 }
 

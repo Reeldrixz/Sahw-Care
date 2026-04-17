@@ -11,6 +11,8 @@ interface Author {
   avatar: string | null;
   city: string | null;
   countryFlag: string | null;
+  circleContext: string | null;
+  circleDisplayName: string | null;
   subTags: string[];
   trustScore: number;
   isLeader: boolean;
@@ -119,7 +121,10 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
     setReported(true);
   };
 
-  const firstName = post.author.name.split(" ")[0];
+  const displayName = post.author.circleDisplayName?.trim() || post.author.name.split(" ")[0];
+  const displayIdentity = post.author.circleContext
+    ? `${post.author.circleContext} • ${displayName}`
+    : displayName;
   const isOwn = post.author.id === currentUserId;
 
   if (reported) {
@@ -142,7 +147,7 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
         <Avatar src={post.author.avatar} name={post.author.name} size={36} />
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span style={{ fontWeight: 800, fontSize: 14 }}>{firstName}</span>
+            <span style={{ fontWeight: 800, fontSize: 14 }}>{displayIdentity}</span>
             {post.author.isLeader && (
               <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 20, background: "var(--green)", color: "white" }}>
                 ⭐ Leader

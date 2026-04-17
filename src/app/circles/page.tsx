@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
+import CircleIdentityModal from "@/components/CircleIdentityModal";
 import { STAGE_META, StageKey } from "@/lib/stage";
 import { HeartPulse, Heart, Smile, Star, LayoutGrid, type LucideIcon } from "lucide-react";
 
@@ -149,9 +150,26 @@ export default function CirclesPage() {
   const [loadingPosts,    setLoadingPosts]    = useState(false);
   const [commentsPostId,  setCommentsPostId]  = useState<string | null>(null);
 
+  // Circle identity modal
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
+
   // Which circle are we showing the feed for?
   const activeCircle = cohortCircle ?? countryCircle;
   const activeMember = cohortCircle ? cohortMember : countryMember;
+
+  // ── Show circle identity modal on first Circles visit ───────────────────
+  useEffect(() => {
+    if (!user || user.journeyType === "donor") return;
+    if (user.circleIdentitySet) return;
+    // Respect 7-day skip cooldown
+    if (user.circleIdentitySkippedAt) {
+      const daysSinceSkip = (Date.now() - new Date(user.circleIdentitySkippedAt).getTime()) / (86400 * 1000);
+      if (daysSinceSkip < 7) return;
+    }
+    // Small delay so the page loads first
+    const t = setTimeout(() => setShowIdentityModal(true), 800);
+    return () => clearTimeout(t);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load cohort circle ────────────────────────────────────────────────────
   useEffect(() => {
@@ -602,6 +620,11 @@ export default function CirclesPage() {
           <CircleComments postId={commentsPostId} onClose={() => { setCommentsPostId(null); loadPosts(true); }} />
         )}
 
+        {/* Circle identity setup modal */}
+        {showIdentityModal && (
+          <CircleIdentityModal onDone={() => setShowIdentityModal(false)} />
+        )}
+
         {/* ExploreSheet — full-screen overlay */}
         {exploreOpen && (
           <div style={{ position: "fixed", inset: 0, background: "var(--bg)", zIndex: 1000, display: "flex", flexDirection: "column", overflowY: "auto" }}>
@@ -681,6 +704,10 @@ export default function CirclesPage() {
           onPosted={() => loadPosts(true)}
           router={router}
         />
+      )}
+
+      {showIdentityModal && (
+        <CircleIdentityModal onDone={() => setShowIdentityModal(false)} />
       )}
     </div>
   );

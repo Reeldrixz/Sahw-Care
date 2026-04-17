@@ -57,6 +57,13 @@ model User {
   graduatedCircleIds String[]  @default([])
   lastStageCheck     DateTime?
 
+  // ── circle identity ──────────────────────────────────────────────────────
+  circleIdentitySet       Boolean   @default(false)
+  circleContext           String?   // "First-time Mom" | "Experienced Mom" | etc. | null = name only
+  circleDisplayName       String?   // user-chosen display name, max 20 chars
+  circleIdentityUpdatedAt DateTime?
+  circleIdentitySkippedAt DateTime?
+
   // relations
   items                    Item[]
   requests                 Request[]

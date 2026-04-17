@@ -45,6 +45,10 @@ export async function GET(req: NextRequest) {
       countryFlag: true,
       subTags: true,
       currentCircleId: true,
+      circleIdentitySet: true,
+      circleContext: true,
+      circleDisplayName: true,
+      circleIdentitySkippedAt: true,
       _count: { select: { items: true, requests: true } },
     },
   });

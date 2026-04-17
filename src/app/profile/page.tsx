@@ -11,6 +11,7 @@ import VerificationBanner from "@/components/VerificationBanner";
 import DocumentUploadSheet from "@/components/DocumentUploadSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { STAGE_META } from "@/lib/stage";
+import CircleIdentityModal from "@/components/CircleIdentityModal";
 
 const CAT_BG: Record<string, string> = {
   "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
@@ -50,6 +51,7 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showShareImpact, setShowShareImpact] = useState(false);
   const [showDocUpload, setShowDocUpload] = useState(false);
+  const [showIdentityModal, setShowIdentityModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -388,6 +390,36 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ── Circle Identity ──────────────────────────────────────── */}
+        {user.journeyType && user.journeyType !== "donor" && (
+          <div className="profile-section">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="profile-section-title" style={{ marginBottom: 0 }}>💛 Circle identity</div>
+              <button
+                onClick={() => setShowIdentityModal(true)}
+                style={{ fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+              >
+                {user.circleIdentitySet ? "Edit" : "Set up"}
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.6, marginBottom: 10 }}>
+              How you appear to other moms in your circle.
+            </p>
+            <div style={{ background: "var(--bg)", borderRadius: 12, padding: "12px 14px", border: "1.5px solid var(--border)" }}>
+              {user.circleIdentitySet ? (
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>
+                  {user.circleContext ? `${user.circleContext} • ` : ""}
+                  {user.circleDisplayName?.trim() || user.name.split(" ")[0]}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: "var(--mid)", fontStyle: "italic" }}>
+                  Not set — your first name is shown by default
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ── Ratings ──────────────────────────────────────────────── */}
         {ratings.pickup > 0 && (
           <div className="profile-section">
@@ -663,6 +695,9 @@ export default function ProfilePage() {
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
       {showShareImpact && <ShareImpactModal onClose={() => setShowShareImpact(false)} />}
+      {showIdentityModal && (
+        <CircleIdentityModal onDone={() => { setShowIdentityModal(false); refreshUser(); }} />
+      )}
       {showDocUpload && (
         <DocumentUploadSheet
           onClose={() => setShowDocUpload(false)}
