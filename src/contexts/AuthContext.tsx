@@ -40,6 +40,10 @@ export interface User {
   circleContext: string | null;
   circleDisplayName: string | null;
   circleIdentitySkippedAt: string | null;
+  // notification preferences
+  notifyNewPosts: boolean;
+  notifyReplies: boolean;
+  notifyThreadReplies: boolean;
   _count?: { items: number; requests: number };
 }
 

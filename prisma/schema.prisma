@@ -93,6 +93,13 @@ model User {
   postReports   PostReport[]
 
   bundleInstances BundleInstance[] @relation("RecipientBundles")
+
+  // notification preferences
+  notifyNewPosts      Boolean @default(false)
+  notifyReplies       Boolean @default(true)
+  notifyThreadReplies Boolean @default(true)
+
+  notifications Notification[]
 }
 
 // ==================== ITEMS ====================
@@ -577,6 +584,27 @@ enum CampaignStatus {
   ACTIVE
   PAUSED
   COMPLETED
+}
+
+model Notification {
+  id                String    @id @default(cuid())
+  userId            String
+  type              NotifType
+  message           String
+  isRead            Boolean   @default(false)
+  circleId          String?
+  postId            String?
+  triggeredByUserId String?
+  link              String?
+  createdAt         DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NotifType {
+  NEW_POST
+  REPLY
+  THREAD_REPLY
 }
 
 enum BundleInstanceStatus {

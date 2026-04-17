@@ -188,6 +188,37 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ post: null, flagged: true, message: "Your post is under review before it appears in the circle." });
   }
 
+  // After creating post (not flagged), notify circle members who want new post notifications
+  // Fire and forget — don't await
+  (async () => {
+    try {
+      const members = await prisma.circleMember.findMany({
+        where: { circleId, userId: { not: auth.userId } },
+        include: { user: { select: { id: true, notifyNewPosts: true } } },
+      });
+      const poster = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+      const posterName = poster?.name?.split(" ")[0] ?? "Someone";
+      const circle = await prisma.circle.findUnique({ where: { id: circleId }, select: { name: true } });
+      const circleName = circle?.name ?? "your circle";
+
+      const notifData = members
+        .filter(m => m.user.notifyNewPosts)
+        .map(m => ({
+          userId: m.user.id,
+          type: "NEW_POST" as const,
+          message: `${posterName} posted in ${circleName}`,
+          circleId,
+          postId: post.id,
+          triggeredByUserId: auth.userId,
+          link: `/circles`,
+        }));
+
+      if (notifData.length > 0) {
+        await prisma.notification.createMany({ data: notifData });
+      }
+    } catch {}
+  })();
+
   return NextResponse.json({
     post: { id: post.id, content: post.content, category: post.category, photoUrl: post.photoUrl, isPinned: false, createdAt: post.createdAt },
     flagged: false,

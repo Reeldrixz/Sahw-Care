@@ -57,6 +57,8 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<{ notifyNewPosts: boolean; notifyReplies: boolean; notifyThreadReplies: boolean } | null>(null);
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
   // OTP verification state
   const [showVerify, setShowVerify] = useState(false);
@@ -85,6 +87,24 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/notifications/preferences").then(r => r.json()).then(d => setNotifPrefs(d.prefs ?? null)).catch(() => {});
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const togglePref = async (key: keyof NonNullable<typeof notifPrefs>) => {
+    if (!notifPrefs) return;
+    const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(updated);
+    setSavingPrefs(true);
+    await fetch("/api/notifications/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [key]: updated[key] }),
+    });
+    setSavingPrefs(false);
+  };
 
   const handleDonate = async (formData: FormData) => {
     let imageUrl: string | undefined;
@@ -427,6 +447,50 @@ export default function ProfilePage() {
                   Not set — your first name is shown by default
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Notification preferences ─────────────────────────────── */}
+        {user.journeyType && user.journeyType !== "donor" && notifPrefs && (
+          <div className="profile-section">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="profile-section-title" style={{ marginBottom: 0 }}>Notification preferences</div>
+              {savingPrefs && <span style={{ fontSize: 11, color: "var(--mid)" }}>Saving...</span>}
+            </div>
+            <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.6, marginBottom: 12 }}>
+              Choose what in-circle activity you want to be notified about.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {([
+                { key: "notifyNewPosts" as const, label: "New posts in my circle", desc: "Get notified when someone posts in your circle" },
+                { key: "notifyReplies" as const, label: "Replies to my posts", desc: "Get notified when someone replies to your post" },
+                { key: "notifyThreadReplies" as const, label: "Thread replies", desc: "Get notified when someone replies in a thread you're in" },
+              ] as const).map(({ key, label, desc }) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "var(--bg)", borderRadius: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 11, color: "var(--mid)" }}>{desc}</div>
+                  </div>
+                  <button
+                    onClick={() => togglePref(key)}
+                    style={{
+                      width: 44, height: 24, borderRadius: 12, border: "none",
+                      background: notifPrefs[key] ? "var(--green)" : "var(--border)",
+                      position: "relative", cursor: "pointer", transition: "background 0.2s", flexShrink: 0,
+                    }}
+                    aria-label={`Toggle ${label}`}
+                  >
+                    <span style={{
+                      position: "absolute", top: 2,
+                      left: notifPrefs[key] ? 22 : 2,
+                      width: 20, height: 20, borderRadius: "50%",
+                      background: "white", transition: "left 0.2s",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    }} />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         )}

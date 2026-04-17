@@ -8,7 +8,8 @@ import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
-import { MapPin, Bell } from "lucide-react";
+import { MapPin } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
 
 interface BundleItem { name: string; quantity: string }
@@ -168,9 +169,7 @@ export default function DiscoverPage() {
             <span className="location-arrow">▾</span>
           </div>
           <div className="topbar-right">
-            <button className="icon-btn notif-dot">
-              <Bell size={20} strokeWidth={1.75} color="#1a7a5e" />
-            </button>
+            <NotificationBell />
             {user ? (
               <button className="icon-btn" onClick={() => router.push("/profile")} style={{ padding: 2, background: "none", border: "none" }}>
                 <div style={{ width: 28, height: 28, borderRadius: "50%", overflow: "hidden" }}>

@@ -282,6 +282,50 @@ export default function CirclesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCircle?.id, postCategory, activeChannel]);
 
+  // ── SSE: real-time new posts ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!activeCircle || !user) return;
+    // Only subscribe when on primary/cohort circle, not when visiting
+    if (visitingCircle) return;
+
+    const since = new Date().toISOString();
+    let es: EventSource | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      es = new EventSource(`/api/circles/${activeCircle.id}/stream?since=${encodeURIComponent(since)}`);
+
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "new_post" && data.post) {
+            const newPost = data.post as Post;
+            // Don't add own posts (already added optimistically by CircleComposer)
+            if (newPost.author.id === user.id) return;
+            // Prepend to top of feed only if not already there
+            setPosts(prev => {
+              if (prev.some(p => p.id === newPost.id)) return prev;
+              return [newPost, ...prev];
+            });
+          }
+        } catch {}
+      };
+
+      es.onerror = () => {
+        es?.close();
+        // Reconnect after 5s
+        reconnectTimeout = setTimeout(connect, 5000);
+      };
+    };
+
+    connect();
+
+    return () => {
+      es?.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [activeCircle?.id, user?.id, visitingCircle]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleDelete = async (postId: string) => {
     if (!confirm("Delete this post?")) return;
     await fetch(`/api/circles/posts/${postId}`, { method: "DELETE" });

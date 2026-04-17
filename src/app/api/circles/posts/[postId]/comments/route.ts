@@ -85,6 +85,71 @@ export async function POST(req: NextRequest, { params }: Params) {
     include: { user: { select: { id: true, name: true, avatar: true, location: true, countryCode: true, circleContext: true, circleDisplayName: true } } },
   });
 
+  // Fire notifications (fire and forget)
+  (async () => {
+    try {
+      const commenterUser = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+      const commenterName = commenterUser?.name?.split(" ")[0] ?? "Someone";
+
+      // Get the post's author
+      const postFull = await prisma.circlePost.findUnique({
+        where: { id: postId },
+        select: { userId: true, circleId: true },
+      });
+      if (!postFull) return;
+
+      // REPLY: notify post author (if not the commenter)
+      if (postFull.userId !== auth.userId) {
+        const postAuthor = await prisma.user.findUnique({
+          where: { id: postFull.userId },
+          select: { notifyReplies: true },
+        });
+        if (postAuthor?.notifyReplies) {
+          await prisma.notification.create({
+            data: {
+              userId: postFull.userId,
+              type: "REPLY",
+              message: `${commenterName} replied to your post`,
+              circleId: postFull.circleId,
+              postId,
+              triggeredByUserId: auth.userId,
+              link: `/circles`,
+            },
+          });
+        }
+      }
+
+      // THREAD_REPLY: notify other commenters in this thread
+      const threadCommenters = await prisma.postComment.findMany({
+        where: { postId, userId: { not: auth.userId } },
+        select: { userId: true },
+        distinct: ["userId"],
+      });
+      const threadIds = threadCommenters
+        .map(c => c.userId)
+        .filter(id => id !== postFull.userId); // post author already handled above
+
+      if (threadIds.length > 0) {
+        const threadUsers = await prisma.user.findMany({
+          where: { id: { in: threadIds }, notifyThreadReplies: true },
+          select: { id: true },
+        });
+        const threadNotifs = threadUsers.map(u => ({
+          userId: u.id,
+          type: "THREAD_REPLY" as const,
+          message: `${commenterName} also replied in a thread you're in`,
+          circleId: postFull.circleId,
+          postId,
+          triggeredByUserId: auth.userId,
+          link: `/circles`,
+        }));
+        if (threadNotifs.length > 0) {
+          await prisma.notification.createMany({ data: threadNotifs, skipDuplicates: true });
+        }
+      }
+    } catch {}
+  })();
+
   const loc  = comment.user.location ?? "";
   const city = loc.includes(",") ? loc.split(",")[0].trim() : null;
 

@@ -51,6 +51,9 @@ export async function GET(req: NextRequest) {
       circleContext: true,
       circleDisplayName: true,
       circleIdentitySkippedAt: true,
+      notifyNewPosts: true,
+      notifyReplies: true,
+      notifyThreadReplies: true,
       _count: { select: { items: true, requests: true } },
     },
   });
