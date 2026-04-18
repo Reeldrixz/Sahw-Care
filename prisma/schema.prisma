@@ -24,7 +24,7 @@ model User {
   trustRating Float      @default(5.0)
 
   // anti-abuse system
-  trustScore             Int       @default(50)
+  trustScore             Int       @default(0)
   verificationLevel      Int       @default(0)
   phoneVerified          Boolean   @default(false)
   emailVerified          Boolean   @default(false)
@@ -70,8 +70,23 @@ model User {
 
   trustFrozen      Boolean   @default(false)
   trustFrozenUntil DateTime?
-  trustEvents      TrustEvent[]
-  postLikes        PostLike[]
+
+  // ── extended trust / impact ──────────────────────────────────────────────
+  impactScore          Int       @default(0)
+  donorLevel           String    @default("NEW_DONOR")
+  bundleRestrictedUntil DateTime?
+  dailyPointsEarned    Int       @default(0)
+  dailyPointsDate      DateTime?
+  graceRequestsUsed    Int       @default(0)
+  streakCurrentDays    Int       @default(0)
+  streakLastActiveDate DateTime?
+  streakWeeksCompleted Int       @default(0)
+  hasPostedIntro       Boolean   @default(false)
+
+  trustEvents    TrustEvent[]
+  trustScoreLogs TrustScoreLog[]
+  impactScoreLogs ImpactScoreLog[]
+  postLikes      PostLike[]
 
   // relations
   items                    Item[]
@@ -613,6 +628,11 @@ enum NotifType {
   NEW_POST
   REPLY
   THREAD_REPLY
+  TRUST_MILESTONE
+  TRUST_WARNING
+  DONOR_LEVEL_UP
+  RBW_RESTRICTION
+  REPORT_CONFIRMED
 }
 
 enum BundleInstanceStatus {
@@ -636,6 +656,29 @@ model TrustEvent {
   referenceId   String?
   referenceType String?
   createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TrustScoreLog {
+  id          String   @id @default(cuid())
+  userId      String
+  eventType   String
+  pointsDelta Int
+  newScore    Int
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ImpactScoreLog {
+  id          String   @id @default(cuid())
+  userId      String
+  eventType   String
+  pointsDelta Int
+  newScore    Int
+  referenceId String?
+  createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -93,7 +93,14 @@ export default function BundleDetailPage({ params }: { params: Promise<{ campaig
     });
     const data = await res.json();
     setSubmitting(false);
-    if (!res.ok) { setToast(data.error ?? "Request failed"); return; }
+    if (!res.ok) {
+      if (data.code === "RBW_RESTRICTED") {
+        setToast(`Bundle access restricted for ${data.daysLeft} more day${data.daysLeft !== 1 ? "s" : ""} due to recent activity.`);
+      } else {
+        setToast(data.error ?? "Request failed");
+      }
+      return;
+    }
     setSubmitted(true);
     setShowForm(false);
   };

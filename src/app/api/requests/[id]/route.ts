@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
+import { awardImpactPoints } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     data: { status },
   });
+
+  // Award impact points to donor when request is fulfilled
+  if (status === "FULFILLED") {
+    awardImpactPoints(request.item.donorId, "FULFILLED_REQUEST", id).catch(() => {});
+  }
 
   // When approved, create a conversation between donor and requester
   if (status === "APPROVED" && !request.conversation) {

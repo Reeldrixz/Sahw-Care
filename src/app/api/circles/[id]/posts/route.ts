@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { checkCircleContent } from "@/lib/circleFilter";
 import { uploadImage } from "@/lib/cloudinary";
 import { countryCodeToFlag } from "@/lib/stage";
-import { awardTrust, checkAndFreezeIfAbuse } from "@/lib/trust";
+import { awardTrust, checkAndFreezeIfAbuse, validateCirclePost, validateIntroPost } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // ── Access enforcement ───────────────────────────────────────────────────
   const user = await prisma.user.findUnique({
     where:  { id: auth.userId },
-    select: { journeyType: true, currentCircleId: true },
+    select: { journeyType: true, currentCircleId: true, hasPostedIntro: true },
   });
 
   if (user?.journeyType === "donor") {
@@ -175,6 +175,18 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const VALID_CATS = ["TIP", "STORY", "GRATITUDE", "QUESTION"];
   if (!VALID_CATS.includes(category)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+
+  // ── Quality gates ────────────────────────────────────────────────────────
+  if (isIntroPost) {
+    if (user?.hasPostedIntro) {
+      return NextResponse.json({ error: "You have already posted your intro." }, { status: 400 });
+    }
+    if (validateIntroPost(content)) {
+      return NextResponse.json({ error: "Intro posts must be at least 30 characters." }, { status: 400 });
+    }
+  } else if (validateCirclePost(content)) {
+    return NextResponse.json({ error: "Posts must be at least 20 characters and should not contain request language." }, { status: 400 });
+  }
 
   const flagged = checkCircleContent(content);
 
@@ -225,9 +237,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     } catch {}
   })();
 
-  // Award trust for posting (fire-and-forget)
+  // Mark intro post + award trust (fire-and-forget)
   (async () => {
     try {
+      if (post.isIntroPost) {
+        await prisma.user.update({ where: { id: auth.userId }, data: { hasPostedIntro: true } });
+      }
       await awardTrust(auth.userId, post.isIntroPost ? "INTRO_POST" : "CIRCLE_POST", {
         referenceId: post.id, referenceType: "CirclePost",
         reason: post.isIntroPost ? "wrote a circle intro post" : "posted in circle",

@@ -39,6 +39,71 @@ interface Review {
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
 const TRUST_LABEL = (s: number) => s >= 70 ? "High trust" : s >= 40 ? "Building trust" : "Low trust";
 
+const DONOR_LEVEL_META: Record<string, { label: string; icon: string; color: string; next: number | null }> = {
+  NEW_DONOR:      { label: "New Donor",      icon: "🌱", color: "#6b7280", next: 50  },
+  ACTIVE_DONOR:   { label: "Active Donor",   icon: "💚", color: "#16a34a", next: 150 },
+  TRUSTED_DONOR:  { label: "Trusted Donor",  icon: "⭐", color: "#ca8a04", next: 300 },
+  IMPACT_PARTNER: { label: "Impact Partner", icon: "👑", color: "#7c3aed", next: null },
+};
+
+function ImpactScoreSection() {
+  const [data, setData] = useState<{ impactScore: number; donorLevel: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/user/trust")
+      .then(r => r.json())
+      .then(d => setData({ impactScore: d.impactScore ?? 0, donorLevel: d.donorLevel ?? "NEW_DONOR" }))
+      .catch(() => {});
+  }, []);
+
+  const score = data?.impactScore ?? 0;
+  const level = data?.donorLevel ?? "NEW_DONOR";
+  const meta  = DONOR_LEVEL_META[level] ?? DONOR_LEVEL_META.NEW_DONOR;
+  const progress = meta.next ? Math.min(100, (score / meta.next) * 100) : 100;
+  const pointsToNext = meta.next ? meta.next - score : 0;
+
+  return (
+    <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 16, boxShadow: "var(--shadow)", border: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <span style={{ fontSize: 28 }}>{meta.icon}</span>
+        <div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: meta.color, lineHeight: 1 }}>{meta.label}</div>
+          <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>Impact score: {score}</div>
+        </div>
+      </div>
+
+      <div style={{ background: "#f3f4f6", borderRadius: 8, height: 8, marginBottom: 8, overflow: "hidden" }}>
+        <div style={{ width: `${progress}%`, height: "100%", background: meta.color, borderRadius: 8, transition: "width 0.6s ease" }} />
+      </div>
+
+      {meta.next && (
+        <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+          <strong style={{ color: "var(--ink)" }}>{pointsToNext} more points</strong> to next level
+        </div>
+      )}
+      {!meta.next && (
+        <div style={{ fontSize: 12, color: "#7c3aed", fontFamily: "Nunito, sans-serif", fontWeight: 700 }}>
+          Highest level reached!
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+        {Object.entries(DONOR_LEVEL_META).map(([key, m]) => (
+          <span key={key} style={{
+            fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+            fontFamily: "Nunito, sans-serif",
+            background: level === key ? "#f3f4f6" : "var(--bg)",
+            color: level === key ? m.color : "var(--mid)",
+            border: `1.5px solid ${level === key ? m.color : "var(--border)"}`,
+          }}>
+            {m.icon} {m.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
@@ -339,8 +404,15 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ── Trust Score ──────────────────────────────────────────── */}
-        <TrustScoreBar currentScore={user.trustScore} />
+        {/* ── Trust Score (mothers only) ───────────────────────────── */}
+        {user.journeyType !== "donor" && (
+          <TrustScoreBar currentScore={user.trustScore} />
+        )}
+
+        {/* ── Impact Score (donors) ────────────────────────────────── */}
+        {user.journeyType === "donor" && (
+          <ImpactScoreSection />
+        )}
 
         {/* ── Verification section ─────────────────────────────────── */}
         <div className="profile-section">

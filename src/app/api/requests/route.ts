@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
+import { deductTrustPoints } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   // Enforce Layer 1 before requesting items
   const requester = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { phoneVerified: true, emailVerified: true, avatar: true, trustScore: true },
+    select: { phoneVerified: true, emailVerified: true, avatar: true, trustScore: true, graceRequestsUsed: true },
   });
   if (requester && !(requester.phoneVerified || requester.emailVerified) || !requester?.avatar) {
     return NextResponse.json({
@@ -73,6 +74,15 @@ export async function POST(req: NextRequest) {
   }
 
   const { itemId, note } = await req.json();
+
+  // Grace requests: first 2 are free, subsequent requests deduct -2 trust points
+  const graceUsed = requester.graceRequestsUsed ?? 0;
+  if (graceUsed < 2) {
+    await prisma.user.update({ where: { id: user.userId }, data: { graceRequestsUsed: { increment: 1 } } });
+  } else {
+    // Deduct points (fire-and-forget)
+    deductTrustPoints(user.userId, "DISCOVER_REQUEST", 2, { reason: "discover item request" }).catch(() => {});
+  }
 
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
 

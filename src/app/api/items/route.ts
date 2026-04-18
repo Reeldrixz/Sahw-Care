@@ -4,8 +4,19 @@ import { countryCodeToFlag } from "@/lib/stage";
 
 export const dynamic = "force-dynamic";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
+import { TRUST_THRESHOLDS } from "@/lib/trust";
 
 export async function GET(req: NextRequest) {
+  // Determine caller's trust score for requestable flag
+  const token = await getTokenFromRequest(req);
+  const auth  = token ? await verifyToken(token) : null;
+  let callerTrustScore = 0;
+  if (auth) {
+    const caller = await prisma.user.findUnique({ where: { id: auth.userId }, select: { trustScore: true } });
+    callerTrustScore = caller?.trustScore ?? 0;
+  }
+  const canRequest = callerTrustScore >= TRUST_THRESHOLDS.MARKETPLACE;
+
   const { searchParams } = req.nextUrl;
   const category = searchParams.get("category");
   const search = searchParams.get("search");
@@ -48,6 +59,8 @@ export async function GET(req: NextRequest) {
 
   const formatted = items.map((item) => ({
     ...item,
+    requestable: canRequest,
+    requestLockedReason: canRequest ? null : `You need a trust score of ${TRUST_THRESHOLDS.MARKETPLACE} to request items.`,
     donor: {
       id:          item.donor.id,
       name:        item.donor.name,

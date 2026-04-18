@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
+import { updateStreakOnLogin, awardAccountAgePoints } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,12 @@ export async function POST(req: NextRequest) {
     prisma.deviceLog.create({
       data: { userId: user.id, ipAddress: ip, userAgent: ua, action: "login" },
     }).catch(() => {}); // non-blocking
+
+    // Streak + account age (fire-and-forget — never block login on this)
+    Promise.all([
+      updateStreakOnLogin(user.id),
+      awardAccountAgePoints(user.id),
+    ]).catch(() => {});
 
     const token = await signToken({ userId: user.id, role: user.role, name: user.name });
 

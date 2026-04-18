@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkPhoneVerification, isOtpExpired } from "@/lib/otp";
-import { recalculateTrustScore, syncTrustRating } from "@/lib/trust";
+import { awardTrust, checkFullVerificationBonus } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -84,8 +84,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const newScore = await recalculateTrustScore(auth.userId);
-  await syncTrustRating(auth.userId, newScore);
+  const eventType = type === "PHONE" ? "PHONE_VERIFIED" : "EMAIL_VERIFIED";
+  const newScore = await awardTrust(auth.userId, eventType) ?? 0;
+  await checkFullVerificationBonus(auth.userId);
 
   return NextResponse.json({ verified: true, verificationLevel, trustScore: newScore });
 }

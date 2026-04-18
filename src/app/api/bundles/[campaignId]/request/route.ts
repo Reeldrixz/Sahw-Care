@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkEligibility } from "@/app/api/bundles/route";
+import { checkRBW } from "@/lib/trust";
 import {
   sendBundleRequestReceived,
   sendAdminNewBundleRequest,
@@ -48,6 +49,17 @@ export async function POST(req: NextRequest, { params }: Params) {
   const eligibility = checkEligibility(user, campaign, daysSinceBundle);
   if (!eligibility.eligible) {
     return NextResponse.json({ error: `Not eligible: ${eligibility.reason}` }, { status: 403 });
+  }
+
+  // RBW check — restrict if recent behaviour patterns are risky
+  const rbwRestriction = await checkRBW(auth.userId);
+  if (rbwRestriction) {
+    const daysLeft = Math.ceil((rbwRestriction.getTime() - Date.now()) / (86400 * 1000));
+    return NextResponse.json({
+      error: `Bundle access is temporarily restricted due to recent activity. Try again in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}.`,
+      code: "RBW_RESTRICTED",
+      daysLeft,
+    }, { status: 403 });
   }
 
   // Atomic: decrement bundlesRemaining + create instance

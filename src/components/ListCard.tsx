@@ -13,6 +13,8 @@ export interface ItemData {
   description: string | null;
   images: string[];
   urgent: boolean;
+  requestable?: boolean;
+  requestLockedReason?: string | null;
   donor: { id: string; name: string; avatar: string | null; trustRating: number };
 }
 
@@ -83,13 +85,25 @@ export default function ListCard({ item, requested, favourited, onRequest, onFav
           ⭐ {item.donor.trustRating.toFixed(1)}
           <span style={{ color: "var(--light)", fontWeight: 500 }}> · {item.condition}</span>
         </div>
-        <button
-          className={`btn-reserve ${requested ? "done" : ""}`}
-          onClick={(e) => { e.stopPropagation(); onRequest(e); }}
-          disabled={requested}
-        >
-          {requested ? "✓ Requested" : "Request Free"}
-        </button>
+        {item.requestable === false ? (
+          <button
+            className="btn-reserve"
+            style={{ background: "var(--border)", color: "var(--mid)", cursor: "not-allowed" }}
+            onClick={(e) => e.stopPropagation()}
+            disabled
+            title={item.requestLockedReason ?? "Trust score too low"}
+          >
+            🔒 Locked
+          </button>
+        ) : (
+          <button
+            className={`btn-reserve ${requested ? "done" : ""}`}
+            onClick={(e) => { e.stopPropagation(); onRequest(e); }}
+            disabled={requested}
+          >
+            {requested ? "✓ Requested" : "Request Free"}
+          </button>
+        )}
       </div>
     </div>
   );
