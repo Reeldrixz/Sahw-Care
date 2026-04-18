@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("[auth/login] Unhandled error:", error instanceof Error ? error.message : error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
