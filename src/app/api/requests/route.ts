@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { deductTrustPoints } from "@/lib/trust";
+import { logAbuseEvent, runAbuseChecks } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,12 @@ export async function POST(req: NextRequest) {
       item: { select: { id: true, title: true, donor: { select: { id: true, name: true } } } },
     },
   });
+
+  // Log abuse event + run checks (fire-and-forget)
+  Promise.all([
+    logAbuseEvent(user.userId, "DISCOVER_REQUEST_CREATED", requester.trustScore ?? 0, { requestId: request.id, itemId }, req),
+    runAbuseChecks(user.userId),
+  ]).catch(() => {});
 
   return NextResponse.json({ request }, { status: 201 });
 }

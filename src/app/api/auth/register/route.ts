@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 import { autoJoinCircle } from "@/lib/countryCircle";
 import { detectGeoFromRequest } from "@/lib/geoip";
+import { logAbuseEvent } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,9 @@ export async function POST(req: NextRequest) {
 
     // Auto-join circle if location provided at registration
     autoJoinCircle(user.id, user.location).catch(() => {});
+
+    // Log signup event (fire-and-forget)
+    logAbuseEvent(user.id, "SIGNUP", user.trustScore, { name: user.name, isEmail: !!user.email }, req).catch(() => {});
 
     // Log device/IP
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardTrust } from "@/lib/trust";
+import { logAbuseEvent } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,9 @@ export async function PUT(
 
   if (action === "approve") {
     awardTrust(userId, "DOC_VERIFIED", { reason: "motherhood document verified" }).catch(() => {});
+    logAbuseEvent(userId, "VERIFICATION_APPROVED", user.docStatus === "VERIFIED" ? 15 : 0, { action: "approve", reviewedBy: admin.userId }, undefined).catch(() => {});
+  } else {
+    logAbuseEvent(userId, "VERIFICATION_REJECTED", 0, { action: "reject", reviewedBy: admin.userId }, undefined).catch(() => {});
   }
 
   return NextResponse.json({ user });

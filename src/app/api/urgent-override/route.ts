@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { urgentOverrideLimit, resetOverridesIfNeeded } from "@/lib/trust";
+import { logAbuseEvent, runAbuseChecks } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,13 @@ export async function POST(req: NextRequest) {
   ]);
 
   const remaining = limit - (user.urgentOverridesUsed + 1);
+
+  // Log + run checks (fire-and-forget)
+  Promise.all([
+    logAbuseEvent(auth.userId, "URGENT_OVERRIDE_USED", user.trustScore, { category, reason: reason.trim(), overridesUsed: user.urgentOverridesUsed + 1 }, req),
+    runAbuseChecks(auth.userId),
+  ]).catch(() => {});
+
   return NextResponse.json({
     approved: true,
     overridesRemaining: remaining,

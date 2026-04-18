@@ -156,6 +156,9 @@ export async function awardTrustPoints(
     prisma.trustScoreLog.create({
       data: { userId, eventType, pointsDelta: effectiveDelta, newScore },
     }),
+    prisma.trustScoreHistory.create({
+      data: { userId, oldScore: prevScore, newScore, delta: effectiveDelta, reason: opts?.reason ?? eventType.replace(/_/g, " ").toLowerCase() },
+    }),
     prisma.user.update({
       where: { id: userId },
       data: {
@@ -204,6 +207,9 @@ export async function deductTrustPoints(
   await prisma.$transaction([
     prisma.trustScoreLog.create({
       data: { userId, eventType, pointsDelta: -absDelta, newScore },
+    }),
+    prisma.trustScoreHistory.create({
+      data: { userId, oldScore: prevScore, newScore, delta: -absDelta, reason: opts?.reason ?? eventType.replace(/_/g, " ").toLowerCase() },
     }),
     prisma.user.update({
       where: { id: userId },

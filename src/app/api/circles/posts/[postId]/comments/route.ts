@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { STAGE_META, StageKey, countryCodeToFlag } from "@/lib/stage";
 import { awardTrust } from "@/lib/trust";
+import { logAbuseEvent } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
 
@@ -86,11 +87,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     include: { user: { select: { id: true, name: true, avatar: true, location: true, countryCode: true, circleContext: true, circleDisplayName: true } } },
   });
 
-  // Award trust for replying (fire-and-forget)
-  awardTrust(auth.userId, "CIRCLE_REPLY", {
-    referenceId: comment.id, referenceType: "PostComment",
-    reason: "replied to a circle post",
-  }).catch(() => {});
+  // Award trust + log abuse event (fire-and-forget)
+  (async () => {
+    try {
+      const u = await prisma.user.findUnique({ where: { id: auth.userId }, select: { trustScore: true } });
+      await awardTrust(auth.userId, "CIRCLE_REPLY", {
+        referenceId: comment.id, referenceType: "PostComment",
+        reason: "replied to a circle post",
+      });
+      logAbuseEvent(auth.userId, "COMMENT_CREATED", u?.trustScore ?? 0, { commentId: comment.id, postId }, req).catch(() => {});
+    } catch {}
+  })();
 
   // Fire notifications (fire and forget)
   (async () => {

@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkEligibility } from "@/app/api/bundles/route";
 import { checkRBW } from "@/lib/trust";
+import { logAbuseEvent, runAbuseChecks } from "@/lib/abuse";
 import {
   sendBundleRequestReceived,
   sendAdminNewBundleRequest,
@@ -83,6 +84,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     where: { id: auth.userId },
     data:  { activeBundleId: instance.id },
   });
+
+  // Log + run abuse checks (fire-and-forget)
+  Promise.all([
+    logAbuseEvent(auth.userId, "BUNDLE_REQUESTED", user.trustScore, { instanceId: instance.id, campaignId }, req),
+    runAbuseChecks(auth.userId),
+  ]).catch(() => {});
 
   // Notifications (fire-and-forget)
   const firstName = user.name.split(" ")[0];

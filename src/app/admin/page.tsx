@@ -94,7 +94,34 @@ interface FlaggedPostInfo {
   };
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles";
+interface AbuseFlag {
+  id: string; userId: string; flagType: string; severity: string; status: string;
+  evidence: Record<string, unknown>; createdAt: string; reviewedAt: string | null;
+  notes: string | null;
+  user: { id: string; name: string; email: string | null; trustScore: number; createdAt: string };
+}
+
+interface RiskyUser {
+  id: string; name: string; email: string | null; phone: string | null;
+  trustScore: number; status: string; createdAt: string;
+  flagCount: number; hasHighFlag: boolean; lastFlagged: string | null; flagTypes: string[];
+}
+
+interface UserAbuseDetail {
+  user: { id: string; name: string; email: string | null; trustScore: number; createdAt: string; status: string };
+  flags: AbuseFlag[];
+  eventLog: { id: string; eventType: string; timestamp: string; trustScore: number; metadata: Record<string, unknown>; hasIpAddress: boolean }[];
+  stats: { requestCount7d: number; requestCount30d: number; timeToFirstRequestHours: number | null; engagement: { posts: number; comments: number; requests: number; ratio: string } };
+}
+
+interface WeeklySummary {
+  id: string; weekStart: string; weekEnd: string; totalFlags: number; highSeverityFlags: number;
+  topFlagTypes: { type: string; count: number }[];
+  usersDroppedBelow60: number; rapidTrustFarmers: number;
+  topRequestedCategories: { category: string; count: number }[];
+}
+
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse";
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
@@ -125,6 +152,18 @@ export default function AdminPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Abuse KPI state (shown in overview)
+  const [abuseKpis, setAbuseKpis] = useState<{ openHigh: number; openTotal: number; riskyCount: number } | null>(null);
+
+  // Abuse monitor state
+  const [abuseTab,         setAbuseTab]         = useState<"flags" | "weekly" | "risky">("flags");
+  const [abuseFlags,       setAbuseFlags]       = useState<AbuseFlag[]>([]);
+  const [abuseSeverity,    setAbuseSeverity]    = useState("all");
+  const [riskyUsers,       setRiskyUsers]       = useState<RiskyUser[]>([]);
+  const [weeklySummary,    setWeeklySummary]    = useState<WeeklySummary | null>(null);
+  const [selectedAbuseUser, setSelectedAbuseUser] = useState<UserAbuseDetail | null>(null);
+  const [flagNotes,        setFlagNotes]        = useState<Record<string, string>>({});
+
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
   const [bundleCampaigns,  setBundleCampaigns]  = useState<AdminCampaign[]>([]);
@@ -153,14 +192,36 @@ export default function AdminPage() {
   const fetchVerif    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/verification?status=${verifFilter}`); if (r.ok) { const d = await r.json(); setVerifUsers(d.users ?? []); } setLoading(false); }, [verifFilter]);
   const fetchCircles  = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/circles"); if (r.ok) { const d = await r.json(); setCircles(d.circles ?? []); } setLoading(false); }, []);
   const fetchFlagged  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/circles/flagged?status=${flaggedFilter}`); if (r.ok) { const d = await r.json(); setFlaggedPosts(d.flagged ?? []); } setLoading(false); }, [flaggedFilter]);
+  const fetchAbuseFlags   = useCallback(async () => { setLoading(true); const sev = abuseSeverity !== "all" ? `&severity=${abuseSeverity.toUpperCase()}` : ""; const r = await fetch(`/api/admin/abuse/flags?status=OPEN${sev}`); if (r.ok) { const d = await r.json(); setAbuseFlags(d.flags ?? []); } setLoading(false); }, [abuseSeverity]);
+  const fetchRiskyUsers   = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/abuse/risky-users"); if (r.ok) { const d = await r.json(); setRiskyUsers(d.users ?? []); } setLoading(false); }, []);
+  const fetchWeeklySummary = useCallback(async () => { const r = await fetch("/api/admin/abuse/summary/weekly"); if (r.ok) { const d = await r.json(); setWeeklySummary(d.summary); } }, []);
+  const fetchAbuseUserDetail = useCallback(async (userId: string) => { const r = await fetch(`/api/admin/abuse/flags/${userId}`); if (r.ok) { const d = await r.json(); setSelectedAbuseUser(d); } }, []);
 
-  useEffect(() => { if (user?.role === "ADMIN") fetchStats(); }, [user, fetchStats]);
+  useEffect(() => {
+    if (user?.role === "ADMIN") {
+      fetchStats();
+      // Fetch abuse KPIs for overview
+      Promise.all([
+        fetch("/api/admin/abuse/flags?status=OPEN").then(r => r.ok ? r.json() : { flags: [] }),
+        fetch("/api/admin/abuse/flags?status=OPEN&severity=HIGH").then(r => r.ok ? r.json() : { flags: [] }),
+        fetch("/api/admin/abuse/risky-users").then(r => r.ok ? r.json() : { users: [] }),
+      ]).then(([all, high, risky]) => {
+        setAbuseKpis({ openTotal: all.flags?.length ?? 0, openHigh: high.flags?.length ?? 0, riskyCount: risky.users?.length ?? 0 });
+      }).catch(() => {});
+    }
+  }, [user, fetchStats]);
   useEffect(() => { if (section === "users")    fetchUsers(); }, [section, fetchUsers, userSearch]);
   useEffect(() => { if (section === "listings") fetchItems(); }, [section, fetchItems, itemSearch]);
   useEffect(() => { if (section === "reports")  fetchReports(); }, [section, fetchReports, reportFilter]);
   useEffect(() => { if (section === "trust")        fetchTrust(); }, [section, fetchTrust]);
   useEffect(() => { if (section === "verification") fetchVerif(); }, [section, fetchVerif, verifFilter]);
   useEffect(() => { if (section === "circles") { fetchCircles(); fetchFlagged(); } }, [section, fetchCircles, fetchFlagged, flaggedFilter]);
+  useEffect(() => {
+    if (section !== "abuse") return;
+    if (abuseTab === "flags")  fetchAbuseFlags();
+    if (abuseTab === "risky")  fetchRiskyUsers();
+    if (abuseTab === "weekly") fetchWeeklySummary();
+  }, [section, abuseTab, fetchAbuseFlags, fetchRiskyUsers, fetchWeeklySummary, abuseSeverity]);
   useEffect(() => {
     if (section !== "bundles") return;
     if (bundleTab === "campaigns")  fetchBundleCampaigns();
@@ -288,6 +349,7 @@ export default function AdminPage() {
     ["verification", "✅ Verify" + (stats?.pendingDocuments ? ` (${stats.pendingDocuments})` : "")],
     ["circles",      "🤝 Circles"],
     ["bundles",      "🎀 Bundles" + (stats?.bundlesPending ? ` (${stats.bundlesPending})` : "")],
+    ["abuse",        "🔍 Abuse Monitor"],
   ];
 
   return (
@@ -326,6 +388,9 @@ export default function AdminPage() {
                     [stats.pendingDocuments.toString(), "Docs Pending Review"],
                     [(stats.bundlesDelivered ?? 0).toString(), "Bundles Delivered"],
                     [(stats.bundlesPending ?? 0).toString(), "Bundles Pending"],
+                    [(abuseKpis?.openTotal ?? "—").toString(), "Open Abuse Flags"],
+                    [(abuseKpis?.openHigh ?? "—").toString(), "HIGH Severity Flags"],
+                    [(abuseKpis?.riskyCount ?? "—").toString(), "Risky Users"],
                   ].map(([num, label]) => (
                     <div key={label} className="admin-card">
                       <div className="admin-card-num">{num}</div>
@@ -966,6 +1031,204 @@ export default function AdminPage() {
                         </div>
                       ))
                     }
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── ABUSE MONITOR ────────────────────────────────────────── */}
+            {section === "abuse" && (
+              <div>
+                {/* Sub-tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  {(["flags", "risky", "weekly"] as const).map(t => (
+                    <button key={t} onClick={() => { setAbuseTab(t); setSelectedAbuseUser(null); }} style={{ padding: "7px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 13, background: abuseTab === t ? "#1a7a5e" : "var(--bg)", color: abuseTab === t ? "white" : "var(--mid)" }}>
+                      {t === "flags" ? "Open Flags" : t === "risky" ? "Risky Users" : "Weekly Report"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── User detail overlay ─── */}
+                {selectedAbuseUser && (
+                  <div style={{ background: "var(--white)", borderRadius: 16, padding: 20, marginBottom: 20, border: "1.5px solid #ef4444" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                      <div>
+                        <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700 }}>{selectedAbuseUser.user.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--mid)" }}>{selectedAbuseUser.user.email} · Trust: {selectedAbuseUser.user.trustScore}</div>
+                      </div>
+                      <button onClick={() => setSelectedAbuseUser(null)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "var(--mid)" }}>✕</button>
+                    </div>
+
+                    {/* Stats */}
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+                      {[
+                        ["Requests (7d)", selectedAbuseUser.stats.requestCount7d],
+                        ["Requests (30d)", selectedAbuseUser.stats.requestCount30d],
+                        ["Time to 1st request", selectedAbuseUser.stats.timeToFirstRequestHours !== null ? `${selectedAbuseUser.stats.timeToFirstRequestHours.toFixed(1)}h` : "N/A"],
+                        ["Request:Engagement", selectedAbuseUser.stats.engagement.ratio],
+                        ["Posts", selectedAbuseUser.stats.engagement.posts],
+                        ["Comments", selectedAbuseUser.stats.engagement.comments],
+                      ].map(([label, val]) => (
+                        <div key={label as string} style={{ background: "var(--bg)", borderRadius: 10, padding: "8px 14px", textAlign: "center", minWidth: 100 }}>
+                          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a7a5e" }}>{val}</div>
+                          <div style={{ fontSize: 11, color: "var(--mid)" }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Flags */}
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Flags ({selectedAbuseUser.flags.length})</div>
+                    {selectedAbuseUser.flags.map(f => (
+                      <div key={f.id} style={{ background: "var(--bg)", borderRadius: 10, padding: "10px 14px", marginBottom: 8, border: `1.5px solid ${f.severity === "HIGH" ? "#ef4444" : f.severity === "MEDIUM" ? "#f59e0b" : "#94a3b8"}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 10, background: f.severity === "HIGH" ? "#fef2f2" : f.severity === "MEDIUM" ? "#fffbeb" : "#f8fafc", color: f.severity === "HIGH" ? "#ef4444" : f.severity === "MEDIUM" ? "#d97706" : "#64748b" }}>{f.severity}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>{f.flagType.replace(/_/g, " ")}</span>
+                          <span style={{ fontSize: 11, color: "var(--mid)", marginLeft: "auto" }}>{new Date(f.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <pre style={{ fontSize: 11, color: "var(--mid)", whiteSpace: "pre-wrap", margin: 0 }}>{JSON.stringify(f.evidence, null, 2)}</pre>
+                        {f.status === "OPEN" && (
+                          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                            <input placeholder="Notes (optional)" value={flagNotes[f.id] ?? ""} onChange={e => setFlagNotes(p => ({ ...p, [f.id]: e.target.value }))} style={{ flex: 1, fontSize: 12, padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 8 }} />
+                            {(["REVIEWED", "CLOSED", "ESCALATED"] as const).map(s => (
+                              <button key={s} onClick={async () => {
+                                await fetch(`/api/admin/abuse/flags/${f.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: s, notes: flagNotes[f.id] }) });
+                                fetchAbuseUserDetail(selectedAbuseUser.user.id);
+                                setToast(`Flag marked ${s.toLowerCase()}`);
+                              }} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: s === "ESCALATED" ? "#ef4444" : s === "CLOSED" ? "#94a3b8" : "#1a7a5e", color: "white", fontWeight: 700 }}>{s}</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Event timeline (last 10) */}
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, marginTop: 12 }}>Event timeline</div>
+                    <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                      {selectedAbuseUser.eventLog.slice(0, 10).map(e => (
+                        <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                          <span style={{ color: "var(--mid)", flexShrink: 0, fontSize: 11 }}>{new Date(e.timestamp).toLocaleDateString()}</span>
+                          <span style={{ fontWeight: 700, color: "var(--ink)" }}>{e.eventType.replace(/_/g, " ")}</span>
+                          <span style={{ fontSize: 11, color: "var(--mid)" }}>score: {e.trustScore}</span>
+                          {e.hasIpAddress && <span style={{ fontSize: 10, background: "#fef3c7", color: "#92400e", padding: "1px 6px", borderRadius: 8 }}>IP flagged</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Open Flags ─── */}
+                {abuseTab === "flags" && !selectedAbuseUser && (
+                  <div className="admin-table">
+                    <div className="admin-table-header">
+                      <div className="admin-table-title">Open Abuse Flags</div>
+                      <select value={abuseSeverity} onChange={e => setAbuseSeverity(e.target.value)} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 13 }}>
+                        <option value="all">All severity</option>
+                        <option value="high">HIGH only</option>
+                        <option value="medium">MEDIUM only</option>
+                        <option value="low">LOW only</option>
+                      </select>
+                    </div>
+                    {loading ? <div className="loading"><div className="spinner" /></div> : (
+                      <table>
+                        <thead><tr><th>User</th><th>Flag Type</th><th>Severity</th><th>Date</th><th>Actions</th></tr></thead>
+                        <tbody>{abuseFlags.length === 0 ? (
+                          <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--mid)", padding: 24 }}>No open flags</td></tr>
+                        ) : abuseFlags.map(f => (
+                          <tr key={f.id}>
+                            <td><strong>{f.user.name}</strong><br /><span style={{ fontSize: 11, color: "var(--mid)" }}>{f.user.email}</span></td>
+                            <td style={{ fontSize: 12 }}>{f.flagType.replace(/_/g, " ")}</td>
+                            <td><span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 20, background: f.severity === "HIGH" ? "#fef2f2" : f.severity === "MEDIUM" ? "#fffbeb" : "#f8fafc", color: f.severity === "HIGH" ? "#ef4444" : f.severity === "MEDIUM" ? "#d97706" : "#64748b" }}>{f.severity}</span></td>
+                            <td style={{ color: "var(--mid)", fontSize: 12 }}>{new Date(f.createdAt).toLocaleDateString()}</td>
+                            <td><button className="action-btn action-approve" onClick={() => { fetchAbuseUserDetail(f.user.id); setAbuseTab("flags"); }}>Review</button></td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Risky Users ─── */}
+                {abuseTab === "risky" && !selectedAbuseUser && (
+                  <div className="admin-table">
+                    <div className="admin-table-header"><div className="admin-table-title">Risky Users (2+ flags or 1+ HIGH)</div></div>
+                    {loading ? <div className="loading"><div className="spinner" /></div> : (
+                      <table>
+                        <thead><tr><th>User</th><th>Trust</th><th>Flag Count</th><th>Highest</th><th>Last Flagged</th><th>Actions</th></tr></thead>
+                        <tbody>{riskyUsers.length === 0 ? (
+                          <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--mid)", padding: 24 }}>No risky users</td></tr>
+                        ) : riskyUsers.map(u => (
+                          <tr key={u.id}>
+                            <td><strong>{u.name}</strong><br /><span style={{ fontSize: 11, color: "var(--mid)" }}>{u.email ?? u.phone}</span></td>
+                            <td><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: TRUST_BG(u.trustScore), color: TRUST_COLOR(u.trustScore) }}>{u.trustScore}</span></td>
+                            <td style={{ fontWeight: 700, color: "var(--ink)" }}>{u.flagCount}</td>
+                            <td>{u.hasHighFlag ? <span style={{ fontSize: 11, fontWeight: 800, color: "#ef4444" }}>HIGH</span> : <span style={{ fontSize: 11, color: "#d97706" }}>MEDIUM</span>}</td>
+                            <td style={{ color: "var(--mid)", fontSize: 12 }}>{u.lastFlagged ? new Date(u.lastFlagged).toLocaleDateString() : "—"}</td>
+                            <td><button className="action-btn action-approve" onClick={() => fetchAbuseUserDetail(u.id)}>Review</button></td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Weekly Report ─── */}
+                {abuseTab === "weekly" && (
+                  <div>
+                    {!weeklySummary ? (
+                      <div style={{ textAlign: "center", color: "var(--mid)", padding: 40 }}>No weekly summary yet. Run the cron job to generate one.</div>
+                    ) : (
+                      <>
+                        <div className="admin-cards" style={{ marginBottom: 20 }}>
+                          {[
+                            [weeklySummary.totalFlags.toString(), "Total Flags"],
+                            [weeklySummary.highSeverityFlags.toString(), "HIGH Severity"],
+                            [weeklySummary.usersDroppedBelow60.toString(), "Dropped Below 60"],
+                            [weeklySummary.rapidTrustFarmers.toString(), "Rapid Trust Farmers"],
+                          ].map(([num, label]) => (
+                            <div key={label} className="admin-card">
+                              <div className="admin-card-num">{num}</div>
+                              <div className="admin-card-label">{label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                          <div style={{ background: "var(--white)", borderRadius: 14, padding: 18, border: "1px solid var(--border)" }}>
+                            <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Top Flag Types</div>
+                            {weeklySummary.topFlagTypes.map(({ type, count }, i) => (
+                              <div key={type} style={{ marginBottom: 10 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+                                  <span>{type.replace(/_/g, " ")}</span>
+                                  <span style={{ fontWeight: 700 }}>{count}</span>
+                                </div>
+                                <div style={{ background: "var(--bg)", borderRadius: 4, height: 6 }}>
+                                  <div style={{ width: `${Math.min(100, (count / (weeklySummary.topFlagTypes[0]?.count || 1)) * 100)}%`, height: "100%", background: "#1a7a5e", borderRadius: 4 }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={{ background: "var(--white)", borderRadius: 14, padding: 18, border: "1px solid var(--border)" }}>
+                            <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Top Requested Categories</div>
+                            {weeklySummary.topRequestedCategories.map(({ category, count }) => (
+                              <div key={category} style={{ marginBottom: 10 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+                                  <span>{category}</span>
+                                  <span style={{ fontWeight: 700 }}>{count}</span>
+                                </div>
+                                <div style={{ background: "var(--bg)", borderRadius: 4, height: 6 }}>
+                                  <div style={{ width: `${Math.min(100, (count / (weeklySummary.topRequestedCategories[0]?.count || 1)) * 100)}%`, height: "100%", background: "#1a7a5e", borderRadius: 4 }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 12, textAlign: "right" }}>
+                          Week: {new Date(weeklySummary.weekStart).toLocaleDateString()} – {new Date(weeklySummary.weekEnd).toLocaleDateString()}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

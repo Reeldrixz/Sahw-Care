@@ -83,10 +83,13 @@ model User {
   streakWeeksCompleted Int       @default(0)
   hasPostedIntro       Boolean   @default(false)
 
-  trustEvents    TrustEvent[]
-  trustScoreLogs TrustScoreLog[]
-  impactScoreLogs ImpactScoreLog[]
-  postLikes      PostLike[]
+  trustEvents       TrustEvent[]
+  trustScoreLogs    TrustScoreLog[]
+  trustScoreHistory TrustScoreHistory[]
+  impactScoreLogs   ImpactScoreLog[]
+  postLikes         PostLike[]
+  abuseEventLogs    AbuseEventLog[]
+  abuseFlags        AbuseFlag[]
 
   // relations
   items                    Item[]
@@ -693,4 +696,114 @@ model PostLike {
   user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([postId, userId])
+}
+
+// ==================== ANTI-ABUSE MONITORING ====================
+
+model AbuseEventLog {
+  id        String         @id @default(cuid())
+  userId    String
+  eventType AbuseEventType
+  timestamp DateTime       @default(now())
+  trustScore Int
+  metadata  Json
+  ipAddress String?
+  deviceId  String?
+  sessionId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([timestamp])
+}
+
+model AbuseFlag {
+  id         String         @id @default(cuid())
+  userId     String
+  flagType   AbuseFlagType
+  severity   Severity
+  status     AbuseFlagStatus @default(OPEN)
+  evidence   Json
+  createdAt  DateTime       @default(now())
+  reviewedAt DateTime?
+  reviewedBy String?
+  notes      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+model TrustScoreHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  oldScore  Int
+  newScore  Int
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model WeeklyAbuseSummary {
+  id                    String   @id @default(cuid())
+  weekStart             DateTime
+  weekEnd               DateTime
+  totalFlags            Int
+  highSeverityFlags     Int
+  topFlagTypes          Json
+  usersDroppedBelow60   Int
+  rapidTrustFarmers     Int
+  topRequestedCategories Json
+  createdAt             DateTime @default(now())
+}
+
+enum AbuseEventType {
+  SIGNUP
+  VERIFICATION_SUBMITTED
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+  INTRO_POST_CREATED
+  CIRCLE_POST_CREATED
+  COMMENT_CREATED
+  DISCOVER_REQUEST_CREATED
+  URGENT_OVERRIDE_USED
+  REGISTER_CREATED
+  REPORT_SUBMITTED
+  TRUST_SCORE_CHANGED
+  BUNDLE_REQUESTED
+  BUNDLE_APPROVED
+  BUNDLE_REJECTED
+}
+
+enum AbuseFlagType {
+  TOO_MANY_REQUESTS_SHORT_WINDOW
+  NEW_ACCOUNT_REQUESTING_TOO_FAST
+  REPEATED_URGENT_OVERRIDE
+  HIGH_REQUEST_LOW_ENGAGEMENT
+  SUSPICIOUS_REPORT_VOLUME
+  REPEATED_DEVICE_OR_SESSION
+  TRUST_SCORE_RECOVERY_SPAM
+  REPEATED_BUNDLE_ATTEMPTS
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum AbuseFlagStatus {
+  OPEN
+  REVIEWED
+  CLOSED
+  ESCALATED
 }
