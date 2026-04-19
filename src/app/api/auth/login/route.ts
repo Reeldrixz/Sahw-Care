@@ -15,8 +15,12 @@ export async function POST(req: NextRequest) {
     }
 
     const isEmail = identifier.includes("@");
+    // Normalize: trim whitespace; lowercase emails for case-insensitive lookup
+    const normalizedId = isEmail ? identifier.trim().toLowerCase() : identifier.trim();
     const user = await prisma.user.findFirst({
-      where: isEmail ? { email: identifier } : { phone: identifier },
+      where: isEmail
+        ? { email: { equals: normalizedId, mode: "insensitive" } }
+        : { phone: normalizedId },
     });
 
     if (!user) {

@@ -21,9 +21,13 @@ export async function POST(req: NextRequest) {
     }
 
     const isEmail = identifier.includes("@");
+    // Normalize: trim whitespace; lowercase emails so lookups and storage are consistent
+    const normalizedId = isEmail ? identifier.trim().toLowerCase() : identifier.trim();
 
     const existing = await prisma.user.findFirst({
-      where: isEmail ? { email: identifier } : { phone: identifier },
+      where: isEmail
+        ? { email: { equals: normalizedId, mode: "insensitive" } }
+        : { phone: normalizedId },
     });
 
     if (existing) {
@@ -38,8 +42,8 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name,
-        email: isEmail ? identifier : null,
-        phone: !isEmail ? identifier : null,
+        email: isEmail ? normalizedId : null,
+        phone: !isEmail ? normalizedId : null,
         password: hashedPassword,
         role: "DONOR",
       },
