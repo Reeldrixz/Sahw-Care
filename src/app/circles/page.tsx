@@ -116,7 +116,7 @@ async function detectLocationViaIP(): Promise<{ location: string; countryCode: s
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function CirclesPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const router = useRouter();
 
   // Cohort circle state
@@ -156,7 +156,8 @@ export default function CirclesPage() {
   // Intro post
   const [showIntroPrompt, setShowIntroPrompt] = useState(false);
   const [introText, setIntroText] = useState("");
-  const [hasIntroPost, setHasIntroPost] = useState(false);
+  const [introError, setIntroError] = useState<string | null>(null);
+  const [introSubmitting, setIntroSubmitting] = useState(false);
 
   // Which circle are we showing the feed for?
   const activeCircle = cohortCircle ?? countryCircle;
@@ -176,24 +177,17 @@ export default function CirclesPage() {
     return () => clearTimeout(t);
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Check if user has already done intro post ─────────────────────────────
+  // ── Show intro prompt after identity modal is dismissed ───────────────────
+  // Use user.hasPostedIntro directly — authoritative source from the DB
   useEffect(() => {
     if (!user || user.journeyType === "donor") return;
-    fetch("/api/user/trust").then(r => r.json()).then(d => {
-      const hasIntro = d.recentEvents?.some((e: { eventType: string }) => e.eventType === "INTRO_POST") ?? false;
-      setHasIntroPost(hasIntro);
-    }).catch(() => {});
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Show intro prompt after identity modal is dismissed ───────────────────
-  useEffect(() => {
-    if (hasIntroPost || !user || user.journeyType === "donor") return;
+    if (user.hasPostedIntro) return; // already done — never show again
     if (!activeCircle) return;
     if (user.circleIdentitySet && !showIdentityModal) {
       const t = setTimeout(() => setShowIntroPrompt(true), 1000);
       return () => clearTimeout(t);
     }
-  }, [hasIntroPost, user?.id, activeCircle?.id, user?.circleIdentitySet, showIdentityModal]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.hasPostedIntro, user?.id, activeCircle?.id, user?.circleIdentitySet, showIdentityModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load cohort circle ────────────────────────────────────────────────────
   useEffect(() => {
@@ -373,20 +367,31 @@ export default function CirclesPage() {
   };
 
   const submitIntroPost = async () => {
-    if (!introText.trim() || !activeCircle) return;
-    const res = await fetch(`/api/circles/${activeCircle.id}/posts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: introText.trim(), category: "STORY", isIntroPost: true }),
-    });
-    if (res.ok) {
+    if (!introText.trim() || !activeCircle || introSubmitting) return;
+    setIntroError(null);
+    setIntroSubmitting(true);
+    try {
+      const res = await fetch(`/api/circles/${activeCircle.id}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: introText.trim(), category: "STORY", isIntroPost: true }),
+      });
       const d = await res.json();
+      if (!res.ok) {
+        setIntroError(d.error ?? "Something went wrong. Please try again.");
+        return;
+      }
       if (!d.flagged && d.post) {
         setPosts(prev => [{ ...d.post, author: { id: user!.id, name: user!.name, avatar: user!.avatar, city: null, countryFlag: user!.countryFlag, circleContext: user!.circleContext, circleDisplayName: user!.circleDisplayName, subTags: user!.subTags, trustScore: user!.trustScore, isLeader: false }, reactions: { HEART: 0, HUG: 0, CLAP: 0, myReaction: null }, commentCount: 0, liked: false, likeCount: 0, channelName: null, channelEmoji: null, channelId: null, isPinned: false }, ...prev]);
       }
-      setHasIntroPost(true);
       setShowIntroPrompt(false);
       setIntroText("");
+      // Refresh user so hasPostedIntro reflects the new state
+      refreshUser();
+    } catch {
+      setIntroError("Network error. Please check your connection and try again.");
+    } finally {
+      setIntroSubmitting(false);
     }
   };
 
@@ -738,14 +743,18 @@ export default function CirclesPage() {
                 rows={4}
                 style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", fontSize: 13, fontFamily: "Nunito, sans-serif", resize: "none", outline: "none", boxSizing: "border-box" }}
               />
+              <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 4, fontFamily: "Nunito, sans-serif" }}>{introText.length}/500 · min 30 characters</div>
+              {introError && (
+                <div style={{ fontSize: 12, color: "#c0392b", marginTop: 8, fontFamily: "Nunito, sans-serif", background: "#fdf0ee", borderRadius: 8, padding: "8px 12px" }}>{introError}</div>
+              )}
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => setShowIntroPrompt(false)}
-                  style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                <button onClick={() => setShowIntroPrompt(false)} disabled={introSubmitting}
+                  style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif", opacity: introSubmitting ? 0.5 : 1 }}>
                   Skip for now
                 </button>
-                <button onClick={submitIntroPost} disabled={!introText.trim()}
-                  style={{ flex: 2, padding: "12px", borderRadius: 12, border: "none", background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif", opacity: !introText.trim() ? 0.5 : 1 }}>
-                  Post intro (+8 pts)
+                <button onClick={submitIntroPost} disabled={!introText.trim() || introSubmitting}
+                  style={{ flex: 2, padding: "12px", borderRadius: 12, border: "none", background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 800, cursor: introSubmitting ? "default" : "pointer", fontFamily: "Nunito, sans-serif", opacity: (!introText.trim() || introSubmitting) ? 0.5 : 1 }}>
+                  {introSubmitting ? "Posting…" : "Post intro (+8 pts)"}
                 </button>
               </div>
             </div>
