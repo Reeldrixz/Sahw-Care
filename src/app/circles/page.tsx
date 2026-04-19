@@ -692,7 +692,7 @@ export default function CirclesPage() {
           </div>
 
           {/* Intro post banner */}
-          {!hasIntroPost && cohortCircle && !showIntroPrompt && (
+          {!user?.hasPostedIntro && cohortCircle && !showIntroPrompt && (
             <div style={{ background: "#e8f5f1", borderRadius: 14, padding: "12px 14px", marginBottom: 14, border: "1.5px solid #1a7a5e", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
               onClick={() => setShowIntroPrompt(true)}>
               <div style={{ flex: 1 }}>
