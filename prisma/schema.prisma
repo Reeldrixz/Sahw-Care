@@ -115,7 +115,9 @@ model User {
   postComments  PostComment[]
   postReports   PostReport[]
 
-  bundleInstances BundleInstance[] @relation("RecipientBundles")
+  bundleInstances     BundleInstance[]     @relation("RecipientBundles")
+  bundleContributions BundleContribution[]
+  bundleAllocations   BundleAllocation[]
 
   // notification preferences
   notifyNewPosts      Boolean @default(false)
@@ -806,4 +808,64 @@ enum AbuseFlagStatus {
   REVIEWED
   CLOSED
   ESCALATED
+}
+
+// ==================== MONTHLY BUNDLE FUNDING ====================
+
+model MonthlyBundleGoal {
+  id                String        @id @default(cuid())
+  month             String        // "2026-04"
+  targetBundles     Int
+  costPerBundle     Int           // in cents e.g. 4000 = $40
+  deliveredBundles  Int           @default(0)
+  bundlesFundedToday Int          @default(0)
+  status            GoalStatus    @default(ACTIVE)
+  createdAt         DateTime      @default(now())
+  contributions     BundleContribution[]
+  allocations       BundleAllocation[]
+}
+
+model BundleContribution {
+  id          String        @id @default(cuid())
+  goalId      String
+  donorId     String
+  bundleCount Int
+  amountCents Int
+  paymentRef  String?
+  status      PaymentStatus @default(CONFIRMED)
+  createdAt   DateTime      @default(now())
+  goal        MonthlyBundleGoal @relation(fields: [goalId], references: [id])
+  donor       User              @relation(fields: [donorId], references: [id])
+}
+
+model BundleAllocation {
+  id              String           @id @default(cuid())
+  goalId          String
+  recipientId     String
+  bundleType      String
+  status          AllocationStatus @default(QUEUED)
+  allocatedAt     DateTime         @default(now())
+  dispatchedAt    DateTime?
+  deliveryAddress String?
+  notes           String?
+  goal            MonthlyBundleGoal @relation(fields: [goalId], references: [id])
+  recipient       User              @relation(fields: [recipientId], references: [id])
+}
+
+enum GoalStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum AllocationStatus {
+  QUEUED
+  APPROVED
+  DISPATCHED
+  DELIVERED
 }

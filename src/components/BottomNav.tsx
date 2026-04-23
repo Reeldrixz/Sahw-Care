@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import {
   Compass, ClipboardList, Users, Search,
-  CircleUser, Heart, MessageCircle,
+  CircleUser, Heart, MessageCircle, Gift,
 } from "lucide-react";
 
 const ACTIVE_COLOR   = "#1a7a5e";
@@ -17,18 +17,18 @@ const SIZE   = 24;
 const MOM_TABS = [
   { path: "/",          label: "Discover",  Icon: Compass       },
   { path: "/registers", label: "Registers", Icon: ClipboardList },
+  { path: "/bundles",   label: "Bundles",   Icon: Gift          },
   { path: "/circles",   label: "Circles",   Icon: Users         },
-  { path: "/browse",    label: "Browse",    Icon: Search        },
   { path: "/profile",   label: "Profile",   Icon: CircleUser    },
 ];
 
 // Tabs shown to donor users (no Circles, no Registers)
 const DONOR_TABS = [
-  { path: "/",           label: "Discover",   Icon: Compass       },
-  { path: "/browse",     label: "Browse",     Icon: Search        },
-  { path: "/chat",       label: "Messages",   Icon: MessageCircle },
-  { path: "/favourites", label: "Favourites", Icon: Heart         },
-  { path: "/profile",    label: "Profile",    Icon: CircleUser    },
+  { path: "/",         label: "Discover",  Icon: Compass       },
+  { path: "/bundles",  label: "Bundles",   Icon: Gift          },
+  { path: "/browse",   label: "Browse",    Icon: Search        },
+  { path: "/chat",     label: "Messages",  Icon: MessageCircle },
+  { path: "/profile",  label: "Profile",   Icon: CircleUser    },
 ];
 
 export default function BottomNav() {

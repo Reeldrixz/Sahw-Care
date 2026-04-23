@@ -3,11 +3,12 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
-import { Compass, ClipboardList, Users, Search, Heart, MessageCircle } from "lucide-react";
+import { Compass, ClipboardList, Users, Search, Heart, MessageCircle, Gift } from "lucide-react";
 
 const ALL_NAV_LINKS = [
   { label: "Discover",   href: "/",           Icon: Compass,       donorOnly: false, momOnly: false  },
   { label: "Registers",  href: "/registers",  Icon: ClipboardList, donorOnly: false, momOnly: true   },
+  { label: "Bundles",    href: "/bundles",    Icon: Gift,          donorOnly: false, momOnly: false  },
   { label: "Circles",    href: "/circles",    Icon: Users,         donorOnly: false, momOnly: true   },
   { label: "Browse",     href: "/browse",     Icon: Search,        donorOnly: false, momOnly: false  },
   { label: "Messages",   href: "/chat",       Icon: MessageCircle, donorOnly: false, momOnly: false  },

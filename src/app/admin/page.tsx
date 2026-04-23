@@ -121,7 +121,29 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system";
+
+interface BundleGoalAdmin {
+  id: string; month: string; targetBundles: number; costPerBundle: number;
+  deliveredBundles: number; bundlesFundedToday: number; status: string; createdAt: string;
+  fundedBundles: number;
+  allocationStats: { queued: number; approved: number; dispatched: number; delivered: number };
+  contributions: { id: string; bundleCount: number; amountCents: number; status: string; createdAt: string; donor: { id: string; name: string; email: string | null } }[];
+}
+
+interface EligibleMother {
+  id: string; name: string; email: string | null; phone: string | null; avatar: string | null;
+  trustScore: number; verificationLevel: number; journeyType: string | null;
+  currentStage: string | null; dueDate: string | null; babyBirthDate: string | null;
+  createdAt: string; location: string | null;
+}
+
+interface BundleAllocAdmin {
+  id: string; bundleType: string; status: string; allocatedAt: string;
+  dispatchedAt: string | null; deliveryAddress: string | null; notes: string | null;
+  recipient: { id: string; name: string; email: string | null; phone: string | null; location: string | null };
+  goal: { month: string };
+}
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
@@ -177,6 +199,18 @@ export default function AdminPage() {
   const [newCampaign, setNewCampaign] = useState({ title: "", description: "", totalBundles: "10", costPerBundle: "80", totalBudget: "800", targetStage: "", templateId: "" });
   const [newTemplate, setNewTemplate] = useState({ name: "", description: "", estimatedCost: "0", targetStage: "", items: "" });
 
+  // Bundle System (new monthly funding model)
+  const [bsTab,             setBsTab]             = useState<"goal" | "mothers" | "allocations">("goal");
+  const [bsGoal,            setBsGoal]            = useState<BundleGoalAdmin | null>(null);
+  const [bsMothers,         setBsMothers]         = useState<EligibleMother[]>([]);
+  const [bsAllocations,     setBsAllocations]     = useState<BundleAllocAdmin[]>([]);
+  const [bsAllocFilter,     setBsAllocFilter]     = useState("ALL");
+  const [bsNewGoal,         setBsNewGoal]         = useState({ targetBundles: "50", costPerBundle: "4000" });
+  const [bsShowNewGoal,     setBsShowNewGoal]     = useState(false);
+  const [bsAssignModal,     setBsAssignModal]     = useState<EligibleMother | null>(null);
+  const [bsAssignType,      setBsAssignType]      = useState("Immediate Survival Kit");
+  const [bsAssignNotes,     setBsAssignNotes]     = useState("");
+
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "ADMIN")) router.push("/");
   }, [user, authLoading, router]);
@@ -196,6 +230,9 @@ export default function AdminPage() {
   const fetchRiskyUsers   = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/abuse/risky-users"); if (r.ok) { const d = await r.json(); setRiskyUsers(d.users ?? []); } setLoading(false); }, []);
   const fetchWeeklySummary = useCallback(async () => { const r = await fetch("/api/admin/abuse/summary/weekly"); if (r.ok) { const d = await r.json(); setWeeklySummary(d.summary); } }, []);
   const fetchAbuseUserDetail = useCallback(async (userId: string) => { const r = await fetch(`/api/admin/abuse/flags/${userId}`); if (r.ok) { const d = await r.json(); setSelectedAbuseUser(d); } }, []);
+  const fetchBsGoal        = useCallback(async () => { const r = await fetch("/api/admin/bundles/goal"); if (r.ok) { const d = await r.json(); setBsGoal(d.goal); } }, []);
+  const fetchBsMothers     = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/bundles/eligible-mothers"); if (r.ok) { const d = await r.json(); setBsMothers(d.mothers ?? []); } setLoading(false); }, []);
+  const fetchBsAllocations = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/bundles/allocate"); if (r.ok) { const d = await r.json(); setBsAllocations(d.allocations ?? []); } setLoading(false); }, []);
 
   useEffect(() => {
     if (user?.role === "ADMIN") {
@@ -229,6 +266,12 @@ export default function AdminPage() {
     if (bundleTab === "all")        fetchBundleInstances();
     if (bundleTab === "templates")  fetchBundleTemplates();
   }, [section, bundleTab, fetchBundleCampaigns, fetchBundleInstances, fetchBundleTemplates, instanceFilter, instanceSearch]);
+  useEffect(() => {
+    if (section !== "bundle-system") return;
+    if (bsTab === "goal")        fetchBsGoal();
+    if (bsTab === "mothers")     fetchBsMothers();
+    if (bsTab === "allocations") fetchBsAllocations();
+  }, [section, bsTab, fetchBsGoal, fetchBsMothers, fetchBsAllocations]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -333,6 +376,45 @@ export default function AdminPage() {
     if (!d.skipped) { fetchBundleCampaigns(); fetchBundleTemplates(); }
   };
 
+  const createBsGoal = async () => {
+    const res = await fetch("/api/admin/bundles/goal", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetBundles: Number(bsNewGoal.targetBundles), costPerBundle: Number(bsNewGoal.costPerBundle) }),
+    });
+    const d = await res.json();
+    if (res.ok) { fetchBsGoal(); setBsShowNewGoal(false); setToast("Goal created!"); }
+    else setToast(d.error ?? "Failed");
+  };
+
+  const closeGoal = async () => {
+    if (!bsGoal || !confirm("Close this goal? Contributors will no longer be able to fund it.")) return;
+    const res = await fetch("/api/admin/bundles/goal", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goalId: bsGoal.id, status: "CLOSED" }),
+    });
+    if (res.ok) { fetchBsGoal(); setToast("Goal closed"); }
+  };
+
+  const allocateBundle = async () => {
+    if (!bsAssignModal || !bsGoal) return;
+    const res = await fetch("/api/admin/bundles/allocate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipientId: bsAssignModal.id, bundleType: bsAssignType, goalId: bsGoal.id, notes: bsAssignNotes }),
+    });
+    const d = await res.json();
+    if (res.ok) { fetchBsAllocations(); setBsAssignModal(null); setBsAssignNotes(""); setToast("Bundle allocated!"); }
+    else setToast(d.error ?? "Failed");
+  };
+
+  const updateAllocationStatus = async (id: string, status: string) => {
+    const res = await fetch(`/api/admin/bundles/allocate/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) { fetchBsAllocations(); if (status === "DISPATCHED") fetchBsGoal(); setToast(`Marked as ${status.toLowerCase()}`); }
+    else { const d = await res.json(); setToast(d.error ?? "Failed"); }
+  };
+
   const recalcTrust = async (userId: string) => {
     const res = await fetch("/api/admin/trust", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
     if (res.ok) { const d = await res.json(); setTrustUsers((p) => p.map((u) => u.id === userId ? { ...u, trustScore: d.trustScore } : u)); setToast(`Trust score updated: ${d.trustScore}`); }
@@ -348,8 +430,9 @@ export default function AdminPage() {
     ["trust",        "🛡️ Trust"],
     ["verification", "✅ Verify" + (stats?.pendingDocuments ? ` (${stats.pendingDocuments})` : "")],
     ["circles",      "🤝 Circles"],
-    ["bundles",      "🎀 Bundles" + (stats?.bundlesPending ? ` (${stats.bundlesPending})` : "")],
-    ["abuse",        "🔍 Abuse Monitor"],
+    ["bundles",       "🎀 Bundles" + (stats?.bundlesPending ? ` (${stats.bundlesPending})` : "")],
+    ["bundle-system", "🎁 Bundle System"],
+    ["abuse",         "🔍 Abuse Monitor"],
   ];
 
   return (
@@ -1229,6 +1312,228 @@ export default function AdminPage() {
                         </div>
                       </>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── BUNDLE SYSTEM ────────────────────────────────────────── */}
+            {section === "bundle-system" && (
+              <div>
+                {/* Tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {(["goal", "mothers", "allocations"] as const).map(t => (
+                    <button key={t} onClick={() => setBsTab(t)}
+                      style={{ padding: "7px 16px", borderRadius: 20, border: `1.5px solid ${bsTab === t ? "#1a7a5e" : "var(--border)"}`, background: bsTab === t ? "#e8f5f1" : "none", color: bsTab === t ? "#1a7a5e" : "var(--ink)", fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                      {t === "goal" ? "Goal" : t === "mothers" ? "Eligible Mothers" : "Allocations"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── Tab 1: Goal ── */}
+                {bsTab === "goal" && (
+                  <div>
+                    {bsGoal ? (
+                      <>
+                        <div className="admin-cards" style={{ marginBottom: 20 }}>
+                          {[
+                            [bsGoal.month, "Month"],
+                            [bsGoal.fundedBundles.toString(), "Bundles Funded"],
+                            [bsGoal.targetBundles.toString(), "Target"],
+                            [bsGoal.deliveredBundles.toString(), "Delivered"],
+                            [bsGoal.bundlesFundedToday.toString(), "Funded Today"],
+                            [`$${(bsGoal.costPerBundle / 100).toFixed(0)}`, "Cost / Bundle"],
+                            [bsGoal.allocationStats.queued.toString(), "Queued"],
+                            [bsGoal.allocationStats.dispatched.toString(), "Dispatched"],
+                          ].map(([num, label]) => (
+                            <div key={label} className="admin-card">
+                              <div className="admin-card-num">{num}</div>
+                              <div className="admin-card-label">{label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+                          <span style={{ padding: "4px 12px", borderRadius: 20, background: bsGoal.status === "ACTIVE" ? "#e8f5f1" : "var(--bg)", color: bsGoal.status === "ACTIVE" ? "#1a7a5e" : "var(--mid)", fontWeight: 700, fontSize: 12 }}>{bsGoal.status}</span>
+                          {bsGoal.status === "ACTIVE" && (
+                            <button onClick={closeGoal} style={{ padding: "4px 14px", borderRadius: 20, border: "1.5px solid #dc2626", background: "none", color: "#dc2626", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Close Goal</button>
+                          )}
+                        </div>
+
+                        <div className="admin-table">
+                          <div className="admin-table-header"><div className="admin-table-title">Contributions ({bsGoal.contributions.length})</div></div>
+                          <table>
+                            <thead><tr><th>Donor</th><th>Bundles</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                            <tbody>
+                              {bsGoal.contributions.length === 0 ? (
+                                <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--mid)", padding: 24 }}>No contributions yet</td></tr>
+                              ) : bsGoal.contributions.map(c => (
+                                <tr key={c.id}>
+                                  <td><strong>{c.donor.name}</strong><br /><span style={{ fontSize: 11, color: "var(--mid)" }}>{c.donor.email}</span></td>
+                                  <td style={{ fontWeight: 700 }}>{c.bundleCount}</td>
+                                  <td>${(c.amountCents / 100).toFixed(0)}</td>
+                                  <td><span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#e8f5f1", color: "#1a7a5e", fontWeight: 700 }}>{c.status}</span></td>
+                                  <td style={{ color: "var(--mid)", fontSize: 12 }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ textAlign: "center", color: "var(--mid)", padding: 40, fontSize: 14 }}>No active goal this month.</div>
+                    )}
+
+                    {/* Create new goal */}
+                    {!bsGoal || bsGoal.status === "CLOSED" ? (
+                      <div style={{ marginTop: 20 }}>
+                        {!bsShowNewGoal ? (
+                          <button onClick={() => setBsShowNewGoal(true)} style={{ padding: "10px 20px", borderRadius: 10, border: "none", background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>+ Create New Goal</button>
+                        ) : (
+                          <div style={{ background: "var(--white)", borderRadius: 14, padding: 18, border: "1px solid var(--border)", maxWidth: 400 }}>
+                            <div style={{ fontWeight: 700, marginBottom: 14, fontFamily: "Lora, serif" }}>New Monthly Goal</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                              <div>
+                                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>Target Bundles</label>
+                                <input type="number" value={bsNewGoal.targetBundles} onChange={e => setBsNewGoal(p => ({ ...p, targetBundles: e.target.value }))} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid var(--border)", fontSize: 13, marginTop: 4, boxSizing: "border-box" }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>Cost Per Bundle (cents, e.g. 4000 = $40)</label>
+                                <input type="number" value={bsNewGoal.costPerBundle} onChange={e => setBsNewGoal(p => ({ ...p, costPerBundle: e.target.value }))} style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid var(--border)", fontSize: 13, marginTop: 4, boxSizing: "border-box" }} />
+                              </div>
+                              <div style={{ display: "flex", gap: 10 }}>
+                                <button onClick={createBsGoal} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Create</button>
+                                <button onClick={() => setBsShowNewGoal(false)} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* ── Tab 2: Eligible Mothers ── */}
+                {bsTab === "mothers" && (
+                  <div>
+                    {!bsGoal && <div style={{ background: "#fef9c3", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#92400e", marginBottom: 16, fontWeight: 600 }}>⚠ No active goal. Create a goal first before assigning bundles.</div>}
+                    <div className="admin-table">
+                      <div className="admin-table-header">
+                        <div className="admin-table-title">Eligible Mothers Queue ({bsMothers.length})</div>
+                      </div>
+                      {loading ? <div className="loading"><div className="spinner" /></div> : (
+                        <table>
+                          <thead><tr><th>Mother</th><th>Trust</th><th>Verification</th><th>Due Date</th><th>Wait</th><th></th></tr></thead>
+                          <tbody>
+                            {bsMothers.length === 0 ? (
+                              <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--mid)", padding: 24 }}>No eligible mothers at this time</td></tr>
+                            ) : bsMothers.map(m => {
+                              const waitDays = Math.floor((Date.now() - new Date(m.createdAt).getTime()) / 86400000);
+                              return (
+                                <tr key={m.id}>
+                                  <td>
+                                    <strong>{m.name}</strong><br />
+                                    <span style={{ fontSize: 11, color: "var(--mid)" }}>{m.email ?? m.phone}</span><br />
+                                    <span style={{ fontSize: 10, color: "var(--mid)" }}>{m.journeyType} · {m.currentStage ?? "—"}</span>
+                                  </td>
+                                  <td><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: TRUST_BG(m.trustScore), color: TRUST_COLOR(m.trustScore) }}>{m.trustScore}</span></td>
+                                  <td style={{ fontSize: 12 }}>{VERIFY_LABELS[m.verificationLevel] ?? m.verificationLevel}</td>
+                                  <td style={{ fontSize: 12, color: "var(--mid)" }}>{m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}</td>
+                                  <td style={{ fontSize: 12, color: "var(--mid)" }}>{waitDays}d</td>
+                                  <td>
+                                    <button
+                                      onClick={() => { setBsAssignModal(m); setBsTab("mothers"); }}
+                                      disabled={!bsGoal}
+                                      className="action-btn action-approve"
+                                      style={{ opacity: bsGoal ? 1 : 0.4 }}
+                                    >
+                                      Assign
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+
+                    {/* Assign modal */}
+                    {bsAssignModal && (
+                      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        onClick={e => { if (e.target === e.currentTarget) setBsAssignModal(null); }}>
+                        <div style={{ background: "var(--white)", borderRadius: 16, padding: 24, width: 360, maxWidth: "90vw" }}>
+                          <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Assign Bundle</div>
+                          <div style={{ fontSize: 13, color: "var(--mid)", marginBottom: 16 }}>Recipient: <strong>{bsAssignModal.name}</strong></div>
+                          <div style={{ marginBottom: 12 }}>
+                            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>Bundle Type</label>
+                            <select value={bsAssignType} onChange={e => setBsAssignType(e.target.value)}
+                              style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid var(--border)", fontSize: 13, marginTop: 4 }}>
+                              {["Immediate Survival Kit", "Growth Kit", "Feeding Support Kit", "Hygiene & Care Kit", "Full Care Bundle",
+                                "Expecting Mom Survival Kit", "Hospital / Delivery Kit", "Postpartum Recovery Kit", "Breastfeeding Support Kit", "Full Maternal Care Bundle"
+                              ].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                          </div>
+                          <div style={{ marginBottom: 16 }}>
+                            <label style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>Notes (optional)</label>
+                            <textarea value={bsAssignNotes} onChange={e => setBsAssignNotes(e.target.value)} rows={2}
+                              style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1.5px solid var(--border)", fontSize: 13, marginTop: 4, resize: "none", boxSizing: "border-box" }} />
+                          </div>
+                          <div style={{ display: "flex", gap: 10 }}>
+                            <button onClick={allocateBundle} style={{ flex: 1, padding: 12, borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Confirm Assign</button>
+                            <button onClick={() => setBsAssignModal(null)} style={{ flex: 1, padding: 12, borderRadius: 8, border: "1.5px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Tab 3: Allocations ── */}
+                {bsTab === "allocations" && (
+                  <div>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                      {["ALL", "QUEUED", "APPROVED", "DISPATCHED", "DELIVERED"].map(s => (
+                        <button key={s} onClick={() => setBsAllocFilter(s)}
+                          style={{ padding: "5px 12px", borderRadius: 16, border: `1.5px solid ${bsAllocFilter === s ? "#1a7a5e" : "var(--border)"}`, background: bsAllocFilter === s ? "#e8f5f1" : "none", color: bsAllocFilter === s ? "#1a7a5e" : "var(--ink)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="admin-table">
+                      <div className="admin-table-header"><div className="admin-table-title">Allocations</div></div>
+                      {loading ? <div className="loading"><div className="spinner" /></div> : (
+                        <table>
+                          <thead><tr><th>Recipient</th><th>Bundle Type</th><th>Month</th><th>Status</th><th>Allocated</th><th>Actions</th></tr></thead>
+                          <tbody>
+                            {bsAllocations.filter(a => bsAllocFilter === "ALL" || a.status === bsAllocFilter).length === 0 ? (
+                              <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--mid)", padding: 24 }}>No allocations</td></tr>
+                            ) : bsAllocations.filter(a => bsAllocFilter === "ALL" || a.status === bsAllocFilter).map(a => (
+                              <tr key={a.id}>
+                                <td><strong>{a.recipient.name}</strong><br /><span style={{ fontSize: 11, color: "var(--mid)" }}>{a.recipient.email ?? a.recipient.phone}</span></td>
+                                <td style={{ fontSize: 12 }}>{a.bundleType}</td>
+                                <td style={{ fontSize: 12, color: "var(--mid)" }}>{a.goal.month}</td>
+                                <td>
+                                  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, fontWeight: 700,
+                                    background: a.status === "DELIVERED" ? "#e8f5f1" : a.status === "DISPATCHED" ? "#dbeafe" : a.status === "APPROVED" ? "#fef9c3" : "var(--bg)",
+                                    color: a.status === "DELIVERED" ? "#1a7a5e" : a.status === "DISPATCHED" ? "#1d4ed8" : a.status === "APPROVED" ? "#92400e" : "var(--mid)" }}>
+                                    {a.status}
+                                  </span>
+                                </td>
+                                <td style={{ fontSize: 12, color: "var(--mid)" }}>{new Date(a.allocatedAt).toLocaleDateString()}</td>
+                                <td>
+                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                    {a.status === "QUEUED"     && <button onClick={() => updateAllocationStatus(a.id, "APPROVED")}   className="action-btn action-approve" style={{ fontSize: 11 }}>Approve</button>}
+                                    {a.status === "APPROVED"   && <button onClick={() => updateAllocationStatus(a.id, "DISPATCHED")} className="action-btn action-approve" style={{ fontSize: 11 }}>Dispatch</button>}
+                                    {a.status === "DISPATCHED" && <button onClick={() => updateAllocationStatus(a.id, "DELIVERED")}  className="action-btn action-approve" style={{ fontSize: 11 }}>Delivered</button>}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
