@@ -11,6 +11,40 @@ const JOURNEY_LABEL: Record<string, string> = {
   donor:      "Donor",
 };
 
+// ── Password reset ───────────────────────────────────────────────────────────
+
+export async function sendPasswordResetEmail(opts: {
+  firstName: string;
+  email: string;
+  resetUrl: string;
+}) {
+  return resend.emails.send({
+    from:    FROM,
+    to:      opts.email,
+    subject: "Reset your Kradəl password",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#1a7a5e;margin-bottom:8px">Reset your password</h2>
+        <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
+        <p style="color:#555;line-height:1.6">
+          We received a request to reset your Kradəl password.
+          Click the button below to choose a new one. This link expires in <strong>1 hour</strong>.
+        </p>
+        <div style="text-align:center;margin:32px 0">
+          <a href="${opts.resetUrl}"
+             style="background:#1a7a5e;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">
+            Reset Password
+          </a>
+        </div>
+        <p style="color:#555;font-size:13px;line-height:1.6">
+          If you didn't request this, you can safely ignore this email — your password won't change.
+        </p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care 🌱</p>
+      </div>
+    `,
+  });
+}
+
 // ── Bundle notifications ─────────────────────────────────────────────────────
 
 export async function sendBundleRequestReceived(opts: {

@@ -104,7 +104,8 @@ model User {
   donorAssignments         ItemAssignment[]          @relation("DonorAssignments")
   sentRegisterMessages     RegisterMessage[]         @relation("SentRegisterMessages")
 
-  otpVerifications  OtpVerification[]
+  otpVerifications      OtpVerification[]
+  passwordResetTokens   PasswordResetToken[]
   categoryCooldowns CategoryCooldown[]
   urgentOverrides   UrgentOverride[]
   deviceLogs        DeviceLog[]
@@ -283,6 +284,17 @@ model RegisterMessage {
 }
 
 // ==================== TRUST & ANTI-ABUSE ====================
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
 model OtpVerification {
   id        String   @id @default(cuid())

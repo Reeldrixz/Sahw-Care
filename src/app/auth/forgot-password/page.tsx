@@ -7,9 +7,24 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!identifier) return;
+    setError("");
+    setLoading(true);
+    try {
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier }),
+      });
+    } catch {
+      // silently continue — don't reveal errors to prevent enumeration
+    } finally {
+      setLoading(false);
+    }
     setSubmitted(true);
   };
 
@@ -43,8 +58,13 @@ export default function ForgotPasswordPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               />
             </div>
-            <button className="btn-primary" onClick={handleSubmit} style={{ marginTop: 8 }}>
-              Send Reset Link
+            {error && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#dc2626", marginBottom: 8 }}>
+                {error}
+              </div>
+            )}
+            <button className="btn-primary" onClick={handleSubmit} disabled={loading} style={{ marginTop: 8 }}>
+              {loading ? "Sending…" : "Send Reset Link"}
             </button>
             <button
               style={{ background: "none", border: "none", color: "var(--mid)", fontSize: 13, display: "block", margin: "12px auto 0", cursor: "pointer", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}
