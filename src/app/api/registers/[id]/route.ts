@@ -15,7 +15,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         orderBy: { createdAt: "asc" },
         include: {
           assignment: {
-            include: { donor: { select: { id: true, name: true } } },
+            include: {
+              donor: { select: { id: true, name: true } },
+              fulfillmentLog: { select: { momConfirmed: true, mismatch: true } },
+            },
           },
         },
       },

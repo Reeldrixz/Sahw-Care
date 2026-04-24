@@ -21,7 +21,6 @@ interface RegisterItemData {
     status: "RESERVED" | "PURCHASED" | "DELIVERED";
     donor: { id: string; name: string };
     fulfillmentLog?: {
-      donorConfirmed: boolean;
       momConfirmed: boolean;
       mismatch: boolean;
     } | null;
@@ -36,10 +35,16 @@ interface RegisterData {
 }
 
 const STATUS_CONFIG = {
-  AVAILABLE: { label: "Available", bg: "var(--green-light)", color: "var(--green)", icon: "✅" },
-  RESERVED:  { label: "Reserved",  bg: "var(--yellow-light)", color: "#b8860b", icon: "⏳" },
-  FULFILLED: { label: "Fulfilled", bg: "#e8f5f1", color: "#1a7a5e", icon: "🎁" },
+  AVAILABLE: { label: "Available", bg: "var(--green-light)", color: "var(--green)",  icon: "✅" },
+  RESERVED:  { label: "Reserved",  bg: "var(--yellow-light)", color: "#b8860b",      icon: "⏳" },
+  FULFILLED: { label: "Fulfilled", bg: "#e8f5f1",             color: "#1a7a5e",      icon: "🎁" },
+  DISPUTED:  { label: "Disputed",  bg: "#fdecea",             color: "#c0392b",      icon: "⚠️" },
 };
+
+function effectiveStatus(item: RegisterItemData): keyof typeof STATUS_CONFIG {
+  if (item.assignment?.fulfillmentLog?.mismatch) return "DISPUTED";
+  return item.status;
+}
 
 export default function RegisterDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -123,11 +128,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     if (!selectedItem?.assignment) return;
     setConfirming(true);
     const res = await fetch(`/api/fulfillment/${selectedItem.assignment.id}/confirm`, { method: "POST" });
+    setConfirming(false);
     if (res.ok) {
       setToast("✅ Confirmed received! Trust scores updated.");
-      await fetchRegister(); setSelectedItem(null);
+      setSelectedItem(null);  // close immediately
+      fetchRegister();        // refresh list in background
     } else { const d = await res.json(); setToast(d.error ?? "Failed"); }
-    setConfirming(false);
   };
 
   const handleDispute = async () => {
@@ -138,11 +144,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason: disputeReason }),
     });
+    setConfirming(false);
     if (res.ok) {
       setToast("Dispute filed. Our team will review it.");
-      await fetchRegister(); setSelectedItem(null);
+      setSelectedItem(null);  // close immediately
+      fetchRegister();        // refresh list in background (badge → Disputed)
     } else { const d = await res.json(); setToast(d.error ?? "Failed"); }
-    setConfirming(false);
   };
 
   const handleSendMessage = async () => {
@@ -214,18 +221,20 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             <div className="empty"><div className="empty-icon">🛍️</div><div className="empty-title">No items yet</div>{isMom && <div>Add items you need for your baby</div>}</div>
           ) : (
             register.items.map((item) => {
-              const cfg = STATUS_CONFIG[item.status];
-              const needsMomConfirm = isMom && item.assignment?.status === "DELIVERED" && !item.assignment?.fulfillmentLog?.momConfirmed;
+              const cfg = STATUS_CONFIG[effectiveStatus(item)];
+              const needsMomConfirm = isMom && item.assignment?.status === "DELIVERED"
+                && !item.assignment?.fulfillmentLog?.momConfirmed
+                && !item.assignment?.fulfillmentLog?.mismatch;
               return (
                 <div key={item.id} onClick={() => openItem(item)} style={{
                   background: "var(--white)", borderRadius: 12, padding: "14px", marginBottom: 10,
                   boxShadow: needsMomConfirm ? "0 0 0 2px var(--green)" : "var(--shadow)",
                   cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
-                  opacity: item.status === "FULFILLED" ? 0.7 : 1,
+                  opacity: item.status === "FULFILLED" && !item.assignment?.fulfillmentLog?.mismatch ? 0.7 : 1,
                 }}>
                   <div style={{ fontSize: 22, flexShrink: 0 }}>{cfg.icon}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2, textDecoration: item.status === "FULFILLED" ? "line-through" : "none" }}>{item.name}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2, textDecoration: item.status === "FULFILLED" && !item.assignment?.fulfillmentLog?.mismatch ? "line-through" : "none" }}>{item.name}</div>
                     <div style={{ fontSize: 12, color: "var(--mid)", fontWeight: 600 }}>
                       {item.category} · Qty: {item.quantity}
                       {item.note && <> · {item.note}</>}
@@ -286,8 +295,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700 }}>{selectedItem.name}</div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: STATUS_CONFIG[selectedItem.status].bg, color: STATUS_CONFIG[selectedItem.status].color, flexShrink: 0 }}>
-                  {STATUS_CONFIG[selectedItem.status].icon} {STATUS_CONFIG[selectedItem.status].label}
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: STATUS_CONFIG[effectiveStatus(selectedItem)].bg, color: STATUS_CONFIG[effectiveStatus(selectedItem)].color, flexShrink: 0 }}>
+                  {STATUS_CONFIG[effectiveStatus(selectedItem)].icon} {STATUS_CONFIG[effectiveStatus(selectedItem)].label}
                 </span>
               </div>
               <div style={{ fontSize: 13, color: "var(--mid)", fontWeight: 600 }}>{selectedItem.category} · Qty: {selectedItem.quantity}</div>
@@ -329,7 +338,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             )}
 
             {/* ── Mom: confirmation section ── */}
-            {isMom && selectedItem.assignment?.status === "DELIVERED" && !selectedItem.assignment?.fulfillmentLog?.momConfirmed && (
+            {isMom && selectedItem.assignment?.status === "DELIVERED"
+              && !selectedItem.assignment?.fulfillmentLog?.momConfirmed
+              && !selectedItem.assignment?.fulfillmentLog?.mismatch && (
               <div style={{ marginBottom: 16, background: "var(--green-light)", borderRadius: 12, padding: "14px" }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: "var(--green)", marginBottom: 6 }}>
                   🎁 {selectedItem.assignment.donor.name.split(" ")[0]} marked this as delivered!
