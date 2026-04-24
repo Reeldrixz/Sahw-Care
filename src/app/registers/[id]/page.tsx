@@ -490,10 +490,15 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               )}
             </div>
 
-            {/* Donor: claim single item from sheet (for non-logged-in visitors) */}
-            {!isMom && user && selectedItem.status === "AVAILABLE" && (
-              <button className="btn-big" onClick={handleAssign} disabled={assigning} style={{ marginBottom: 16 }}>
-                {assigning ? "Committing..." : "💛 I will provide this"}
+            {/* Donate: available to any non-creator, logged-in or not */}
+            {!isMom && selectedItem.status === "AVAILABLE" && (
+              <button
+                className="btn-big"
+                onClick={user ? handleAssign : () => router.push("/auth")}
+                disabled={assigning}
+                style={{ marginBottom: 16 }}
+              >
+                {assigning ? "Committing..." : user ? "💛 I will provide this" : "💛 Sign in to donate this item"}
               </button>
             )}
 
