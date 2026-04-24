@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Square, CheckSquare, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
@@ -95,6 +95,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   // Multi-select for donors
   const [selectedItems, setSelectedItems]       = useState<Set<string>>(new Set());
   const [claimingMultiple, setClaimingMultiple] = useState(false);
+  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lpFired = useRef(false);
 
   const fetchRegister = useCallback(async () => {
     const res = await fetch(`/api/registers/${id}`);
@@ -246,6 +248,24 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const firstName   = register.creator.name.split(" ")[0];
   const dueDate     = new Date(register.dueDate).toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
 
+  const handlePressStart = (itemId: string) => {
+    if (!isDonorView) return;
+    lpFired.current = false;
+    lpTimer.current = setTimeout(() => {
+      lpFired.current = true;
+      toggleItemSelection(itemId);
+    }, 500);
+  };
+
+  const handlePressEnd = () => {
+    if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; }
+  };
+
+  const handleItemClick = (item: RegisterItemData) => {
+    if (lpFired.current) { lpFired.current = false; return; }
+    openItem(item);
+  };
+
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
       <div className="discover-desktop">
@@ -298,18 +318,15 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               const isFulfilled = es === "FULFILLED";
               const isDisputed  = es === "DISPUTED";
 
-              const handleClick = () => {
-                if (isDonorView && item.status === "AVAILABLE") {
-                  toggleItemSelection(item.id);
-                } else {
-                  openItem(item);
-                }
-              };
-
               return (
                 <div
                   key={item.id}
-                  onClick={handleClick}
+                  onClick={() => handleItemClick(item)}
+                  onMouseDown={() => handlePressStart(item.id)}
+                  onTouchStart={() => handlePressStart(item.id)}
+                  onMouseUp={handlePressEnd}
+                  onTouchEnd={handlePressEnd}
+                  onMouseLeave={handlePressEnd}
                   style={{
                     background:   isSelected ? "#f0faf6" : "var(--white)",
                     borderRadius: 12,
@@ -327,6 +344,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                     minHeight:    44,
                     opacity:      isFulfilled ? 0.65 : 1,
                     transition:   "background 0.15s, border-color 0.15s",
+                    userSelect:   "none",
                   }}
                 >
                   {getLeftIcon(item, isSelected, isDonorView)}
