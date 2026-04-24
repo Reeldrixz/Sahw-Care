@@ -331,7 +331,14 @@ export default function DiscoverPage() {
             </div>
             <FulfillmentConfirmBanner
               items={toConfirm}
-              onResolved={(reqId) => setToConfirm((p) => p.filter((i) => i.requestId !== reqId))}
+              onResolved={(reqId, status) => {
+                setToConfirm((p) => p.filter((i) => i.requestId !== reqId));
+                showToast(
+                  status === "VERIFIED"
+                    ? "Confirmed received! Thank you ✅"
+                    : "Dispute reported — our team will review ⚠️"
+                );
+              }}
             />
           </div>
         )}

@@ -18,13 +18,13 @@ interface Props {
 }
 
 export default function FulfillmentConfirmBanner({ items, onResolved }: Props) {
-  const [resolved, setResolved]       = useState<Record<string, "VERIFIED" | "DISPUTED">>({});
-  const [loading,  setLoading]        = useState<Record<string, boolean>>({});
-  const [disputed, setDisputed]       = useState<Record<string, boolean>>({});
-  const [reasons,  setReasons]        = useState<Record<string, string>>({});
+  const [loading,   setLoading]   = useState<Record<string, boolean>>({});
+  const [disputed,  setDisputed]  = useState<Record<string, boolean>>({});
+  const [reasons,   setReasons]   = useState<Record<string, string>>({});
+  // Items that have been confirmed — shows a brief success/disputed flash before parent removes them
+  const [confirmed, setConfirmed] = useState<Record<string, "VERIFIED" | "DISPUTED">>({});
 
-  const pending = items.filter((i) => !resolved[i.requestId]);
-  if (pending.length === 0) return null;
+  if (items.length === 0) return null;
 
   const handleConfirm = async (requestId: string, response: "YES" | "NO") => {
     if (loading[requestId]) return;
@@ -44,8 +44,12 @@ export default function FulfillmentConfirmBanner({ items, onResolved }: Props) {
         return;
       }
       const status: "VERIFIED" | "DISPUTED" = response === "YES" ? "VERIFIED" : "DISPUTED";
-      setResolved((p) => ({ ...p, [requestId]: status }));
-      onResolved?.(requestId, status);
+      // Immediately show the correct badge (fixes Bug 2)
+      setConfirmed((p) => ({ ...p, [requestId]: status }));
+      // Dismiss after a brief success flash so the user sees the updated badge (fixes Bug 1)
+      setTimeout(() => {
+        onResolved?.(requestId, status);
+      }, 1500);
     } finally {
       setLoading((p) => ({ ...p, [requestId]: false }));
     }
@@ -53,7 +57,43 @@ export default function FulfillmentConfirmBanner({ items, onResolved }: Props) {
 
   return (
     <div style={{ marginBottom: 14 }}>
-      {pending.map((item) => {
+      {items.map((item) => {
+        const confirmedStatus = confirmed[item.requestId];
+
+        // Success/disputed flash — shown after confirm, before parent removes the item
+        if (confirmedStatus) {
+          const isVerified = confirmedStatus === "VERIFIED";
+          return (
+            <div
+              key={item.requestId}
+              style={{
+                background:   "var(--white)",
+                borderRadius: 16,
+                border:       `2px solid ${isVerified ? "#1a7a5e" : "#c0392b"}`,
+                padding:      "16px 18px",
+                marginBottom: 10,
+                boxShadow:    "var(--shadow)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700 }}>
+                  {item.itemTitle}
+                </div>
+                <FulfillmentStatusBadge status={confirmedStatus} small />
+              </div>
+              <div style={{
+                fontSize: 12, fontFamily: "Nunito, sans-serif", fontWeight: 600,
+                color: isVerified ? "#1a7a5e" : "#c0392b",
+              }}>
+                {isVerified
+                  ? "Thank you for confirming! ✅"
+                  : "Dispute reported — our team will review ⚠️"}
+              </div>
+            </div>
+          );
+        }
+
+        // Normal pending view
         const isDisputing = disputed[item.requestId];
         const daysSince   = Math.floor((Date.now() - new Date(item.markedAt).getTime()) / (86400 * 1000));
         const daysLeft    = Math.max(0, 7 - daysSince);
