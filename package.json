@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "prepare": "husky"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -36,6 +37,7 @@
     "@types/react-dom": "^18",
     "eslint": "^10.2.0",
     "eslint-config-next": "^16.2.2",
+    "husky": "^9.1.7",
     "prisma": "^5.16.0",
     "ts-node": "^10.9.2",
     "typescript": "^5"
