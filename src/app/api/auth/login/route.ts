@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
     const isEmail = identifier.includes("@");
     // Normalize: trim whitespace; lowercase emails for case-insensitive lookup
     const normalizedId = isEmail ? identifier.trim().toLowerCase() : identifier.trim();
+    console.log("[login] Attempt. isEmail:", isEmail, "normalizedId:", normalizedId);
+
     const user = await prisma.user.findFirst({
       where: isEmail
         ? { email: { equals: normalizedId, mode: "insensitive" } }
@@ -24,14 +26,18 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
+      console.log("[login] 401 — no user found for:", normalizedId);
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
+
+    console.log("[login] User found:", user.id, "status:", user.status, "pwdLen:", user.password?.length, "pwdPrefix:", user.password?.substring(0, 7));
 
     if (user.status === "SUSPENDED") {
       return NextResponse.json({ error: "Your account has been suspended. Contact support." }, { status: 403 });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
+    console.log("[login] bcrypt.compare result:", passwordMatch, "for user:", user.id);
     if (!passwordMatch) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
