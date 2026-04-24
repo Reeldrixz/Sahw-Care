@@ -7,10 +7,12 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/fulfillment/pending
  *
- * Returns two lists for the current user:
- * - toConfirm:  PENDING RequestFulfillments where current user is the recipient
- * - toFulfill:  APPROVED requests where current user is the donor and no fulfillment yet
- * - allocations: DELIVERED BundleAllocations where current user is the recipient (CONFIRMED status excluded)
+ * Returns four lists for the current user:
+ * - toConfirm:     PENDING RequestFulfillments where current user is the recipient
+ * - toFulfill:     APPROVED requests where current user is the donor and no fulfillment yet
+ * - donorSentItems: RequestFulfillments where current user is the donor, status PENDING/DISPUTED
+ *                   (lets the donor track items they've sent and see disputes)
+ * - allocations:   DELIVERED/DISPATCHED BundleAllocations where current user is the recipient
  */
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const userId = auth.userId;
 
-  const [toConfirmRaw, toFulfillRaw, allocations] = await Promise.all([
+  const [toConfirmRaw, toFulfillRaw, donorSentRaw, allocations] = await Promise.all([
     // Items the user requested that the donor has marked as sent
     prisma.requestFulfillment.findMany({
       where: {
@@ -53,6 +55,26 @@ export async function GET(req: NextRequest) {
       take:    10,
     }),
 
+    // Items the donor has marked as sent but not yet resolved (PENDING or DISPUTED)
+    // This is what the donor sees after marking — shows real fulfillment status, not a blank.
+    prisma.requestFulfillment.findMany({
+      where: {
+        status:  { in: ["PENDING", "DISPUTED"] },
+        request: { item: { donorId: userId } },
+      },
+      include: {
+        request: {
+          select: {
+            id:        true,
+            item:      { select: { title: true } },
+            requester: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { markedAt: "desc" },
+      take:    10,
+    }),
+
     // Bundle allocations awaiting recipient confirmation
     prisma.bundleAllocation.findMany({
       where: {
@@ -77,13 +99,22 @@ export async function GET(req: NextRequest) {
   }));
 
   const toFulfill = toFulfillRaw.map((r) => ({
-    requestId:     r.id,
-    itemId:        r.item.id,
-    itemTitle:     r.item.title,
-    requesterName: r.requester.name,
+    requestId:       r.id,
+    itemId:          r.item.id,
+    itemTitle:       r.item.title,
+    requesterName:   r.requester.name,
     requesterAvatar: r.requester.avatar,
-    requestedAt:   r.updatedAt.toISOString(),
+    requestedAt:     r.updatedAt.toISOString(),
   }));
 
-  return NextResponse.json({ toConfirm, toFulfill, allocations });
+  const donorSentItems = donorSentRaw.map((fl) => ({
+    requestId:     fl.requestId,
+    itemTitle:     fl.request.item.title,
+    recipientName: fl.request.requester.name,
+    fulfillStatus: fl.status as "PENDING" | "DISPUTED",
+    markedAt:      fl.markedAt.toISOString(),
+    respondedAt:   fl.respondedAt?.toISOString() ?? null,
+  }));
+
+  return NextResponse.json({ toConfirm, toFulfill, donorSentItems, allocations });
 }

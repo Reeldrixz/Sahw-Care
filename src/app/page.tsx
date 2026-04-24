@@ -12,6 +12,7 @@ import { MapPin } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
+import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
 
 interface BundleItem { name: string; quantity: string }
 interface LiveCampaign {
@@ -31,6 +32,12 @@ interface MyBundle {
 interface ToFulfillItem {
   requestId: string; itemId: string; itemTitle: string;
   requesterName: string; requesterAvatar: string | null; requestedAt: string;
+}
+
+interface DonorSentItem {
+  requestId: string; itemTitle: string; recipientName: string;
+  fulfillStatus: "PENDING" | "DISPUTED";
+  markedAt: string; respondedAt: string | null;
 }
 
 const CAT_BG: Record<string, string> = {
@@ -59,6 +66,7 @@ export default function DiscoverPage() {
   const [myBundle,          setMyBundle]          = useState<MyBundle | null>(null);
   const [toConfirm,         setToConfirm]         = useState<PendingFulfillment[]>([]);
   const [toFulfill,         setToFulfill]         = useState<ToFulfillItem[]>([]);
+  const [donorSentItems,    setDonorSentItems]    = useState<DonorSentItem[]>([]);
   const [fulfillNote,       setFulfillNote]       = useState<Record<string, string>>({});
   const [fulfillLoading,    setFulfillLoading]    = useState<Record<string, boolean>>({});
   const [fulfillDone,       setFulfillDone]       = useState<Record<string, boolean>>({});
@@ -126,6 +134,7 @@ export default function DiscoverPage() {
       .then((d) => {
         setToConfirm(d.toConfirm ?? []);
         setToFulfill(d.toFulfill ?? []);
+        setDonorSentItems(d.donorSentItems ?? []);
       })
       .catch(() => {});
   }, [user]);
@@ -152,6 +161,14 @@ export default function DiscoverPage() {
       const d = await res.json();
       if (!res.ok) { showToast(d.error ?? "Something went wrong"); return; }
       setFulfillDone((p) => ({ ...p, [requestId]: true }));
+      // Move item to donorSentItems immediately so donor can track its status
+      const sentItem = toFulfill.find((r) => r.requestId === requestId);
+      if (sentItem) {
+        setDonorSentItems((prev) => [
+          { requestId, itemTitle: sentItem.itemTitle, recipientName: sentItem.requesterName, fulfillStatus: "PENDING", markedAt: new Date().toISOString(), respondedAt: null },
+          ...prev,
+        ]);
+      }
       showToast("Marked as sent! Recipient will be notified ✅");
     } finally {
       setFulfillLoading((p) => ({ ...p, [requestId]: false }));
@@ -367,6 +384,52 @@ export default function DiscoverPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* DONOR SENT ITEMS — in-progress tracking (PENDING / DISPUTED) */}
+        {donorSentItems.length > 0 && (
+          <div className="section">
+            <div className="section-head">
+              <div className="section-title">Items you sent</div>
+            </div>
+            {donorSentItems.map((item) => {
+              const isDisputed = item.fulfillStatus === "DISPUTED";
+              return (
+                <div
+                  key={item.requestId}
+                  style={{
+                    background:   "var(--white)",
+                    borderRadius: 14,
+                    border:       `2px solid ${isDisputed ? "#c0392b" : "var(--border)"}`,
+                    padding:      "14px 16px",
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div>
+                      <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, marginBottom: 2 }}>
+                        {item.itemTitle}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                        For {item.recipientName}
+                      </div>
+                    </div>
+                    <FulfillmentStatusBadge status={item.fulfillStatus} small />
+                  </div>
+                  {isDisputed && (
+                    <div style={{ marginTop: 10, padding: "9px 12px", background: "#fdecea", borderRadius: 8, fontSize: 12, color: "#c0392b", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                      ⚠️ The recipient reported they did not receive this item. Our team has been notified and will review the dispute.
+                    </div>
+                  )}
+                  {!isDisputed && (
+                    <div style={{ marginTop: 8, fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                      Waiting for recipient to confirm · auto-confirms in 7 days
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
