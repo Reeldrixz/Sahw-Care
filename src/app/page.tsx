@@ -11,6 +11,7 @@ import Avatar from "@/components/Avatar";
 import { MapPin } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
+import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
 
 interface BundleItem { name: string; quantity: string }
 interface LiveCampaign {
@@ -25,6 +26,11 @@ interface MyBundle {
   trackingNumber: string | null;
   campaign: { title: string; sponsorName: string };
   template: { name: string; items: BundleItem[] };
+}
+
+interface ToFulfillItem {
+  requestId: string; itemId: string; itemTitle: string;
+  requesterName: string; requesterAvatar: string | null; requestedAt: string;
 }
 
 const CAT_BG: Record<string, string> = {
@@ -49,8 +55,13 @@ export default function DiscoverPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showDonate,    setShowDonate]    = useState(false);
   const [detectedCity,  setDetectedCity]  = useState<string | null>(null);
-  const [campaigns,     setCampaigns]     = useState<LiveCampaign[]>([]);
-  const [myBundle,      setMyBundle]      = useState<MyBundle | null>(null);
+  const [campaigns,         setCampaigns]         = useState<LiveCampaign[]>([]);
+  const [myBundle,          setMyBundle]          = useState<MyBundle | null>(null);
+  const [toConfirm,         setToConfirm]         = useState<PendingFulfillment[]>([]);
+  const [toFulfill,         setToFulfill]         = useState<ToFulfillItem[]>([]);
+  const [fulfillNote,       setFulfillNote]       = useState<Record<string, string>>({});
+  const [fulfillLoading,    setFulfillLoading]    = useState<Record<string, boolean>>({});
+  const [fulfillDone,       setFulfillDone]       = useState<Record<string, boolean>>({});
 
   const CATS = ["All", "Feeding", "Diapering", "Maternity", "Clothing", "Hygiene"];
 
@@ -108,6 +119,17 @@ export default function DiscoverPage() {
     }).catch(() => {});
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/fulfillment/pending")
+      .then((r) => r.json())
+      .then((d) => {
+        setToConfirm(d.toConfirm ?? []);
+        setToFulfill(d.toFulfill ?? []);
+      })
+      .catch(() => {});
+  }, [user]);
+
   const filtered = allItems.filter((i) => {
     const matchCat = cat === "All" || i.category === cat;
     const matchSearch =
@@ -116,6 +138,25 @@ export default function DiscoverPage() {
     const matchCity = !detectedCity || i.location.toLowerCase().includes(detectedCity.toLowerCase());
     return matchCat && matchSearch && (search ? true : matchCity || !detectedCity);
   });
+
+  const handleMarkSent = async (requestId: string) => {
+    if (fulfillLoading[requestId]) return;
+    setFulfillLoading((p) => ({ ...p, [requestId]: true }));
+    try {
+      const note = fulfillNote[requestId]?.trim() || undefined;
+      const res = await fetch(`/api/requests/${requestId}/fulfill`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ donorNote: note ?? null }),
+      });
+      const d = await res.json();
+      if (!res.ok) { showToast(d.error ?? "Something went wrong"); return; }
+      setFulfillDone((p) => ({ ...p, [requestId]: true }));
+      showToast("Marked as sent! Recipient will be notified ✅");
+    } finally {
+      setFulfillLoading((p) => ({ ...p, [requestId]: false }));
+    }
+  };
 
   const handleRequest = async (item: ItemData) => {
     if (!user) { router.push("/auth"); return; }
@@ -261,6 +302,70 @@ export default function DiscoverPage() {
                 onFavourite={() => setFavs((f) => ({ ...f, [item.id]: !f[item.id] }))}
                 onClick={() => router.push(`/items/${item.id}`)}
               />
+            ))}
+          </div>
+        )}
+
+        {/* FULFILLMENT — recipient confirmations */}
+        {toConfirm.length > 0 && (
+          <div className="section">
+            <div className="section-head">
+              <div className="section-title">Confirm receipt</div>
+            </div>
+            <FulfillmentConfirmBanner
+              items={toConfirm}
+              onResolved={(reqId) => setToConfirm((p) => p.filter((i) => i.requestId !== reqId))}
+            />
+          </div>
+        )}
+
+        {/* FULFILLMENT — donor mark-as-sent */}
+        {toFulfill.filter((r) => !fulfillDone[r.requestId]).length > 0 && (
+          <div className="section">
+            <div className="section-head">
+              <div className="section-title">Mark items as sent</div>
+            </div>
+            {toFulfill.filter((r) => !fulfillDone[r.requestId]).map((r) => (
+              <div
+                key={r.requestId}
+                style={{
+                  background: "var(--white)", borderRadius: 14,
+                  border: "1.5px solid var(--border)", padding: "14px 16px",
+                  marginBottom: 10,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, marginBottom: 2 }}>{r.itemTitle}</div>
+                    <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>Requested by {r.requesterName}</div>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Optional note for recipient (e.g. 'Shipped via Canada Post')"
+                  value={fulfillNote[r.requestId] ?? ""}
+                  onChange={(e) => setFulfillNote((p) => ({ ...p, [r.requestId]: e.target.value }))}
+                  style={{
+                    width: "100%", padding: "9px 12px", borderRadius: 8,
+                    border: "1.5px solid var(--border)", fontSize: 12,
+                    fontFamily: "Nunito, sans-serif", outline: "none",
+                    marginBottom: 10, boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={() => handleMarkSent(r.requestId)}
+                  disabled={!!fulfillLoading[r.requestId]}
+                  style={{
+                    width: "100%", padding: "11px 0", borderRadius: 10, border: "none",
+                    background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 800,
+                    cursor: fulfillLoading[r.requestId] ? "default" : "pointer",
+                    fontFamily: "Nunito, sans-serif",
+                    opacity: fulfillLoading[r.requestId] ? 0.6 : 1,
+                  }}
+                >
+                  {fulfillLoading[r.requestId] ? "…" : "📦 Mark as sent"}
+                </button>
+              </div>
             ))}
           </div>
         )}

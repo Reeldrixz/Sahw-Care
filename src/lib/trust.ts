@@ -13,6 +13,9 @@ const DAILY_CAP = 5; // max positive trust points per day for engagement events
 const NO_DAILY_CAP_EVENTS = new Set([
   "PHONE_VERIFIED", "EMAIL_VERIFIED", "DOC_VERIFIED", "FULL_VERIFICATION_BONUS",
   "DONATION_FULFILLED", "ITEM_REQUEST_FULFILLED", "REGISTER_ITEM_FULFILLED",
+  "REQUEST_FULFILLMENT_VERIFIED", "REQUEST_RECEIPT_CONFIRMED",
+  "REQUEST_FULFILLMENT_AUTO_CONFIRMED", "FULFILLMENT_DISPUTED",
+  "BUNDLE_ALLOCATION_CONFIRMED",
   "STREAK_7_DAY", "STREAK_WEEK_1", "STREAK_WEEK_2", "STREAK_WEEK_3", "STREAK_WEEK_4",
   "MONTHLY_ACTIVE", "ACCOUNT_AGE_30_DAYS",
 ]);
@@ -42,10 +45,16 @@ export const EVENT_POINTS: Record<string, number> = {
   STREAK_WEEK_4:                3,
   MONTHLY_ACTIVE:               3,
   ACCOUNT_AGE_30_DAYS:          2,
+  // fulfillment events
+  REQUEST_FULFILLMENT_VERIFIED:       10,
+  REQUEST_RECEIPT_CONFIRMED:           5,
+  REQUEST_FULFILLMENT_AUTO_CONFIRMED:  5,
+  BUNDLE_ALLOCATION_CONFIRMED:         5,
   // negative events
   FLAGGED_POST:                -5,
   REPORT_CONFIRMED:           -10,
   DISCOVER_REQUEST:            -2,
+  FULFILLMENT_DISPUTED:       -10,
 };
 
 // Impact score points per event type (donors)

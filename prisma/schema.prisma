@@ -180,6 +180,30 @@ model Request {
 
   conversation Conversation?
   review       Review?
+  fulfillment  RequestFulfillment?
+}
+
+model RequestFulfillment {
+  id               String            @id @default(cuid())
+  requestId        String            @unique
+  status           FulfillmentStatus @default(PENDING)
+  donorNote        String?
+  donorPhotoUrl    String?
+  markedAt         DateTime          @default(now())
+  recipientResponse String?
+  respondedAt      DateTime?
+  reminderSentAt   DateTime?
+  autoConfirmedAt  DateTime?
+  createdAt        DateTime          @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+enum FulfillmentStatus {
+  PENDING
+  VERIFIED
+  DISPUTED
+  AUTO_CONFIRMED
 }
 
 model Conversation {
@@ -650,6 +674,11 @@ enum NotifType {
   DONOR_LEVEL_UP
   RBW_RESTRICTION
   REPORT_CONFIRMED
+  FULFILLMENT_PENDING
+  FULFILLMENT_CONFIRMED
+  FULFILLMENT_DISPUTED
+  FULFILLMENT_REMINDER
+  BUNDLE_ALLOCATION_CONFIRM
 }
 
 enum BundleInstanceStatus {
@@ -796,6 +825,8 @@ enum AbuseEventType {
   BUNDLE_REQUESTED
   BUNDLE_APPROVED
   BUNDLE_REJECTED
+  FULFILLMENT_MARKED
+  FULFILLMENT_DISPUTED
 }
 
 enum AbuseFlagType {
@@ -807,6 +838,7 @@ enum AbuseFlagType {
   REPEATED_DEVICE_OR_SESSION
   TRUST_SCORE_RECOVERY_SPAM
   REPEATED_BUNDLE_ATTEMPTS
+  HIGH_UNVERIFIED_FULFILLMENTS
 }
 
 enum Severity {
@@ -858,6 +890,7 @@ model BundleAllocation {
   status          AllocationStatus @default(QUEUED)
   allocatedAt     DateTime         @default(now())
   dispatchedAt    DateTime?
+  confirmedAt     DateTime?
   deliveryAddress String?
   notes           String?
   goal            MonthlyBundleGoal @relation(fields: [goalId], references: [id])
@@ -880,4 +913,5 @@ enum AllocationStatus {
   APPROVED
   DISPATCHED
   DELIVERED
+  CONFIRMED
 }

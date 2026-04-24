@@ -121,7 +121,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments";
 
 interface BundleGoalAdmin {
   id: string; month: string; targetBundles: number; costPerBundle: number;
@@ -143,6 +143,14 @@ interface BundleAllocAdmin {
   dispatchedAt: string | null; deliveryAddress: string | null; notes: string | null;
   recipient: { id: string; name: string; email: string | null; phone: string | null; location: string | null };
   goal: { month: string };
+}
+
+interface AdminFulfillment {
+  id: string; status: string; donorNote: string | null; donorPhotoUrl: string | null;
+  markedAt: string; respondedAt: string | null; autoConfirmedAt: string | null;
+  itemTitle: string; itemCategory: string;
+  donor:     { id: string; name: string; email: string | null };
+  recipient: { id: string; name: string; email: string | null };
 }
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
@@ -199,6 +207,10 @@ export default function AdminPage() {
   const [newCampaign, setNewCampaign] = useState({ title: "", description: "", totalBundles: "10", costPerBundle: "80", totalBudget: "800", targetStage: "", templateId: "" });
   const [newTemplate, setNewTemplate] = useState({ name: "", description: "", estimatedCost: "0", targetStage: "", items: "" });
 
+  // Fulfillments state
+  const [fulfillments,      setFulfillments]      = useState<AdminFulfillment[]>([]);
+  const [fulfillFilter,     setFulfillFilter]     = useState<"DISPUTED" | "AUTO_CONFIRMED" | "PENDING">("DISPUTED");
+
   // Bundle System (new monthly funding model)
   const [bsTab,             setBsTab]             = useState<"goal" | "mothers" | "allocations">("goal");
   const [bsGoal,            setBsGoal]            = useState<BundleGoalAdmin | null>(null);
@@ -233,6 +245,7 @@ export default function AdminPage() {
   const fetchBsGoal        = useCallback(async () => { const r = await fetch("/api/admin/bundles/goal"); if (r.ok) { const d = await r.json(); setBsGoal(d.goal); } }, []);
   const fetchBsMothers     = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/bundles/eligible-mothers"); if (r.ok) { const d = await r.json(); setBsMothers(d.mothers ?? []); } setLoading(false); }, []);
   const fetchBsAllocations = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/bundles/allocate"); if (r.ok) { const d = await r.json(); setBsAllocations(d.allocations ?? []); } setLoading(false); }, []);
+  const fetchFulfillments  = useCallback(async (status: string) => { setLoading(true); const r = await fetch(`/api/admin/fulfillments?status=${status}`); if (r.ok) { const d = await r.json(); setFulfillments(d.fulfillments ?? []); } setLoading(false); }, []);
 
   useEffect(() => {
     if (user?.role === "ADMIN") {
@@ -272,6 +285,9 @@ export default function AdminPage() {
     if (bsTab === "mothers")     fetchBsMothers();
     if (bsTab === "allocations") fetchBsAllocations();
   }, [section, bsTab, fetchBsGoal, fetchBsMothers, fetchBsAllocations]);
+  useEffect(() => {
+    if (section === "fulfillments") fetchFulfillments(fulfillFilter);
+  }, [section, fulfillFilter, fetchFulfillments]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -431,8 +447,9 @@ export default function AdminPage() {
     ["verification", "✅ Verify" + (stats?.pendingDocuments ? ` (${stats.pendingDocuments})` : "")],
     ["circles",      "🤝 Circles"],
     ["bundles",       "🎀 Bundles" + (stats?.bundlesPending ? ` (${stats.bundlesPending})` : "")],
-    ["bundle-system", "🎁 Bundle System"],
-    ["abuse",         "🔍 Abuse Monitor"],
+    ["bundle-system",  "🎁 Bundle System"],
+    ["fulfillments",   "📦 Fulfillments"],
+    ["abuse",          "🔍 Abuse Monitor"],
   ];
 
   return (
@@ -1535,6 +1552,89 @@ export default function AdminPage() {
                       )}
                     </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* ── FULFILLMENTS ─────────────────────────────────────────────── */}
+            {section === "fulfillments" && (
+              <div>
+                {/* Filter tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {(["DISPUTED", "AUTO_CONFIRMED", "PENDING"] as const).map((s) => (
+                    <button key={s} onClick={() => setFulfillFilter(s)}
+                      style={{
+                        padding: "7px 16px", borderRadius: 20,
+                        border: `1.5px solid ${fulfillFilter === s ? "#1a7a5e" : "var(--border)"}`,
+                        background: fulfillFilter === s ? "#e8f5f1" : "none",
+                        color: fulfillFilter === s ? "#1a7a5e" : "var(--ink)",
+                        fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                      }}>
+                      {s === "DISPUTED" ? "⚠️ Disputed" : s === "AUTO_CONFIRMED" ? "🔄 Auto-confirmed" : "⏳ Pending"}
+                    </button>
+                  ))}
+                </div>
+
+                {loading ? (
+                  <div style={{ textAlign: "center", padding: 40 }}><div className="spinner" /></div>
+                ) : fulfillments.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--mid)", padding: "32px 0", fontFamily: "Nunito, sans-serif" }}>
+                    No {fulfillFilter.toLowerCase().replace("_", "-")} fulfillments.
+                  </div>
+                ) : (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Donor</th>
+                        <th>Recipient</th>
+                        <th>Donor note</th>
+                        <th>Marked</th>
+                        <th>Responded</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fulfillments.map((f) => (
+                        <tr key={f.id}>
+                          <td style={{ fontWeight: 700, fontSize: 12 }}>
+                            {f.itemTitle}
+                            <div style={{ fontSize: 11, color: "var(--mid)", fontWeight: 400 }}>{f.itemCategory}</div>
+                          </td>
+                          <td style={{ fontSize: 12 }}>
+                            {f.donor.name}
+                            {f.donor.email && <div style={{ fontSize: 11, color: "var(--mid)" }}>{f.donor.email}</div>}
+                          </td>
+                          <td style={{ fontSize: 12 }}>
+                            {f.recipient.name}
+                            {f.recipient.email && <div style={{ fontSize: 11, color: "var(--mid)" }}>{f.recipient.email}</div>}
+                          </td>
+                          <td style={{ fontSize: 11, maxWidth: 180, color: "var(--mid)" }}>
+                            {f.donorNote ?? <span style={{ fontStyle: "italic" }}>—</span>}
+                            {f.donorPhotoUrl && (
+                              <a href={f.donorPhotoUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: 11, color: "#1a7a5e", marginTop: 2 }}>View photo</a>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 11, color: "var(--mid)", whiteSpace: "nowrap" }}>
+                            {new Date(f.markedAt).toLocaleDateString()}
+                          </td>
+                          <td style={{ fontSize: 11, color: "var(--mid)", whiteSpace: "nowrap" }}>
+                            {f.respondedAt ? new Date(f.respondedAt).toLocaleDateString() : f.autoConfirmedAt ? `Auto: ${new Date(f.autoConfirmedAt).toLocaleDateString()}` : "—"}
+                          </td>
+                          <td>
+                            <span className={`status-pill status-${f.status.toLowerCase()}`}
+                              style={{
+                                background: f.status === "DISPUTED" ? "#fdecea" : f.status === "VERIFIED" ? "#e8f5f1" : f.status === "AUTO_CONFIRMED" ? "#f0f4ff" : "#fff8e6",
+                                color: f.status === "DISPUTED" ? "#c0392b" : f.status === "VERIFIED" ? "#1a7a5e" : f.status === "AUTO_CONFIRMED" ? "#3b5bdb" : "#b8860b",
+                                fontWeight: 700, fontSize: 10, padding: "2px 8px", borderRadius: 20,
+                              }}>
+                              {f.status.replace("_", " ")}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
             )}
