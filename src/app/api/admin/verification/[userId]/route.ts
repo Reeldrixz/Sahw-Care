@@ -21,6 +21,7 @@ export async function PUT(
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
   const { userId } = await params;
   const { action, note } = await req.json(); // action: "approve" | "reject"
 
@@ -49,4 +50,7 @@ export async function PUT(
   }
 
   return NextResponse.json({ user });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

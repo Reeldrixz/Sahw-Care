@@ -29,15 +29,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { name, quantity, note, storeLinks } = await req.json();
-  if (!name) return NextResponse.json({ error: "Item name is required" }, { status: 400 });
+  if (!name || typeof name !== "string" || !name.trim())
+    return NextResponse.json({ error: "Item name is required" }, { status: 400 });
+  if (name.trim().length > 200)
+    return NextResponse.json({ error: "Item name must be 200 characters or less" }, { status: 400 });
+
+  // Validate store links — only allow http/https URLs, max 5
+  const rawLinks: unknown[] = Array.isArray(storeLinks) ? storeLinks : [];
+  if (rawLinks.length > 5)
+    return NextResponse.json({ error: "Maximum 5 store links allowed" }, { status: 400 });
+  const safeLinks: string[] = [];
+  for (const link of rawLinks) {
+    if (typeof link !== "string") continue;
+    try {
+      const url = new URL(link.trim());
+      if (url.protocol !== "http:" && url.protocol !== "https:")
+        return NextResponse.json({ error: "Store links must be http or https URLs" }, { status: 400 });
+      safeLinks.push(url.toString());
+    } catch {
+      return NextResponse.json({ error: `Invalid store link: ${link}` }, { status: 400 });
+    }
+  }
 
   const item = await prisma.registerItem.create({
     data: {
       registerId: id,
-      name,
-      quantity: quantity ?? "1",
-      note: note ?? null,
-      storeLinks: storeLinks ?? [],
+      name:       name.trim(),
+      quantity:   quantity ?? "1",
+      note:       note?.trim() ?? null,
+      storeLinks: safeLinks,
     },
   });
 

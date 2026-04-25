@@ -11,6 +11,7 @@ export async function PATCH(
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
   const { id } = await params;
   const { status, deliveryAddress, notes } = await req.json();
 
@@ -51,4 +52,7 @@ export async function PATCH(
   }
 
   return NextResponse.json({ allocation });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

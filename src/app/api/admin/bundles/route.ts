@@ -17,6 +17,8 @@ export async function GET(req: NextRequest) {
   const auth = await adminGuard(req);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const search = searchParams.get("search") ?? "";
@@ -47,4 +49,7 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ instances });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

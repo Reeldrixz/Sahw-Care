@@ -11,6 +11,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const auth = token ? await verifyToken(token) : null;
   if (!auth || auth.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { status, adminNote, userAction } = await req.json();
   // status: RESOLVED | DISMISSED
   // userAction: null | "FLAG" | "SUSPEND" | "WARN"
@@ -42,4 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

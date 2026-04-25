@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { role: true } });
   if (user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "PENDING";
 
@@ -30,4 +32,7 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ flagged });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

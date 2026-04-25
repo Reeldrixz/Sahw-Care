@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
   const auth = token ? await verifyToken(token) : null;
   if (!auth || auth.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const users = await prisma.user.findMany({
     select: {
       id: true, name: true, email: true, phone: true,
@@ -24,6 +26,9 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ users });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 // POST — manually recalculate trust for a single user
@@ -32,6 +37,8 @@ export async function POST(req: NextRequest) {
   const auth = token ? await verifyToken(token) : null;
   if (!auth || auth.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { userId } = await req.json();
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
 
@@ -39,4 +46,7 @@ export async function POST(req: NextRequest) {
   await syncTrustRating(userId, newScore);
 
   return NextResponse.json({ userId, trustScore: newScore });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

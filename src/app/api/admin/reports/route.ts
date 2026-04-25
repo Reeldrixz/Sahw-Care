@@ -9,6 +9,8 @@ export async function GET(req: NextRequest) {
   const auth = token ? await verifyToken(token) : null;
   if (!auth || auth.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status"); // PENDING | RESOLVED | DISMISSED
 
@@ -23,4 +25,7 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ reports });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

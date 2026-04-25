@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? "fallback-secret-change-in-production"
@@ -18,7 +19,7 @@ export async function signToken(payload: JWTPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("2d")
     .sign(JWT_SECRET);
 }
 
@@ -52,7 +53,7 @@ export async function setAuthCookie(token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 2, // 2 days
     path: "/",
   });
 }
@@ -60,4 +61,20 @@ export async function setAuthCookie(token: string) {
 export async function clearAuthCookie() {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+}
+
+/**
+ * Shared admin guard for API routes.
+ * Returns the JWT payload if the requester is an ADMIN, null otherwise.
+ * Usage: const admin = await requireAdmin(req); if (!admin) return NextResponse.json({error:"Forbidden"},{status:403});
+ */
+export async function requireAdmin(req: NextRequest): Promise<JWTPayload | null> {
+  const token   = await getTokenFromRequest(req);
+  const payload = token ? await verifyToken(token) : null;
+  if (!payload) return null;
+  const user = await prisma.user.findUnique({
+    where:  { id: payload.userId },
+    select: { role: true },
+  });
+  return user?.role === "ADMIN" ? payload : null;
 }

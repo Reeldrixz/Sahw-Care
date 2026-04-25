@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
   const auth = await adminGuard(req);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const body = await req.json();
 
   if (!body.title || !body.templateId) {
@@ -39,4 +41,7 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ campaign }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

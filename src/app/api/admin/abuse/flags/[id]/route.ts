@@ -28,6 +28,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { id: userId } = await params;
 
   const [user, flags, eventLog, requestCount7d, requestCount30d, timeToFirst, engagement] = await Promise.all([
@@ -68,6 +70,9 @@ export async function GET(req: NextRequest, { params }: Params) {
       engagement,
     },
   });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 /**
@@ -77,6 +82,8 @@ export async function GET(req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
 
   const { id: flagId } = await params;
   const { status, notes } = await req.json();
@@ -92,4 +99,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   });
 
   return NextResponse.json({ flag });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

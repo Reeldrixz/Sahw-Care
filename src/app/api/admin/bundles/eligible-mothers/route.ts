@@ -8,6 +8,8 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -68,4 +70,7 @@ export async function GET() {
   });
 
   return NextResponse.json({ mothers: sorted });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

@@ -8,6 +8,8 @@ export async function GET() {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const goal = await prisma.monthlyBundleGoal.findFirst({
     where: { status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
@@ -36,11 +38,16 @@ export async function GET() {
   };
 
   return NextResponse.json({ goal: { ...goal, fundedBundles, allocationStats } });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
 
   const { targetBundles, costPerBundle, month } = await req.json();
   if (!targetBundles || !costPerBundle) {
@@ -61,11 +68,16 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ goal }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
 
   const { goalId, status } = await req.json();
   if (!goalId) return NextResponse.json({ error: "goalId required" }, { status: 400 });
@@ -76,4 +88,7 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json({ goal });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

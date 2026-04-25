@@ -8,6 +8,8 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { recipientId, bundleType, goalId, deliveryAddress, notes } = await req.json();
   if (!recipientId || !bundleType || !goalId) {
     return NextResponse.json({ error: "recipientId, bundleType, and goalId are required" }, { status: 400 });
@@ -23,11 +25,16 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ allocation }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function GET() {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
 
   const allocations = await prisma.bundleAllocation.findMany({
     orderBy: { allocatedAt: "desc" },
@@ -38,4 +45,7 @@ export async function GET() {
   });
 
   return NextResponse.json({ allocations });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

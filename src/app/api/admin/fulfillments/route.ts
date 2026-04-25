@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  try {
   const status = req.nextUrl.searchParams.get("status") ?? "DISPUTED";
 
   const fulfillments = await prisma.requestFulfillment.findMany({
@@ -48,4 +49,7 @@ export async function GET(req: NextRequest) {
       recipient:        f.request.requester,
     })),
   });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

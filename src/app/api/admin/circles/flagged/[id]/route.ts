@@ -15,6 +15,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
   const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { role: true } });
   if (user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { id } = await params;
   const { action } = await req.json(); // "approve" | "remove"
 
@@ -35,4 +37,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({ error: "action must be approve or remove" }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

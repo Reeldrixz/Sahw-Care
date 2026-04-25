@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
   const adminUser = await prisma.user.findUnique({ where: { id: auth.userId }, select: { role: true } });
   if (adminUser?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { userId, circleId, action } = await req.json(); // action: "assign" | "remove"
 
   const candidate = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, trustScore: true } });
@@ -40,4 +42,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, isLeader: action === "assign" });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
   const auth = await adminGuard(req);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const body = await req.json();
 
   const template = await prisma.bundleTemplate.create({
@@ -30,4 +32,7 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ template }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

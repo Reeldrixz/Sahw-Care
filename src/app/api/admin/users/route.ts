@@ -1,44 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const search = searchParams.get("search");
-  const status = searchParams.get("status");
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const where: Record<string, unknown> = {};
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: "insensitive" } },
-      { email: { contains: search, mode: "insensitive" } },
-      { phone: { contains: search, mode: "insensitive" } },
-    ];
+  try {
+    const { searchParams } = req.nextUrl;
+    const search = searchParams.get("search");
+    const status = searchParams.get("status");
+
+    const where: Record<string, unknown> = {};
+    if (search) {
+      where.OR = [
+        { name:  { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (status) where.status = status;
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true, name: true, email: true, phone: true,
+        role: true, status: true, isPremium: true,
+        trustRating: true, trustScore: true, verificationLevel: true,
+        phoneVerified: true, emailVerified: true,
+        urgentOverridesUsed: true, createdAt: true,
+        _count: { select: { items: true, requests: true, urgentOverrides: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ users });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-  if (status) where.status = status;
-
-  const users = await prisma.user.findMany({
-    where,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phone: true,
-      role: true,
-      status: true,
-      isPremium: true,
-      trustRating: true,
-      trustScore: true,
-      verificationLevel: true,
-      phoneVerified: true,
-      emailVerified: true,
-      urgentOverridesUsed: true,
-      createdAt: true,
-      _count: { select: { items: true, requests: true, urgentOverrides: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json({ users });
 }

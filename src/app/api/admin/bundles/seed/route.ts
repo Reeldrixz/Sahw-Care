@@ -9,6 +9,8 @@ export async function POST(req: NextRequest) {
   const auth  = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { role: true } });
   if (user?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -66,4 +68,7 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ message: "Seeded successfully", campaign, templates: [template1, template2] });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

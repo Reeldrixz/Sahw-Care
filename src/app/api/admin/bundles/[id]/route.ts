@@ -23,6 +23,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const auth = await adminGuard(req);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { id } = await params;
   const body = await req.json();
 
@@ -113,12 +115,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({ instance: updated });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 // POST /api/admin/bundles/[id] — create campaign or template
 export async function POST(req: NextRequest, { params }: Params) {
   const auth = await adminGuard(req);
   if (!auth) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  try {
 
   const { id: type } = await params; // "campaign" or "template"
   const body = await req.json();
@@ -157,4 +164,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

@@ -16,6 +16,8 @@ export async function GET(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  try {
+
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status") ?? "PENDING";
 
@@ -31,4 +33,7 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json({ users });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
