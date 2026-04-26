@@ -12,7 +12,7 @@ interface AdminUser {
   role: string; status: string; isPremium: boolean;
   trustRating: number; trustScore: number;
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
-  urgentOverridesUsed: number; createdAt: string;
+  docStatus: string | null; urgentOverridesUsed: number; createdAt: string;
   _count: { items: number; requests: number; urgentOverrides: number };
 }
 
@@ -358,6 +358,28 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
     if (res.ok) { setUsers((p) => p.filter((u) => u.id !== userId)); setToast("User removed"); }
   };
+
+  const manualVerify = async (userId: string) => {
+    if (!confirm("Manually verify this user? This will set phoneVerified, emailVerified, verificationLevel=2, docStatus=VERIFIED and award trust bonuses (+10 phone, +10 email, +15 doc).")) return;
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "manualVerify" }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setUsers((p) => p.map((u) => u.id === userId ? {
+        ...u,
+        phoneVerified: true, emailVerified: true,
+        verificationLevel: 2, docStatus: "VERIFIED",
+        trustScore: d.user?.trustScore ?? u.trustScore,
+      } : u));
+      setToast("✅ User manually verified — trust bonuses awarded");
+    } else {
+      setToast("Verification failed");
+    }
+  };
+
   const updateItemStatus = async (itemId: string, status: string) => {
     const res = await fetch(`/api/admin/items/${itemId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
     if (res.ok) { setItems((p) => p.map((i) => i.id === itemId ? { ...i, status } : i)); setToast(`Item ${status.toLowerCase()}`); }
@@ -602,6 +624,9 @@ export default function AdminPage() {
                           {u.status !== "ACTIVE"     && <button className="action-btn action-approve" onClick={() => updateUserStatus(u.id, "ACTIVE")}>✓ Approve</button>}
                           {u.status !== "FLAGGED"    && <button className="action-btn" style={{ background: "rgba(196,98,45,0.1)", color: "var(--terra)" }} onClick={() => updateUserStatus(u.id, "FLAGGED")}>🚩 Flag</button>}
                           {u.status !== "SUSPENDED"  && <button className="action-btn" style={{ background: "rgba(100,100,100,0.1)", color: "var(--mid)" }} onClick={() => updateUserStatus(u.id, "SUSPENDED")}>⏸ Suspend</button>}
+                          {u.docStatus !== "VERIFIED" && (
+                            <button className="action-btn" style={{ background: "rgba(26,122,94,0.12)", color: "var(--green)", fontWeight: 800 }} onClick={() => manualVerify(u.id)}>🔐 Verify</button>
+                          )}
                           <button className="action-btn action-remove" onClick={() => deleteUser(u.id)}>✕ Remove</button>
                         </td>
                       </tr>
@@ -815,8 +840,8 @@ export default function AdminPage() {
                         </span>
                       </div>
 
-                      {/* Action buttons — only show for PENDING */}
-                      {u.docStatus === "PENDING" && (
+                      {/* Action buttons — show for any non-verified doc; OTP not required */}
+                      {u.docStatus !== "VERIFIED" && (
                         <div>
                           <textarea
                             placeholder="Rejection message (optional — default will be used if blank)"

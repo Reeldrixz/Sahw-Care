@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         id: true, name: true, email: true, phone: true,
         role: true, status: true, isPremium: true,
         trustRating: true, trustScore: true, verificationLevel: true,
-        phoneVerified: true, emailVerified: true,
+        phoneVerified: true, emailVerified: true, docStatus: true,
         urgentOverridesUsed: true, createdAt: true,
         _count: { select: { items: true, requests: true, urgentOverrides: true } },
       },
