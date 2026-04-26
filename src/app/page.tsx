@@ -338,28 +338,6 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {/* CLAIM BEFORE IT'S GONE */}
-        {filtered.filter((i) => i.urgent).length > 0 && (
-          <div className="section">
-            <div className="section-head">
-              <div className="section-title">Claim before it&apos;s gone</div>
-              <div className="see-all" onClick={() => router.push("/browse")}>See all</div>
-            </div>
-            {filtered.filter((i) => i.urgent).slice(0, 2).map((item) => (
-              <ListCard
-                key={item.id}
-                item={item}
-                requested={requested[item.id]}
-                favourited={favs[item.id]}
-                badge={`🔥 ${item.quantity} left`}
-                onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
-                onFavourite={() => toggleFav(item.id)}
-                onClick={() => router.push(`/items/${item.id}`)}
-              />
-            ))}
-          </div>
-        )}
-
         {/* FULFILLMENT — recipient confirmations */}
         {toConfirm.length > 0 && (
           <div className="section">
