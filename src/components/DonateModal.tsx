@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { X } from "lucide-react";
 
 interface DonateModalProps {
   onClose: () => void;
@@ -51,13 +52,44 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="modal-title">List a Donation</div>
-          <button className="modal-close" onClick={onClose}>✕</button>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.4)",
+        zIndex: 200,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        style={{
+          background: "var(--white)",
+          borderRadius: "24px 24px 0 0",
+          width: "100%",
+          maxWidth: 430,
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+          animation: "sheetUp 0.3s ease",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle */}
+        <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "12px auto 0" }} />
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px 0" }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700 }}>List a Donation</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+            <X size={20} color="var(--ink)" />
+          </button>
         </div>
-        <div className="modal-body">
+
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 0" }}>
           <div className="form-grid">
             <div className="form-group full">
               <label className="form-label">Item Title *</label>
@@ -164,14 +196,17 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
               />
             </div>
           </div>
+        </div>
 
+        {/* Sticky submit button */}
+        <div style={{ padding: "12px 16px 32px", borderTop: "1px solid var(--border)" }}>
           <button
             className="btn-primary"
-            style={{ width: "100%", padding: "13px", fontSize: 15, borderRadius: 12, marginTop: 8 }}
+            style={{ width: "100%", padding: "13px", fontSize: 15, borderRadius: 12 }}
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? "Submitting..." : "🎁 Submit Donation"}
+            {loading ? "Submitting..." : "Post listing"}
           </button>
         </div>
       </div>
