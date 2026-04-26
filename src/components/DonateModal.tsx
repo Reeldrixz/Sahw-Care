@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X } from "lucide-react";
+import { X, ImagePlus } from "lucide-react";
 
 interface DonateModalProps {
   onClose: () => void;
@@ -10,9 +10,33 @@ interface DonateModalProps {
 
 const CATEGORIES = ["Feeding", "Diapering", "Maternity", "Clothing", "Hygiene", "Other"];
 
+const field: React.CSSProperties = {
+  width: "100%",
+  padding: "11px 14px",
+  borderRadius: 12,
+  background: "#f5f5f5",
+  border: "1.5px solid transparent",
+  fontSize: 14,
+  fontFamily: "Nunito, sans-serif",
+  color: "#1a1a1a",
+  outline: "none",
+  boxSizing: "border-box",
+  transition: "border-color 0.15s",
+};
+
+const label: React.CSSProperties = {
+  display: "block",
+  fontFamily: "Nunito, sans-serif",
+  fontWeight: 600,
+  fontSize: 12,
+  color: "#444",
+  marginBottom: 6,
+};
+
 export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
@@ -24,8 +48,11 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
     urgent: false,
   });
 
-  const set = (field: string, value: string | boolean) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const set = (f: string, value: string | boolean) =>
+    setForm((prev) => ({ ...prev, [f]: value }));
+
+  const focusBorder = (name: string): React.CSSProperties =>
+    focused === name ? { ...field, border: "1.5px solid #1a7a5e" } : field;
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,9 +69,7 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, String(v)));
-      if (fileRef.current?.files?.[0]) {
-        fd.append("file", fileRef.current.files[0]);
-      }
+      if (fileRef.current?.files?.[0]) fd.append("file", fileRef.current.files[0]);
       await onSubmit(fd);
     } finally {
       setLoading(false);
@@ -66,7 +91,7 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
     >
       <div
         style={{
-          background: "var(--white)",
+          background: "#fff",
           borderRadius: "24px 24px 0 0",
           width: "100%",
           maxWidth: 430,
@@ -78,112 +103,153 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle */}
-        <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "12px auto 0" }} />
+        <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 4, margin: "12px auto 0" }} />
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px 0" }}>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700 }}>List a Donation</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-            <X size={20} color="var(--ink)" />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px 0" }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>
+            List a Donation
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}
+          >
+            <X size={20} color="#333" />
           </button>
         </div>
 
         {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 0" }}>
-          <div className="form-grid">
-            <div className="form-group full">
-              <label className="form-label">Item Title *</label>
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px 0" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Title */}
+            <div>
+              <label style={label}>Item Title *</label>
               <input
-                className="form-input"
+                style={focusBorder("title")}
                 placeholder="e.g. Pampers Newborn Size 1 (2 packs)"
                 value={form.title}
                 onChange={(e) => set("title", e.target.value)}
+                onFocus={() => setFocused("title")}
+                onBlur={() => setFocused(null)}
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Category *</label>
-              <select
-                className="form-select"
-                value={form.category}
-                onChange={(e) => set("category", e.target.value)}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
+            {/* Category + Condition */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={label}>Category *</label>
+                <select
+                  style={{ ...focusBorder("category"), appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}
+                  value={form.category}
+                  onChange={(e) => set("category", e.target.value)}
+                  onFocus={() => setFocused("category")}
+                  onBlur={() => setFocused(null)}
+                >
+                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={label}>Condition *</label>
+                <select
+                  style={{ ...focusBorder("condition"), appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}
+                  value={form.condition}
+                  onChange={(e) => set("condition", e.target.value)}
+                  onFocus={() => setFocused("condition")}
+                  onBlur={() => setFocused(null)}
+                >
+                  <option>New (unopened)</option>
+                  <option>Slightly used</option>
+                </select>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Condition *</label>
-              <select
-                className="form-select"
-                value={form.condition}
-                onChange={(e) => set("condition", e.target.value)}
-              >
-                <option>New (unopened)</option>
-                <option>Slightly used</option>
-              </select>
+            {/* Quantity + Location */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={label}>Quantity *</label>
+                <input
+                  style={focusBorder("quantity")}
+                  placeholder="e.g. 2 packs"
+                  value={form.quantity}
+                  onChange={(e) => set("quantity", e.target.value)}
+                  onFocus={() => setFocused("quantity")}
+                  onBlur={() => setFocused(null)}
+                />
+              </div>
+              <div>
+                <label style={label}>City / Area *</label>
+                <input
+                  style={focusBorder("location")}
+                  placeholder="e.g. Ikeja, Lagos"
+                  value={form.location}
+                  onChange={(e) => set("location", e.target.value)}
+                  onFocus={() => setFocused("location")}
+                  onBlur={() => setFocused(null)}
+                />
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Quantity *</label>
-              <input
-                className="form-input"
-                placeholder="e.g. 2 packs, 1 unit"
-                value={form.quantity}
-                onChange={(e) => set("quantity", e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">City / Area *</label>
-              <input
-                className="form-input"
-                placeholder="e.g. Ikeja, Lagos"
-                value={form.location}
-                onChange={(e) => set("location", e.target.value)}
-              />
-            </div>
-
-            <div className="form-group full">
-              <label className="form-label">Description</label>
+            {/* Description */}
+            <div>
+              <label style={label}>Description</label>
               <textarea
-                className="form-textarea"
+                style={{ ...focusBorder("desc"), resize: "none", minHeight: 80 }}
                 placeholder="Any details — expiry date, size, brand, reason for donating..."
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
+                onFocus={() => setFocused("desc")}
+                onBlur={() => setFocused(null)}
               />
             </div>
 
-            <div className="form-group full" style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            {/* Mark as urgent */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <input
                 type="checkbox"
                 id="urgent"
                 checked={form.urgent}
                 onChange={(e) => set("urgent", e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "#1a7a5e", cursor: "pointer", flexShrink: 0 }}
               />
-              <label htmlFor="urgent" className="form-label" style={{ marginBottom: 0, cursor: "pointer" }}>
+              <label
+                htmlFor="urgent"
+                style={{ ...label, marginBottom: 0, cursor: "pointer", fontSize: 13 }}
+              >
                 Mark as urgent
               </label>
             </div>
 
-            <div className="form-group full">
-              <label className="form-label">Photo</label>
+            {/* Photo upload */}
+            <div>
+              <label style={label}>Photo</label>
               <div
-                className="upload-area"
                 onClick={() => fileRef.current?.click()}
+                style={{
+                  border: "1.5px dashed #c8e8e0",
+                  borderRadius: 12,
+                  padding: "24px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                  background: "#f9fefd",
+                }}
               >
                 {previewUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={previewUrl} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, objectFit: "cover" }} />
                 ) : (
                   <>
-                    <div className="upload-icon">📸</div>
-                    <div className="upload-text">
-                      <strong>Click to upload</strong> or drag and drop
+                    <ImagePlus size={28} color="#1a7a5e" strokeWidth={1.5} />
+                    <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 600, color: "#333" }}>
+                      Upload photo
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--light)", marginTop: 4 }}>PNG, JPG up to 5MB</div>
+                    <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 11, color: "#888" }}>
+                      PNG, JPG up to 5MB
+                    </div>
                   </>
                 )}
               </div>
@@ -195,16 +261,28 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
                 onChange={handleFile}
               />
             </div>
+
           </div>
         </div>
 
-        {/* Sticky submit button */}
-        <div style={{ padding: "12px 16px 32px", borderTop: "1px solid var(--border)" }}>
+        {/* Sticky submit */}
+        <div style={{ padding: "12px 16px 32px", borderTop: "1px solid #eee" }}>
           <button
-            className="btn-primary"
-            style={{ width: "100%", padding: "13px", fontSize: 15, borderRadius: 12 }}
             onClick={handleSubmit}
             disabled={loading}
+            style={{
+              width: "100%",
+              padding: "13px",
+              background: loading ? "#aaa" : "#1a7a5e",
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              fontFamily: "Nunito, sans-serif",
+              fontWeight: 700,
+              fontSize: 15,
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "background 0.15s",
+            }}
           >
             {loading ? "Submitting..." : "Post listing"}
           </button>
