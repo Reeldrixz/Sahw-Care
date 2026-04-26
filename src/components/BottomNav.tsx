@@ -11,12 +11,13 @@ import {
 const ACTIVE_COLOR   = "#1a7a5e";
 const INACTIVE_COLOR = "#9ca3af";
 const STROKE = 1.75;
-const SIZE   = 24;
+const SIZE   = 20;
 
 // Tabs shown to pregnant / postpartum users (Circles access)
 const MOM_TABS = [
   { path: "/",            label: "Discover",   Icon: Compass       },
   { path: "/registers",   label: "Registers",  Icon: ClipboardList },
+  { path: "/bundles",     label: "Bundles",    Icon: Gift          },
   { path: "/circles",     label: "Circles",    Icon: Users         },
   { path: "/favourites",  label: "Favourites", Icon: Heart         },
   { path: "/profile",     label: "Profile",    Icon: CircleUser    },
@@ -57,7 +58,7 @@ export default function BottomNav() {
               {isProfile && user ? (
                 <div style={{
                   width: SIZE, height: SIZE, borderRadius: "50%", overflow: "hidden",
-                  border: `2px solid ${isActive ? ACTIVE_COLOR : "transparent"}`,
+                  border: `1.5px solid ${isActive ? ACTIVE_COLOR : "transparent"}`,
                   flexShrink: 0, transition: "border-color 0.2s",
                 }}>
                   <Avatar src={user.avatar} name={user.name} size={SIZE} />
