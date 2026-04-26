@@ -173,10 +173,10 @@ export default function DiscoverPage() {
   const filtered = allItems.filter((i) => {
     const matchCat = cat === "All" || i.category === cat;
     const matchSearch =
+      !search ||
       i.title.toLowerCase().includes(search.toLowerCase()) ||
       i.category.toLowerCase().includes(search.toLowerCase());
-    const matchCity = !detectedCity || i.location.toLowerCase().includes(detectedCity.toLowerCase());
-    return matchCat && matchSearch && (search ? true : matchCity || !detectedCity);
+    return matchCat && matchSearch;
   });
 
   const handleMarkSent = async (requestId: string) => {
@@ -228,7 +228,13 @@ export default function DiscoverPage() {
     if (file && file.size > 0) {
       const fd = new FormData(); fd.append("file", file);
       const up = await fetch("/api/upload", { method: "POST", body: fd });
-      if (up.ok) { const { url } = await up.json(); imageUrl = url; }
+      if (up.ok) {
+        const { url } = await up.json();
+        imageUrl = url;
+      } else {
+        const upErr = await up.json().catch(() => ({}));
+        showToast((upErr as { error?: string }).error ?? "Photo upload failed — listing saved without photo");
+      }
     }
     const res = await fetch("/api/items", {
       method: "POST",

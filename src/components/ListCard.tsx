@@ -52,6 +52,12 @@ export default function ListCard({ item, requested, favourited, onRequest, onFav
   return (
     <div className="list-card" onClick={onClick}>
       <div className="list-card-img" style={{ background: bg }}>
+        {item.images[0] ? (
+          <Image src={item.images[0]} alt={item.title} fill style={{ objectFit: "cover", zIndex: 0 }} sizes="430px" />
+        ) : (
+          <span style={{ fontSize: 60 }}>{CAT_EMOJI[item.category] ?? "📦"}</span>
+        )}
+
         {badge && <div className="list-card-badge">{badge}</div>}
         {item.urgent && !badge && <div className="list-card-badge">⚡ Urgent</div>}
 
@@ -63,12 +69,6 @@ export default function ListCard({ item, requested, favourited, onRequest, onFav
           <Avatar src={item.donor.avatar} name={item.donor.name} size={24} />
           <div className="list-card-donor-name">{item.donor.name.split(" ")[0]}</div>
         </div>
-
-        {item.images[0] ? (
-          <Image src={item.images[0]} alt={item.title} fill style={{ objectFit: "cover" }} sizes="430px" />
-        ) : (
-          <span style={{ fontSize: 60 }}>{CAT_EMOJI[item.category] ?? "📦"}</span>
-        )}
       </div>
 
       <div className="list-card-body">
