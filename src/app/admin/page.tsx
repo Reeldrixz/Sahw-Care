@@ -121,7 +121,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog";
 
 interface BundleGoalAdmin {
   id: string; month: string; targetBundles: number; costPerBundle: number;
@@ -151,6 +151,28 @@ interface AdminFulfillment {
   itemTitle: string; itemCategory: string;
   donor:     { id: string; name: string; email: string | null };
   recipient: { id: string; name: string; email: string | null };
+}
+
+interface RegQueueEntry {
+  id: string; status: string; totalFundedCents: number; purchasedFrom: string | null;
+  actualCostCents: number | null; trackingRef: string | null; notes: string | null;
+  queuedAt: string; purchasedAt: string | null; dispatchedAt: string | null; deliveredAt: string | null;
+  registerItem: {
+    id: string; name: string; category: string; quantity: string;
+    totalFundedCents: number; standardPriceCents: number;
+    register: { id: string; title: string; city: string; creator: { id: string; name: string; location: string | null } };
+  };
+}
+
+interface Financials {
+  month: string; totalFundedCents: number; totalSpentCents: number; surplusCents: number;
+  itemsInQueue: number; itemsFulfilledThisMonth: number; allTimeFundedCents: number;
+}
+
+interface CatalogAdminEntry {
+  id: string; name: string; category: string; standardPriceCents: number;
+  description: string | null; isActive: boolean; createdAt: string;
+  _count: { registerItems: number };
 }
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
@@ -193,6 +215,20 @@ export default function AdminPage() {
   const [weeklySummary,    setWeeklySummary]    = useState<WeeklySummary | null>(null);
   const [selectedAbuseUser, setSelectedAbuseUser] = useState<UserAbuseDetail | null>(null);
   const [flagNotes,        setFlagNotes]        = useState<Record<string, string>>({});
+
+  // Register fulfillment queue state
+  const [regQueueTab,        setRegQueueTab]        = useState<"QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED">("QUEUED");
+  const [regQueue,           setRegQueue]           = useState<RegQueueEntry[]>([]);
+  const [regQueueLoading,    setRegQueueLoading]    = useState(false);
+  const [regQueueModal,      setRegQueueModal]      = useState<{ id: string; name: string; nextStatus: string } | null>(null);
+  const [regQueueForm,       setRegQueueForm]       = useState<Record<string, string>>({});
+  const [financials,         setFinancials]         = useState<Financials | null>(null);
+
+  // Catalog management state
+  const [catalogItems,       setCatalogItems]       = useState<CatalogAdminEntry[]>([]);
+  const [catalogLoading,     setCatalogLoading]     = useState(false);
+  const [editingCatalog,     setEditingCatalog]     = useState<CatalogAdminEntry | null>(null);
+  const [newCatalogForm,     setNewCatalogForm]     = useState({ name: "", category: "", standardPriceCents: "" });
 
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
@@ -288,6 +324,30 @@ export default function AdminPage() {
   useEffect(() => {
     if (section === "fulfillments") fetchFulfillments(fulfillFilter);
   }, [section, fulfillFilter, fetchFulfillments]);
+
+  const fetchRegQueue = useCallback(async (status: string) => {
+    setRegQueueLoading(true);
+    const r = await fetch(`/api/admin/fulfillment-queue?status=${status}`);
+    if (r.ok) { const d = await r.json(); setRegQueue(d.queue ?? []); }
+    setRegQueueLoading(false);
+  }, []);
+  const fetchFinancials = useCallback(async () => {
+    const r = await fetch("/api/admin/financials/summary");
+    if (r.ok) { const d = await r.json(); setFinancials(d); }
+  }, []);
+  const fetchCatalogAdmin = useCallback(async () => {
+    setCatalogLoading(true);
+    const r = await fetch("/api/admin/catalog");
+    if (r.ok) { const d = await r.json(); setCatalogItems(d.items ?? []); }
+    setCatalogLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (section === "register-queue") { fetchRegQueue(regQueueTab); fetchFinancials(); }
+  }, [section, regQueueTab, fetchRegQueue, fetchFinancials]);
+  useEffect(() => {
+    if (section === "catalog") fetchCatalogAdmin();
+  }, [section, fetchCatalogAdmin]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -449,6 +509,8 @@ export default function AdminPage() {
     ["bundles",       "🎀 Bundles" + (stats?.bundlesPending ? ` (${stats.bundlesPending})` : "")],
     ["bundle-system",  "🎁 Bundle System"],
     ["fulfillments",   "📦 Fulfillments"],
+    ["register-queue", "🛍️ Register Queue"],
+    ["catalog",        "📋 Item Catalog"],
     ["abuse",          "🔍 Abuse Monitor"],
   ];
 
@@ -1635,6 +1697,287 @@ export default function AdminPage() {
                       ))}
                     </tbody>
                   </table>
+                )}
+              </div>
+            )}
+
+            {/* ── REGISTER FULFILLMENT QUEUE ──────────────────────────────── */}
+            {section === "register-queue" && (
+              <div>
+                {/* Financial summary */}
+                {financials && (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+                    {[
+                      { label: "Funded this month", value: `$${((financials.totalFundedCents) / 100).toFixed(0)}`, color: "#1a7a5e" },
+                      { label: "Spent this month",  value: `$${((financials.totalSpentCents)  / 100).toFixed(0)}`, color: "#d97706" },
+                      { label: "Surplus",           value: `$${((financials.surplusCents)     / 100).toFixed(0)}`, color: financials.surplusCents >= 0 ? "#1a7a5e" : "#c0392b" },
+                      { label: "Items in queue",    value: String(financials.itemsInQueue),                        color: "#1a7a5e" },
+                      { label: "Fulfilled (month)", value: String(financials.itemsFulfilledThisMonth),             color: "#1a7a5e" },
+                    ].map((s) => (
+                      <div key={s.label} style={{ background: "var(--white)", borderRadius: 12, padding: "12px 14px", border: "1.5px solid var(--border)" }}>
+                        <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: s.color, fontFamily: "Lora, serif" }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sub-tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {(["QUEUED", "PURCHASED", "DISPATCHED", "DELIVERED"] as const).map((s) => (
+                    <button key={s} onClick={() => setRegQueueTab(s)}
+                      style={{
+                        padding: "7px 16px", borderRadius: 20,
+                        border: `1.5px solid ${regQueueTab === s ? "#1a7a5e" : "var(--border)"}`,
+                        background: regQueueTab === s ? "#e8f5f1" : "none",
+                        color: regQueueTab === s ? "#1a7a5e" : "var(--ink)",
+                        fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                      }}>
+                      {s === "QUEUED" ? "⏳ Queued" : s === "PURCHASED" ? "🛒 Purchased" : s === "DISPATCHED" ? "🚚 Dispatched" : "✅ Delivered"}
+                    </button>
+                  ))}
+                </div>
+
+                {regQueueLoading ? (
+                  <div style={{ textAlign: "center", padding: 40 }}><div className="spinner" /></div>
+                ) : regQueue.filter((e) => e.status === regQueueTab).length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--mid)", padding: "32px 0", fontFamily: "Nunito, sans-serif" }}>
+                    No items in {regQueueTab.toLowerCase()} status.
+                  </div>
+                ) : (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Register</th>
+                        <th>Mother</th>
+                        <th>Funded</th>
+                        <th>{regQueueTab === "PURCHASED" ? "Supplier / Cost" : regQueueTab === "DISPATCHED" ? "Tracking" : "Date"}</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {regQueue.filter((e) => e.status === regQueueTab).map((entry) => (
+                        <tr key={entry.id}>
+                          <td style={{ fontWeight: 700, fontSize: 12 }}>
+                            {entry.registerItem.name}
+                            <div style={{ fontSize: 11, color: "var(--mid)", fontWeight: 400 }}>{entry.registerItem.category} · Qty: {entry.registerItem.quantity}</div>
+                          </td>
+                          <td style={{ fontSize: 12 }}>
+                            {entry.registerItem.register.title}
+                            <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.registerItem.register.city}</div>
+                          </td>
+                          <td style={{ fontSize: 12 }}>
+                            {entry.registerItem.register.creator.name.split(" ")[0]}
+                            <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.registerItem.register.creator.location}</div>
+                          </td>
+                          <td style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e" }}>
+                            ${(entry.totalFundedCents / 100).toFixed(0)}
+                          </td>
+                          <td style={{ fontSize: 11, color: "var(--mid)" }}>
+                            {regQueueTab === "QUEUED" && new Date(entry.queuedAt).toLocaleDateString()}
+                            {regQueueTab === "PURCHASED" && (
+                              <>{entry.purchasedFrom ?? "—"}<br/>{entry.actualCostCents ? `$${(entry.actualCostCents / 100).toFixed(0)}` : "—"}</>
+                            )}
+                            {regQueueTab === "DISPATCHED" && (entry.trackingRef ?? "—")}
+                            {regQueueTab === "DELIVERED" && (entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleDateString() : "—")}
+                          </td>
+                          <td>
+                            {regQueueTab === "QUEUED" && (
+                              <button
+                                onClick={() => { setRegQueueModal({ id: entry.id, name: entry.registerItem.name, nextStatus: "PURCHASED" }); setRegQueueForm({}); }}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                Mark Purchased
+                              </button>
+                            )}
+                            {regQueueTab === "PURCHASED" && (
+                              <button
+                                onClick={() => { setRegQueueModal({ id: entry.id, name: entry.registerItem.name, nextStatus: "DISPATCHED" }); setRegQueueForm({}); }}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#d97706", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                Mark Dispatched
+                              </button>
+                            )}
+                            {regQueueTab === "DISPATCHED" && (
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Mark "${entry.registerItem.name}" as delivered?`)) return;
+                                  await fetch(`/api/admin/fulfillment-queue/${entry.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "DELIVERED" }) });
+                                  fetchRegQueue(regQueueTab);
+                                  setToast("Marked as delivered!");
+                                }}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                Mark Delivered
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* Purchase / Dispatch modal */}
+                {regQueueModal && (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                    <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%" }}>
+                      <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 16 }}>
+                        {regQueueModal.nextStatus === "PURCHASED" ? "Mark as Purchased" : "Mark as Dispatched"}
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--mid)", marginBottom: 16, fontFamily: "Nunito, sans-serif" }}>
+                        {regQueueModal.name}
+                      </div>
+                      {regQueueModal.nextStatus === "PURCHASED" && (
+                        <>
+                          <div className="form-group">
+                            <label className="form-label">Supplier name</label>
+                            <input className="form-input" placeholder="e.g. Jumia, Amazon" value={regQueueForm.purchasedFrom ?? ""} onChange={(e) => setRegQueueForm((p) => ({ ...p, purchasedFrom: e.target.value }))} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Actual cost ($)</label>
+                            <input className="form-input" type="number" placeholder="e.g. 35" value={regQueueForm.actualCost ?? ""} onChange={(e) => setRegQueueForm((p) => ({ ...p, actualCost: e.target.value }))} />
+                          </div>
+                        </>
+                      )}
+                      {regQueueModal.nextStatus === "DISPATCHED" && (
+                        <div className="form-group">
+                          <label className="form-label">Tracking reference</label>
+                          <input className="form-input" placeholder="e.g. JM123456789NG" value={regQueueForm.trackingRef ?? ""} onChange={(e) => setRegQueueForm((p) => ({ ...p, trackingRef: e.target.value }))} />
+                        </div>
+                      )}
+                      <div className="form-group">
+                        <label className="form-label">Notes (optional)</label>
+                        <input className="form-input" placeholder="Internal notes" value={regQueueForm.notes ?? ""} onChange={(e) => setRegQueueForm((p) => ({ ...p, notes: e.target.value }))} />
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => setRegQueueModal(null)} className="btn-clear" style={{ flex: 1 }}>Cancel</button>
+                        <button
+                          onClick={async () => {
+                            const body: Record<string, unknown> = { status: regQueueModal.nextStatus };
+                            if (regQueueForm.purchasedFrom) body.purchasedFrom = regQueueForm.purchasedFrom;
+                            if (regQueueForm.actualCost) body.actualCostCents = Math.round(parseFloat(regQueueForm.actualCost) * 100);
+                            if (regQueueForm.trackingRef) body.trackingRef = regQueueForm.trackingRef;
+                            if (regQueueForm.notes) body.notes = regQueueForm.notes;
+                            await fetch(`/api/admin/fulfillment-queue/${regQueueModal.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                            setRegQueueModal(null);
+                            fetchRegQueue(regQueueTab);
+                            setToast(`Marked as ${regQueueModal.nextStatus.toLowerCase()}!`);
+                          }}
+                          className="btn-apply" style={{ flex: 2 }}>
+                          Confirm
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── CATALOG MANAGEMENT ─────────────────────────────────────── */}
+            {section === "catalog" && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Item Catalog</div>
+                  <button
+                    onClick={() => setEditingCatalog({ id: "", name: "", category: "", standardPriceCents: 0, description: null, isActive: true, createdAt: "", _count: { registerItems: 0 } })}
+                    style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                    + Add item
+                  </button>
+                </div>
+
+                {catalogLoading ? (
+                  <div style={{ textAlign: "center", padding: 40 }}><div className="spinner" /></div>
+                ) : (
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Used</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catalogItems.map((c) => (
+                        <tr key={c.id} style={{ opacity: c.isActive ? 1 : 0.5 }}>
+                          <td style={{ fontWeight: 700, fontSize: 12 }}>{c.name}</td>
+                          <td style={{ fontSize: 12, color: "var(--mid)" }}>{c.category}</td>
+                          <td style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e" }}>${(c.standardPriceCents / 100).toFixed(0)}</td>
+                          <td style={{ fontSize: 12, color: "var(--mid)" }}>{c._count.registerItems}</td>
+                          <td>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: c.isActive ? "#e8f5f1" : "#f3f4f6", color: c.isActive ? "#1a7a5e" : "var(--mid)" }}>
+                              {c.isActive ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => setEditingCatalog(c)}
+                              style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                              Edit
+                            </button>
+                            <button
+                              onClick={async () => {
+                                await fetch("/api/admin/catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, name: c.name, category: c.category, standardPriceCents: c.standardPriceCents, isActive: !c.isActive }) });
+                                fetchCatalogAdmin();
+                                setToast(c.isActive ? "Item deactivated" : "Item activated");
+                              }}
+                              style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", color: c.isActive ? "var(--terra)" : "var(--green)" }}>
+                              {c.isActive ? "Deactivate" : "Activate"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* Add/Edit modal */}
+                {editingCatalog !== null && (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                    <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%" }}>
+                      <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 16 }}>
+                        {editingCatalog.id ? "Edit item" : "Add new item"}
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Item name</label>
+                        <input className="form-input" value={editingCatalog.name} onChange={(e) => setEditingCatalog((p) => p ? { ...p, name: e.target.value } : p)} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Category</label>
+                        <select className="form-input" value={editingCatalog.category} onChange={(e) => setEditingCatalog((p) => p ? { ...p, category: e.target.value } : p)} style={{ fontFamily: "Nunito, sans-serif" }}>
+                          {["Feeding/Diapering", "Clothing", "Hygiene", "Maternity", "Other"].map((c) => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Standard price ($)</label>
+                        <input className="form-input" type="number" value={editingCatalog.standardPriceCents / 100} onChange={(e) => setEditingCatalog((p) => p ? { ...p, standardPriceCents: Math.round(parseFloat(e.target.value) * 100) } : p)} />
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button onClick={() => setEditingCatalog(null)} className="btn-clear" style={{ flex: 1 }}>Cancel</button>
+                        <button
+                          onClick={async () => {
+                            if (!editingCatalog.name || !editingCatalog.category) { setToast("Name and category required"); return; }
+                            await fetch("/api/admin/catalog", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                id: editingCatalog.id || undefined,
+                                name: editingCatalog.name,
+                                category: editingCatalog.category,
+                                standardPriceCents: editingCatalog.standardPriceCents,
+                                isActive: editingCatalog.isActive,
+                              }),
+                            });
+                            setEditingCatalog(null);
+                            fetchCatalogAdmin();
+                            setToast("Catalog updated!");
+                          }}
+                          className="btn-apply" style={{ flex: 2 }}>
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             )}

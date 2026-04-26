@@ -20,6 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
               fulfillmentLog: { select: { momConfirmed: true, mismatch: true } },
             },
           },
+          _count: { select: { funding: true } },
         },
       },
     },

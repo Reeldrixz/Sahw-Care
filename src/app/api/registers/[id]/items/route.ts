@@ -28,11 +28,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { name, quantity, note, storeLinks } = await req.json();
-  if (!name || typeof name !== "string" || !name.trim())
-    return NextResponse.json({ error: "Item name is required" }, { status: 400 });
-  if (name.trim().length > 200)
-    return NextResponse.json({ error: "Item name must be 200 characters or less" }, { status: 400 });
+  const { name, quantity, note, storeLinks, catalogItemId } = await req.json();
+
+  let resolvedName: string;
+  let resolvedCategory = "Other";
+  let standardPriceCents = 0;
+
+  if (catalogItemId) {
+    const catalogItem = await prisma.itemCatalog.findUnique({ where: { id: catalogItemId, isActive: true } });
+    if (!catalogItem) return NextResponse.json({ error: "Catalog item not found" }, { status: 404 });
+    resolvedName       = catalogItem.name;
+    resolvedCategory   = catalogItem.category;
+    standardPriceCents = catalogItem.standardPriceCents;
+  } else {
+    // Custom item — requires manual name
+    if (!name || typeof name !== "string" || !name.trim())
+      return NextResponse.json({ error: "Item name is required for custom items" }, { status: 400 });
+    if (name.trim().length > 200)
+      return NextResponse.json({ error: "Item name must be 200 characters or less" }, { status: 400 });
+    resolvedName = name.trim();
+  }
 
   // Validate store links — only allow http/https URLs, max 5
   const rawLinks: unknown[] = Array.isArray(storeLinks) ? storeLinks : [];
@@ -53,11 +68,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const item = await prisma.registerItem.create({
     data: {
-      registerId: id,
-      name:       name.trim(),
-      quantity:   quantity ?? "1",
-      note:       note?.trim() ?? null,
-      storeLinks: safeLinks,
+      registerId:        id,
+      name:              resolvedName,
+      category:          resolvedCategory,
+      quantity:          quantity ?? "1",
+      note:              note?.trim() ?? null,
+      storeLinks:        safeLinks,
+      catalogItemId:     catalogItemId ?? null,
+      standardPriceCents,
+      fundingStatus:     "UNFUNDED",
     },
   });
 

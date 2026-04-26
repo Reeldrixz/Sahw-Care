@@ -59,9 +59,12 @@ export const EVENT_POINTS: Record<string, number> = {
 
 // Impact score points per event type (donors)
 const IMPACT_EVENT_POINTS: Record<string, number> = {
-  FULFILLED_REQUEST:      15,
-  REGISTER_ITEM_DELIVERED: 10,
-  BUNDLE_FUNDED:           25,
+  FULFILLED_REQUEST:            15,
+  REGISTER_ITEM_DELIVERED:      10,
+  BUNDLE_FUNDED:                25,
+  REGISTER_ITEM_FUNDED:          2,  // any funding contribution
+  REGISTER_ITEM_FULL_FUND:      10,  // bonus for single full-item contribution
+  REGISTER_ITEM_FULFILLED_DONOR: 8, // item they helped fund reaches FULFILLED
 };
 
 const DONOR_LEVELS = [

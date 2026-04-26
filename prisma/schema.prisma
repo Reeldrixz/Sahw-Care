@@ -119,6 +119,10 @@ model User {
   bundleInstances     BundleInstance[]     @relation("RecipientBundles")
   bundleContributions BundleContribution[]
   bundleAllocations   BundleAllocation[]
+  itemFundings        RegisterItemFunding[]
+
+  totalFundedCents Int @default(0)
+  fundingCount     Int @default(0)
 
   // notification preferences
   notifyNewPosts      Boolean @default(false)
@@ -267,19 +271,26 @@ model Register {
 }
 
 model RegisterItem {
-  id         String             @id @default(cuid())
-  name       String
-  category   String             @default("Other")
-  quantity   String             @default("1")
-  note       String?
-  storeLinks String[]           @default([])
-  status     RegisterItemStatus @default(AVAILABLE)
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  id                 String            @id @default(cuid())
+  name               String
+  category           String            @default("Other")
+  quantity           String            @default("1")
+  note               String?
+  storeLinks         String[]          @default([])
+  status             RegisterItemStatus @default(AVAILABLE)
+  catalogItemId      String?
+  standardPriceCents Int               @default(0)
+  totalFundedCents   Int               @default(0)
+  fundingStatus      ItemFundingStatus @default(UNFUNDED)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
-  registerId String
-  register   Register        @relation(fields: [registerId], references: [id], onDelete: Cascade)
-  assignment ItemAssignment?
+  registerId       String
+  register         Register              @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  catalogItem      ItemCatalog?          @relation(fields: [catalogItemId], references: [id])
+  assignment       ItemAssignment?
+  funding          RegisterItemFunding[]
+  fulfillmentQueue FulfillmentQueue?
 }
 
 model ItemAssignment {
@@ -679,6 +690,10 @@ enum NotifType {
   FULFILLMENT_DISPUTED
   FULFILLMENT_REMINDER
   BUNDLE_ALLOCATION_CONFIRM
+  ITEM_FULLY_FUNDED
+  ITEM_PURCHASED
+  ITEM_DISPATCHED
+  ITEM_DELIVERED
 }
 
 enum BundleInstanceStatus {
@@ -914,4 +929,67 @@ enum AllocationStatus {
   DISPATCHED
   DELIVERED
   CONFIRMED
+}
+
+// ==================== HYBRID REGISTER FULFILLMENT ====================
+
+enum FundingStatus {
+  PENDING
+  CONFIRMED
+  REFUNDED
+}
+
+enum QueueStatus {
+  QUEUED
+  PURCHASED
+  DISPATCHED
+  DELIVERED
+}
+
+enum ItemFundingStatus {
+  UNFUNDED
+  PARTIAL
+  FULLY_FUNDED
+  IN_FULFILLMENT
+  FULFILLED
+}
+
+model ItemCatalog {
+  id                 String         @id @default(cuid())
+  name               String
+  category           String
+  standardPriceCents Int
+  description        String?
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  registerItems      RegisterItem[]
+}
+
+model RegisterItemFunding {
+  id             String        @id @default(cuid())
+  registerItemId String
+  donorId        String
+  amountCents    Int
+  status         FundingStatus @default(CONFIRMED)
+  createdAt      DateTime      @default(now())
+
+  registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
+  donor        User         @relation(fields: [donorId], references: [id], onDelete: Cascade)
+}
+
+model FulfillmentQueue {
+  id               String      @id @default(cuid())
+  registerItemId   String      @unique
+  totalFundedCents Int
+  status           QueueStatus @default(QUEUED)
+  purchasedFrom    String?
+  actualCostCents  Int?
+  trackingRef      String?
+  notes            String?
+  queuedAt         DateTime    @default(now())
+  purchasedAt      DateTime?
+  dispatchedAt     DateTime?
+  deliveredAt      DateTime?
+
+  registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
 }
