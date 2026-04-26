@@ -112,6 +112,37 @@ export default function DiscoverPage() {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
+  // Load favourites from DB when user is known; fall back to empty set for guests
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/favourites")
+      .then((r) => r.json())
+      .then((d) => {
+        const map: Record<string, boolean> = {};
+        (d.itemIds ?? []).forEach((id: string) => { map[id] = true; });
+        setFavs(map);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const toggleFav = useCallback(async (itemId: string) => {
+    // Optimistic update
+    setFavs((f) => ({ ...f, [itemId]: !f[itemId] }));
+    if (!user) return; // guests: optimistic only (won't persist)
+    try {
+      const res = await fetch("/api/favourites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId }),
+      });
+      const d = await res.json();
+      if (res.ok) setFavs((f) => ({ ...f, [itemId]: d.favourited }));
+    } catch {
+      // revert on network error
+      setFavs((f) => ({ ...f, [itemId]: !f[itemId] }));
+    }
+  }, [user]);
+
   // Fetch bundle campaigns for all users; fetch active bundle only for logged-in mothers
   useEffect(() => {
     fetch("/api/bundles").then((r) => r.json()).then((d) => setCampaigns(d.campaigns ?? [])).catch(() => {});
@@ -276,7 +307,7 @@ export default function DiscoverPage() {
                   <div key={item.id} className="pick-card" onClick={() => router.push(`/items/${item.id}`)}>
                     <div className="pick-img" style={{ background: bg }}>
                       {item.urgent && <div className="pick-badge">⚡ Urgent</div>}
-                      <button className="pick-fav" onClick={(e) => { e.stopPropagation(); setFavs((f) => ({ ...f, [item.id]: !f[item.id] })); }}>
+                      <button className="pick-fav" onClick={(e) => { e.stopPropagation(); toggleFav(item.id); }}>
                         {favs[item.id] ? "❤️" : "🤍"}
                       </button>
                       <span>{CAT_EMOJI[item.category] ?? "📦"}</span>
@@ -316,7 +347,7 @@ export default function DiscoverPage() {
                 favourited={favs[item.id]}
                 badge={`🔥 ${item.quantity} left`}
                 onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
-                onFavourite={() => setFavs((f) => ({ ...f, [item.id]: !f[item.id] }))}
+                onFavourite={() => toggleFav(item.id)}
                 onClick={() => router.push(`/items/${item.id}`)}
               />
             ))}
@@ -543,7 +574,7 @@ export default function DiscoverPage() {
                   requested={requested[item.id]}
                   favourited={favs[item.id]}
                   onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
-                  onFavourite={() => setFavs((f) => ({ ...f, [item.id]: !f[item.id] }))}
+                  onFavourite={() => toggleFav(item.id)}
                   onClick={() => router.push(`/items/${item.id}`)}
                 />
               ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import ListCard, { ItemData } from "@/components/ListCard";
@@ -10,29 +10,37 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function FavouritesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [allItems, setAllItems] = useState<ItemData[]>([]);
-  const [favs, setFavs] = useState<Record<string, boolean>>({});
+  const [items, setItems] = useState<ItemData[]>([]);
   const [requested, setRequested] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load favs from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem("cc_favs");
-    if (stored) setFavs(JSON.parse(stored));
-  }, []);
+  const fetchFavs = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
+    try {
+      const [favRes, itemsRes] = await Promise.all([
+        fetch("/api/favourites"),
+        fetch("/api/items?limit=200"),
+      ]);
+      const { itemIds } = await favRes.json();
+      const { items: allItems } = await itemsRes.json();
+      const idSet = new Set<string>(itemIds ?? []);
+      setItems((allItems ?? []).filter((i: ItemData) => idSet.has(i.id)));
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
-  // Persist favs
-  useEffect(() => {
-    localStorage.setItem("cc_favs", JSON.stringify(favs));
-  }, [favs]);
+  useEffect(() => { fetchFavs(); }, [fetchFavs]);
 
-  useEffect(() => {
-    fetch("/api/items?limit=100")
-      .then((r) => r.json())
-      .then((d) => setAllItems(d.items ?? []));
-  }, []);
-
-  const favourited = allItems.filter((i) => favs[i.id]);
+  const handleUnfavourite = async (itemId: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== itemId));
+    await fetch("/api/favourites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId }),
+    });
+  };
 
   const handleRequest = async (item: ItemData) => {
     if (!user) { router.push("/auth"); return; }
@@ -57,7 +65,17 @@ export default function FavouritesPage() {
       </div>
 
       <div className="scroll" style={{ height: "calc(100vh - 74px)" }}>
-        {favourited.length === 0 ? (
+        {!user ? (
+          <div className="empty">
+            <div className="empty-icon">🤍</div>
+            <div className="empty-title">Sign in to save favourites</div>
+            <div>Your liked items will appear here</div>
+          </div>
+        ) : loading ? (
+          <div className="empty">
+            <div style={{ color: "var(--light)", fontSize: 14 }}>Loading...</div>
+          </div>
+        ) : items.length === 0 ? (
           <div className="empty">
             <div className="empty-icon">🤍</div>
             <div className="empty-title">No favourites yet</div>
@@ -65,14 +83,14 @@ export default function FavouritesPage() {
           </div>
         ) : (
           <div style={{ padding: "12px 16px 20px" }}>
-            {favourited.map((item) => (
+            {items.map((item) => (
               <ListCard
                 key={item.id}
                 item={item}
                 requested={requested[item.id]}
                 favourited
                 onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
-                onFavourite={() => setFavs((f) => ({ ...f, [item.id]: false }))}
+                onFavourite={() => handleUnfavourite(item.id)}
                 onClick={() => router.push(`/items/${item.id}`)}
               />
             ))}

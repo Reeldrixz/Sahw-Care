@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import {
-  Compass, ClipboardList, Users, Search,
+  Compass, ClipboardList, Users,
   CircleUser, Heart, MessageCircle, Gift,
 } from "lucide-react";
 
@@ -15,20 +15,20 @@ const SIZE   = 24;
 
 // Tabs shown to pregnant / postpartum users (Circles access)
 const MOM_TABS = [
-  { path: "/",          label: "Discover",  Icon: Compass       },
-  { path: "/registers", label: "Registers", Icon: ClipboardList },
-  { path: "/bundles",   label: "Bundles",   Icon: Gift          },
-  { path: "/circles",   label: "Circles",   Icon: Users         },
-  { path: "/profile",   label: "Profile",   Icon: CircleUser    },
+  { path: "/",            label: "Discover",   Icon: Compass       },
+  { path: "/registers",   label: "Registers",  Icon: ClipboardList },
+  { path: "/circles",     label: "Circles",    Icon: Users         },
+  { path: "/favourites",  label: "Favourites", Icon: Heart         },
+  { path: "/profile",     label: "Profile",    Icon: CircleUser    },
 ];
 
 // Tabs shown to donor users (no Circles, no Registers)
 const DONOR_TABS = [
-  { path: "/",         label: "Discover",  Icon: Compass       },
-  { path: "/bundles",  label: "Bundles",   Icon: Gift          },
-  { path: "/browse",   label: "Browse",    Icon: Search        },
-  { path: "/chat",     label: "Messages",  Icon: MessageCircle },
-  { path: "/profile",  label: "Profile",   Icon: CircleUser    },
+  { path: "/",            label: "Discover",   Icon: Compass       },
+  { path: "/bundles",     label: "Bundles",    Icon: Gift          },
+  { path: "/chat",        label: "Messages",   Icon: MessageCircle },
+  { path: "/favourites",  label: "Favourites", Icon: Heart         },
+  { path: "/profile",     label: "Profile",    Icon: CircleUser    },
 ];
 
 export default function BottomNav() {

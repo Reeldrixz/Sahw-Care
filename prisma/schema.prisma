@@ -92,6 +92,7 @@ model User {
   abuseFlags        AbuseFlag[]
 
   // relations
+  favourites               Favourite[]
   items                    Item[]
   requests                 Request[]
   sentMessages             Message[]                 @relation("SentMessages")
@@ -149,9 +150,22 @@ model Item {
   updatedAt   DateTime   @updatedAt
 
   donorId  String
-  donor    User      @relation(fields: [donorId], references: [id], onDelete: Cascade)
-  requests Request[]
-  reports  Report[]  @relation("ReportedItemReports")
+  donor      User        @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  requests   Request[]
+  reports    Report[]    @relation("ReportedItemReports")
+  favourites Favourite[]
+}
+
+model Favourite {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
 }
 
 model Review {
