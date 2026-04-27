@@ -29,30 +29,35 @@ export async function POST(req: NextRequest) {
   const auth = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Enforce Layer 2 verification before allowing register creation
+  // Enforce verification before allowing register creation
   const creator = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { phoneVerified: true, emailVerified: true, avatar: true, docStatus: true },
+    select: { phoneVerified: true, emailVerified: true, avatar: true, docStatus: true, verificationLevel: true },
   });
 
   if (!creator) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const layer1Complete = (creator.phoneVerified || creator.emailVerified) && !!creator.avatar;
-  if (!layer1Complete) {
-    return NextResponse.json({
-      error: "Please complete your profile first — verify your phone or email and add a profile photo.",
-      code: "LAYER1_INCOMPLETE",
-    }, { status: 403 });
-  }
+  // verificationLevel >= 2 bypasses all individual field checks
+  const fullyVerified = creator.verificationLevel >= 2;
 
-  if (creator.docStatus !== "VERIFIED") {
-    const msg =
-      creator.docStatus === "PENDING"
-        ? "Your document is under review — usually within 24 hours. We'll let you know as soon as it's confirmed!"
-        : creator.docStatus === "REJECTED"
-        ? "Your document wasn't accepted. Please upload a new one from your profile settings."
-        : "To create a Register, please upload a document to help us protect our community.";
-    return NextResponse.json({ error: msg, code: "LAYER2_REQUIRED" }, { status: 403 });
+  if (!fullyVerified) {
+    const layer1Complete = (creator.phoneVerified || creator.emailVerified) && !!creator.avatar;
+    if (!layer1Complete) {
+      return NextResponse.json({
+        error: "Please complete your profile first — verify your phone or email and add a profile photo.",
+        code: "LAYER1_INCOMPLETE",
+      }, { status: 403 });
+    }
+
+    if (creator.docStatus !== "VERIFIED") {
+      const msg =
+        creator.docStatus === "PENDING"
+          ? "Your document is under review — usually within 24 hours. We'll let you know as soon as it's confirmed!"
+          : creator.docStatus === "REJECTED"
+          ? "Your document wasn't accepted. Please upload a new one from your profile settings."
+          : "To create a Register, please upload a document to help us protect our community.";
+      return NextResponse.json({ error: msg, code: "LAYER2_REQUIRED" }, { status: 403 });
+    }
   }
 
   const { title, city, dueDate } = await req.json();

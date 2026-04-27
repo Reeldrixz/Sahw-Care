@@ -12,6 +12,9 @@ export default function VerificationBanner({ onUploadDocument, onVerifyPhone, on
   const { user } = useAuth();
   if (!user) return null;
 
+  // Manually verified (verificationLevel >= 2) — no banner needed
+  if (user.verificationLevel >= 2) return null;
+
   const hasContact = user.phoneVerified || user.emailVerified;
   const hasPhoto = !!user.avatar;
   const layer1Done = hasContact && hasPhoto;

@@ -158,10 +158,10 @@ export default function NewRegisterPage() {
 
   if (!user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
-  // Layer 1 check
-  const layer1Done = (user.phoneVerified || user.emailVerified) && !!user.avatar;
-  // Layer 2 check
-  const layer2Done = user.docStatus === "VERIFIED";
+  // verificationLevel >= 2 is a full bypass (manually verified accounts)
+  const fullyVerified = user.verificationLevel >= 2;
+  const layer1Done = fullyVerified || ((user.phoneVerified || user.emailVerified) && !!user.avatar);
+  const layer2Done = fullyVerified || user.docStatus === "VERIFIED";
 
   if (!layer1Done) {
     return (

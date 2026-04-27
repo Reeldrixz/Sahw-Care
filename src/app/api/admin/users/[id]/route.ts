@@ -16,7 +16,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // ── Manual verification override ─────────────────────────────────────────
     if (action === "manualVerify") {
-      // Set all verification flags and doc status atomically
+      // Step 1: set all access flags so the user is fully unlocked
       await prisma.user.update({
         where: { id },
         data: {
@@ -25,10 +25,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           verificationLevel: 2,
           docStatus:         "VERIFIED",
           verifiedAt:        new Date(),
+          hasPostedIntro:    true,    // skip intro prompt
+          onboardingComplete: true,   // grants circles access
         },
       });
 
-      // Award trust bonuses idempotently — skip any event already logged
+      // Step 2: award trust bonuses idempotently
       const alreadyLogged = await prisma.trustScoreLog.findMany({
         where: { userId: id, eventType: { in: ["PHONE_VERIFIED", "EMAIL_VERIFIED", "DOC_VERIFIED"] } },
         select: { eventType: true },
@@ -51,13 +53,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ]);
       }
 
+      // Step 3: ensure trust score is at least 60 (discover threshold)
       await checkFullVerificationBonus(id);
+      const afterBonuses = await prisma.user.findUnique({ where: { id }, select: { trustScore: true } });
+      if ((afterBonuses?.trustScore ?? 0) < 60) {
+        const floor = 60;
+        const delta = floor - (afterBonuses?.trustScore ?? 0);
+        await prisma.$transaction([
+          prisma.trustScoreLog.create({ data: { userId: id, eventType: "MANUAL_VERIFY_FLOOR", pointsDelta: delta, newScore: floor } }),
+          prisma.user.update({ where: { id }, data: { trustScore: floor } }),
+        ]);
+      }
+
       const finalScore = await recalculateTrustScore(id);
       await syncTrustRating(id, finalScore);
 
       const updated = await prisma.user.findUnique({
         where: { id },
-        select: { id: true, name: true, trustScore: true, verificationLevel: true, phoneVerified: true, emailVerified: true, docStatus: true },
+        select: { id: true, name: true, trustScore: true, verificationLevel: true, phoneVerified: true, emailVerified: true, docStatus: true, onboardingComplete: true },
       });
       return NextResponse.json({ user: updated });
     }

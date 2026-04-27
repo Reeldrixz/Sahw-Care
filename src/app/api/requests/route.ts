@@ -50,12 +50,13 @@ export async function POST(req: NextRequest) {
   const user = token ? await verifyToken(token) : null;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Enforce Layer 1 before requesting items
+  // Enforce Layer 1 before requesting items (bypassed for verificationLevel >= 2)
   const requester = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { phoneVerified: true, emailVerified: true, avatar: true, trustScore: true, graceRequestsUsed: true },
+    select: { phoneVerified: true, emailVerified: true, avatar: true, trustScore: true, graceRequestsUsed: true, verificationLevel: true },
   });
-  if (requester && !(requester.phoneVerified || requester.emailVerified) || !requester?.avatar) {
+  const isFullyVerified = (requester?.verificationLevel ?? 0) >= 2;
+  if (!isFullyVerified && (requester && !(requester.phoneVerified || requester.emailVerified) || !requester?.avatar)) {
     return NextResponse.json({
       error: "Please complete your profile first — verify your phone or email and add a profile photo.",
       code: "LAYER1_INCOMPLETE",

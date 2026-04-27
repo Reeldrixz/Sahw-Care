@@ -374,6 +374,7 @@ export default function AdminPage() {
         verificationLevel: 2, docStatus: "VERIFIED",
         trustScore: d.user?.trustScore ?? u.trustScore,
       } : u));
+      fetchVerif(); // refresh verification queue too
       setToast("✅ User manually verified — trust bonuses awarded");
     } else {
       setToast("Verification failed");

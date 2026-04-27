@@ -377,7 +377,7 @@ export default function CirclesPage() {
 
   // ── Not onboarded & no country circle yet ────────────────────────────────
 
-  if (!user.onboardingComplete && !user.currentCircleId) {
+  if (!user.onboardingComplete && user.verificationLevel < 2 && !user.currentCircleId) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
         <div className="browse-header">
