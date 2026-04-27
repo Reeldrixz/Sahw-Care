@@ -214,8 +214,12 @@ export default function DiscoverPage() {
       body: JSON.stringify({ itemId: item.id }),
     });
     if (res.ok) {
+      const d = await res.json();
       setRequested((r) => ({ ...r, [item.id]: true }));
-      showToast("Requested! Donor will be notified 🎉");
+      showToast("Requested! Opening chat with donor…");
+      if (d.conversationId) {
+        setTimeout(() => router.push(`/chat?conv=${d.conversationId}`), 900);
+      }
     } else {
       const d = await res.json();
       showToast(d.error ?? "Something went wrong");

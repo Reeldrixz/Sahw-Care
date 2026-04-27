@@ -101,7 +101,7 @@ export default function ListCard({ item, requested, favourited, onRequest, onFav
             onClick={(e) => { e.stopPropagation(); onRequest(e); }}
             disabled={requested}
           >
-            {requested ? "✓ Requested" : "Request Free"}
+            {requested ? "✓ Requested" : "Request"}
           </button>
         )}
       </div>

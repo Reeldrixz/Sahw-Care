@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
@@ -23,8 +23,9 @@ interface Conversation {
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(searchParams.get("conv"));
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -40,7 +41,7 @@ export default function ChatPage() {
     if (res.ok) {
       const data = await res.json();
       setConversations(data.conversations ?? []);
-      if (data.conversations?.length > 0 && !activeId) {
+      if (data.conversations?.length > 0 && !activeId && !searchParams.get("conv")) {
         setActiveId(data.conversations[0].id);
       }
     }

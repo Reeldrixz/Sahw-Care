@@ -153,12 +153,6 @@ export default function CirclesPage() {
   // Circle identity modal
   const [showIdentityModal, setShowIdentityModal] = useState(false);
 
-  // Intro post
-  const [showIntroPrompt, setShowIntroPrompt] = useState(false);
-  const [introText, setIntroText] = useState("");
-  const [introError, setIntroError] = useState<string | null>(null);
-  const [introSubmitting, setIntroSubmitting] = useState(false);
-
   // Which circle are we showing the feed for?
   const activeCircle = cohortCircle ?? countryCircle;
   const activeMember = cohortCircle ? cohortMember : countryMember;
@@ -176,18 +170,6 @@ export default function CirclesPage() {
     const t = setTimeout(() => setShowIdentityModal(true), 800);
     return () => clearTimeout(t);
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Show intro prompt after identity modal is dismissed ───────────────────
-  // Use user.hasPostedIntro directly — authoritative source from the DB
-  useEffect(() => {
-    if (!user || user.journeyType === "donor") return;
-    if (user.hasPostedIntro) return; // already done — never show again
-    if (!activeCircle) return;
-    if (user.circleIdentitySet && !showIdentityModal) {
-      const t = setTimeout(() => setShowIntroPrompt(true), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [user?.hasPostedIntro, user?.id, activeCircle?.id, user?.circleIdentitySet, showIdentityModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load cohort circle ────────────────────────────────────────────────────
   useEffect(() => {
@@ -364,35 +346,6 @@ export default function CirclesPage() {
          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
        })
     );
-  };
-
-  const submitIntroPost = async () => {
-    if (!introText.trim() || !activeCircle || introSubmitting) return;
-    setIntroError(null);
-    setIntroSubmitting(true);
-    try {
-      const res = await fetch(`/api/circles/${activeCircle.id}/posts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: introText.trim(), category: "STORY", isIntroPost: true }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        setIntroError(d.error ?? "Something went wrong. Please try again.");
-        return;
-      }
-      if (!d.flagged && d.post) {
-        setPosts(prev => [{ ...d.post, author: { id: user!.id, name: user!.name, avatar: user!.avatar, city: null, countryFlag: user!.countryFlag, circleContext: user!.circleContext, circleDisplayName: user!.circleDisplayName, subTags: user!.subTags, trustScore: user!.trustScore, isLeader: false }, reactions: { HEART: 0, HUG: 0, CLAP: 0, myReaction: null }, commentCount: 0, liked: false, likeCount: 0, channelName: null, channelEmoji: null, channelId: null, isPinned: false }, ...prev]);
-      }
-      setShowIntroPrompt(false);
-      setIntroText("");
-      // Refresh user so hasPostedIntro reflects the new state
-      refreshUser();
-    } catch {
-      setIntroError("Network error. Please check your connection and try again.");
-    } finally {
-      setIntroSubmitting(false);
-    }
   };
 
   const isAdminOrLeader = user?.role === "ADMIN" || activeMember?.isLeader === true;
@@ -691,18 +644,6 @@ export default function CirclesPage() {
             💛 This is a space for sharing, support and connection — not for requesting items. Posts that ask for donations are blocked.
           </div>
 
-          {/* Intro post banner */}
-          {!user?.hasPostedIntro && cohortCircle && !showIntroPrompt && (
-            <div style={{ background: "#e8f5f1", borderRadius: 14, padding: "12px 14px", marginBottom: 14, border: "1.5px solid #1a7a5e", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-              onClick={() => setShowIntroPrompt(true)}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e" }}>Introduce yourself to your circle</div>
-                <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 2 }}>Earn +8 trust points · takes 30 seconds</div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#1a7a5e" }}>→</div>
-            </div>
-          )}
-
           <PostFeed
             posts={posts}
             loading={loadingPosts}
@@ -726,39 +667,6 @@ export default function CirclesPage() {
         {/* Circle identity setup modal */}
         {showIdentityModal && (
           <CircleIdentityModal onDone={() => setShowIdentityModal(false)} />
-        )}
-
-        {/* Intro post modal */}
-        {showIntroPrompt && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 400, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-            onClick={(e) => { if (e.target === e.currentTarget) setShowIntroPrompt(false); }}>
-            <div style={{ background: "var(--white)", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 430, padding: "20px 20px 40px", animation: "sheetUp 0.3s ease" }}>
-              <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "0 auto 16px" }} />
-              <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Introduce yourself</div>
-              <div style={{ fontSize: 12, color: "var(--mid)", marginBottom: 16, fontFamily: "Nunito, sans-serif" }}>Share a little about yourself with your circle. This earns you +8 trust points!</div>
-              <textarea
-                value={introText}
-                onChange={e => setIntroText(e.target.value.slice(0, 500))}
-                placeholder="Hi! I'm [name]. I'm [stage] and I'm so excited to be here..."
-                rows={4}
-                style={{ width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", fontSize: 13, fontFamily: "Nunito, sans-serif", resize: "none", outline: "none", boxSizing: "border-box" }}
-              />
-              <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 4, fontFamily: "Nunito, sans-serif" }}>{introText.length}/500 · min 30 characters</div>
-              {introError && (
-                <div style={{ fontSize: 12, color: "#c0392b", marginTop: 8, fontFamily: "Nunito, sans-serif", background: "#fdf0ee", borderRadius: 8, padding: "8px 12px" }}>{introError}</div>
-              )}
-              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-                <button onClick={() => setShowIntroPrompt(false)} disabled={introSubmitting}
-                  style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "none", fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif", opacity: introSubmitting ? 0.5 : 1 }}>
-                  Skip for now
-                </button>
-                <button onClick={submitIntroPost} disabled={!introText.trim() || introSubmitting}
-                  style={{ flex: 2, padding: "12px", borderRadius: 12, border: "none", background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 800, cursor: introSubmitting ? "default" : "pointer", fontFamily: "Nunito, sans-serif", opacity: (!introText.trim() || introSubmitting) ? 0.5 : 1 }}>
-                  {introSubmitting ? "Posting…" : "Post intro (+8 pts)"}
-                </button>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* ExploreSheet — full-screen overlay */}

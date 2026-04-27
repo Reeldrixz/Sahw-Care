@@ -113,11 +113,25 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Create conversation so donor and requester can coordinate immediately
+  const conversation = await prisma.conversation.create({
+    data: {
+      requestId: request.id,
+      participants: {
+        create: [
+          { userId: user.userId },
+          { userId: item.donorId },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+
   // Log abuse event + run checks (fire-and-forget)
   Promise.all([
     logAbuseEvent(user.userId, "DISCOVER_REQUEST_CREATED", requester.trustScore ?? 0, { requestId: request.id, itemId }, req),
     runAbuseChecks(user.userId),
   ]).catch(() => {});
 
-  return NextResponse.json({ request }, { status: 201 });
+  return NextResponse.json({ request, conversationId: conversation.id }, { status: 201 });
 }
