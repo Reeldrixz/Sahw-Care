@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,7 +20,7 @@ interface Conversation {
   messages: Message[];
 }
 
-export default function ChatPage() {
+function ChatPageInner() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -223,5 +223,13 @@ export default function ChatPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>}>
+      <ChatPageInner />
+    </Suspense>
   );
 }
