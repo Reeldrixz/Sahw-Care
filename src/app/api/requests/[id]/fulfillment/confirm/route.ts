@@ -64,6 +64,22 @@ export async function POST(req: NextRequest, { params }: Params) {
       }),
     ]);
 
+    // Decrement request counter; clear lock if below 8
+    prisma.user.findUnique({
+      where: { id: recipientId },
+      select: { requestCountSinceReset: true },
+    }).then((u) => {
+      if (!u) return;
+      const newCount = Math.max(0, (u.requestCountSinceReset ?? 0) - 1);
+      return prisma.user.update({
+        where: { id: recipientId },
+        data: {
+          requestCountSinceReset: newCount,
+          ...(newCount < 8 ? { activeRequestLockedUntil: null } : {}),
+        },
+      });
+    }).catch(() => {});
+
     // Trust + impact awards (fire-and-forget)
     Promise.all([
       awardTrust(donorId,     "REQUEST_FULFILLMENT_VERIFIED",      { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "recipient confirmed receipt" }),

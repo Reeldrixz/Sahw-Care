@@ -8,7 +8,7 @@ import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
-import { MapPin } from "lucide-react";
+import { MapPin, Lock } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
@@ -50,7 +50,7 @@ const CAT_EMOJI: Record<string, string> = {
 };
 
 export default function DiscoverPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
   const [topItems, setTopItems] = useState<ItemData[]>([]);
   const [allItems, setAllItems] = useState<ItemData[]>([]);
@@ -208,6 +208,13 @@ export default function DiscoverPage() {
 
   const handleRequest = async (item: ItemData) => {
     if (!user) { router.push("/auth"); return; }
+    // Check lock client-side before hitting the server
+    if (user.activeRequestLockedUntil && new Date(user.activeRequestLockedUntil) > new Date()) {
+      const msLeft = new Date(user.activeRequestLockedUntil).getTime() - Date.now();
+      const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+      showToast(`You've reached your limit. Try again in ${hoursLeft}h, or confirm receipt of pending items.`);
+      return;
+    }
     const res = await fetch("/api/requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -217,12 +224,14 @@ export default function DiscoverPage() {
       const d = await res.json();
       setRequested((r) => ({ ...r, [item.id]: true }));
       showToast("Requested! Opening chat with donor…");
+      if (d.lockedUntil) refreshUser();
       if (d.conversationId) {
         setTimeout(() => router.push(`/chat?conv=${d.conversationId}`), 900);
       }
     } else {
       const d = await res.json();
       showToast(d.error ?? "Something went wrong");
+      if (d.code === "REQUEST_LIMIT_REACHED") refreshUser();
     }
   };
 
@@ -536,6 +545,51 @@ export default function DiscoverPage() {
           )}
         </div>
 
+        {/* REQUEST LIMIT BANNER — shown to recipients who are locked or near limit */}
+        {user && user.role === "RECIPIENT" && (() => {
+          const isLocked = !!(user.activeRequestLockedUntil && new Date(user.activeRequestLockedUntil) > new Date());
+          const count = user.requestCountSinceReset ?? 0;
+          if (!isLocked && count < 5) return null;
+
+          if (isLocked) {
+            const msLeft = new Date(user.activeRequestLockedUntil!).getTime() - Date.now();
+            const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+            return (
+              <div style={{
+                margin: "0 0 14px",
+                padding: "12px 14px",
+                background: "#fff8e1",
+                border: "1.5px solid #f59e0b",
+                borderRadius: 12,
+                display: "flex", alignItems: "flex-start", gap: 10,
+              }}>
+                <Lock size={18} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#92400e" }}>Request limit reached</div>
+                  <div style={{ fontSize: 12, color: "#b45309", marginTop: 2, lineHeight: 1.4 }}>
+                    Unlocks in {hoursLeft} hour{hoursLeft === 1 ? "" : "s"} — or sooner when you confirm receipt of pending items.
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div style={{
+              margin: "0 0 14px",
+              padding: "9px 14px",
+              background: "#fff8e1",
+              border: "1.5px solid #fbbf24",
+              borderRadius: 12,
+              fontSize: 12, fontWeight: 700, color: "#92400e",
+              display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <Lock size={15} color="#b45309" />
+              {count} of 8 requests used · limit resets after confirming received items
+            </div>
+          );
+        })()}
+
         {/* ALL ITEMS */}
         <div className="section" style={{ paddingBottom: 20 }}>
           <div className="section-head">
@@ -561,6 +615,7 @@ export default function DiscoverPage() {
                   item={item}
                   requested={requested[item.id]}
                   favourited={favs[item.id]}
+                  locked={!!(user?.activeRequestLockedUntil && new Date(user.activeRequestLockedUntil) > new Date())}
                   onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
                   onFavourite={() => toggleFav(item.id)}
                   onClick={() => router.push(`/items/${item.id}`)}

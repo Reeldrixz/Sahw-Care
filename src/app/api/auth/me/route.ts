@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
       circleDisplayName: true,
       circleIdentitySkippedAt: true,
       hasPostedIntro: true,
+      activeRequestLockedUntil: true,
+      requestCountSinceReset: true,
       notifyNewPosts: true,
       notifyReplies: true,
       notifyThreadReplies: true,

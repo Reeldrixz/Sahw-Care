@@ -40,13 +40,14 @@ interface ListCardProps {
   item: ItemData;
   requested?: boolean;
   favourited?: boolean;
+  locked?: boolean;
   onRequest: (e: React.MouseEvent) => void;
   onFavourite?: (e: React.MouseEvent) => void;
   onClick: () => void;
   badge?: string;
 }
 
-export default function ListCard({ item, requested, favourited, onRequest, onFavourite, onClick, badge }: ListCardProps) {
+export default function ListCard({ item, requested, favourited, locked, onRequest, onFavourite, onClick, badge }: ListCardProps) {
   const bg = CAT_BG[item.category] ?? "#f5f5f5";
 
   return (
@@ -94,6 +95,15 @@ export default function ListCard({ item, requested, favourited, onRequest, onFav
             title={item.requestLockedReason ?? "Trust score too low"}
           >
             🔒 Locked
+          </button>
+        ) : locked ? (
+          <button
+            className="btn-reserve"
+            style={{ background: "#f59e0b", color: "white", cursor: "not-allowed", opacity: 0.8 }}
+            onClick={(e) => { e.stopPropagation(); onRequest(e); }}
+            title="Request limit reached"
+          >
+            🔒 Limit reached
           </button>
         ) : (
           <button

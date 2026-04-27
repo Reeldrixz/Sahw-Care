@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
-import { deductTrustPoints } from "@/lib/trust";
 import { logAbuseEvent, runAbuseChecks } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
@@ -53,10 +52,16 @@ export async function POST(req: NextRequest) {
   // Enforce Layer 1 before requesting items (bypassed for verificationLevel >= 2)
   const requester = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { phoneVerified: true, emailVerified: true, avatar: true, trustScore: true, graceRequestsUsed: true, verificationLevel: true },
+    select: {
+      phoneVerified: true, emailVerified: true, avatar: true,
+      trustScore: true, verificationLevel: true,
+      activeRequestLockedUntil: true, requestCountSinceReset: true,
+    },
   });
-  const isFullyVerified = (requester?.verificationLevel ?? 0) >= 2;
-  if (!isFullyVerified && (requester && !(requester.phoneVerified || requester.emailVerified) || !requester?.avatar)) {
+  if (!requester) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  const isFullyVerified = (requester.verificationLevel ?? 0) >= 2;
+  if (!isFullyVerified && (!(requester.phoneVerified || requester.emailVerified) || !requester.avatar)) {
     return NextResponse.json({
       error: "Please complete your profile first — verify your phone or email and add a profile photo.",
       code: "LAYER1_INCOMPLETE",
@@ -64,8 +69,6 @@ export async function POST(req: NextRequest) {
   }
 
   // Trust gate: score must be >= 60 to request items
-  if (!requester) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
   if ((requester.trustScore ?? 0) < 60) {
     return NextResponse.json({
       error: `You need a trust score of 60 to request items. Your current score is ${requester.trustScore ?? 0}. Keep engaging to unlock this.`,
@@ -75,16 +78,19 @@ export async function POST(req: NextRequest) {
     }, { status: 403 });
   }
 
-  const { itemId, note } = await req.json();
-
-  // Grace requests: first 2 are free, subsequent requests deduct -2 trust points
-  const graceUsed = requester.graceRequestsUsed ?? 0;
-  if (graceUsed < 2) {
-    await prisma.user.update({ where: { id: user.userId }, data: { graceRequestsUsed: { increment: 1 } } });
-  } else {
-    // Deduct points (fire-and-forget)
-    deductTrustPoints(user.userId, "DISCOVER_REQUEST", 2, { reason: "discover item request" }).catch(() => {});
+  // Request cooldown: max 8 requests per 12-hour window
+  const now = new Date();
+  if (requester.activeRequestLockedUntil && requester.activeRequestLockedUntil > now) {
+    const msLeft   = requester.activeRequestLockedUntil.getTime() - now.getTime();
+    const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+    return NextResponse.json({
+      error: `You've reached your request limit. You can request again in ${hoursLeft} hour${hoursLeft === 1 ? "" : "s"}, or sooner by confirming receipt of your items.`,
+      code: "REQUEST_LIMIT_REACHED",
+      lockedUntil: requester.activeRequestLockedUntil,
+    }, { status: 429 });
   }
+
+  const { itemId, note } = await req.json();
 
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
 
@@ -106,6 +112,17 @@ export async function POST(req: NextRequest) {
   if (existing) {
     return NextResponse.json({ error: "You have already requested this item" }, { status: 409 });
   }
+
+  // Increment counter; lock if this is the 8th request in the window
+  const newCount = (requester.requestCountSinceReset ?? 0) + 1;
+  const lockUntil = newCount >= 8 ? new Date(Date.now() + 12 * 60 * 60 * 1000) : null;
+  await prisma.user.update({
+    where: { id: user.userId },
+    data: {
+      requestCountSinceReset: newCount,
+      ...(lockUntil ? { activeRequestLockedUntil: lockUntil } : {}),
+    },
+  });
 
   const request = await prisma.request.create({
     data: { itemId, requesterId: user.userId, note: note ?? null },
@@ -134,5 +151,10 @@ export async function POST(req: NextRequest) {
     runAbuseChecks(user.userId),
   ]).catch(() => {});
 
-  return NextResponse.json({ request, conversationId: conversation.id }, { status: 201 });
+  return NextResponse.json({
+    request,
+    conversationId: conversation.id,
+    requestCount: newCount,
+    lockedUntil: lockUntil,
+  }, { status: 201 });
 }

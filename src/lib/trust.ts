@@ -53,7 +53,6 @@ export const EVENT_POINTS: Record<string, number> = {
   // negative events
   FLAGGED_POST:                -5,
   REPORT_CONFIRMED:           -10,
-  DISCOVER_REQUEST:            -2,
   FULFILLMENT_DISPUTED:       -10,
 };
 
@@ -401,10 +400,7 @@ export async function checkRBW(userId: string): Promise<Date | null> {
     return user.bundleRestrictedUntil;
   }
 
-  const [discoverRequests, urgentOverrides, recentDeductions, pendingReports] = await Promise.all([
-    prisma.trustScoreLog.count({
-      where: { userId, eventType: "DISCOVER_REQUEST", createdAt: { gte: thirtyDaysAgo } },
-    }),
+  const [urgentOverrides, recentDeductions, pendingReports] = await Promise.all([
     prisma.urgentOverride.count({ where: { userId, createdAt: { gte: thirtyDaysAgo } } }),
     prisma.trustScoreLog.aggregate({
       where: { userId, pointsDelta: { lt: 0 }, createdAt: { gte: fourteenDaysAgo } },
@@ -414,7 +410,7 @@ export async function checkRBW(userId: string): Promise<Date | null> {
   ]);
 
   const deductionSum = recentDeductions._sum.pointsDelta ?? 0;
-  const isRisky = discoverRequests >= 5 || urgentOverrides >= 2 || deductionSum <= -10 || pendingReports > 0;
+  const isRisky = urgentOverrides >= 2 || deductionSum <= -10 || pendingReports > 0;
   if (!isRisky) return null;
 
   const restrictedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);

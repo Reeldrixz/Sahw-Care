@@ -54,7 +54,6 @@ function eventLabel(eventType: string): string {
     ACCOUNT_AGE_30_DAYS:      "Account age bonus",
     FLAGGED_POST:             "Post flagged",
     REPORT_CONFIRMED:         "Report confirmed",
-    DISCOVER_REQUEST:         "Item request",
   };
   return labels[eventType] ?? eventType.replace(/_/g, " ").toLowerCase();
 }

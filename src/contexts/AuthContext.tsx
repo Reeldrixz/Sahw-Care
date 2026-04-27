@@ -41,6 +41,8 @@ export interface User {
   circleDisplayName: string | null;
   circleIdentitySkippedAt: string | null;
   hasPostedIntro: boolean;
+  activeRequestLockedUntil: string | null;
+  requestCountSinceReset: number;
   // notification preferences
   notifyNewPosts: boolean;
   notifyReplies: boolean;

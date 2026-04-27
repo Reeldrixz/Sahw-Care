@@ -6,7 +6,16 @@ import { getRapidTrustFarmers, getUsersDroppedBelowThreshold } from "@/lib/abuse
  * Run abuse checks for all users active in the last 30 days.
  * Intended to be called daily at midnight UTC.
  */
-export async function dailyAbuseCheck(): Promise<{ checked: number; errors: number }> {
+export async function clearExpiredRequestLocks(): Promise<{ cleared: number }> {
+  const result = await prisma.user.updateMany({
+    where: { activeRequestLockedUntil: { lte: new Date() } },
+    data:  { activeRequestLockedUntil: null, requestCountSinceReset: 0 },
+  });
+  console.log(`[clearExpiredRequestLocks] Cleared ${result.count} expired locks`);
+  return { cleared: result.count };
+}
+
+export async function dailyAbuseCheck(): Promise<{ checked: number; errors: number; locksCleared?: number }> {
   const since = new Date(Date.now() - 30 * 86400000);
 
   // Users active in last 30 days (have at least one abuse event log)
@@ -28,8 +37,9 @@ export async function dailyAbuseCheck(): Promise<{ checked: number; errors: numb
     }
   }
 
-  console.log(`[dailyAbuseCheck] Checked ${checked} users, ${errors} errors`);
-  return { checked, errors };
+  const { cleared } = await clearExpiredRequestLocks();
+  console.log(`[dailyAbuseCheck] Checked ${checked} users, ${errors} errors, cleared ${cleared} request locks`);
+  return { checked, errors, locksCleared: cleared };
 }
 
 /**

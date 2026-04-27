@@ -16,7 +16,6 @@ export async function GET(req: NextRequest) {
       bundleRestrictedUntil: true,
       streakCurrentDays: true, streakWeeksCompleted: true,
       dailyPointsEarned: true, dailyPointsDate: true,
-      graceRequestsUsed: true,
     },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -48,7 +47,6 @@ export async function GET(req: NextRequest) {
     streakWeeksCompleted: user.streakWeeksCompleted,
     dailyPointsEarned,
     dailyPointsCap: 5,
-    graceRequestsUsed: user.graceRequestsUsed,
     recentEvents: logs.map(e => ({
       id:          e.id,
       eventType:   e.eventType,

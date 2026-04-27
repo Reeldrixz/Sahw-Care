@@ -13,6 +13,7 @@ interface AdminUser {
   trustRating: number; trustScore: number;
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
   docStatus: string | null; urgentOverridesUsed: number; createdAt: string;
+  activeRequestLockedUntil: string | null;
   _count: { items: number; requests: number; urgentOverrides: number };
 }
 
@@ -381,6 +382,16 @@ export default function AdminPage() {
     }
   };
 
+  const resetRequestLock = async (userId: string) => {
+    const res = await fetch(`/api/admin/users/${userId}/reset-request-lock`, { method: "POST" });
+    if (res.ok) {
+      setUsers((p) => p.map((u) => u.id === userId ? { ...u, activeRequestLockedUntil: null } : u));
+      setToast("Request lock cleared");
+    } else {
+      setToast("Failed to clear lock");
+    }
+  };
+
   const updateItemStatus = async (itemId: string, status: string) => {
     const res = await fetch(`/api/admin/items/${itemId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
     if (res.ok) { setItems((p) => p.map((i) => i.id === itemId ? { ...i, status } : i)); setToast(`Item ${status.toLowerCase()}`); }
@@ -627,6 +638,9 @@ export default function AdminPage() {
                           {u.status !== "SUSPENDED"  && <button className="action-btn" style={{ background: "rgba(100,100,100,0.1)", color: "var(--mid)" }} onClick={() => updateUserStatus(u.id, "SUSPENDED")}>⏸ Suspend</button>}
                           {u.docStatus !== "VERIFIED" && (
                             <button className="action-btn" style={{ background: "rgba(26,122,94,0.12)", color: "var(--green)", fontWeight: 800 }} onClick={() => manualVerify(u.id)}>🔐 Verify</button>
+                          )}
+                          {u.activeRequestLockedUntil && new Date(u.activeRequestLockedUntil) > new Date() && (
+                            <button className="action-btn" style={{ background: "rgba(245,158,11,0.12)", color: "#b45309", fontWeight: 800 }} onClick={() => resetRequestLock(u.id)}>🔓 Unlock</button>
                           )}
                           <button className="action-btn action-remove" onClick={() => deleteUser(u.id)}>✕ Remove</button>
                         </td>

@@ -77,8 +77,10 @@ model User {
   bundleRestrictedUntil DateTime?
   dailyPointsEarned    Int       @default(0)
   dailyPointsDate      DateTime?
-  graceRequestsUsed    Int       @default(0)
-  streakCurrentDays    Int       @default(0)
+  graceRequestsUsed        Int       @default(0)
+  activeRequestLockedUntil DateTime?
+  requestCountSinceReset   Int       @default(0)
+  streakCurrentDays        Int       @default(0)
   streakLastActiveDate DateTime?
   streakWeeksCompleted Int       @default(0)
   hasPostedIntro       Boolean   @default(false)

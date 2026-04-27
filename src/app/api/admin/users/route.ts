@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
         trustRating: true, trustScore: true, verificationLevel: true,
         phoneVerified: true, emailVerified: true, docStatus: true,
         urgentOverridesUsed: true, createdAt: true,
+        activeRequestLockedUntil: true,
         _count: { select: { items: true, requests: true, urgentOverrides: true } },
       },
       orderBy: { createdAt: "desc" },
