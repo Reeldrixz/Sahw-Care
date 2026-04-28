@@ -8,7 +8,11 @@ import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
 import { STAGE_META, StageKey } from "@/lib/stage";
-import { HeartPulse, Heart, Smile, Star, LayoutGrid, type LucideIcon } from "lucide-react";
+import {
+  HeartPulse, Heart, Smile, Star, LayoutGrid,
+  Compass, Users, Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy,
+  type LucideIcon,
+} from "lucide-react";
 
 // ── Stage icon mapping ────────────────────────────────────────────────────────
 
@@ -27,9 +31,45 @@ function StageIcon({ stageKey, size = 20, color = "#1a7a5e" }: { stageKey: strin
   return <Icon size={size} strokeWidth={1.75} color={color} />;
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Weekly prompt (rotates by ISO week number) ────────────────────────────────
 
-type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION";
+const WEEKLY_PROMPTS = [
+  "What's the most useful thing someone told you this week?",
+  "What are you proud of yourself for right now — however small?",
+  "What do you wish more people talked about openly?",
+  "Share a small win from today. Even tiny counts.",
+  "What would you tell your pre-pregnancy self?",
+  "What's one thing that has genuinely helped you lately?",
+  "What does support look like for you right now?",
+];
+
+function getWeeklyPrompt(): string {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const week = Math.floor((now.getTime() - start.getTime()) / (7 * 86400 * 1000));
+  return WEEKLY_PROMPTS[week % WEEKLY_PROMPTS.length];
+}
+
+// ── Category filter config ────────────────────────────────────────────────────
+
+type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT";
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  TIP: Lightbulb, STORY: BookOpen, GRATITUDE: HandHeart,
+  QUESTION: HelpCircle, SMALL_WIN: Trophy, SUPPORT: Users,
+};
+
+const POST_FILTERS: { value: PostCategory; label: string }[] = [
+  { value: "ALL",       label: "All"         },
+  { value: "QUESTION",  label: "Questions"   },
+  { value: "SUPPORT",   label: "Support"     },
+  { value: "TIP",       label: "Tips"        },
+  { value: "STORY",     label: "Stories"     },
+  { value: "SMALL_WIN", label: "Small Wins"  },
+  { value: "GRATITUDE", label: "Gratitude"   },
+];
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface StageCircle {
   id:          string;
@@ -73,7 +113,7 @@ interface CountryCircle {
   _count: { members: number; posts: number };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function daysAgo(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (86400 * 1000));
@@ -98,7 +138,6 @@ async function joinViaLocation(location: string): Promise<{ circle: CountryCircl
   return fetchCountryCircle();
 }
 
-/** Detect location via IP — no browser permissions required, works on all devices. */
 async function detectLocationViaIP(): Promise<{ location: string; countryCode: string } | null> {
   try {
     const res  = await fetch("https://ipapi.co/json/", { cache: "no-store" });
@@ -113,10 +152,25 @@ async function detectLocationViaIP(): Promise<{ location: string; countryCode: s
   }
 }
 
-// ── Main page ────────────────────────────────────────────────────────────────
+// ── Moderation banner (localStorage-dismissed per circle) ─────────────────────
+
+function useModBannerDismissed(circleId: string | undefined) {
+  const key = circleId ? `mod_banner_${circleId}` : null;
+  const [dismissed, setDismissed] = useState(() => {
+    if (!key || typeof window === "undefined") return true;
+    return localStorage.getItem(key) === "1";
+  });
+  const dismiss = () => {
+    if (key) localStorage.setItem(key, "1");
+    setDismissed(true);
+  };
+  return [dismissed, dismiss] as const;
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CirclesPage() {
-  const { user, loading: authLoading, refreshUser } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Cohort circle state
@@ -131,47 +185,50 @@ export default function CirclesPage() {
   const [exploreOpen,  setExploreOpen]  = useState(false);
 
   // Visiting (non-primary circle browse)
-  const [visitingCircle,     setVisitingCircle]     = useState<StageCircle | null>(null);
-  const [visitPosts,         setVisitPosts]         = useState<Post[]>([]);
-  const [visitLoading,       setVisitLoading]       = useState(false);
-  const [visitCommentsPostId,setVisitCommentsPostId]= useState<string | null>(null);
+  const [visitingCircle,      setVisitingCircle]      = useState<StageCircle | null>(null);
+  const [visitPosts,          setVisitPosts]          = useState<Post[]>([]);
+  const [visitLoading,        setVisitLoading]        = useState(false);
+  const [visitCommentsPostId, setVisitCommentsPostId] = useState<string | null>(null);
 
   // Country circle state (fallback)
-  const [countryCircle,   setCountryCircle]   = useState<CountryCircle | null>(null);
-  const [countryMember,   setCountryMember]   = useState<Member | null>(null);
-  const [geoDetecting,    setGeoDetecting]    = useState(false);
-  const [loadingCountry,  setLoadingCountry]  = useState(false);
+  const [countryCircle,  setCountryCircle]  = useState<CountryCircle | null>(null);
+  const [countryMember,  setCountryMember]  = useState<Member | null>(null);
+  const [geoDetecting,   setGeoDetecting]   = useState(false);
+  const [loadingCountry, setLoadingCountry] = useState(false);
 
   // Shared post state
-  const [posts,           setPosts]           = useState<Post[]>([]);
-  const [postCategory,    setPostCategory]    = useState<PostCategory>("ALL");
-  const [cursor,          setCursor]          = useState<string | null>(null);
-  const [hasMore,         setHasMore]         = useState(false);
-  const [loadingPosts,    setLoadingPosts]    = useState(false);
-  const [commentsPostId,  setCommentsPostId]  = useState<string | null>(null);
+  const [posts,          setPosts]          = useState<Post[]>([]);
+  const [postCategory,   setPostCategory]   = useState<PostCategory>("ALL");
+  const [cursor,         setCursor]         = useState<string | null>(null);
+  const [hasMore,        setHasMore]        = useState(false);
+  const [loadingPosts,   setLoadingPosts]   = useState(false);
+  const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
+
+  // Moderation banner (dismissed via localStorage)
+  const [modBannerDismissed, dismissModBanner] = useModBannerDismissed(cohortCircle?.id ?? countryCircle?.id);
+
+  // Weekly prompt dismiss state
+  const [promptDismissed, setPromptDismissed] = useState(false);
 
   // Circle identity modal
   const [showIdentityModal, setShowIdentityModal] = useState(false);
 
-  // Which circle are we showing the feed for?
   const activeCircle = cohortCircle ?? countryCircle;
   const activeMember = cohortCircle ? cohortMember : countryMember;
 
-  // ── Show circle identity modal on first Circles visit ───────────────────
+  // ── Identity modal ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user || user.journeyType === "donor") return;
     if (user.circleIdentitySet) return;
-    // Respect 7-day skip cooldown
     if (user.circleIdentitySkippedAt) {
       const daysSinceSkip = (Date.now() - new Date(user.circleIdentitySkippedAt).getTime()) / (86400 * 1000);
       if (daysSinceSkip < 7) return;
     }
-    // Small delay so the page loads first
     const t = setTimeout(() => setShowIdentityModal(true), 800);
     return () => clearTimeout(t);
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load cohort circle ────────────────────────────────────────────────────
+  // ── Load cohort circle ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!user?.currentCircleId) return;
     setLoadingCohort(true);
@@ -187,36 +244,30 @@ export default function CirclesPage() {
       .finally(() => setLoadingCohort(false));
   }, [user?.currentCircleId]);
 
-  // ── Load country circle (fallback if no cohort circle) ───────────────────
+  // ── Load country circle ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user || user.currentCircleId) return; // skip if cohort circle exists
-
+    if (!user || user.currentCircleId) return;
     setLoadingCountry(true);
     (async () => {
       let result = await fetchCountryCircle();
-
       if (!result && user.location) {
         setGeoDetecting(true);
         result = await joinViaLocation(user.location);
         setGeoDetecting(false);
       }
-
-      // No circle yet — detect via IP (works on all devices, no permissions)
       if (!result) {
         setGeoDetecting(true);
         const detected = await detectLocationViaIP();
         if (detected) {
-          // Save location + countryCode to profile in background
           fetch("/api/profile", {
-            method:  "PATCH",
+            method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ location: detected.location, countryCode: detected.countryCode }),
+            body: JSON.stringify({ location: detected.location, countryCode: detected.countryCode }),
           }).catch(() => {});
           result = await joinViaLocation(detected.location);
         }
         setGeoDetecting(false);
       }
-
       if (result) {
         setCountryCircle(result.circle);
         setCountryMember(result.member);
@@ -224,9 +275,9 @@ export default function CirclesPage() {
       }
       setLoadingCountry(false);
     })();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Load all stage circles for Explore section ───────────────────────────
+  // ── Load all stages for Explore ────────────────────────────────────────────
   useEffect(() => {
     if (!user?.currentCircleId) return;
     fetch("/api/circles/stages", { cache: "no-store" })
@@ -234,7 +285,7 @@ export default function CirclesPage() {
       .then((d) => setAllStages(d.circles ?? []));
   }, [user?.currentCircleId]);
 
-  // ── Visit a non-primary circle ────────────────────────────────────────────
+  // ── Visit a non-primary circle ─────────────────────────────────────────────
   const openVisiting = useCallback(async (circle: StageCircle) => {
     setVisitingCircle(circle);
     setVisitPosts([]);
@@ -251,13 +302,12 @@ export default function CirclesPage() {
     setVisitingCircle(null);
     setVisitPosts([]);
     setVisitCommentsPostId(null);
-    // refresh allStages so accessType updates after auto-join
     fetch("/api/circles/stages", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setAllStages(d.circles ?? []));
   }, []);
 
-  // ── Load posts ────────────────────────────────────────────────────────────
+  // ── Load posts ─────────────────────────────────────────────────────────────
   const loadPosts = useCallback(async (reset = false) => {
     if (!activeCircle) return;
     setLoadingPosts(true);
@@ -284,25 +334,19 @@ export default function CirclesPage() {
 
   // ── SSE: real-time new posts ───────────────────────────────────────────────
   useEffect(() => {
-    if (!activeCircle || !user) return;
-    // Only subscribe when on primary/cohort circle, not when visiting
-    if (visitingCircle) return;
-
+    if (!activeCircle || !user || visitingCircle) return;
     const since = new Date().toISOString();
     let es: EventSource | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       es = new EventSource(`/api/circles/${activeCircle.id}/stream?since=${encodeURIComponent(since)}`);
-
       es.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
           if (data.type === "new_post" && data.post) {
             const newPost = data.post as Post;
-            // Don't add own posts (already added optimistically by CircleComposer)
             if (newPost.author.id === user.id) return;
-            // Prepend to top of feed only if not already there
             setPosts(prev => {
               if (prev.some(p => p.id === newPost.id)) return prev;
               return [newPost, ...prev];
@@ -310,20 +354,14 @@ export default function CirclesPage() {
           }
         } catch {}
       };
-
       es.onerror = () => {
         es?.close();
-        // Reconnect after 5s
         reconnectTimeout = setTimeout(connect, 5000);
       };
     };
 
     connect();
-
-    return () => {
-      es?.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
+    return () => { es?.close(); if (reconnectTimeout) clearTimeout(reconnectTimeout); };
   }, [activeCircle?.id, user?.id, visitingCircle]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async (postId: string) => {
@@ -350,7 +388,7 @@ export default function CirclesPage() {
 
   const isAdminOrLeader = user?.role === "ADMIN" || activeMember?.isLeader === true;
 
-  // ── Loading / auth guards ─────────────────────────────────────────────────
+  // ── Loading / auth guards ──────────────────────────────────────────────────
 
   if (authLoading) {
     return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
@@ -359,23 +397,21 @@ export default function CirclesPage() {
   if (!user) {
     return (
       <div style={{ padding: "60px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>🤝</div>
         <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Join the Circle</div>
         <p style={{ color: "var(--mid)", fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-          Sign in to connect with mothers in your community.
+          Sign in to connect with mothers at your stage of the journey.
         </p>
         <button className="btn-primary" onClick={() => router.push("/auth")}>Sign in to join</button>
       </div>
     );
   }
 
-  // Donors have no circles access — redirect to discover
   if (user.onboardingComplete && user.journeyType === "donor") {
     router.replace("/");
     return null;
   }
 
-  // ── Not onboarded & no country circle yet ────────────────────────────────
+  // ── Not onboarded → prompt + country fallback ──────────────────────────────
 
   if (!user.onboardingComplete && user.verificationLevel < 2 && !user.currentCircleId) {
     return (
@@ -384,32 +420,26 @@ export default function CirclesPage() {
           <div className="browse-title">Circles</div>
         </div>
         <div style={{ padding: "20px 16px" }}>
-          {/* Onboarding prompt card */}
           <div
-            onClick={() => {/* OnboardingGate in layout handles the modal */}}
+            onClick={() => {}}
             style={{
               background: "linear-gradient(135deg, #1a7a5e 0%, #2a9d7f 100%)",
               borderRadius: 18, padding: "22px 20px", marginBottom: 20, cursor: "pointer",
               color: "white",
             }}
           >
-            <div style={{ fontSize: 26, marginBottom: 8 }}>💛</div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
-              Join your stage group
+              Join your stage circle
             </div>
             <p style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9, marginBottom: 14 }}>
-              Complete your profile to be placed in a circle with moms at exactly your stage of pregnancy or parenthood.
+              Complete your profile to be placed with mothers at exactly your stage of pregnancy or parenthood.
             </p>
             <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "10px 16px", fontSize: 13, fontWeight: 700 }}>
               Complete your profile →
             </div>
           </div>
-
-          {/* Country circle fallback below prompt */}
           <CountryCircleFallback
             user={user}
-            loadingCountry={loadingCountry}
-            geoDetecting={geoDetecting}
             countryCircle={countryCircle}
             countryMember={countryMember}
             posts={posts}
@@ -425,20 +455,23 @@ export default function CirclesPage() {
             onLoadMore={() => loadPosts(false)}
             onPosted={() => loadPosts(true)}
             router={router}
+            modBannerDismissed={modBannerDismissed}
+            dismissModBanner={dismissModBanner}
+            promptDismissed={promptDismissed}
+            setPromptDismissed={setPromptDismissed}
           />
         </div>
       </div>
     );
   }
 
-  // ── Loading cohort circle ─────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
 
   if (loadingCohort || geoDetecting || (loadingCountry && !countryCircle)) {
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
         <div className="browse-header"><div className="browse-title">Circles</div></div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", gap: 16 }}>
-          <div style={{ fontSize: 40 }}>🌍</div>
           <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Finding your circle…</div>
           <div className="spinner" style={{ marginTop: 8 }} />
         </div>
@@ -446,92 +479,90 @@ export default function CirclesPage() {
     );
   }
 
-  // ── Visiting a non-primary circle ────────────────────────────────────────
+  // ── Visiting a non-primary circle ──────────────────────────────────────────
 
   if (visitingCircle) {
     const meta = STAGE_META[visitingCircle.stageKey as StageKey];
-    const bannerText = visitingCircle.isGraduated
-      ? "You previously belonged to this circle. Your posts are still here and you can still comment!"
-      : "You are visiting this circle — you can read and comment, but posting is for members at this stage.";
+    const isGrad = visitingCircle.isGraduated;
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
         {/* Header */}
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "16px 16px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <StageIcon stageKey={visitingCircle.stageKey} size={22} color="white" />
+            <button
+              onClick={closeVisiting}
+              style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "7px 12px", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", flexShrink: 0 }}
+            >
+              ← Back
+            </button>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <StageIcon stageKey={visitingCircle.stageKey} size={20} color="white" />
             </div>
             <div>
-              <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "white", lineHeight: 1.2 }}>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "white" }}>
                 {meta?.label ?? visitingCircle.name}
               </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>
-                {meta?.description ?? `${visitingCircle.memberCount.toLocaleString()} members`}
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>
+                {visitingCircle.memberCount.toLocaleString()} members
               </div>
             </div>
           </div>
         </div>
 
         <div style={{ padding: "14px 16px 0" }}>
-          {/* Visiting / graduated banner */}
+          {/* Visitor banner */}
           <div style={{
-            background: visitingCircle.isGraduated ? "#f0f7ff" : "#fdf8e8",
-            border: `1.5px solid ${visitingCircle.isGraduated ? "#90c4f9" : "#f6c90e"}`,
-            borderRadius: 14, padding: "12px 16px", marginBottom: 16, fontSize: 13, lineHeight: 1.6,
-            color: visitingCircle.isGraduated ? "#1a5c9e" : "#8a6800",
+            display: "flex", alignItems: "flex-start", gap: 12,
+            background: isGrad ? "#eff6ff" : "#fdf8e8",
+            border: `1.5px solid ${isGrad ? "#93c5fd" : "#fbbf24"}`,
+            borderRadius: 14, padding: "12px 14px", marginBottom: 16,
           }}>
-            {visitingCircle.isGraduated ? "📚 " : "👀 "}{bannerText}
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: isGrad ? "#dbeafe" : "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Compass size={16} color={isGrad ? "#2563eb" : "#d97706"} strokeWidth={2} />
+            </div>
+            <div style={{ flex: 1, fontSize: 13, color: isGrad ? "#1e40af" : "#92400e", lineHeight: 1.5 }}>
+              {isGrad
+                ? "You were here once. Your posts are still here and you can still comment."
+                : "You're visiting this circle. You can read and comment, but posting is for members at this stage."}
+            </div>
           </div>
 
-          {/* Post feed — no composer */}
           {visitLoading ? (
             <div className="loading" style={{ minHeight: 200 }}><div className="spinner" /></div>
           ) : visitPosts.length === 0 ? (
             <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--mid)" }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>✨</div>
               <div style={{ fontSize: 14, fontWeight: 700 }}>No posts here yet</div>
             </div>
           ) : (
-            <>
-              {visitPosts.map((post) => (
-                <CirclePostCard
-                  key={post.id}
-                  post={post}
-                  currentUserId={user!.id}
-                  isAdminOrLeader={false}
-                  onOpenComments={setVisitCommentsPostId}
-                  onDelete={() => {}}
-                  onPin={() => {}}
-                />
-              ))}
-            </>
+            visitPosts.map((post) => (
+              <CirclePostCard
+                key={post.id}
+                post={post}
+                currentUserId={user!.id}
+                isAdminOrLeader={false}
+                onOpenComments={setVisitCommentsPostId}
+                onDelete={() => {}}
+                onPin={() => {}}
+              />
+            ))
           )}
         </div>
 
         {visitCommentsPostId && (
-          <CircleComments
-            postId={visitCommentsPostId}
-            onClose={() => setVisitCommentsPostId(null)}
-          />
+          <CircleComments postId={visitCommentsPostId} onClose={() => setVisitCommentsPostId(null)} />
         )}
       </div>
     );
   }
 
-  // ── Cohort circle view ────────────────────────────────────────────────────
+  // ── Cohort circle view ─────────────────────────────────────────────────────
 
   if (cohortCircle) {
     const stageMeta = cohortCircle.stageKey ? STAGE_META[cohortCircle.stageKey as keyof typeof STAGE_META] : null;
     const joined    = cohortMember ? daysAgo(cohortMember.joinedAt) : 0;
-
-    const POST_FILTERS: { value: PostCategory; label: string }[] = [
-      { value: "ALL",       label: "All"          },
-      { value: "TIP",       label: "💡 Tips"      },
-      { value: "STORY",     label: "📖 Stories"   },
-      { value: "GRATITUDE", label: "🙏 Gratitude" },
-      { value: "QUESTION",  label: "❓ Questions" },
-    ];
+    const showWelcome = cohortMember && isNewMember(cohortMember.joinedAt);
+    const weekPrompt = getWeeklyPrompt();
 
     return (
       <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
@@ -549,8 +580,16 @@ export default function CirclesPage() {
                 <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.2 }}>
                   {stageMeta?.label ?? cohortCircle.name}
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 3 }}>
-                  {stageMeta?.description ?? `${cohortCircle._count.members.toLocaleString()} members`}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
+                    <Users size={11} />
+                    {cohortCircle._count.members.toLocaleString()}
+                  </div>
+                  {cohortMember && joined > 0 && (
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>
+                      · Joined {joined}d ago
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -598,14 +637,64 @@ export default function CirclesPage() {
         </div>
 
         <div style={{ padding: "16px 16px 0" }}>
-          {/* Welcome banner for new members */}
-          {cohortMember && isNewMember(cohortMember.joinedAt) && (
-            <div style={{ background: "var(--green-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 16, border: "1.5px solid var(--green)" }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "var(--green)", marginBottom: 4 }}>
-                👋 Welcome to your circle!
+          {/* Welcome card (new members only) */}
+          {showWelcome && (
+            <div style={{
+              background: "var(--green-light)", borderRadius: 16, padding: "16px",
+              marginBottom: 16, border: "1.5px solid var(--green)",
+            }}>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--green)", marginBottom: 6 }}>
+                Welcome to your circle
               </div>
-              <div style={{ fontSize: 13, color: "var(--green)", lineHeight: 1.6, opacity: 0.9 }}>
-                You&apos;re now connected with moms at the same stage as you. Share tips, ask questions, and support each other.
+              <div style={{ fontSize: 13, color: "#1a5c45", lineHeight: 1.6 }}>
+                You&apos;re now with mothers at exactly your stage. This is a space to share, ask, and be heard — without judgment. Start by introducing yourself, or just read along.
+              </div>
+              <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 8 }}>
+                {cohortCircle._count.members.toLocaleString()} members · Joined {joined === 0 ? "today" : `${joined}d ago`}
+              </div>
+            </div>
+          )}
+
+          {/* Moderation community note (one-time) */}
+          {!modBannerDismissed && (
+            <div style={{
+              background: "white", borderRadius: 14, padding: "12px 14px",
+              marginBottom: 16, border: "1px solid var(--border)",
+              display: "flex", alignItems: "flex-start", gap: 12,
+            }}>
+              <div style={{ flex: 1, fontSize: 12, color: "var(--mid)", lineHeight: 1.6 }}>
+                This circle is a space for kindness, honesty, and real support — not for requesting items or donations.
+                Posts are reviewed before appearing if they trigger our safety filters.
+              </div>
+              <button
+                onClick={dismissModBanner}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--green)", fontWeight: 700, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}
+              >
+                Got it
+              </button>
+            </div>
+          )}
+
+          {/* Weekly prompt card */}
+          {!promptDismissed && (
+            <div style={{
+              background: "linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%)",
+              borderRadius: 14, padding: "14px 14px", marginBottom: 16,
+              border: "1px solid #e0e7ff", position: "relative",
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>
+                This week&apos;s prompt
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#312e81", lineHeight: 1.5, marginBottom: 10 }}>
+                &ldquo;{weekPrompt}&rdquo;
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => setPromptDismissed(true)}
+                  style={{ fontSize: 11, color: "var(--mid)", background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                >
+                  Dismiss
+                </button>
               </div>
             </div>
           )}
@@ -622,26 +711,26 @@ export default function CirclesPage() {
 
           {/* Post type filter */}
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
-            {POST_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setPostCategory(f.value)}
-                style={{
-                  flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1.5px solid",
-                  borderColor: postCategory === f.value ? "var(--green)" : "var(--border)",
-                  background: postCategory === f.value ? "var(--green)" : "var(--white)",
-                  color: postCategory === f.value ? "white" : "var(--mid)",
-                  fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Community note */}
-          <div style={{ fontSize: 11, color: "var(--mid)", background: "var(--green-light)", borderRadius: 10, padding: "8px 12px", marginBottom: 16, lineHeight: 1.5 }}>
-            💛 This is a space for sharing, support and connection — not for requesting items. Posts that ask for donations are blocked.
+            {POST_FILTERS.map((f) => {
+              const CatIcon = f.value !== "ALL" ? CATEGORY_ICONS[f.value] : null;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setPostCategory(f.value)}
+                  style={{
+                    flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+                    padding: "6px 13px", borderRadius: 20, border: "1.5px solid",
+                    borderColor: postCategory === f.value ? "var(--green)" : "var(--border)",
+                    background: postCategory === f.value ? "var(--green)" : "var(--white)",
+                    color: postCategory === f.value ? "white" : "var(--mid)",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  }}
+                >
+                  {CatIcon && <CatIcon size={11} strokeWidth={2} color={postCategory === f.value ? "white" : "var(--mid)"} />}
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
 
           <PostFeed
@@ -664,12 +753,11 @@ export default function CirclesPage() {
           <CircleComments postId={commentsPostId} onClose={() => { setCommentsPostId(null); loadPosts(true); }} />
         )}
 
-        {/* Circle identity setup modal */}
         {showIdentityModal && (
           <CircleIdentityModal onDone={() => setShowIdentityModal(false)} />
         )}
 
-        {/* ExploreSheet — full-screen overlay */}
+        {/* Explore overlay */}
         {exploreOpen && (
           <div style={{ position: "fixed", inset: 0, background: "var(--bg)", zIndex: 1000, display: "flex", flexDirection: "column", overflowY: "auto" }}>
             <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 16px", position: "sticky", top: 0, zIndex: 1001 }}>
@@ -703,7 +791,7 @@ export default function CirclesPage() {
     );
   }
 
-  // ── No cohort circle → country circle fallback ────────────────────────────
+  // ── No cohort circle → country circle fallback ─────────────────────────────
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", paddingBottom: 80 }}>
@@ -711,14 +799,13 @@ export default function CirclesPage() {
         <div className="browse-title">{countryCircle?.name ?? "Circles"}</div>
         {countryCircle && (
           <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 4 }}>
-            {countryCircle._count.members.toLocaleString()} members · Neighbourhood circle
+            {countryCircle._count.members.toLocaleString()} members
           </div>
         )}
       </div>
 
       {!countryCircle ? (
         <div style={{ padding: "40px 20px", textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>📍</div>
           <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>
             We couldn&apos;t detect your location
           </div>
@@ -730,8 +817,6 @@ export default function CirclesPage() {
       ) : (
         <CountryCircleFallback
           user={user}
-          loadingCountry={false}
-          geoDetecting={false}
           countryCircle={countryCircle}
           countryMember={countryMember}
           posts={posts}
@@ -747,6 +832,10 @@ export default function CirclesPage() {
           onLoadMore={() => loadPosts(false)}
           onPosted={() => loadPosts(true)}
           router={router}
+          modBannerDismissed={modBannerDismissed}
+          dismissModBanner={dismissModBanner}
+          promptDismissed={promptDismissed}
+          setPromptDismissed={setPromptDismissed}
         />
       )}
 
@@ -757,15 +846,7 @@ export default function CirclesPage() {
   );
 }
 
-// ── Shared sub-components ─────────────────────────────────────────────────────
-
-const POST_FILTERS: { value: PostCategory; label: string }[] = [
-  { value: "ALL",       label: "All"          },
-  { value: "TIP",       label: "💡 Tips"      },
-  { value: "STORY",     label: "📖 Stories"   },
-  { value: "GRATITUDE", label: "🙏 Gratitude" },
-  { value: "QUESTION",  label: "❓ Questions" },
-];
+// ── Shared sub-components ──────────────────────────────────────────────────────
 
 interface PostFeedProps {
   posts: Post[];
@@ -782,18 +863,17 @@ interface PostFeedProps {
   onPosted: () => void;
 }
 
-function PostFeed({ posts, loading, hasMore, circleName, currentUserId, isAdminOrLeader, commentsPostId, setCommentsPostId, onDelete, onPin, onLoadMore }: PostFeedProps) {
+function PostFeed({ posts, loading, hasMore, circleName, currentUserId, isAdminOrLeader, setCommentsPostId, onDelete, onPin, onLoadMore }: PostFeedProps) {
   if (loading && posts.length === 0) {
     return <div className="loading" style={{ minHeight: 200 }}><div className="spinner" /></div>;
   }
   if (posts.length === 0) {
     return (
       <div style={{ textAlign: "center", padding: "50px 20px", color: "var(--mid)" }}>
-        <div style={{ fontSize: 36, marginBottom: 12 }}>✨</div>
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
-          Be the first to post in {circleName} 🌟
+          Be the first to post in {circleName}
         </div>
-        <div style={{ fontSize: 13, lineHeight: 1.6 }}>Share a tip, a story, or something you&apos;re grateful for today.</div>
+        <div style={{ fontSize: 13, lineHeight: 1.6 }}>Share a tip, a small win, or something you&apos;re grateful for today.</div>
       </div>
     );
   }
@@ -823,7 +903,7 @@ function PostFeed({ posts, loading, hasMore, circleName, currentUserId, isAdminO
   );
 }
 
-// ── Stage Circle Card (used in Explore + Previous sections) ──────────────────
+// ── Stage Circle Card ──────────────────────────────────────────────────────────
 
 function StageCircleCard({ circle, isGraduated, isPrimary, onVisit }: { circle: StageCircle; isGraduated?: boolean; isPrimary?: boolean; onVisit: () => void }) {
   const meta = STAGE_META[circle.stageKey as StageKey];
@@ -851,9 +931,7 @@ function StageCircleCard({ circle, isGraduated, isPrimary, onVisit }: { circle: 
           )}
         </div>
         {meta && (
-          <div style={{ fontSize: 11, color: "var(--mid)", lineHeight: 1.4 }}>
-            {meta.description}
-          </div>
+          <div style={{ fontSize: 11, color: "var(--mid)", lineHeight: 1.4 }}>{meta.description}</div>
         )}
         <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 2 }}>
           {circle.memberCount.toLocaleString()} members
@@ -877,19 +955,54 @@ function StageCircleCard({ circle, isGraduated, isPrimary, onVisit }: { circle: 
   );
 }
 
+// ── Country circle fallback ────────────────────────────────────────────────────
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CountryCircleFallback({ user, countryCircle, countryMember, posts, loadingPosts, hasMore, postCategory, setPostCategory, isAdminOrLeader, commentsPostId, setCommentsPostId, onDelete, onPin, onLoadMore, onPosted }: any) {
+function CountryCircleFallback({ user, countryCircle, countryMember, posts, loadingPosts, hasMore, postCategory, setPostCategory, isAdminOrLeader, commentsPostId, setCommentsPostId, onDelete, onPin, onLoadMore, onPosted, router, modBannerDismissed, dismissModBanner, promptDismissed, setPromptDismissed }: any) {
   if (!countryCircle) return null;
   const joined = countryMember ? daysAgo(countryMember.joinedAt) : 0;
+  const weekPrompt = getWeeklyPrompt();
+
   return (
     <div style={{ padding: "16px 16px 0" }}>
+      {/* Welcome card */}
       {countryMember && isNewMember(countryMember.joinedAt) && (
-        <div style={{ background: "linear-gradient(135deg, #1a7a5e 0%, #2a9d7f 100%)", borderRadius: 16, padding: "16px 18px", marginBottom: 16, color: "white" }}>
-          <div style={{ fontSize: 18, marginBottom: 6 }}>👋 Welcome to {countryCircle.name}!</div>
-          <div style={{ fontSize: 13, lineHeight: 1.6, opacity: 0.9 }}>
-            {countryCircle._count.members.toLocaleString()} members
-            {countryMember && ` · Joined ${joined === 0 ? "today" : `${joined}d ago`}`}
+        <div style={{ background: "var(--green-light)", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1.5px solid var(--green)" }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--green)", marginBottom: 6 }}>
+            Welcome to {countryCircle.name}
           </div>
+          <div style={{ fontSize: 13, color: "#1a5c45", lineHeight: 1.6 }}>
+            {countryCircle._count.members.toLocaleString()} members here.
+            {countryMember && ` Joined ${joined === 0 ? "today" : `${joined}d ago`}.`}
+            {" "}Share, ask, and be heard — without judgment.
+          </div>
+        </div>
+      )}
+
+      {/* Moderation banner */}
+      {!modBannerDismissed && (
+        <div style={{ background: "white", borderRadius: 14, padding: "12px 14px", marginBottom: 16, border: "1px solid var(--border)", display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ flex: 1, fontSize: 12, color: "var(--mid)", lineHeight: 1.6 }}>
+            This is a space for kindness, honesty, and real support — not for requesting items or donations.
+          </div>
+          <button onClick={dismissModBanner} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--green)", fontWeight: 700, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
+            Got it
+          </button>
+        </div>
+      )}
+
+      {/* Weekly prompt */}
+      {!promptDismissed && (
+        <div style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%)", borderRadius: 14, padding: "14px", marginBottom: 16, border: "1px solid #e0e7ff" }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 6 }}>
+            This week&apos;s prompt
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#312e81", lineHeight: 1.5, marginBottom: 10 }}>
+            &ldquo;{weekPrompt}&rdquo;
+          </div>
+          <button onClick={() => setPromptDismissed(true)} style={{ fontSize: 11, color: "var(--mid)", background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -902,26 +1015,28 @@ function CountryCircleFallback({ user, countryCircle, countryMember, posts, load
         onPosted={onPosted}
       />
 
+      {/* Category filter */}
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
-        {POST_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setPostCategory(f.value)}
-            style={{
-              flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1.5px solid",
-              borderColor: postCategory === f.value ? "var(--green)" : "var(--border)",
-              background: postCategory === f.value ? "var(--green)" : "var(--white)",
-              color: postCategory === f.value ? "white" : "var(--mid)",
-              fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ fontSize: 11, color: "var(--mid)", background: "var(--green-light)", borderRadius: 10, padding: "8px 12px", marginBottom: 16, lineHeight: 1.5 }}>
-        💛 This is a space for sharing, support and connection — not for requesting items or donations.
+        {POST_FILTERS.map((f) => {
+          const CatIcon = f.value !== "ALL" ? CATEGORY_ICONS[f.value] : null;
+          return (
+            <button
+              key={f.value}
+              onClick={() => setPostCategory(f.value)}
+              style={{
+                flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+                padding: "6px 13px", borderRadius: 20, border: "1.5px solid",
+                borderColor: postCategory === f.value ? "var(--green)" : "var(--border)",
+                background: postCategory === f.value ? "var(--green)" : "var(--white)",
+                color: postCategory === f.value ? "white" : "var(--mid)",
+                fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif",
+              }}
+            >
+              {CatIcon && <CatIcon size={11} strokeWidth={2} color={postCategory === f.value ? "white" : "var(--mid)"} />}
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       <PostFeed
@@ -941,6 +1056,20 @@ function CountryCircleFallback({ user, countryCircle, countryMember, posts, load
 
       {commentsPostId && (
         <CircleComments postId={commentsPostId} onClose={() => setCommentsPostId(null)} />
+      )}
+
+      {!user.onboardingComplete && (
+        <div style={{ marginTop: 20, padding: "20px", background: "var(--green-light)", borderRadius: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--green)", marginBottom: 8 }}>
+            Complete your profile for your stage circle
+          </div>
+          <div style={{ fontSize: 12, color: "#1a5c45", marginBottom: 14, lineHeight: 1.5 }}>
+            Once you add your pregnancy or postpartum stage, you&apos;ll be placed with mothers at exactly your point in the journey.
+          </div>
+          <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => router.push("/profile")}>
+            Complete profile
+          </button>
+        </div>
       )}
     </div>
   );

@@ -174,8 +174,25 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!content) return NextResponse.json({ error: "Post content is required" }, { status: 400 });
   if (content.length > 500) return NextResponse.json({ error: "Post must be 500 characters or less" }, { status: 400 });
 
-  const VALID_CATS = ["TIP", "STORY", "GRATITUDE", "QUESTION"];
+  const VALID_CATS = ["TIP", "STORY", "GRATITUDE", "QUESTION", "SMALL_WIN", "SUPPORT"];
   if (!VALID_CATS.includes(category)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+
+  // Block posts containing URLs
+  if (/https?:\/\/|www\.|\.com\/|\.org\/|\.net\//i.test(content)) {
+    return NextResponse.json({ error: "Links are not allowed in circle posts." }, { status: 400 });
+  }
+
+  // 3-posts-per-day cap (excludes intro posts)
+  if (!isIntroPost) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayCount = await prisma.circlePost.count({
+      where: { userId: auth.userId, createdAt: { gte: todayStart }, isIntroPost: false },
+    });
+    if (todayCount >= 3) {
+      return NextResponse.json({ error: "You've reached today's posting limit. Come back tomorrow to share more." }, { status: 429 });
+    }
+  }
 
   // ── Quality gates ────────────────────────────────────────────────────────
   if (isIntroPost) {

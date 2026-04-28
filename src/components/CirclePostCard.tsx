@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import Avatar from "./Avatar";
-import { Heart } from "lucide-react";
+import {
+  Heart, HeartHandshake, Sparkles, MessageCircle,
+  MoreHorizontal, Pin, X, Shield, Lightbulb, BookOpen,
+  HandHeart, HelpCircle, Trophy, Users, type LucideIcon,
+} from "lucide-react";
 
 type ReactionType = "HEART" | "HUG" | "CLAP";
+type PostCategory = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT";
 
 interface Author {
   id: string;
@@ -29,7 +34,7 @@ interface Reactions {
 export interface Post {
   id: string;
   content: string;
-  category: "TIP" | "STORY" | "GRATITUDE" | "QUESTION";
+  category: PostCategory;
   photoUrl: string | null;
   isPinned: boolean;
   createdAt: string;
@@ -52,28 +57,27 @@ interface Props {
   onPin: (postId: string, pin: boolean) => void;
 }
 
-const CATEGORY_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  TIP:       { bg: "#e8f5f1", color: "#1a7a5e", label: "💡 Tip" },
-  STORY:     { bg: "#fff8e6", color: "#b8860b", label: "📖 Story" },
-  GRATITUDE: { bg: "#fdf0e8", color: "#c4622d", label: "🙏 Gratitude" },
-  QUESTION:  { bg: "#f0f4ff", color: "#4a5fa8", label: "❓ Question" },
+const CATEGORY_META: Record<PostCategory, { color: string; bg: string; label: string; Icon: LucideIcon }> = {
+  TIP:       { color: "#d97706", bg: "#fef3c7", label: "Tip",       Icon: Lightbulb  },
+  STORY:     { color: "#7c3aed", bg: "#f5f3ff", label: "Story",     Icon: BookOpen   },
+  GRATITUDE: { color: "#1a7a5e", bg: "#e8f5f1", label: "Gratitude", Icon: HandHeart  },
+  QUESTION:  { color: "#2563eb", bg: "#eff6ff", label: "Question",  Icon: HelpCircle },
+  SMALL_WIN: { color: "#0891b2", bg: "#ecfeff", label: "Small Win", Icon: Trophy     },
+  SUPPORT:   { color: "#db2777", bg: "#fdf2f8", label: "Support",   Icon: Users      },
 };
 
-const REACTIONS: { type: ReactionType; emoji: string }[] = [
-  { type: "HEART", emoji: "❤️" },
-  { type: "HUG",   emoji: "🤗" },
-  { type: "CLAP",  emoji: "👏" },
+const REACTIONS: { type: ReactionType; label: string; Icon: LucideIcon }[] = [
+  { type: "HEART", label: "Love",            Icon: Heart         },
+  { type: "HUG",   label: "You've got this", Icon: HeartHandshake },
+  { type: "CLAP",  label: "Thank you",       Icon: Sparkles      },
 ];
 
-function rankFromScore(score: number): string {
-  if (score >= 95) return "🏆";
-  if (score >= 85) return "🌟";
-  if (score >= 75) return "👼";
-  if (score >= 65) return "🏛️";
-  if (score >= 55) return "🤝";
-  if (score >= 40) return "💛";
-  return "🌱";
-}
+const REPORT_REASONS = [
+  "This feels like a request for items or donations",
+  "The tone isn't kind or supportive",
+  "I'm worried about this person's wellbeing",
+  "Something else seems off",
+];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -88,25 +92,20 @@ function timeAgo(dateStr: string): string {
 export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, onOpenComments, onDelete, onPin }: Props) {
   const [reactions, setReactions] = useState(post.reactions);
   const [reported, setReported] = useState(false);
-  const [showReportMenu, setShowReportMenu] = useState(false);
-  const [liked, setLiked] = useState(post.liked ?? false);
-  const [likeCount, setLikeCount] = useState(post.likeCount ?? 0);
-  const cat = CATEGORY_STYLE[post.category];
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReportFlow, setShowReportFlow] = useState(false);
 
-  const handleLike = async () => {
-    const newLiked = !liked;
-    setLiked(newLiked);
-    setLikeCount(c => newLiked ? c + 1 : Math.max(0, c - 1));
-    await fetch(`/api/circles/posts/${post.id}/like`, { method: "POST" }).catch(() => {
-      // Revert on error
-      setLiked(liked);
-      setLikeCount(post.likeCount ?? 0);
-    });
-  };
+  const cat = CATEGORY_META[post.category] ?? CATEGORY_META.STORY;
+  const CategoryIcon = cat.Icon;
+  const isOwn = post.author.id === currentUserId;
+
+  const displayName = post.author.circleDisplayName?.trim() || post.author.name.split(" ")[0];
+  const displayIdentity = post.author.circleContext
+    ? `${post.author.circleContext} · ${displayName}`
+    : displayName;
 
   const handleReact = async (type: ReactionType) => {
     const prev = reactions.myReaction;
-    // Optimistic update
     setReactions((r) => {
       const next = { ...r };
       if (prev) next[prev] = Math.max(0, next[prev] - 1);
@@ -122,14 +121,12 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type }),
-    }).catch(() => {
-      // Revert on error
-      setReactions(post.reactions);
-    });
+    }).catch(() => setReactions(post.reactions));
   };
 
   const handleReport = async (reason: string) => {
-    setShowReportMenu(false);
+    setShowReportFlow(false);
+    setShowMenu(false);
     await fetch(`/api/circles/posts/${post.id}/report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -138,138 +135,147 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
     setReported(true);
   };
 
-  const displayName = post.author.circleDisplayName?.trim() || post.author.name.split(" ")[0];
-  const displayIdentity = post.author.circleContext
-    ? `${post.author.circleContext} • ${displayName}`
-    : displayName;
-  const isOwn = post.author.id === currentUserId;
-
   if (reported) {
     return (
-      <div style={{ background: "var(--white)", borderRadius: 16, padding: "20px", marginBottom: 12, textAlign: "center", color: "var(--mid)", fontSize: 13 }}>
-        ✅ Thank you — this post has been reported and is under review.
+      <div style={{ background: "var(--white)", borderRadius: 16, padding: "20px", marginBottom: 12, textAlign: "center", color: "var(--mid)", fontSize: 13, border: "1px solid var(--border)" }}>
+        <Shield size={20} color="#1a7a5e" style={{ marginBottom: 6 }} />
+        <div style={{ fontWeight: 700, color: "#1a7a5e", marginBottom: 4 }}>Thank you for flagging this</div>
+        <div>Our team reviews every report. The circle stays safe because of people like you.</div>
       </div>
     );
   }
 
   return (
-    <div style={{ background: "var(--white)", borderRadius: 16, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)", border: "1px solid var(--border)", position: "relative" }}>
-      {/* Pin indicator */}
-      {post.isPinned && (
-        <div style={{ position: "absolute", top: 12, right: 12, fontSize: 12, color: "var(--green)", fontWeight: 700 }}>📌 Pinned</div>
-      )}
+    <div style={{
+      background: "var(--white)", borderRadius: 16, marginBottom: 12,
+      boxShadow: "var(--shadow)", border: "1px solid var(--border)",
+      borderLeft: `4px solid ${cat.color}`, overflow: "hidden", position: "relative",
+    }}>
+      <div style={{ padding: "14px 14px 0 14px" }}>
+        {/* Pin indicator */}
+        {post.isPinned && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--green)", fontWeight: 700, marginBottom: 8 }}>
+            <Pin size={11} />
+            Pinned
+          </div>
+        )}
 
-      {/* Author row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <Avatar src={post.author.avatar} name={post.author.name} size={36} />
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            <span style={{ fontWeight: 800, fontSize: 14 }}>{displayIdentity}</span>
-            {post.author.isLeader && (
-              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 20, background: "var(--green)", color: "white" }}>
-                ⭐ Leader
-              </span>
-            )}
-            <span style={{ fontSize: 12 }}>{rankFromScore(post.author.trustScore)}</span>
-            {post.channelName && (
-              <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "var(--bg)", color: "var(--mid)" }}>
-                {post.channelEmoji} {post.channelName}
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 11, color: "var(--mid)" }}>
-            {post.author.countryFlag && <span style={{ marginRight: 3 }}>{post.author.countryFlag}</span>}
-            {post.author.city ?? ""}
-            {post.author.city ? " · " : ""}{timeAgo(post.createdAt)}
-          </div>
-          {post.author.subTags?.length > 0 && (
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
-              {post.author.subTags.map((tag) => (
-                <span key={tag} style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "var(--green-light)", color: "var(--green)" }}>
-                  {tag}
+        {/* Author row */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+          <Avatar src={post.author.avatar} name={post.author.name} size={34} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+              <span style={{ fontWeight: 800, fontSize: 14 }}>{displayIdentity}</span>
+              {post.author.isLeader && (
+                <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 7px", borderRadius: 20, background: "var(--green)", color: "white" }}>
+                  Leader
                 </span>
-              ))}
+              )}
+              {post.channelName && (
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, background: "var(--bg)", color: "var(--mid)" }}>
+                  {post.channelEmoji} {post.channelName}
+                </span>
+              )}
             </div>
-          )}
+            <div style={{ fontSize: 11, color: "var(--mid)" }}>
+              {post.author.countryFlag && <span style={{ marginRight: 3 }}>{post.author.countryFlag}</span>}
+              {post.author.city ? `${post.author.city} · ` : ""}{timeAgo(post.createdAt)}
+            </div>
+            {post.author.subTags?.length > 0 && (
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                {post.author.subTags.map((tag) => (
+                  <span key={tag} style={{ fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 20, background: "var(--green-light)", color: "var(--green)" }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Category pill */}
+          <span style={{
+            display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
+            fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
+            background: cat.bg, color: cat.color,
+          }}>
+            <CategoryIcon size={11} strokeWidth={2} />
+            {cat.label}
+          </span>
         </div>
-        {/* Category pill */}
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: cat.bg, color: cat.color, flexShrink: 0 }}>
-          {cat.label}
-        </span>
+
+        {/* Content */}
+        <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink)", margin: "0 0 12px", whiteSpace: "pre-wrap" }}>
+          {post.content}
+        </p>
+
+        {/* Photo */}
+        {post.photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={post.photoUrl}
+            alt="Post photo"
+            style={{ width: "100%", borderRadius: 12, marginBottom: 12, maxHeight: 280, objectFit: "cover" }}
+          />
+        )}
       </div>
 
-      {/* Content */}
-      <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ink)", margin: "0 0 12px", whiteSpace: "pre-wrap" }}>
-        {post.content}
-      </p>
-
-      {/* Photo */}
-      {post.photoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={post.photoUrl}
-          alt="Post photo"
-          style={{ width: "100%", borderRadius: 12, marginBottom: 12, maxHeight: 280, objectFit: "cover" }}
-        />
-      )}
-
       {/* Action bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
-        <button
-          onClick={handleLike}
-          style={{
-            display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
-            borderRadius: 20, border: "1.5px solid",
-            borderColor: liked ? "#1a7a5e" : "var(--border)",
-            background: liked ? "#e8f5f1" : "transparent",
-            cursor: "pointer", fontSize: 12, fontWeight: 700,
-            fontFamily: "Nunito, sans-serif",
-            color: liked ? "#1a7a5e" : "var(--mid)",
-          }}
-        >
-          <Heart size={13} strokeWidth={liked ? 0 : 1.75} fill={liked ? "#1a7a5e" : "none"} />
-          {likeCount > 0 && <span>{likeCount}</span>}
-        </button>
-        {REACTIONS.map(({ type, emoji }) => (
-          <button
-            key={type}
-            onClick={() => handleReact(type)}
-            style={{
-              display: "flex", alignItems: "center", gap: 4, padding: "5px 10px",
-              borderRadius: 20, border: "1.5px solid",
-              borderColor: reactions.myReaction === type ? "var(--green)" : "var(--border)",
-              background: reactions.myReaction === type ? "var(--green-light)" : "transparent",
-              cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "Nunito, sans-serif",
-              color: reactions.myReaction === type ? "var(--green)" : "var(--mid)",
-            }}
-          >
-            <span>{emoji}</span>
-            {reactions[type] > 0 && <span>{reactions[type]}</span>}
-          </button>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 2, borderTop: "1px solid var(--border)", padding: "8px 10px" }}>
+        {REACTIONS.map(({ type, label, Icon }) => {
+          const active = reactions.myReaction === type;
+          return (
+            <button
+              key={type}
+              onClick={() => handleReact(type)}
+              title={label}
+              style={{
+                display: "flex", alignItems: "center", gap: 3, padding: "5px 9px",
+                borderRadius: 20, border: "1.5px solid",
+                borderColor: active ? cat.color : "var(--border)",
+                background: active ? cat.bg : "transparent",
+                cursor: "pointer", fontSize: 12, fontWeight: 700,
+                fontFamily: "Nunito, sans-serif",
+                color: active ? cat.color : "var(--mid)",
+                transition: "all 0.12s",
+              }}
+            >
+              <Icon size={13} strokeWidth={1.75} color={active ? cat.color : "var(--mid)"} />
+              {reactions[type] > 0 && <span>{reactions[type]}</span>}
+            </button>
+          );
+        })}
 
         <button
           onClick={() => onOpenComments(post.id)}
-          style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 20, border: "1.5px solid var(--border)", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 700, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}
+          style={{
+            marginLeft: "auto", display: "flex", alignItems: "center", gap: 5,
+            padding: "5px 10px", borderRadius: 20, border: "1.5px solid var(--border)",
+            background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 700,
+            color: "var(--mid)", fontFamily: "Nunito, sans-serif",
+          }}
         >
-          💬 {post.commentCount > 0 ? post.commentCount : "Reply"}
+          <MessageCircle size={13} strokeWidth={1.75} />
+          {post.commentCount > 0 ? post.commentCount : "Reply"}
         </button>
 
-        {/* Context menu */}
+        {/* Context menu for other people's posts */}
         {!isOwn && (
           <div style={{ position: "relative" }}>
             <button
-              onClick={() => setShowReportMenu((p) => !p)}
-              style={{ padding: "5px 8px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", fontSize: 14, color: "var(--light)" }}
+              onClick={() => { setShowMenu((p) => !p); setShowReportFlow(false); }}
+              style={{ padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", color: "var(--light)", display: "flex" }}
             >
-              ···
+              <MoreHorizontal size={16} />
             </button>
-            {showReportMenu && (
-              <div style={{ position: "absolute", right: 0, bottom: 32, background: "var(--white)", borderRadius: 12, boxShadow: "var(--shadow-lg)", border: "1px solid var(--border)", padding: 8, zIndex: 50, minWidth: 180 }}>
-                <div style={{ fontSize: 11, color: "var(--mid)", padding: "4px 10px", fontWeight: 700 }}>Report this post</div>
-                {["It's asking for items/donations", "It's spam or irrelevant", "It's offensive or harmful", "Other"].map((r) => (
+            {showMenu && !showReportFlow && (
+              <div style={{ position: "absolute", right: 0, bottom: 34, background: "var(--white)", borderRadius: 14, boxShadow: "var(--shadow-lg)", border: "1px solid var(--border)", padding: "8px", zIndex: 50, minWidth: 200 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", padding: "4px 10px 8px" }}>Flag this post</div>
+                <div style={{ fontSize: 11, color: "var(--mid)", padding: "0 10px 8px", lineHeight: 1.5 }}>
+                  Help us keep this space kind and safe.
+                </div>
+                {REPORT_REASONS.map((r) => (
                   <button key={r} onClick={() => handleReport(r)}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 10px", fontSize: 12, color: "var(--ink)", background: "none", border: "none", cursor: "pointer", borderRadius: 8, fontFamily: "Nunito, sans-serif" }}>
+                    style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 10px", fontSize: 12, color: "var(--ink)", background: "none", border: "none", cursor: "pointer", borderRadius: 8, fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>
                     {r}
                   </button>
                 ))}
@@ -283,24 +289,25 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
           <>
             <button
               onClick={() => onPin(post.id, !post.isPinned)}
-              style={{ padding: "5px 8px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--green)", fontWeight: 700, fontFamily: "Nunito, sans-serif" }}
+              title={post.isPinned ? "Unpin" : "Pin"}
+              style={{ padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", display: "flex", color: "var(--green)" }}
             >
-              {post.isPinned ? "Unpin" : "📌"}
+              <Pin size={14} strokeWidth={post.isPinned ? 2.5 : 1.75} />
             </button>
             <button
               onClick={() => onDelete(post.id)}
-              style={{ padding: "5px 8px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--terra)", fontWeight: 700, fontFamily: "Nunito, sans-serif" }}
+              style={{ padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", display: "flex", color: "var(--terra)" }}
             >
-              ✕
+              <X size={14} />
             </button>
           </>
         )}
-        {isOwn && (
+        {isOwn && !isAdminOrLeader && (
           <button
             onClick={() => onDelete(post.id)}
-            style={{ padding: "5px 8px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", fontSize: 12, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}
+            style={{ padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", display: "flex", color: "var(--light)" }}
           >
-            ✕
+            <X size={14} />
           </button>
         )}
       </div>

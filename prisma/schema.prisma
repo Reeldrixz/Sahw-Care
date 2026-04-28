@@ -520,6 +520,10 @@ model CircleMember {
   accessType   CircleAccessType @default(FULL)
   isGraduated  Boolean          @default(false)
 
+  hasSeenWelcome          Boolean @default(false)
+  hasSeenModerationBanner Boolean @default(false)
+  hasSeenStageTransition  Boolean @default(false)
+
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
 
@@ -603,6 +607,8 @@ enum PostCategory {
   STORY
   GRATITUDE
   QUESTION
+  SMALL_WIN
+  SUPPORT
 }
 
 enum ReactionType {
@@ -723,6 +729,7 @@ enum NotifType {
   ITEM_PURCHASED
   ITEM_DISPATCHED
   ITEM_DELIVERED
+  CIRCLE_MILESTONE
 }
 
 enum BundleInstanceStatus {
