@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     prisma.item.findMany({
       where,
       include: {
-        donor: { select: { id: true, name: true, avatar: true, trustRating: true, countryCode: true } },
+        donor: { select: { id: true, name: true, avatar: true, trustRating: true, countryCode: true, verificationLevel: true } },
         _count: { select: { requests: true } },
       },
       orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
@@ -62,11 +62,12 @@ export async function GET(req: NextRequest) {
     requestable: canRequest,
     requestLockedReason: canRequest ? null : `You need a trust score of ${TRUST_THRESHOLDS.MARKETPLACE} to request items.`,
     donor: {
-      id:          item.donor.id,
-      name:        item.donor.name,
-      avatar:      item.donor.avatar,
-      trustRating: item.donor.trustRating,
-      countryFlag: item.donor.countryCode ? countryCodeToFlag(item.donor.countryCode) : null,
+      id:                item.donor.id,
+      name:              item.donor.name,
+      avatar:            item.donor.avatar,
+      trustRating:       item.donor.trustRating,
+      countryFlag:       item.donor.countryCode ? countryCodeToFlag(item.donor.countryCode) : null,
+      verificationLevel: item.donor.verificationLevel,
     },
   }));
 
