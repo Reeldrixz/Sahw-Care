@@ -8,8 +8,9 @@ import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
-import { MapPin, Lock } from "lucide-react";
+import { MapPin, Lock, Clock, CheckCircle, XCircle, MessageCircle } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import RequestReviewSheet from "@/components/RequestReviewSheet";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
 import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
@@ -38,6 +39,14 @@ interface DonorSentItem {
   requestId: string; itemTitle: string; recipientName: string;
   fulfillStatus: "PENDING" | "DISPUTED";
   markedAt: string; respondedAt: string | null;
+}
+
+interface PendingRequest {
+  requestId: string; itemId: string; itemTitle: string;
+  requesterId: string; requesterName: string; requesterAvatar: string | null;
+  requesterTrustScore: number;
+  reasonForRequest: string | null; whoIsItFor: string | null; pickupPreference: string | null;
+  requestedAt: string;
 }
 
 const CAT_BG: Record<string, string> = {
@@ -70,6 +79,9 @@ export default function DiscoverPage() {
   const [fulfillNote,       setFulfillNote]       = useState<Record<string, string>>({});
   const [fulfillLoading,    setFulfillLoading]    = useState<Record<string, boolean>>({});
   const [fulfillDone,       setFulfillDone]       = useState<Record<string, boolean>>({});
+  const [pendingRequests,   setPendingRequests]   = useState<PendingRequest[]>([]);
+  const [reviewItem,        setReviewItem]        = useState<ItemData | null>(null);
+  const [reviewLoading,     setReviewLoading]     = useState<Record<string, boolean>>({});
 
   const CATS = ["All", "Feeding", "Diapering", "Maternity", "Clothing", "Hygiene"];
 
@@ -166,6 +178,7 @@ export default function DiscoverPage() {
         setToConfirm(d.toConfirm ?? []);
         setToFulfill(d.toFulfill ?? []);
         setDonorSentItems(d.donorSentItems ?? []);
+        setPendingRequests(d.pendingRequests ?? []);
       })
       .catch(() => {});
   }, [user]);
@@ -206,33 +219,53 @@ export default function DiscoverPage() {
     }
   };
 
-  const handleRequest = async (item: ItemData) => {
+  const handleRequest = (item: ItemData) => {
     if (!user) { router.push("/auth"); return; }
-    // Check lock client-side before hitting the server
     if (user.activeRequestLockedUntil && new Date(user.activeRequestLockedUntil) > new Date()) {
       const msLeft = new Date(user.activeRequestLockedUntil).getTime() - Date.now();
       const hoursLeft = Math.ceil(msLeft / (1000 * 60 * 60));
       showToast(`You've reached your limit. Try again in ${hoursLeft}h, or confirm receipt of pending items.`);
       return;
     }
-    const res = await fetch("/api/requests", {
-      method: "POST",
+    setReviewItem(item);
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    if (reviewLoading[requestId]) return;
+    setReviewLoading((p) => ({ ...p, [requestId]: true }));
+    const res = await fetch(`/api/requests/${requestId}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ itemId: item.id }),
+      body: JSON.stringify({ action: "accept" }),
     });
     if (res.ok) {
       const d = await res.json();
-      setRequested((r) => ({ ...r, [item.id]: true }));
-      showToast("Requested! Opening chat with donor…");
-      if (d.lockedUntil) refreshUser();
+      setPendingRequests((p) => p.filter((r) => r.requestId !== requestId));
+      showToast("Request accepted — recipient has been notified ✅");
       if (d.conversationId) {
-        setTimeout(() => router.push(`/chat?conv=${d.conversationId}`), 900);
+        setTimeout(() => router.push(`/chat?conv=${d.conversationId}`), 800);
       }
     } else {
-      const d = await res.json();
-      showToast(d.error ?? "Something went wrong");
-      if (d.code === "REQUEST_LIMIT_REACHED") refreshUser();
+      showToast("Something went wrong");
     }
+    setReviewLoading((p) => ({ ...p, [requestId]: false }));
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    if (reviewLoading[requestId]) return;
+    setReviewLoading((p) => ({ ...p, [requestId]: true }));
+    const res = await fetch(`/api/requests/${requestId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "decline" }),
+    });
+    if (res.ok) {
+      setPendingRequests((p) => p.filter((r) => r.requestId !== requestId));
+      showToast("Request declined");
+    } else {
+      showToast("Something went wrong");
+    }
+    setReviewLoading((p) => ({ ...p, [requestId]: false }));
   };
 
   const handleDonate = async (formData: FormData) => {
@@ -368,6 +401,116 @@ export default function DiscoverPage() {
                 );
               }}
             />
+          </div>
+        )}
+
+        {/* DONOR REVIEW — incoming pending requests */}
+        {pendingRequests.length > 0 && (
+          <div className="section">
+            <div className="section-head">
+              <div className="section-title">New requests</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#d97706", background: "#fff8e1", border: "1px solid #fbbf24", borderRadius: 20, padding: "3px 10px" }}>
+                {pendingRequests.length} pending
+              </div>
+            </div>
+            {pendingRequests.map((r) => {
+              const isTrusted = r.requesterTrustScore >= 70;
+              const whoLabel: Record<string, string> = { ME: "For themselves", MY_BABY: "For their baby", SOMEONE_I_CARE_FOR: "For someone they care for" };
+              const pickupLabel: Record<string, string> = { PICKUP: "Can pick up", DELIVERY: "Needs delivery support" };
+              return (
+                <div key={r.requestId} style={{
+                  background: "var(--white)", borderRadius: 14,
+                  border: "1.5px solid var(--border)", padding: "14px 16px",
+                  marginBottom: 12,
+                }}>
+                  {/* Requester identity */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {r.requesterAvatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.requesterAvatar} alt={r.requesterName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <span style={{ fontSize: 18, fontWeight: 800 }}>{r.requesterName[0]}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>
+                        {r.requesterName.split(" ")[0]}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                        re: {r.itemTitle}
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                      background: isTrusted ? "var(--green-light)" : "var(--bg)",
+                      color: isTrusted ? "var(--green)" : "var(--mid)",
+                      border: `1px solid ${isTrusted ? "var(--green)" : "var(--border)"}`,
+                    }}>
+                      {isTrusted ? "Trusted member" : "New member"}
+                    </span>
+                  </div>
+
+                  {/* Request details */}
+                  {r.reasonForRequest && (
+                    <div style={{ background: "var(--bg)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        Why they need it
+                      </div>
+                      <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--ink)", lineHeight: 1.5 }}>
+                        "{r.reasonForRequest}"
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                    {r.whoIsItFor && (
+                      <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: "#e8f5f1", color: "#1a7a5e", fontFamily: "Nunito, sans-serif" }}>
+                        👤 {whoLabel[r.whoIsItFor] ?? r.whoIsItFor}
+                      </span>
+                    )}
+                    {r.pickupPreference && (
+                      <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: "#e3f2fd", color: "#1565c0", fontFamily: "Nunito, sans-serif" }}>
+                        📦 {pickupLabel[r.pickupPreference] ?? r.pickupPreference}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Accept / Decline */}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => handleAcceptRequest(r.requestId)}
+                      disabled={reviewLoading[r.requestId]}
+                      style={{
+                        flex: 1, padding: "11px 0", borderRadius: 12, border: "none",
+                        background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 800,
+                        fontFamily: "Nunito, sans-serif", cursor: reviewLoading[r.requestId] ? "default" : "pointer",
+                        opacity: reviewLoading[r.requestId] ? 0.6 : 1,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      }}
+                    >
+                      <CheckCircle size={15} /> Accept
+                    </button>
+                    <button
+                      onClick={() => handleDeclineRequest(r.requestId)}
+                      disabled={reviewLoading[r.requestId]}
+                      style={{
+                        flex: 1, padding: "11px 0", borderRadius: 12,
+                        border: "1.5px solid var(--border)",
+                        background: "transparent", color: "var(--mid)", fontSize: 13, fontWeight: 800,
+                        fontFamily: "Nunito, sans-serif", cursor: reviewLoading[r.requestId] ? "default" : "pointer",
+                        opacity: reviewLoading[r.requestId] ? 0.6 : 1,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      }}
+                    >
+                      <XCircle size={15} /> Decline
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -645,6 +788,16 @@ export default function DiscoverPage() {
 
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
+      {reviewItem && (
+        <RequestReviewSheet
+          item={reviewItem}
+          onClose={() => setReviewItem(null)}
+          onSubmitted={(itemId) => {
+            setRequested((r) => ({ ...r, [itemId]: true }));
+            refreshUser();
+          }}
+        />
+      )}
       <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );

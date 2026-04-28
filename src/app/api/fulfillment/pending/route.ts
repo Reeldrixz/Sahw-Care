@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const userId = auth.userId;
 
-  const [toConfirmRaw, toFulfillRaw, donorSentRaw, allocations] = await Promise.all([
+  const [toConfirmRaw, toFulfillRaw, donorSentRaw, pendingRequestsRaw, allocations] = await Promise.all([
     // Items the user requested that the donor has marked as sent
     prisma.requestFulfillment.findMany({
       where: {
@@ -40,10 +40,10 @@ export async function GET(req: NextRequest) {
       take:    10,
     }),
 
-    // Items the user donated that are approved but not yet marked as sent
+    // Items the user donated that are accepted/approved but not yet marked as sent
     prisma.request.findMany({
       where: {
-        status:      "APPROVED",
+        status:      { in: ["APPROVED", "ACCEPTED"] },
         fulfillment: null,
         item:        { donorId: userId },
       },
@@ -73,6 +73,20 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { markedAt: "desc" },
       take:    10,
+    }),
+
+    // PENDING requests on donor's items — awaiting donor review
+    prisma.request.findMany({
+      where: {
+        status: "PENDING",
+        item:   { donorId: userId },
+      },
+      include: {
+        item:      { select: { id: true, title: true } },
+        requester: { select: { id: true, name: true, avatar: true, trustScore: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take:    20,
     }),
 
     // Bundle allocations awaiting recipient confirmation
@@ -116,5 +130,19 @@ export async function GET(req: NextRequest) {
     respondedAt:   fl.respondedAt?.toISOString() ?? null,
   }));
 
-  return NextResponse.json({ toConfirm, toFulfill, donorSentItems, allocations });
+  const pendingRequests = pendingRequestsRaw.map((r) => ({
+    requestId:           r.id,
+    itemId:              r.item.id,
+    itemTitle:           r.item.title,
+    requesterId:         r.requester.id,
+    requesterName:       r.requester.name,
+    requesterAvatar:     r.requester.avatar,
+    requesterTrustScore: r.requester.trustScore,
+    reasonForRequest:    r.reasonForRequest,
+    whoIsItFor:          r.whoIsItFor,
+    pickupPreference:    r.pickupPreference,
+    requestedAt:         r.createdAt.toISOString(),
+  }));
+
+  return NextResponse.json({ toConfirm, toFulfill, donorSentItems, allocations, pendingRequests });
 }

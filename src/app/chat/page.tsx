@@ -27,7 +27,11 @@ function ChatPageInner() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(searchParams.get("conv"));
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(
+    searchParams.get("conv") && searchParams.get("prefill")
+      ? decodeURIComponent(searchParams.get("prefill")!)
+      : ""
+  );
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);

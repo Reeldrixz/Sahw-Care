@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     }, { status: 429 });
   }
 
-  const { itemId, note } = await req.json();
+  const { itemId, note, reasonForRequest, whoIsItFor, pickupPreference } = await req.json();
 
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
 
@@ -125,25 +125,29 @@ export async function POST(req: NextRequest) {
   });
 
   const request = await prisma.request.create({
-    data: { itemId, requesterId: user.userId, note: note ?? null },
+    data: {
+      itemId,
+      requesterId: user.userId,
+      note: note ?? null,
+      reasonForRequest: reasonForRequest ?? null,
+      whoIsItFor: whoIsItFor ?? null,
+      pickupPreference: pickupPreference ?? null,
+    },
     include: {
       item: { select: { id: true, title: true, donor: { select: { id: true, name: true } } } },
     },
   });
 
-  // Create conversation so donor and requester can coordinate immediately
-  const conversation = await prisma.conversation.create({
+  // Notify donor of new request (fire-and-forget)
+  prisma.notification.create({
     data: {
-      requestId: request.id,
-      participants: {
-        create: [
-          { userId: user.userId },
-          { userId: item.donorId },
-        ],
-      },
+      userId:            item.donorId,
+      type:              "FULFILLMENT_PENDING",
+      message:           `Someone requested your item: ${item.title}. Review their request and decide whether to connect.`,
+      link:              "/",
+      triggeredByUserId: user.userId,
     },
-    select: { id: true },
-  });
+  }).catch(() => {});
 
   // Log abuse event + run checks (fire-and-forget)
   Promise.all([
@@ -153,7 +157,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     request,
-    conversationId: conversation.id,
     requestCount: newCount,
     lockedUntil: lockUntil,
   }, { status: 201 });

@@ -193,6 +193,13 @@ model Request {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  // Review-flow fields
+  reasonForRequest String?
+  whoIsItFor       String?   // ME | MY_BABY | SOMEONE_I_CARE_FOR
+  pickupPreference String?   // PICKUP | DELIVERY
+  reviewedAt       DateTime?
+  reviewNote       String?
+
   itemId      String
   item        Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
   requesterId String
@@ -435,10 +442,16 @@ enum ItemStatus {
 }
 
 enum RequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  FULFILLED
+  PENDING       // submitted, waiting donor review
+  APPROVED      // legacy — treat same as ACCEPTED
+  REJECTED      // legacy — treat same as DECLINED
+  FULFILLED     // item handed over
+  ACCEPTED      // donor accepted, chat opened
+  DECLINED      // donor declined
+  CHAT_OPENED   // both in chat
+  PICKUP_AGREED // both confirmed pickup time
+  CONFIRMED     // recipient confirmed receipt
+  CANCELLED     // either party cancelled
 }
 
 enum ReportStatus {

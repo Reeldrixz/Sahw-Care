@@ -13,7 +13,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const request = await prisma.request.findUnique({
     where: { id },
-    include: { item: true, conversation: true },
+    include: {
+      item: { select: { id: true, title: true, donorId: true } },
+      requester: { select: { id: true, name: true } },
+      conversation: true,
+    },
   });
 
   if (!request) return NextResponse.json({ error: "Request not found" }, { status: 404 });
@@ -25,10 +29,84 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { status } = await req.json();
-  const validStatuses = ["APPROVED", "REJECTED", "FULFILLED"];
-  if (!validStatuses.includes(status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  const body = await req.json();
+  const { action, status, note } = body;
+
+  // ── Accept: create conversation, notify recipient ────────────────────────
+  if (action === "accept") {
+    const updated = await prisma.request.update({
+      where: { id },
+      data: { status: "ACCEPTED", reviewedAt: new Date() },
+    });
+
+    // Create conversation if not already present
+    let conversationId: string | null = request.conversation?.id ?? null;
+    if (!conversationId) {
+      const conv = await prisma.conversation.create({
+        data: {
+          requestId: id,
+          participants: {
+            create: [
+              { userId: request.item.donorId },
+              { userId: request.requesterId },
+            ],
+          },
+        },
+        select: { id: true },
+      });
+      conversationId = conv.id;
+    }
+
+    // Build pre-filled message text
+    const donorFirstName = (
+      await prisma.user.findUnique({ where: { id: request.item.donorId }, select: { name: true } })
+    )?.name.split(" ")[0] ?? "the donor";
+
+    const prefillText = `Hi ${donorFirstName}, thank you for offering this item. I'm available to collect it around [time/day].`;
+
+    // Notify recipient
+    const chatLink = `/chat?conv=${conversationId}&prefill=${encodeURIComponent(prefillText)}`;
+    prisma.notification.create({
+      data: {
+        userId:            request.requesterId,
+        type:              "FULFILLMENT_CONFIRMED",
+        message:           `Your request was accepted! You're now connected with the donor. Tap to open chat.`,
+        link:              chatLink,
+        triggeredByUserId: request.item.donorId,
+      },
+    }).catch(() => {});
+
+    return NextResponse.json({ request: updated, conversationId, prefillText });
+  }
+
+  // ── Decline: set DECLINED, notify recipient ──────────────────────────────
+  if (action === "decline") {
+    const updated = await prisma.request.update({
+      where: { id },
+      data: {
+        status:    "DECLINED",
+        reviewedAt: new Date(),
+        reviewNote: note ?? null,
+      },
+    });
+
+    prisma.notification.create({
+      data: {
+        userId:            request.requesterId,
+        type:              "FULFILLMENT_PENDING",
+        message:           "Your request wasn't accepted this time. Keep browsing — there are more items available!",
+        link:              "/",
+        triggeredByUserId: request.item.donorId,
+      },
+    }).catch(() => {});
+
+    return NextResponse.json({ request: updated });
+  }
+
+  // ── Legacy status-based update (backward compat) ─────────────────────────
+  const validStatuses = ["APPROVED", "REJECTED", "FULFILLED", "ACCEPTED", "DECLINED", "CANCELLED"];
+  if (!status || !validStatuses.includes(status)) {
+    return NextResponse.json({ error: "Invalid action or status" }, { status: 400 });
   }
 
   const updated = await prisma.request.update({
@@ -36,13 +114,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     data: { status },
   });
 
-  // Award impact points to donor when request is fulfilled
   if (status === "FULFILLED") {
     awardImpactPoints(request.item.donorId, "FULFILLED_REQUEST", id).catch(() => {});
   }
 
-  // When approved, create a conversation between donor and requester
-  if (status === "APPROVED" && !request.conversation) {
+  if ((status === "APPROVED" || status === "ACCEPTED") && !request.conversation) {
     const conv = await prisma.conversation.create({
       data: {
         requestId: id,
@@ -54,7 +130,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       },
     });
-
     return NextResponse.json({ request: updated, conversationId: conv.id });
   }
 
