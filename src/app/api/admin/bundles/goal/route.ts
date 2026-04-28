@@ -67,6 +67,33 @@ export async function POST(req: NextRequest) {
     data: { month: goalMonth, targetBundles: Number(targetBundles), costPerBundle: Number(costPerBundle) },
   });
 
+  // Notify past contributors that a new campaign is open (fire-and-forget)
+  prisma.bundleContribution.findMany({
+    where: { status: "CONFIRMED" },
+    select: { donorId: true },
+    distinct: ["donorId"],
+  }).then(async (donors) => {
+    const prevGoal = await prisma.monthlyBundleGoal.findFirst({
+      where: { status: "CLOSED" },
+      orderBy: { createdAt: "desc" },
+      select: { deliveredBundles: true },
+    });
+    const prevDelivered = prevGoal?.deliveredBundles ?? 0;
+    const prevMsg = prevDelivered > 0
+      ? `Last month, ${prevDelivered} bundle${prevDelivered !== 1 ? "s" : ""} were delivered to mothers. `
+      : "";
+    for (const { donorId } of donors) {
+      await prisma.notification.create({
+        data: {
+          userId:  donorId,
+          type:    "FULFILLMENT_CONFIRMED",
+          message: `${goalMonth}'s bundle campaign is now open. ${prevMsg}Ready to contribute again?`,
+          link:    "/bundles",
+        },
+      });
+    }
+  }).catch(() => {});
+
   return NextResponse.json({ goal }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -84,8 +111,25 @@ export async function PATCH(req: NextRequest) {
 
   const goal = await prisma.monthlyBundleGoal.update({
     where: { id: goalId },
-    data: { ...(status && { status }), },
+    data: { ...(status && { status }) },
+    include: {
+      contributions: { where: { status: "CONFIRMED" }, select: { donorId: true } },
+      allocations:   { where: { status: "DELIVERED" }, select: { id: true } },
+    },
   });
+
+  // When campaign closes, notify all contributors
+  if (status === "CLOSED") {
+    const delivered = goal.deliveredBundles;
+    const allocCount = goal.allocations.length;
+    const donorIds = [...new Set(goal.contributions.map((c) => c.donorId))];
+    const msg = `${goal.month}'s campaign is complete. ${delivered} bundle${delivered !== 1 ? "s" : ""} were delivered to ${allocCount} mother${allocCount !== 1 ? "s" : ""}. Thank you for being part of this.`;
+    Promise.all(donorIds.map((donorId) =>
+      prisma.notification.create({
+        data: { userId: donorId, type: "FULFILLMENT_CONFIRMED", message: msg, link: "/bundles" },
+      })
+    )).catch(() => {});
+  }
 
   return NextResponse.json({ goal });
   } catch {

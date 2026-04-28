@@ -44,15 +44,48 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Recalculate funded bundles
+  const fundedBundles = goal.contributions.reduce((s, c) => s + c.bundleCount, 0) + bundleCount;
+  const percentFunded = Math.min(100, Math.round((fundedBundles / goal.targetBundles) * 100));
+
   // Update goal's funded-today counter (fire-and-forget)
   prisma.monthlyBundleGoal.update({
     where: { id: goal.id },
     data: { bundlesFundedToday: { increment: bundleCount } },
   }).catch(() => {});
 
+  // Thank-you notification to contributor
+  prisma.notification.create({
+    data: {
+      userId:  user.id,
+      type:    "FULFILLMENT_CONFIRMED",
+      message: `Thank you. Your contribution joins ${goal.month}'s pool. We'll deliver bundles as the goal is reached.`,
+      link:    "/bundles",
+    },
+  }).catch(() => {});
+
+  // Goal-met notification — notify all contributors if newly fully funded
+  if (fundedBundles >= goal.targetBundles) {
+    prisma.bundleContribution.findMany({
+      where: { goalId: goal.id, status: "CONFIRMED" },
+      select: { donorId: true },
+      distinct: ["donorId"],
+    }).then((donors) =>
+      Promise.all(donors.map(({ donorId }) =>
+        prisma.notification.create({
+          data: {
+            userId:  donorId,
+            type:    "FULFILLMENT_CONFIRMED",
+            message: `This month's goal is funded! Kradəl is now matching and dispatching bundles to verified mothers. You made this possible.`,
+            link:    "/bundles",
+          },
+        })
+      ))
+    ).catch(() => {});
+  }
+
   // Award impact points: +20 per bundle
   awardImpactPoints(user.id, "BUNDLE_FUNDED").catch(() => {});
-  // (awardImpactPoints is per-event; call once per bundle)
   if (bundleCount > 1) {
     for (let i = 1; i < bundleCount; i++) {
       awardImpactPoints(user.id, "BUNDLE_FUNDED").catch(() => {});
@@ -63,10 +96,6 @@ export async function POST(req: NextRequest) {
   logAbuseEvent(user.id, "BUNDLE_REQUESTED", user.trustScore, {
     bundleCount, amountCents, goalId: goal.id,
   }, req).catch(() => {});
-
-  // Recalculate funded bundles for response
-  const fundedBundles = goal.contributions.reduce((s, c) => s + c.bundleCount, 0) + bundleCount;
-  const percentFunded = Math.min(100, Math.round((fundedBundles / goal.targetBundles) * 100));
   const now = new Date();
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const daysRemaining = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
