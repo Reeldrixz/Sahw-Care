@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import ListCard, { ItemData } from "@/components/ListCard";
@@ -17,6 +17,7 @@ import RequestReviewSheet from "@/components/RequestReviewSheet";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
 import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
+import LocationSelector from "@/components/LocationSelector";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ function useTooltipDismissed() {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, loading } = useAuth();
   const router = useRouter();
 
   const [allItems,        setAllItems]        = useState<ItemData[]>([]);
@@ -91,7 +92,6 @@ export default function DiscoverPage() {
   const [catIdx,          setCatIdx]          = useState(0);
   const [toast,           setToast]           = useState<string | null>(null);
   const [showDonate,      setShowDonate]      = useState(false);
-  const [detectedCity,    setDetectedCity]    = useState<string | null>(null);
   const [trustCount,      setTrustCount]      = useState(0);
   const [campaigns,       setCampaigns]       = useState<LiveCampaign[]>([]);
   const [myBundle,        setMyBundle]        = useState<MyBundle | null>(null);
@@ -104,42 +104,60 @@ export default function DiscoverPage() {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [reviewItem,      setReviewItem]      = useState<ItemData | null>(null);
   const [reviewLoading,   setReviewLoading]   = useState<Record<string, boolean>>({});
-  const [loadingItems,    setLoadingItems]    = useState(true);
-  const [noLocalItems,    setNoLocalItems]    = useState(false);
+  const [loadingItems,     setLoadingItems]     = useState(true);
+  const [noLocalItems,     setNoLocalItems]     = useState(false);
+  const [showLocationSheet,setShowLocationSheet]= useState(false);
+  const [activeCity,       setActiveCity]       = useState<string | null>(null);
+  const [activeRadius,     setActiveRadius]     = useState(10);
+  const [activeSetByGPS,   setActiveSetByGPS]   = useState(false);
 
   const [tooltipDismissed, dismissTooltip] = useTooltipDismissed();
+  const locationInitRef = useRef(false);
 
   const selectedCat = CATS[catIdx];
   const showToast = (msg: string) => setToast(msg);
 
-  // ── Geo detection ──────────────────────────────────────────────────────────
+  // ── Location init — from user.preferredCity or localStorage ───────────────
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-          );
-          const data = await res.json();
-          const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county;
-          if (city) setDetectedCity(city);
-        } catch { /* silently fail */ }
-      },
-      () => {}
-    );
-  }, []);
+    if (loading || locationInitRef.current) return;
+    locationInitRef.current = true;
+
+    if (user?.preferredCity) {
+      setActiveCity(user.preferredCity);
+      setActiveRadius(user.preferredRadius ?? 10);
+      setActiveSetByGPS(user.locationSetByGPS ?? false);
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem("kradel_location");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.city) {
+          setActiveCity(parsed.city);
+          setActiveRadius(parsed.radius ?? 10);
+          setActiveSetByGPS(parsed.setByGPS ?? false);
+          // Migrate to DB if logged in but no preferredCity yet
+          if (user) {
+            fetch("/api/user/location", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ city: parsed.city, radius: parsed.radius ?? 10, setByGPS: parsed.setByGPS ?? false }),
+            }).catch(() => {});
+          }
+        }
+      }
+    } catch { /* ignore */ }
+  }, [loading, user]);
 
   // ── Trust strip count ──────────────────────────────────────────────────────
   useEffect(() => {
-    const city = detectedCity ?? user?.location?.split(",")[0]?.trim();
-    if (!city) return;
-    fetch(`/api/items/trust-stats?city=${encodeURIComponent(city)}`)
+    if (!activeCity) return;
+    fetch(`/api/items/trust-stats?city=${encodeURIComponent(activeCity)}`)
       .then((r) => r.json())
       .then((d) => setTrustCount(d.fulfilledThisMonth ?? 0))
       .catch(() => {});
-  }, [detectedCity, user?.location]);
+  }, [activeCity]);
 
   // ── Fetch items ────────────────────────────────────────────────────────────
   const fetchItems = useCallback(async () => {
@@ -147,23 +165,33 @@ export default function DiscoverPage() {
     const params = new URLSearchParams();
     if (selectedCat.api !== "All") params.set("category", selectedCat.api);
     if (search) params.set("search", search);
+    if (activeCity) params.set("location", activeCity);
     params.set("limit", "50");
     const res = await fetch(`/api/items?${params}`);
     if (res.ok) {
       const data = await res.json();
-      const items: ItemData[] = data.items ?? [];
-      setAllItems(items);
-      setTotal(data.total ?? items.length);
-      // Check if there are no items near the user's city
-      if (detectedCity && items.length > 0) {
-        const nearby = items.filter((i) => i.location.toLowerCase().includes(detectedCity.toLowerCase()));
-        setNoLocalItems(nearby.length === 0);
+      let items: ItemData[] = data.items ?? [];
+
+      // Fallback: if city filter returned nothing, load all items and show notice
+      if (activeCity && !search && items.length === 0) {
+        const fallbackParams = new URLSearchParams();
+        if (selectedCat.api !== "All") fallbackParams.set("category", selectedCat.api);
+        fallbackParams.set("limit", "50");
+        const res2 = await fetch(`/api/items?${fallbackParams}`);
+        if (res2.ok) {
+          const data2 = await res2.json();
+          items = data2.items ?? [];
+          setNoLocalItems(true);
+        }
       } else {
         setNoLocalItems(false);
       }
+
+      setAllItems(items);
+      setTotal(items.length);
     }
     setLoadingItems(false);
-  }, [selectedCat.api, search, detectedCity]);
+  }, [selectedCat.api, search, activeCity]);
 
   useEffect(() => {
     const t = setTimeout(fetchItems, search ? 300 : 0);
@@ -346,7 +374,32 @@ export default function DiscoverPage() {
     ? "Offer an item"
     : "Add to my Register";
 
-  const locationLabel = detectedCity ? "Near you" : (user?.location?.split(",")[0]?.trim() ?? "Your area");
+  // ── Location selection handler ─────────────────────────────────────────────
+  const handleLocationSelect = useCallback((city: string, radius: number, byGPS: boolean) => {
+    setActiveCity(city);
+    setActiveRadius(radius);
+    setActiveSetByGPS(byGPS);
+    showToast(`Showing items in ${city}`);
+    if (user) {
+      fetch("/api/user/location", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city, radius, setByGPS: byGPS }),
+      }).catch(() => {});
+    } else {
+      try {
+        localStorage.setItem("kradel_location", JSON.stringify({ city, radius, setByGPS: byGPS }));
+      } catch { /* ignore */ }
+    }
+  }, [user]);
+
+  const locationLabel = activeSetByGPS
+    ? "Near you"
+    : activeCity
+    ? activeCity
+    : "Set location";
+
+  const locationLabelColor = activeSetByGPS ? "#1a7a5e" : activeCity ? "#1a1a1a" : "#555555";
 
   // ── Items filtered locally ─────────────────────────────────────────────────
   const filtered = allItems.filter((i) => {
@@ -365,11 +418,15 @@ export default function DiscoverPage() {
         {/* ── Sticky top bar ──────────────────────────────────────────────── */}
         <div style={{ background: "var(--white)" }} className="discover-mobile-header">
           <div className="topbar">
-            <div className="location-pill">
+            <button
+              className="location-pill"
+              onClick={() => setShowLocationSheet(true)}
+              style={{ background: "none", border: "none", cursor: "pointer" }}
+            >
               <MapPin size={13} strokeWidth={2} color="#1a7a5e" style={{ flexShrink: 0 }} />
-              <span>{locationLabel}</span>
+              <span style={{ color: locationLabelColor }}>{locationLabel}</span>
               <ChevronDown size={12} color="#1a7a5e" />
-            </div>
+            </button>
             <div className="topbar-right">
               <NotificationBell />
               {user ? (
@@ -429,8 +486,14 @@ export default function DiscoverPage() {
 
           {/* No local items notice */}
           {noLocalItems && !search && (
-            <div style={{ padding: "8px 16px", fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif", background: "#fafafa", borderBottom: "1px solid var(--border)" }}>
-              No items in your area yet. Showing all available items.
+            <div style={{ padding: "8px 16px", fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif", background: "#fafafa", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span>No items in {activeCity ?? "your area"} yet. Showing all available items.</span>
+              <button
+                onClick={() => setShowLocationSheet(true)}
+                style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "Nunito, sans-serif" }}
+              >
+                Change location
+              </button>
             </div>
           )}
 
@@ -442,7 +505,7 @@ export default function DiscoverPage() {
               fontSize: 12, color: "#1a5c45", fontFamily: "Nunito, sans-serif", fontWeight: 600,
             }}>
               <CheckCircle size={13} color="#1a7a5e" strokeWidth={2.5} />
-              {trustCount} item{trustCount !== 1 ? "s" : ""} fulfilled{detectedCity ? ` in ${detectedCity}` : ""} this month · All donors verified
+              {trustCount} item{trustCount !== 1 ? "s" : ""} fulfilled{activeCity ? ` in ${activeCity}` : ""} this month · All donors verified
             </div>
           )}
 
@@ -807,6 +870,15 @@ export default function DiscoverPage() {
             setRequested((r) => ({ ...r, [itemId]: true }));
             refreshUser();
           }}
+        />
+      )}
+      {showLocationSheet && (
+        <LocationSelector
+          currentCity={activeCity}
+          setByGPS={activeSetByGPS}
+          radius={activeRadius}
+          onSelect={handleLocationSelect}
+          onClose={() => setShowLocationSheet(false)}
         />
       )}
       <Toast message={toast} onClose={() => setToast(null)} />

@@ -59,6 +59,9 @@ export async function GET(req: NextRequest) {
       notifyNewPosts: true,
       notifyReplies: true,
       notifyThreadReplies: true,
+      preferredCity: true,
+      preferredRadius: true,
+      locationSetByGPS: true,
       _count: { select: { items: true, requests: true } },
     },
   });

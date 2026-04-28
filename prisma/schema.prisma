@@ -17,7 +17,10 @@ model User {
   password    String
   role        Role       @default(DONOR)
   avatar      String?
-  location    String?
+  location         String?
+  preferredCity    String?
+  preferredRadius  Int?    @default(10)
+  locationSetByGPS Boolean @default(false)
   isPremium   Boolean    @default(false)
 
   // legacy 0-5 display rating (kept for donor card UI)

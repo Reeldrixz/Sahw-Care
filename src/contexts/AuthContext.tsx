@@ -47,6 +47,10 @@ export interface User {
   notifyNewPosts: boolean;
   notifyReplies: boolean;
   notifyThreadReplies: boolean;
+  // location preference
+  preferredCity: string | null;
+  preferredRadius: number | null;
+  locationSetByGPS: boolean;
   _count?: { items: number; requests: number };
 }
 
