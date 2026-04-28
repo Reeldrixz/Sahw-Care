@@ -51,6 +51,14 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const isFullFundInOne = isFullyFunded && item.totalFundedCents === 0;
 
+  const previousDonorIds = isFullyFunded
+    ? (await prisma.registerItemFunding.findMany({
+        where: { registerItemId: itemId, donorId: { not: auth.userId }, status: "CONFIRMED" },
+        select: { donorId: true },
+        distinct: ["donorId"],
+      })).map((f) => f.donorId)
+    : [];
+
   await prisma.$transaction(async (tx) => {
     await tx.registerItemFunding.create({
       data: { registerItemId: itemId, donorId: auth.userId, amountCents, status: "CONFIRMED" },
@@ -83,6 +91,26 @@ export async function POST(req: NextRequest, { params }: Params) {
           link:    `/registers/${item.registerId}`,
         },
       });
+      // Notify the completing donor
+      await tx.notification.create({
+        data: {
+          userId:  auth.userId,
+          type:    "ITEM_FULLY_FUNDED",
+          message: `You completed funding "${item.name}"! Kradəl will purchase and deliver it soon.`,
+          link:    `/registers/${item.registerId}`,
+        },
+      });
+      // Notify previous donors that the item is now fully funded
+      for (const donorId of previousDonorIds) {
+        await tx.notification.create({
+          data: {
+            userId:  donorId,
+            type:    "ITEM_FULLY_FUNDED",
+            message: `An item you helped fund, "${item.name}", is now fully funded and will be fulfilled soon.`,
+            link:    `/registers/${item.registerId}`,
+          },
+        });
+      }
     }
   });
 

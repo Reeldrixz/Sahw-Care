@@ -16,8 +16,17 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
     include: {
-      creator: { select: { id: true, name: true, location: true } },
-      items: { select: { id: true, status: true } },
+      creator: { select: { id: true, name: true, location: true, verificationLevel: true } },
+      items: {
+        select: {
+          id: true,
+          status: true,
+          fundingStatus: true,
+          standardPriceCents: true,
+          totalFundedCents: true,
+          _count: { select: { funding: true } },
+        },
+      },
     },
   });
 

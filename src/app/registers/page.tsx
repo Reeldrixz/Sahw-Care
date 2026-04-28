@@ -2,8 +2,18 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { BadgeCheck, MapPin, Heart } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+
+interface RegisterListItem {
+  id: string;
+  status: string;
+  fundingStatus: string;
+  standardPriceCents: number;
+  totalFundedCents: number;
+  _count: { funding: number };
+}
 
 interface RegisterData {
   id: string;
@@ -11,14 +21,24 @@ interface RegisterData {
   city: string;
   dueDate: string;
   createdAt: string;
-  creator: { id: string; name: string; location: string | null };
-  items: { id: string; status: string }[];
+  creator: { id: string; name: string; location: string | null; verificationLevel: number };
+  items: RegisterListItem[];
 }
 
-function progressColor(pct: number) {
-  if (pct >= 1) return "var(--green)";
-  if (pct >= 0.5) return "#f6c90e";
-  return "var(--terra)";
+function fmtMoney(cents: number) {
+  return `$${(cents / 100).toFixed(0)}`;
+}
+
+function getStagePill(dueDate: string) {
+  const due = new Date(dueDate);
+  const now = new Date();
+  const diffDays = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays > 0) {
+    const weeks = Math.round(diffDays / 7);
+    return { label: weeks <= 1 ? "Due this week" : `Due in ${weeks} weeks`, isNewborn: false };
+  }
+  const weeksOld = Math.abs(Math.round(diffDays / 7));
+  return { label: `Newborn · ${weeksOld}w old`, isNewborn: true };
 }
 
 export default function RegistersPage() {
@@ -28,7 +48,6 @@ export default function RegistersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // Donors have no access to Registers
   useEffect(() => {
     if (user?.onboardingComplete && user.journeyType === "donor") {
       router.replace("/");
@@ -54,21 +73,13 @@ export default function RegistersPage() {
       r.creator.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const getDaysLeft = (dueDate: string) => {
-    const diff = new Date(dueDate).getTime() - Date.now();
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    if (days < 0) return "Overdue";
-    if (days === 0) return "Due today";
-    return `${days}d left`;
-  };
-
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
       <div className="discover-desktop">
         {/* Header */}
         <div style={{ background: "var(--white)", padding: "16px 16px 0" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700 }}>📋 Registers</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700 }}>Registers</div>
             {user && (
               <button
                 onClick={() => router.push("/registers/new")}
@@ -79,11 +90,10 @@ export default function RegistersPage() {
             )}
           </div>
           <p style={{ fontSize: 13, color: "var(--mid)", marginBottom: 14 }}>
-            Moms share what they need. Donors choose what to give. 💛
+            Mothers share what they need. You choose what to give.
           </p>
-          {/* Search */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-            <span style={{ fontSize: 16, color: "var(--light)" }}>🔍</span>
+            <span style={{ fontSize: 14, color: "var(--light)" }}>🔍</span>
             <input
               placeholder="Search by name or city..."
               value={search}
@@ -110,13 +120,18 @@ export default function RegistersPage() {
             </div>
           ) : (
             filtered.map((reg) => {
-              const total = reg.items.length;
-              const fulfilled = reg.items.filter((i) => i.status === "FULFILLED").length;
-              const reserved = reg.items.filter((i) => i.status === "RESERVED").length;
-              const pct = total > 0 ? fulfilled / total : 0;
+              const stage = getStagePill(reg.dueDate);
               const firstName = reg.creator.name.split(" ")[0];
-              const daysLeft = getDaysLeft(reg.dueDate);
-              const isOverdue = daysLeft === "Overdue";
+              const isVerified = (reg.creator.verificationLevel ?? 0) >= 2;
+
+              const totalFunded = reg.items.reduce((s, i) => s + i.totalFundedCents, 0);
+              const totalNeeded = reg.items.reduce((s, i) => s + i.standardPriceCents, 0);
+              const completedItems = reg.items.filter((i) => i.fundingStatus === "FULFILLED").length;
+              const totalItems = reg.items.length;
+              const pct = totalNeeded > 0 ? Math.min(1, totalFunded / totalNeeded) : 0;
+              const isFullyFunded = totalNeeded > 0 && totalFunded >= totalNeeded;
+              const hasNoFunding = totalFunded === 0;
+              const totalDonors = reg.items.reduce((s, i) => s + i._count.funding, 0);
 
               return (
                 <div
@@ -130,42 +145,62 @@ export default function RegistersPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-lg)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow)"; }}
                 >
-                  {/* Top row */}
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div>
-                      <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{reg.title}</div>
-                      <div style={{ fontSize: 12, color: "var(--mid)", fontWeight: 600 }}>
-                        👤 {firstName} · 📍 {reg.city}
-                      </div>
-                    </div>
+                  {/* Stage pill + verified */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, flexShrink: 0,
-                      background: isOverdue ? "var(--terra-light)" : "var(--yellow-light)",
-                      color: isOverdue ? "var(--terra)" : "#b8860b",
+                      background: stage.isNewborn ? "#e8f5f1" : "#fff8e6",
+                      color: stage.isNewborn ? "#1a7a5e" : "#b8860b",
                     }}>
-                      {isOverdue ? "⚠️ " : "⏳ "}{daysLeft}
+                      {stage.label}
                     </span>
+                    {isVerified && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "#e8f5f1", padding: "3px 8px", borderRadius: 20 }}>
+                        <BadgeCheck size={11} strokeWidth={2.5} /> Verified
+                      </span>
+                    )}
+                    {isFullyFunded && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "#e8f5f1", padding: "3px 10px", borderRadius: 20, marginLeft: "auto" }}>
+                        Completed ✓
+                      </span>
+                    )}
                   </div>
 
-                  {/* Progress bar */}
-                  {total > 0 && (
+                  {/* Title + location */}
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 3 }}>
+                    {firstName}&apos;s Register
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--mid)", fontWeight: 600, display: "flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
+                    <MapPin size={11} />
+                    {reg.city}
+                    {totalDonors > 0 && <span style={{ marginLeft: 6, color: "#1a7a5e" }}>· {totalDonors} contributor{totalDonors !== 1 ? "s" : ""}</span>}
+                  </div>
+
+                  {/* Funding progress */}
+                  {totalItems > 0 && totalNeeded > 0 && (
                     <>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, fontSize: 12, color: "var(--mid)", fontWeight: 600 }}>
-                        <span>{fulfilled}/{total} fulfilled</span>
-                        {reserved > 0 && <span style={{ color: "var(--terra)" }}>{reserved} reserved</span>}
+                      <div style={{ height: 6, borderRadius: 6, background: "var(--bg)", overflow: "hidden", marginBottom: 6 }}>
+                        <div style={{ width: `${pct * 100}%`, height: "100%", background: isFullyFunded ? "#1a7a5e" : "#1a7a5e", borderRadius: 6, transition: "width 0.4s", opacity: isFullyFunded ? 1 : 0.7 }} />
                       </div>
-                      <div style={{ background: "var(--bg)", borderRadius: 6, height: 8, overflow: "hidden" }}>
-                        <div style={{ width: `${pct * 100}%`, height: "100%", background: progressColor(pct), borderRadius: 6, transition: "width 0.4s" }} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "var(--mid)", fontWeight: 600, marginBottom: 12 }}>
+                        {hasNoFunding ? (
+                          <span style={{ color: "#d97706", display: "flex", alignItems: "center", gap: 4 }}>
+                            <Heart size={11} /> Be the first to help
+                          </span>
+                        ) : (
+                          <span>{fmtMoney(totalFunded)} funded of {fmtMoney(totalNeeded)}</span>
+                        )}
+                        <span>{completedItems}/{totalItems} needs completed</span>
                       </div>
                     </>
                   )}
 
-                  {total === 0 && (
-                    <div style={{ fontSize: 12, color: "var(--light)", fontStyle: "italic" }}>No items added yet</div>
+                  {totalItems === 0 && (
+                    <div style={{ fontSize: 12, color: "var(--light)", fontStyle: "italic", marginBottom: 12 }}>No items added yet</div>
                   )}
 
-                  <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green)" }}>View register →</span>
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "var(--green)" }}>See what she needs →</span>
                   </div>
                 </div>
               );

@@ -99,10 +99,50 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             link:    `/registers/${registerId}`,
           },
         });
-        // Award donors whose funding helped get this item fulfilled
+
+        // Award + notify each unique donor
         const uniqueDonorIds = [...new Set(entry.registerItem.funding.map((f) => f.donorId))];
         for (const donorId of uniqueDonorIds) {
           awardImpactPoints(donorId, "REGISTER_ITEM_FULFILLED_DONOR", itemId).catch(() => {});
+          await tx.notification.create({
+            data: {
+              userId:  donorId,
+              type:    "ITEM_DELIVERED",
+              message: `Great news! "${itemName}" has been delivered to the mother you supported.`,
+              link:    `/registers/${registerId}`,
+            },
+          });
+        }
+
+        // Check if all items in the register are now fulfilled
+        const remainingItems = await tx.registerItem.count({
+          where: { registerId, fundingStatus: { not: "FULFILLED" }, id: { not: itemId } },
+        });
+        if (remainingItems === 0) {
+          // All items fulfilled — notify all unique donors to the register
+          const allDonors = await tx.registerItemFunding.findMany({
+            where: { registerItem: { registerId }, status: "CONFIRMED" },
+            select: { donorId: true },
+            distinct: ["donorId"],
+          });
+          for (const { donorId } of allDonors) {
+            await tx.notification.create({
+              data: {
+                userId:  donorId,
+                type:    "ITEM_DELIVERED",
+                message: `The register you supported is now fully complete — every item has been delivered to the mother. Thank you!`,
+                link:    `/registers/${registerId}`,
+              },
+            });
+          }
+          await tx.notification.create({
+            data: {
+              userId:  creatorId,
+              type:    "ITEM_DELIVERED",
+              message: `All items in your register have been fulfilled. Your baby is ready! Thank you to everyone who helped.`,
+              link:    `/registers/${registerId}`,
+            },
+          });
         }
       }
     });
