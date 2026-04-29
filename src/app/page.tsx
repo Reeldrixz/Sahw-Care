@@ -766,10 +766,12 @@ export default function DiscoverPage() {
                   <Package size={28} color="#1a7a5e" strokeWidth={1.5} />
                 </div>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 8 }}>
-                  No items near you right now.
+                  {catIdx === 0
+                    ? "No items near you right now."
+                    : `No ${selectedCat.display} items near you right now.`}
                 </div>
                 <div style={{ fontSize: 13, color: "#555555", marginBottom: 20, lineHeight: 1.6 }}>
-                  Check back soon — donors add items regularly.
+                  Donors add items regularly — check back soon.
                 </div>
                 {catIdx !== 0 && (
                   <button
