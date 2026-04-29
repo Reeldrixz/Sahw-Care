@@ -703,8 +703,12 @@ model Notification {
   id                String    @id @default(cuid())
   userId            String
   type              NotifType
+  title             String?
   message           String
   isRead            Boolean   @default(false)
+  actionLabel       String?
+  metadata          Json?
+  readAt            DateTime?
   circleId          String?
   postId            String?
   triggeredByUserId String?
@@ -712,27 +716,63 @@ model Notification {
   createdAt         DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
 
 enum NotifType {
+  // Legacy types (kept for backward compat)
   NEW_POST
   REPLY
   THREAD_REPLY
-  TRUST_MILESTONE
-  TRUST_WARNING
-  DONOR_LEVEL_UP
   RBW_RESTRICTION
   REPORT_CONFIRMED
   FULFILLMENT_PENDING
   FULFILLMENT_CONFIRMED
-  FULFILLMENT_DISPUTED
   FULFILLMENT_REMINDER
   BUNDLE_ALLOCATION_CONFIRM
   ITEM_FULLY_FUNDED
   ITEM_PURCHASED
   ITEM_DISPATCHED
   ITEM_DELIVERED
+
+  // Request flow
+  REQUEST_ACCEPTED
+  REQUEST_DECLINED
+  REQUEST_RECEIVED
+
+  // Item states
+  ITEM_RESERVED
+  ITEM_FULFILLED
+  DELIVERY_CONFIRMED
+  FULFILLMENT_DISPUTED
+
+  // Bundle updates
+  BUNDLE_UPDATE
+  BUNDLE_GOAL_MET
+  BUNDLE_DELIVERED
+
+  // Admin & moderation
+  ADMIN_MESSAGE
+  MODERATION_ACTION
+  VERIFICATION_APPROVED
+  VERIFICATION_REJECTED
+  MANUAL_VERIFIED
+
+  // Circles
+  CIRCLE_REPLY
+  CIRCLE_THREAD_REPLY
+  CIRCLE_NEW_POST
   CIRCLE_MILESTONE
+
+  // Trust & Impact
+  TRUST_MILESTONE
+  TRUST_WARNING
+  DONOR_LEVEL_UP
+
+  // Request lock
+  REQUEST_LOCK_CLEARED
 }
 
 enum BundleInstanceStatus {

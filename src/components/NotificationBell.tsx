@@ -4,26 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Bell, X, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface Notif {
-  id: string;
-  type: string;
-  message: string;
-  isRead: boolean;
-  link: string | null;
-  createdAt: string;
-  triggeredBy: { id: string; name: string; avatar: string | null } | null;
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+import NotifCard, { type Notif } from "./NotifCard";
 
 export default function NotificationBell() {
   const { user } = useAuth();
@@ -33,9 +14,9 @@ export default function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const fetch_notifs = useCallback(async () => {
+  const fetchNotifs = useCallback(async () => {
     if (!user) return;
-    const r = await fetch("/api/notifications");
+    const r = await fetch("/api/notifications?limit=10");
     if (r.ok) {
       const d = await r.json();
       setNotifs(d.notifications ?? []);
@@ -45,12 +26,12 @@ export default function NotificationBell() {
 
   useEffect(() => {
     if (!user) return;
-    fetch_notifs();
-    const t = setInterval(fetch_notifs, 30000);
+    fetchNotifs();
+    const t = setInterval(fetchNotifs, 30000);
     return () => clearInterval(t);
-  }, [user, fetch_notifs]);
+  }, [user, fetchNotifs]);
 
-  // Close when clicking outside
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
@@ -63,26 +44,29 @@ export default function NotificationBell() {
   }, [open]);
 
   const markAllRead = async () => {
-    await fetch("/api/notifications", { method: "POST" });
-    setNotifs(n => n.map(x => ({ ...x, isRead: true })));
+    await fetch("/api/notifications/read-all", { method: "PATCH" });
+    setNotifs((n) => n.map((x) => ({ ...x, isRead: true })));
     setUnread(0);
   };
 
   const markOneRead = async (id: string, link: string | null) => {
-    await fetch(`/api/notifications/${id}`, { method: "PATCH" });
-    setNotifs(n => n.map(x => x.id === id ? { ...x, isRead: true } : x));
-    setUnread(u => Math.max(0, u - 1));
-    if (link) router.push(link);
+    if (!notifs.find((n) => n.id === id)?.isRead) {
+      fetch(`/api/notifications/${id}`, { method: "PATCH" }).catch(() => {});
+      setNotifs((n) => n.map((x) => (x.id === id ? { ...x, isRead: true } : x)));
+      setUnread((u) => Math.max(0, u - 1));
+    }
     setOpen(false);
+    if (link) router.push(link);
   };
 
   if (!user) return null;
 
   return (
     <div style={{ position: "relative" }} ref={panelRef}>
+      {/* Bell button */}
       <button
         className="icon-btn"
-        onClick={() => { setOpen(p => !p); if (!open) fetch_notifs(); }}
+        onClick={() => { setOpen((p) => !p); if (!open) fetchNotifs(); }}
         style={{ position: "relative" }}
         aria-label="Notifications"
       >
@@ -90,7 +74,7 @@ export default function NotificationBell() {
         {unread > 0 && (
           <span style={{
             position: "absolute", top: -2, right: -2,
-            minWidth: 16, height: 16, borderRadius: 8,
+            minWidth: 18, height: 18, borderRadius: 9,
             background: "#1a7a5e", color: "white",
             fontSize: 10, fontWeight: 800,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -102,67 +86,96 @@ export default function NotificationBell() {
         )}
       </button>
 
+      {/* Popup panel */}
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 8px)", right: 0,
-          width: 320, maxHeight: 420, overflowY: "auto",
-          background: "var(--white)", borderRadius: 16,
-          boxShadow: "var(--shadow-lg)", border: "1px solid var(--border)",
-          zIndex: 200,
+          width: 380, background: "white", borderRadius: 16,
+          boxShadow: "0 8px 40px rgba(0,0,0,0.14)", border: "1px solid var(--border)",
+          zIndex: 200, overflow: "hidden",
         }}>
+          {/* Header */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "14px 16px 10px", borderBottom: "1px solid var(--border)",
+            padding: "14px 16px 12px", borderBottom: "1px solid var(--border)",
           }}>
-            <span style={{ fontFamily: "Lora, serif", fontWeight: 700, fontSize: 15 }}>Notifications</span>
-            <div style={{ display: "flex", gap: 8 }}>
+            <span style={{ fontFamily: "Lora, serif", fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>
+              Notifications
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {unread > 0 && (
-                <button onClick={markAllRead} style={{
-                  display: "flex", alignItems: "center", gap: 4,
-                  padding: "4px 10px", borderRadius: 20,
-                  border: "1px solid var(--border)", background: "none",
-                  fontSize: 11, fontWeight: 700, color: "var(--green)",
-                  cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                }}>
-                  <CheckCheck size={12} />
+                <button
+                  onClick={markAllRead}
+                  style={{
+                    fontSize: 12, fontWeight: 700, color: "#1a7a5e",
+                    background: "none", border: "none", cursor: "pointer",
+                    fontFamily: "Nunito, sans-serif", display: "flex", alignItems: "center", gap: 4,
+                  }}
+                >
+                  <CheckCheck size={13} />
                   Mark all read
                 </button>
               )}
-              <button onClick={() => setOpen(false)} style={{
-                background: "none", border: "none", cursor: "pointer", color: "var(--mid)", padding: 2,
-              }}>
+              <button
+                onClick={() => setOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", display: "flex", color: "#9ca3af" }}
+              >
                 <X size={16} />
               </button>
             </div>
           </div>
 
-          {notifs.length === 0 ? (
-            <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--mid)", fontSize: 13 }}>
-              No notifications yet
+          {/* Unread strip */}
+          {unread > 0 && (
+            <div style={{
+              background: "#fff8ed", borderBottom: "1px solid #fde68a",
+              padding: "6px 16px", fontSize: 12, fontWeight: 700,
+              color: "#92400e", fontFamily: "Nunito, sans-serif",
+            }}>
+              {unread} unread
             </div>
-          ) : (
-            notifs.map(n => (
-              <button key={n.id} onClick={() => markOneRead(n.id, n.link)}
-                style={{
-                  display: "flex", alignItems: "flex-start", gap: 10,
-                  width: "100%", padding: "12px 16px",
-                  borderBottom: "1px solid var(--border)",
-                  background: n.isRead ? "transparent" : "rgba(26,122,94,0.04)",
-                  border: "none", cursor: "pointer", textAlign: "left",
-                  fontFamily: "Nunito, sans-serif",
-                }}>
+          )}
+
+          {/* List */}
+          <div style={{ maxHeight: 400, overflowY: "auto" }}>
+            {notifs.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center" }}>
                 <div style={{
-                  width: 8, height: 8, borderRadius: "50%", flexShrink: 0, marginTop: 5,
-                  background: n.isRead ? "transparent" : "#1a7a5e",
-                }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--ink)", lineHeight: 1.4, marginBottom: 3 }}>
-                    {n.message}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--mid)" }}>{timeAgo(n.createdAt)}</div>
+                  width: 52, height: 52, borderRadius: "50%",
+                  background: "#e8f5f1", display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 12px",
+                }}>
+                  <Bell size={22} color="#1a7a5e" strokeWidth={1.5} />
                 </div>
-              </button>
-            ))
+                <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 14, color: "#1a1a1a", marginBottom: 6 }}>
+                  Nothing new right now.
+                </div>
+                <div style={{ fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                  We&apos;ll let you know when something needs your attention.
+                </div>
+              </div>
+            ) : (
+              notifs.map((n) => (
+                <NotifCard key={n.id} notif={n} compact onRead={markOneRead} />
+              ))
+            )}
+          </div>
+
+          {/* Footer — see all */}
+          {notifs.length >= 5 && (
+            <button
+              onClick={() => { setOpen(false); router.push("/notifications"); }}
+              style={{
+                display: "block", width: "100%", padding: "12px",
+                background: "none", border: "none",
+                borderTop: "1px solid var(--border)",
+                fontSize: 13, fontWeight: 700, color: "#1a7a5e",
+                cursor: "pointer", fontFamily: "Nunito, sans-serif",
+              }}
+            >
+              See all notifications →
+            </button>
           )}
         </div>
       )}
