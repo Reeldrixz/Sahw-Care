@@ -18,6 +18,7 @@ import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
 import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
 import LocationSelector from "@/components/LocationSelector";
+import SearchBar from "@/components/SearchBar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -447,24 +448,7 @@ export default function DiscoverPage() {
 
           {/* Search bar */}
           <div className="search-wrap">
-            <div className="search-row">
-              <div className="search-box">
-                <Search size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
-                <input
-                  placeholder="Search for something a mother needs..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  style={{ background: "none", border: "none", cursor: "pointer", display: "flex", padding: 4 }}
-                >
-                  <X size={14} color="#9ca3af" />
-                </button>
-              )}
-            </div>
+            <SearchBar value={search} onChange={setSearch} />
           </div>
 
           {/* Category chips */}
