@@ -32,11 +32,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
   const { action, status, note } = body;
 
-  // ── Accept: create conversation, notify recipient ────────────────────────
+  // ── Accept: create pickup coordination, notify recipient ─────────────────
   if (action === "accept") {
     const updated = await prisma.request.update({
       where: { id },
       data: { status: "ACCEPTED", reviewedAt: new Date() },
+      include: { preferredLocation: true },
     });
 
     // Decrement quantityNum; reserve item if it hits 0
@@ -55,44 +56,31 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       });
     }
 
-    // Create conversation if not already present
-    let conversationId: string | null = request.conversation?.id ?? null;
-    if (!conversationId) {
-      const conv = await prisma.conversation.create({
+    // Create PickupCoordination (idempotent)
+    const existingCoord = await prisma.pickupCoordination.findUnique({ where: { requestId: id } });
+    if (!existingCoord) {
+      await prisma.pickupCoordination.create({
         data: {
           requestId: id,
-          participants: {
-            create: [
-              { userId: request.item.donorId },
-              { userId: request.requesterId },
-            ],
-          },
+          locationId: (updated as { pickupLocationId?: string | null }).pickupLocationId ?? undefined,
+          status: "PENDING",
         },
-        select: { id: true },
       });
-      conversationId = conv.id;
     }
 
-    // Build pre-filled message text
-    const donorFirstName = (
-      await prisma.user.findUnique({ where: { id: request.item.donorId }, select: { name: true } })
-    )?.name.split(" ")[0] ?? "the donor";
-
-    const prefillText = `Hi ${donorFirstName}, thank you for offering this item. I'm available to collect it around [time/day].`;
-
     // Notify recipient
-    const chatLink = `/chat?conv=${conversationId}&prefill=${encodeURIComponent(prefillText)}`;
+    const coordLink = `/coordination/${id}`;
     prisma.notification.create({
       data: {
         userId:            request.requesterId,
-        type:              "FULFILLMENT_CONFIRMED",
-        message:           `Your request was accepted! You're now connected with the donor. Tap to open chat.`,
-        link:              chatLink,
+        type:              "COORDINATION_ACCEPTED",
+        message:           "Your request was accepted! Tap to coordinate your pickup.",
+        link:              coordLink,
         triggeredByUserId: request.item.donorId,
       },
     }).catch(() => {});
 
-    return NextResponse.json({ request: updated, conversationId, prefillText });
+    return NextResponse.json({ request: updated, coordinationLink: coordLink });
   }
 
   // ── Decline: set DECLINED, notify recipient ──────────────────────────────

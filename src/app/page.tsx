@@ -308,7 +308,7 @@ export default function DiscoverPage() {
       const d = await res.json();
       setPendingRequests((p) => p.filter((r) => r.requestId !== requestId));
       showToast("Request accepted — recipient has been notified.");
-      if (d.conversationId) setTimeout(() => router.push(`/chat?conv=${d.conversationId}`), 800);
+      if (d.request?.id) setTimeout(() => router.push(`/coordination/${d.request.id}`), 800);
     } else {
       showToast("Something went wrong");
     }
@@ -519,7 +519,7 @@ export default function DiscoverPage() {
               </div>
               {pendingRequests.map((r) => {
                 const isTrusted = r.requesterTrustScore >= 70;
-                const whoLabel: Record<string, string> = { ME: "For themselves", MY_BABY: "For their baby", SOMEONE_I_CARE_FOR: "For someone they care for" };
+                const whoLabel: Record<string, string> = { ME: "For themselves", MY_BABY: "For their baby", SOMEONE_I_CARE_FOR: "For someone they care for", MY_HOUSEHOLD_FAMILY: "For their household" };
                 const pickupLabel: Record<string, string> = { PICKUP: "Can pick up", DELIVERY: "Needs delivery support" };
                 return (
                   <div key={r.requestId} style={{ background: "var(--white)", borderRadius: 14, border: "1.5px solid var(--border)", padding: "14px 16px", marginBottom: 12 }}>

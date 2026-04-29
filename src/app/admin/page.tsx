@@ -122,7 +122,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination";
 
 interface BundleGoalAdmin {
   id: string; month: string; targetBundles: number; costPerBundle: number;
@@ -546,6 +546,7 @@ export default function AdminPage() {
     ["register-queue", "🛍️ Register Queue"],
     ["catalog",        "📋 Item Catalog"],
     ["abuse",          "🔍 Abuse Monitor"],
+    ["coordination",   "📍 Coordination"],
   ];
 
   return (
@@ -2022,11 +2023,185 @@ export default function AdminPage() {
               </div>
             )}
 
+            {/* ── COORDINATION ─────────────────────────────────────────────── */}
+            {section === "coordination" && (
+              <CoordinationAdmin />
+            )}
+
           </div>
         </div>
       </div>
 
       <Toast message={toast} onClose={() => setToast(null)} />
+    </div>
+  );
+}
+
+// ── Admin Coordination Component ─────────────────────────────────────────────
+
+const COORD_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  PENDING:            { bg: "#fff8e6", color: "#b8860b" },
+  LOCATION_CONFIRMED: { bg: "#e8f5f1", color: "#1a7a5e" },
+  TIME_PROPOSED:      { bg: "#e3f2fd", color: "#1565c0" },
+  SCHEDULED:          { bg: "#e8f5f1", color: "#1a7a5e" },
+  DONOR_READY:        { bg: "#e8f5f1", color: "#1a7a5e" },
+  DELIVERED:          { bg: "#e8f5f1", color: "#1a7a5e" },
+  CONFIRMED:          { bg: "#e8f5f1", color: "#1a7a5e" },
+  CANCELLED:          { bg: "#fdecea", color: "#c0392b" },
+  REPORTED:           { bg: "#fff3e0", color: "#d97706" },
+};
+
+const COORD_MSG_LABELS: Record<string, string> = {
+  IM_HERE: "I'm here", RUNNING_LATE: "Running late", ON_MY_WAY: "On my way",
+  CANT_MAKE_IT: "Can't make it", PICKUP_COMPLETE: "Pickup complete", CUSTOM: "(custom)",
+};
+
+interface AdminCoord {
+  id: string; status: string; createdAt: string;
+  proposedTime: string | null; confirmedTime: string | null;
+  cancelReason: string | null;
+  request: {
+    item: { id: string; title: string };
+    requester: { id: string; name: string; email: string | null };
+  };
+  location: { name: string; city: string; type: string } | null;
+  messages: { id: string; messageType: string; content: string | null; sender: { id: string; name: string }; createdAt: string }[];
+  reports: { id: string; reason: string; notes: string | null; reviewed: boolean; createdAt: string }[];
+  _count: { reports: number; messages: number };
+}
+
+function CoordinationAdmin() {
+  const [coordinations, setCoordinations] = useState<AdminCoord[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [statusFilter, setStatusFilter]   = useState("");
+  const [reportedOnly, setReportedOnly]   = useState(false);
+  const [expanded, setExpanded]           = useState<string | null>(null);
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (reportedOnly) params.set("reported", "1");
+    const res = await fetch(`/api/admin/coordination?${params}`);
+    if (res.ok) {
+      const d = await res.json();
+      setCoordinations(d.coordinations ?? []);
+    }
+    setLoading(false);
+  }, [statusFilter, reportedOnly]);
+
+  useEffect(() => { fetch_(); }, [fetch_]);
+
+  const statuses = ["PENDING","LOCATION_CONFIRMED","TIME_PROPOSED","SCHEDULED","DONOR_READY","DELIVERED","CONFIRMED","CANCELLED","REPORTED"];
+
+  return (
+    <div>
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ padding: "8px 12px", borderRadius: 10, border: "1.5px solid var(--border)", fontSize: 13, fontFamily: "Nunito, sans-serif", background: "white", cursor: "pointer" }}
+        >
+          <option value="">All statuses</option>
+          {statuses.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+        </select>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontFamily: "Nunito, sans-serif", cursor: "pointer" }}>
+          <input type="checkbox" checked={reportedOnly} onChange={(e) => setReportedOnly(e.target.checked)} />
+          Reported only
+        </label>
+        <div style={{ fontSize: 13, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginLeft: "auto" }}>
+          {coordinations.length} coordination{coordinations.length !== 1 ? "s" : ""}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="loading" style={{ marginTop: 40 }}><div className="spinner" /></div>
+      ) : coordinations.length === 0 ? (
+        <div className="empty"><div className="empty-title">No coordinations found</div></div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {coordinations.map((c) => {
+            const sc = COORD_STATUS_COLORS[c.status] ?? { bg: "#f5f5f5", color: "#555" };
+            const isExpanded = expanded === c.id;
+            return (
+              <div key={c.id} style={{ background: "var(--white)", borderRadius: 14, border: "1.5px solid var(--border)", overflow: "hidden" }}>
+                {/* Row */}
+                <div
+                  onClick={() => setExpanded(isExpanded ? null : c.id)}
+                  style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 12, padding: "14px 16px", cursor: "pointer", alignItems: "center" }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>{c.request.item.title}</div>
+                    <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>{c.request.requester.name} · {c.location?.city ?? "—"}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>{c.location?.name ?? "—"}</div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: sc.bg, color: sc.color, fontFamily: "Nunito, sans-serif" }}>
+                      {c.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                    {c._count.reports > 0 && <span style={{ color: "#d97706", fontWeight: 700 }}>⚑ {c._count.reports} report{c._count.reports !== 1 ? "s" : ""}</span>}
+                    {c._count.reports === 0 && <span>{c._count.messages} msg{c._count.messages !== 1 ? "s" : ""}</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--mid)" }}>{isExpanded ? "▲" : "▼"}</div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "14px 16px", background: "var(--bg)" }}>
+                    {/* Reports */}
+                    {c.reports.length > 0 && (
+                      <div style={{ marginBottom: 14 }}>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#d97706", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>Reports</div>
+                        {c.reports.map((r) => (
+                          <div key={r.id} style={{ background: "#fff3e0", borderRadius: 10, padding: "8px 12px", marginBottom: 6, fontSize: 12, fontFamily: "Nunito, sans-serif" }}>
+                            <span style={{ fontWeight: 700 }}>{r.reason.replace(/_/g, " ")}</span>
+                            {r.notes && <span style={{ color: "var(--mid)", marginLeft: 8 }}>{r.notes}</span>}
+                            {r.reviewed && <span style={{ marginLeft: 8, color: "#1a7a5e", fontWeight: 700 }}>✓ Reviewed</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Messages */}
+                    {c.messages.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>Message history</div>
+                        {c.messages.map((m) => (
+                          <div key={m.id} style={{ display: "flex", gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", fontFamily: "Nunito, sans-serif", minWidth: 80 }}>{m.sender.name.split(" ")[0]}</span>
+                            <span style={{ fontSize: 12, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>
+                              {m.messageType === "CUSTOM" ? m.content : COORD_MSG_LABELS[m.messageType]}
+                            </span>
+                            <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif", marginLeft: "auto" }}>
+                              {new Date(m.createdAt).toLocaleTimeString("en", { hour: "numeric", minute: "2-digit" })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {c.confirmedTime && (
+                      <div style={{ marginTop: 10, fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                        Scheduled: {new Date(c.confirmedTime).toLocaleString("en")}
+                      </div>
+                    )}
+                    {c.cancelReason && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "#c0392b", fontFamily: "Nunito, sans-serif" }}>
+                        Cancelled: {c.cancelReason}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

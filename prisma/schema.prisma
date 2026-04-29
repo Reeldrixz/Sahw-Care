@@ -96,6 +96,9 @@ model User {
   abuseEventLogs    AbuseEventLog[]
   abuseFlags        AbuseFlag[]
 
+  coordinationMessages CoordinationMessage[]
+  coordinationReports  CoordinationReport[]
+
   // relations
   favourites               Favourite[]
   items                    Item[]
@@ -214,9 +217,14 @@ model Request {
   requesterId String
   requester   User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
 
+  requestNote       String?
+  pickupLocationId  String?
+  preferredLocation PublicPickupLocation? @relation("RequestPreferredLocation", fields: [pickupLocationId], references: [id])
+
   conversation Conversation?
   review       Review?
   fulfillment  RequestFulfillment?
+  coordination PickupCoordination?
 }
 
 model RequestFulfillment {
@@ -270,6 +278,65 @@ model Message {
   sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+// ==================== PICKUP COORDINATION ====================
+
+model PickupCoordination {
+  id            String             @id @default(cuid())
+  requestId     String             @unique
+  locationId    String?
+  proposedTime  DateTime?
+  proposedBy    String?
+  confirmedTime DateTime?
+  status        CoordinationStatus @default(PENDING)
+  cancelledById String?
+  cancelReason  String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  request  Request               @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  location PublicPickupLocation?  @relation(fields: [locationId], references: [id])
+  messages CoordinationMessage[]
+  reports  CoordinationReport[]
+}
+
+model PublicPickupLocation {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  address   String   @default("")
+  city      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  coordinations     PickupCoordination[]
+  preferredRequests Request[]            @relation("RequestPreferredLocation")
+}
+
+model CoordinationMessage {
+  id             String           @id @default(cuid())
+  coordinationId String
+  senderId       String
+  messageType    CoordMessageType
+  content        String?
+  createdAt      DateTime         @default(now())
+
+  coordination PickupCoordination @relation(fields: [coordinationId], references: [id], onDelete: Cascade)
+  sender       User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model CoordinationReport {
+  id             String            @id @default(cuid())
+  coordinationId String
+  reporterId     String
+  reason         CoordReportReason
+  notes          String?
+  reviewed       Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+
+  coordination PickupCoordination @relation(fields: [coordinationId], references: [id], onDelete: Cascade)
+  reporter     User               @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 }
 
 model Report {
@@ -781,6 +848,13 @@ enum NotifType {
 
   // Request lock
   REQUEST_LOCK_CLEARED
+
+  // Coordination
+  COORDINATION_ACCEPTED
+  COORDINATION_TIME_PROPOSED
+  COORDINATION_SCHEDULED
+  COORDINATION_CANCELLED
+  COORDINATION_DELIVERED
 }
 
 enum BundleInstanceStatus {
@@ -942,6 +1016,7 @@ enum AbuseFlagType {
   REPEATED_BUNDLE_ATTEMPTS
   HIGH_UNVERIFIED_FULFILLMENTS
   DUPLICATE_LISTING
+  OFF_PLATFORM_CONTACT
 }
 
 enum Severity {
@@ -955,6 +1030,36 @@ enum AbuseFlagStatus {
   REVIEWED
   CLOSED
   ESCALATED
+}
+
+enum CoordinationStatus {
+  PENDING
+  LOCATION_CONFIRMED
+  TIME_PROPOSED
+  SCHEDULED
+  DONOR_READY
+  DELIVERED
+  CONFIRMED
+  CANCELLED
+  REPORTED
+}
+
+enum CoordMessageType {
+  IM_HERE
+  RUNNING_LATE
+  ON_MY_WAY
+  CANT_MAKE_IT
+  PICKUP_COMPLETE
+  CUSTOM
+}
+
+enum CoordReportReason {
+  INAPPROPRIATE_MESSAGES
+  REQUESTING_PERSONAL_INFO
+  PRESSURE_OR_HARASSMENT
+  OFF_PLATFORM_CONTACT_ATTEMPT
+  SUSPICIOUS_BEHAVIOUR
+  OTHER
 }
 
 // ==================== MONTHLY BUNDLE FUNDING ====================

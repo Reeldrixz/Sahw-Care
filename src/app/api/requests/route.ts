@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     }, { status: 429 });
   }
 
-  const { itemId, note, reasonForRequest, whoIsItFor, pickupPreference } = await req.json();
+  const { itemId, note, reasonForRequest, requestNote, whoIsItFor, pickupPreference, pickupLocationId } = await req.json();
 
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
 
@@ -133,8 +133,10 @@ export async function POST(req: NextRequest) {
       requesterId: user.userId,
       note: note ?? null,
       reasonForRequest: reasonForRequest ?? null,
+      requestNote: requestNote ?? null,
       whoIsItFor: whoIsItFor ?? null,
       pickupPreference: pickupPreference ?? null,
+      pickupLocationId: pickupLocationId ?? null,
     },
     include: {
       item: { select: { id: true, title: true, donor: { select: { id: true, name: true } } } },
