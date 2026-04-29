@@ -9,15 +9,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
-    const { id }     = await params;
-    const { status } = await req.json();
+    const { id } = await params;
+    const body = await req.json();
+    const { status, adminBlurred, frozenReason } = body;
 
-    const validStatuses = ["PENDING", "ACTIVE", "FULFILLED", "REMOVED"];
-    if (!validStatuses.includes(status)) {
+    const validStatuses = ["PENDING", "ACTIVE", "FULFILLED", "REMOVED", "FROZEN", "RESERVED"];
+    if (status && !validStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const item = await prisma.item.update({ where: { id }, data: { status } });
+    const item = await prisma.item.update({
+      where: { id },
+      data: {
+        ...(status && { status }),
+        ...(adminBlurred !== undefined && { adminBlurred }),
+        ...(frozenReason !== undefined && { frozenReason }),
+        ...(status === "FROZEN" && { frozenAt: new Date() }),
+        ...(status !== "FROZEN" && { frozenAt: null, frozenReason: null }),
+      },
+    });
     return NextResponse.json({ item });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

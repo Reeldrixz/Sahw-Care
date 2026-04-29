@@ -39,6 +39,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: { status: "ACCEPTED", reviewedAt: new Date() },
     });
 
+    // Decrement quantityNum; reserve item if it hits 0
+    const currentItem = await prisma.item.findUnique({
+      where: { id: request.item.id },
+      select: { quantityNum: true, status: true },
+    });
+    if (currentItem) {
+      const newQty = Math.max(0, (currentItem.quantityNum ?? 1) - 1);
+      await prisma.item.update({
+        where: { id: request.item.id },
+        data: {
+          quantityNum: newQty,
+          ...(newQty === 0 ? { status: "RESERVED" } : {}),
+        },
+      });
+    }
+
     // Create conversation if not already present
     let conversationId: string | null = request.conversation?.id ?? null;
     if (!conversationId) {
@@ -81,6 +97,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // ── Decline: set DECLINED, notify recipient ──────────────────────────────
   if (action === "decline") {
+    // Restore item if it was reserved due to this acceptance
+    const currentItem = await prisma.item.findUnique({
+      where: { id: request.item.id },
+      select: { status: true, quantityNum: true },
+    });
+    if (currentItem?.status === "RESERVED") {
+      await prisma.item.update({
+        where: { id: request.item.id },
+        data: { status: "ACTIVE", quantityNum: (currentItem.quantityNum ?? 0) + 1 },
+      });
+    }
+
     const updated = await prisma.request.update({
       where: { id },
       data: {
@@ -107,6 +135,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const validStatuses = ["APPROVED", "REJECTED", "FULFILLED", "ACCEPTED", "DECLINED", "CANCELLED"];
   if (!status || !validStatuses.includes(status)) {
     return NextResponse.json({ error: "Invalid action or status" }, { status: 400 });
+  }
+
+  // Restore item reservation on cancel
+  if (status === "CANCELLED") {
+    const cancellableItem = await prisma.item.findUnique({
+      where: { id: request.item.id },
+      select: { status: true, quantityNum: true },
+    });
+    if (cancellableItem?.status === "RESERVED") {
+      await prisma.item.update({
+        where: { id: request.item.id },
+        data: { status: "ACTIVE", quantityNum: (cancellableItem.quantityNum ?? 0) + 1 },
+      });
+    }
   }
 
   const updated = await prisma.request.update({

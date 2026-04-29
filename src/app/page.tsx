@@ -56,12 +56,14 @@ interface PendingRequest {
 // ── Category config ────────────────────────────────────────────────────────────
 
 const CATS = [
-  { display: "Everything",         api: "All"       },
-  { display: "Feeding & Formula",  api: "Feeding"   },
-  { display: "Nappies & Wipes",    api: "Diapering" },
-  { display: "Baby Clothing",      api: "Clothing"  },
-  { display: "Maternity & Recovery", api: "Maternity" },
-  { display: "Baby Hygiene",       api: "Hygiene"   },
+  { display: "Everything",           api: "All"       },
+  { display: "Feeding & Formula",    api: "Feeding"   },
+  { display: "Nappies & Wipes",      api: "Diapering" },
+  { display: "Baby Clothing",        api: "Clothing"  },
+  { display: "Baby Hygiene",         api: "Hygiene"   },
+  { display: "Maternity",            api: "Maternity" },
+  { display: "Maternity & Recovery", api: "Recovery"  },
+  { display: "Travel & Gear",        api: "Travel"    },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

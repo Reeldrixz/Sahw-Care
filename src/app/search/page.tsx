@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, ArrowLeft, Package, Gift, ClipboardList, Milk, Baby, Heart, Shirt, Sparkles, type LucideIcon } from "lucide-react";
+import { Search, ArrowLeft, Package, Gift, ClipboardList, Milk, Baby, Heart, Shirt, Sparkles, Stethoscope, Luggage, type LucideIcon } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import SearchBar from "@/components/SearchBar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,11 +18,13 @@ const FILTER_TABS: { key: FilterType; label: string }[] = [
 
 const CAT_BG: Record<string, string> = {
   "Feeding": "#e8f5f1", "Diapering": "#fff8ed", "Maternity": "#f5f3ff",
-  "Clothing": "#eff6ff", "Hygiene": "#f0fdf4", "Other": "#f5f5f5",
+  "Clothing": "#eff6ff", "Hygiene": "#f0fdf4", "Recovery": "#fdf2f8",
+  "Travel": "#f0f9ff", "Other": "#f5f5f5",
 };
 const CAT_ICONS: Record<string, LucideIcon> = {
   "Feeding": Milk, "Diapering": Baby, "Maternity": Heart,
-  "Clothing": Shirt, "Hygiene": Sparkles, "Other": Package,
+  "Clothing": Shirt, "Hygiene": Sparkles, "Recovery": Stethoscope,
+  "Travel": Luggage, "Other": Package,
 };
 
 interface SearchItem {

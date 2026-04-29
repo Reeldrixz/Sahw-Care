@@ -8,7 +8,13 @@ interface DonateModalProps {
   onSubmit: (data: FormData) => Promise<void>;
 }
 
-const CATEGORIES = ["Feeding", "Diapering", "Maternity", "Clothing", "Hygiene", "Other"];
+const CATEGORIES = ["Feeding", "Hygiene", "Clothing", "Recovery", "Travel", "Maternity", "Diapering"];
+const CONDITIONS = [
+  { value: "NEW",          label: "New"             },
+  { value: "SEALED",       label: "Sealed"          },
+  { value: "GENTLY_USED",  label: "Gently used"     },
+  { value: "OPENED_SAFE",  label: "Opened but safe" },
+];
 
 const field: React.CSSProperties = {
   width: "100%",
@@ -41,7 +47,7 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
   const [form, setForm] = useState({
     title: "",
     category: "Feeding",
-    condition: "New (unopened)",
+    condition: "NEW",
     quantity: "",
     location: "",
     description: "",
@@ -158,8 +164,7 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
                   onFocus={() => setFocused("condition")}
                   onBlur={() => setFocused(null)}
                 >
-                  <option>New (unopened)</option>
-                  <option>Slightly used</option>
+                  {CONDITIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
-const CATEGORIES = ["Feeding", "Diapering", "Maternity", "Clothing", "Hygiene"];
-const CONDITIONS = ["New (unopened)", "Slightly used"];
+const CATEGORIES = ["Feeding", "Diapering", "Maternity", "Clothing", "Hygiene", "Recovery", "Travel"];
+const CONDITIONS = ["New", "Sealed", "Gently used", "Opened but safe"];
 const DISTANCES = ["Under 1km", "Under 3km", "Under 5km", "Any"];
 
 interface FilterSheetProps {

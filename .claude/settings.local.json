@@ -26,7 +26,9 @@
       "Bash(git commit *)",
       "Bash(vercel *)",
       "Bash(xargs grep *)",
-      "Bash(npx ts-node *)"
+      "Bash(npx ts-node *)",
+      "Bash(npx tsx *)",
+      "Bash(timeout 15 bash -c \"cat 'C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-user-carecircle\\\\e738343e-2246-43a3-96b6-4543840f7f57\\\\tasks\\\\brxv6qkd4.output'\")"
     ]
   }
 }

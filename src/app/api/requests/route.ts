@@ -97,6 +97,9 @@ export async function POST(req: NextRequest) {
   const item = await prisma.item.findUnique({ where: { id: itemId } });
   if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
 
+  if (item.status === "RESERVED") {
+    return NextResponse.json({ error: "This item has already been reserved." }, { status: 409 });
+  }
   if (item.status !== "ACTIVE") {
     return NextResponse.json({ error: "This item is no longer available" }, { status: 409 });
   }

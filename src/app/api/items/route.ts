@@ -3,6 +3,28 @@ import { prisma } from "@/lib/prisma";
 import { countryCodeToFlag } from "@/lib/stage";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { TRUST_THRESHOLDS } from "@/lib/trust";
+import { createAbuseFlag } from "@/lib/abuse";
+
+const PROFANITY_LIST = ["fuck", "shit", "cunt", "nigger", "bitch", "asshole", "bastard", "cock", "pussy", "whore"];
+
+function validateItemTitle(title: string): { valid: boolean; reason?: string } {
+  if (title.trim().length < 3) return { valid: false, reason: "Title is too short." };
+  if (title.length > 100) return { valid: false, reason: "Title is too long (max 100 characters)." };
+  const lower = title.toLowerCase();
+  if (PROFANITY_LIST.some((w) => lower.includes(w))) return { valid: false, reason: "Title contains inappropriate language." };
+  const letters = title.replace(/[^a-zA-Z]/g, "");
+  const upperCount = (title.match(/[A-Z]/g) ?? []).length;
+  if (letters.length > 4 && upperCount / letters.length > 0.5) return { valid: false, reason: "Please use normal capitalisation in your title." };
+  const emojiCount = (title.match(/\p{Emoji}/gu) ?? []).length;
+  if (emojiCount > 2) return { valid: false, reason: "Too many emojis in the title." };
+  if (/(.)\1{4,}/.test(title)) return { valid: false, reason: "Title looks like spam." };
+  return { valid: true };
+}
+
+function parseQuantityNum(quantityStr: string): number {
+  const match = quantityStr.match(/\d+/);
+  return match ? Math.max(1, parseInt(match[0])) : 1;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -193,12 +215,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const titleCheck = validateItemTitle(title);
+    if (!titleCheck.valid) return NextResponse.json({ error: titleCheck.reason }, { status: 422 });
+
     const item = await prisma.item.create({
       data: {
         title,
         category,
         condition,
         quantity,
+        quantityNum: parseQuantityNum(String(quantity)),
         location,
         description: description ?? null,
         images:      images      ?? [],
@@ -210,6 +236,21 @@ export async function POST(req: NextRequest) {
         donor: { select: { id: true, name: true, avatar: true } },
       },
     });
+
+    // Silent duplicate detection
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600000);
+    const similar = await prisma.item.findFirst({
+      where: {
+        donorId: user.userId,
+        title: { contains: title.slice(0, 10), mode: "insensitive" },
+        createdAt: { gte: sevenDaysAgo },
+        status: { not: "REMOVED" },
+        id: { not: item.id },
+      },
+    });
+    if (similar) {
+      createAbuseFlag(user.userId, "DUPLICATE_LISTING", "LOW", { title, similarItemId: similar.id }).catch(() => {});
+    }
 
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {

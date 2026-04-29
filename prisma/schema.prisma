@@ -148,11 +148,15 @@ model Item {
   category    String
   condition   String
   quantity    String
+  quantityNum Int        @default(1)
   location    String
   description String?
   images      String[]
   urgent      Boolean    @default(false)
   status      ItemStatus @default(PENDING)
+  adminBlurred Boolean   @default(false)
+  frozenAt     DateTime?
+  frozenReason String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
@@ -444,6 +448,8 @@ enum ItemStatus {
   ACTIVE
   FULFILLED
   REMOVED
+  FROZEN
+  RESERVED
 }
 
 enum RequestStatus {
@@ -935,6 +941,7 @@ enum AbuseFlagType {
   TRUST_SCORE_RECOVERY_SPAM
   REPEATED_BUNDLE_ATTEMPTS
   HIGH_UNVERIFIED_FULFILLMENTS
+  DUPLICATE_LISTING
 }
 
 enum Severity {

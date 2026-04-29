@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import {
   MapPin, CheckCircle, MoreHorizontal, X,
-  Milk, Baby, Heart, Shirt, Sparkles, Package, type LucideIcon,
+  Milk, Baby, Heart, Shirt, Sparkles, Package, Stethoscope, Luggage, type LucideIcon,
 } from "lucide-react";
 
 export interface ItemData {
@@ -19,6 +19,7 @@ export interface ItemData {
   urgent: boolean;
   status: string;
   createdAt: string;
+  adminBlurred?: boolean;
   requestable?: boolean;
   requestLockedReason?: string | null;
   donor: {
@@ -37,6 +38,8 @@ const CAT_BG: Record<string, string> = {
   "Maternity": "#f5f3ff",
   "Clothing":  "#eff6ff",
   "Hygiene":   "#f0fdf4",
+  "Recovery":  "#fdf2f8",
+  "Travel":    "#f0f9ff",
   "Other":     "#f5f5f5",
 };
 
@@ -46,6 +49,8 @@ const CAT_ICONS: Record<string, LucideIcon> = {
   "Maternity": Heart,
   "Clothing":  Shirt,
   "Hygiene":   Sparkles,
+  "Recovery":  Stethoscope,
+  "Travel":    Luggage,
   "Other":     Package,
 };
 
@@ -67,7 +72,10 @@ function timeAgo(dateStr: string): string {
 }
 
 function normalizeCondition(c: string): string {
-  if (c === "Slightly used" || c === "Gently used") return "Gently used";
+  if (c === "NEW")         return "New";
+  if (c === "SEALED")      return "Sealed";
+  if (c === "GENTLY_USED" || c === "Slightly used" || c === "Gently used") return "Gently used";
+  if (c === "OPENED_SAFE") return "Opened but safe";
   if (c === "New (unopened)" || c === "New (Unopened)") return "New";
   return c;
 }
@@ -104,6 +112,7 @@ export default function ListCard({ item, requested, favourited, locked, onReques
   const city = item.location.includes(",") ? item.location.split(",")[0].trim() : item.location;
   const isFulfilled = item.status === "FULFILLED";
   const isReserved = item.status === "RESERVED";
+  const isBlurred = item.adminBlurred === true;
 
   const handleReport = async () => {
     if (!reportReason) return;
@@ -147,11 +156,23 @@ export default function ListCard({ item, requested, favourited, locked, onReques
               src={item.images[0]}
               alt={item.title}
               fill
-              style={{ objectFit: "cover" }}
+              style={{ objectFit: "cover", filter: isBlurred ? "blur(8px)" : undefined }}
               sizes="430px"
             />
           ) : (
             <CatIcon size={48} color="#1a7a5e" strokeWidth={1.25} style={{ opacity: 0.5 }} />
+          )}
+
+          {/* Admin blur overlay */}
+          {isBlurred && (
+            <div style={{
+              position: "absolute", top: 8, left: 8,
+              background: "#d97706", color: "white",
+              fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 20,
+              fontFamily: "Nunito, sans-serif",
+            }}>
+              Under review
+            </div>
           )}
 
           {/* Verified overlay pill */}
