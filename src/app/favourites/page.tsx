@@ -15,6 +15,12 @@ export default function FavouritesPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    if (user?.onboardingComplete && user.journeyType === "donor") {
+      router.replace("/");
+    }
+  }, [user, router]);
+
   const fetchFavs = useCallback(async () => {
     if (!user) { setLoading(false); return; }
     try {
