@@ -131,9 +131,11 @@ model User {
   fundingCount     Int @default(0)
 
   // notification preferences
-  notifyNewPosts      Boolean @default(false)
-  notifyReplies       Boolean @default(true)
-  notifyThreadReplies Boolean @default(true)
+  notifyNewPosts       Boolean @default(false)
+  notifyReplies        Boolean @default(true)
+  notifyThreadReplies  Boolean @default(true)
+  notifyBundleUpdates  Boolean @default(true)
+  notifyVerification   Boolean @default(true)
 
   notifications Notification[]
 }

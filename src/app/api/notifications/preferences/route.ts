@@ -3,6 +3,8 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
+const PREF_FIELDS = ["notifyNewPosts", "notifyReplies", "notifyThreadReplies", "notifyBundleUpdates", "notifyVerification"] as const;
+
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const auth = token ? await verifyToken(token) : null;
@@ -10,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { notifyNewPosts: true, notifyReplies: true, notifyThreadReplies: true },
+    select: { notifyNewPosts: true, notifyReplies: true, notifyThreadReplies: true, notifyBundleUpdates: true, notifyVerification: true },
   });
   return NextResponse.json({ prefs: user });
 }
@@ -22,14 +24,14 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
   const data: Record<string, boolean> = {};
-  if (typeof body.notifyNewPosts === "boolean")      data.notifyNewPosts = body.notifyNewPosts;
-  if (typeof body.notifyReplies === "boolean")       data.notifyReplies = body.notifyReplies;
-  if (typeof body.notifyThreadReplies === "boolean") data.notifyThreadReplies = body.notifyThreadReplies;
+  for (const field of PREF_FIELDS) {
+    if (typeof body[field] === "boolean") data[field] = body[field];
+  }
 
   const user = await prisma.user.update({
     where: { id: auth.userId },
     data,
-    select: { notifyNewPosts: true, notifyReplies: true, notifyThreadReplies: true },
+    select: { notifyNewPosts: true, notifyReplies: true, notifyThreadReplies: true, notifyBundleUpdates: true, notifyVerification: true },
   });
   return NextResponse.json({ prefs: user });
 }
