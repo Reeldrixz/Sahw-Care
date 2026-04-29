@@ -48,11 +48,6 @@ export default function RegistersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    if (user?.onboardingComplete && user.journeyType === "donor") {
-      router.replace("/");
-    }
-  }, [user, router]);
 
   const fetchRegisters = useCallback(async () => {
     setLoading(true);
@@ -80,7 +75,7 @@ export default function RegistersPage() {
         <div style={{ background: "var(--white)", padding: "16px 16px 0" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700 }}>Registers</div>
-            {user && (
+            {user && user.journeyType !== "donor" && (
               <button
                 onClick={() => router.push("/registers/new")}
                 style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
@@ -112,7 +107,7 @@ export default function RegistersPage() {
               <div className="empty-icon">📋</div>
               <div className="empty-title">No registers yet</div>
               <div style={{ marginBottom: 20 }}>Be the first to create one!</div>
-              {user && (
+              {user && user.journeyType !== "donor" && (
                 <button className="btn-primary" style={{ width: "auto", padding: "10px 24px" }} onClick={() => router.push("/registers/new")}>
                   + Create Register
                 </button>

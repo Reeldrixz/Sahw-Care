@@ -23,11 +23,11 @@ const MOM_TABS = [
   { path: "/profile",     label: "Profile",    Icon: CircleUser    },
 ];
 
-// Tabs shown to donor users (no Circles, no Registers)
+// Tabs shown to donor users (no Circles)
 const DONOR_TABS = [
   { path: "/",            label: "Discover",   Icon: Compass       },
+  { path: "/registers",   label: "Registers",  Icon: ClipboardList },
   { path: "/bundles",     label: "Bundles",    Icon: Gift          },
-  { path: "/chat",        label: "Messages",   Icon: MessageCircle },
   { path: "/favourites",  label: "Favourites", Icon: Heart         },
   { path: "/profile",     label: "Profile",    Icon: CircleUser    },
 ];
