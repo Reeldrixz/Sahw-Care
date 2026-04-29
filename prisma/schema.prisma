@@ -207,8 +207,10 @@ model Request {
 
   // Review-flow fields
   reasonForRequest String?
-  whoIsItFor       String? // ME | MY_BABY | SOMEONE_I_CARE_FOR
-  pickupPreference String? // PICKUP | DELIVERY
+  whoIsItFor       String? // ME | MY_BABY
+  pickupPreference String? // PICKUP | DELIVERY_SUPPORT
+  pickupMode       String? @default("PICKUP") // PICKUP | DELIVERY_SUPPORT
+  pickupCategoryId String? // PICKUP_CATEGORIES id e.g. CAFE
   reviewedAt       DateTime?
   reviewNote       String?
 

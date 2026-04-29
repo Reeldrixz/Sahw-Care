@@ -441,7 +441,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             </div>
             <div style={{ textAlign: "center" }}>
               <Package size={18} color="#1a7a5e" style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Kradel delivers</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Kradəl delivers</div>
               <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>We purchase and deliver items directly — donors don't ship anything.</div>
             </div>
             <div style={{ textAlign: "center" }}>

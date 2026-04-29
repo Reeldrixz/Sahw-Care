@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react";
 import {
-  X, Clock, CheckCircle, MapPin,
+  X, Clock, CheckCircle, MapPin, Package, ShieldCheck,
   Coffee, ShoppingCart, Building2, BookOpen, Pill, Store,
   type LucideIcon,
 } from "lucide-react";
 import { ItemData } from "@/components/ListCard";
 import { useRouter } from "next/navigation";
-import Avatar from "@/components/Avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { PICKUP_CATEGORIES, type PickupCategoryId } from "@/lib/pickup-categories";
 
@@ -18,7 +17,7 @@ interface Props {
   onSubmitted: (itemId: string) => void;
 }
 
-type WhoFor = "ME" | "MY_BABY" | "MY_HOUSEHOLD_FAMILY";
+type WhoFor = "ME" | "MY_BABY";
 type PickupPref = "PICKUP" | "DELIVERY_SUPPORT";
 
 interface Suggestion {
@@ -36,9 +35,8 @@ interface CategoryBucket {
 }
 
 const WHO_OPTIONS: { value: WhoFor; label: string }[] = [
-  { value: "ME",                  label: "Me" },
-  { value: "MY_BABY",             label: "My baby" },
-  { value: "MY_HOUSEHOLD_FAMILY", label: "My household / family" },
+  { value: "ME",       label: "Me" },
+  { value: "MY_BABY",  label: "My baby" },
 ];
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -105,6 +103,8 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
         requestNote:      note.trim() || null,
         whoIsItFor:       whoFor,
         pickupPreference: pickup,
+        pickupMode:       pickup ?? "PICKUP",
+        pickupCategoryId: pickup === "PICKUP" ? (selectedCategory ?? null) : null,
         pickupLocationId: pickup === "PICKUP" ? derivedLocationId : null,
       }),
     });
@@ -176,13 +176,18 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
             marginBottom: 22, display: "flex", alignItems: "center", gap: 12,
             border: "1.5px solid var(--border)",
           }}>
-            <Avatar src={item.donor.avatar} name={item.donor.name} size={36} />
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, background: "var(--green-light)",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Package size={18} color="var(--green)" strokeWidth={1.75} />
+            </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "Nunito, sans-serif", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {item.title}
               </div>
               <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                From {donorFirstName} · {item.condition} · {item.location.split(",")[0]}
+                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified donor" : "Shared by a Kradəl member"} · {item.condition} · {item.location.split(",")[0]}
               </div>
             </div>
             {item.urgent && (
@@ -260,7 +265,10 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                     background: "var(--bg)", color: "var(--ink)", lineHeight: 1.5,
                   }}
                 />
-                <div style={{ textAlign: "right", marginTop: 4 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                  <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
+                    Keep it brief — logistics only.
+                  </span>
                   <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
                     {note.length}/100
                   </span>
@@ -286,6 +294,16 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                   {radioBtn(pickup === "PICKUP", () => { setPickup("PICKUP"); setSelectedCategory(null); }, "I can pick up from a public place")}
                   {radioBtn(pickup === "DELIVERY_SUPPORT", () => { setPickup("DELIVERY_SUPPORT"); setSelectedCategory(null); }, "I need delivery support")}
                 </div>
+                {pickup === "DELIVERY_SUPPORT" && (
+                  <div style={{
+                    marginTop: 12, background: "#fffbeb",
+                    border: "1.5px solid #fbbf24", borderRadius: 12, padding: "12px 14px",
+                  }}>
+                    <div style={{ fontSize: 13, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                      <strong>Delivery support is limited and not guaranteed.</strong> Our team will check whether it&apos;s available in your area. Choosing a nearby public pickup location is usually faster and easier to arrange.
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Category picker */}
@@ -296,8 +314,14 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                     <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Lora, serif", color: "var(--ink)", marginBottom: 4 }}>
                       Choose a public place type <span style={{ color: "var(--terra)" }}>*</span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.5, marginBottom: 6 }}>
                       Pick the kind of place that&apos;s easy for you. You and the donor will agree on the exact spot together.
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <ShieldCheck size={13} color="var(--green)" strokeWidth={1.75} />
+                      <span style={{ fontSize: 12, color: "var(--green)", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}>
+                        Public pickup locations help keep exchanges safer for everyone.
+                      </span>
                     </div>
                   </div>
 

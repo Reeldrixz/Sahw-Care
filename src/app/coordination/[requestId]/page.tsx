@@ -341,6 +341,9 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
         <div style={{ paddingBottom: 140 }}>
 
           {/* Safety reminder — shown when SCHEDULED */}
+          {/* TODO(safety): consider DB-backed CoordinationMessage with messageType=SYSTEM_NOTICE */}
+          {/* for audit trail of safety reminders shown. Requires nullable senderId or */}
+          {/* dedicated system user. Deferred — client-side banner sufficient for MVP. */}
           {showSafety && (
             <div style={{ margin: "12px 16px 0", background: "#fffbeb", border: "1.5px solid #fbbf24", borderRadius: 14, padding: "14px 16px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -436,7 +439,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
           {coord.messages.length > 0 && (
             <div style={{ margin: "12px 16px 0" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
-                Coordination log
+                Updates
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {coord.messages.map((msg) => {
@@ -551,6 +554,14 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                 ))}
               </div>
             )}
+
+            {/* Persistent safety footer */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0 4px" }}>
+              <ShieldCheck size={13} color="#1a7a5e" strokeWidth={1.75} />
+              <span style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}>
+                Keep all coordination inside Kradəl
+              </span>
+            </div>
 
             {/* Send a note */}
             {!isTerminal && (

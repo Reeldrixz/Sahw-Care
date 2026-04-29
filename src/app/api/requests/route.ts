@@ -90,9 +90,13 @@ export async function POST(req: NextRequest) {
     }, { status: 429 });
   }
 
-  const { itemId, note, reasonForRequest, requestNote, whoIsItFor, pickupPreference, pickupLocationId } = await req.json();
+  const { itemId, note, reasonForRequest, requestNote, whoIsItFor, pickupPreference, pickupLocationId, pickupMode, pickupCategoryId } = await req.json();
 
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
+
+  if (whoIsItFor !== undefined && whoIsItFor !== null && !["ME", "MY_BABY"].includes(whoIsItFor)) {
+    return NextResponse.json({ error: "Please choose Myself or My baby." }, { status: 400 });
+  }
 
   const item = await prisma.item.findUnique({ where: { id: itemId } });
   if (!item) return NextResponse.json({ error: "Item not found" }, { status: 404 });
@@ -136,6 +140,8 @@ export async function POST(req: NextRequest) {
       requestNote: requestNote ?? null,
       whoIsItFor: whoIsItFor ?? null,
       pickupPreference: pickupPreference ?? null,
+      pickupMode: pickupMode ?? "PICKUP",
+      pickupCategoryId: pickupCategoryId ?? null,
       pickupLocationId: pickupLocationId ?? null,
     },
     include: {
