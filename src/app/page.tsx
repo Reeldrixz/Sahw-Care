@@ -733,9 +733,9 @@ export default function DiscoverPage() {
 
           {/* ── Items section ──────────────────────────────────────────────── */}
           <div className="section" style={{ paddingBottom: 100 }}>
-            <div className="section-head" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+            <div className="section-head" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <div className="section-title">Available near you</div>
-              <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif" }}>All listings are reviewed by the Kradəl team.</div>
+              <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif" }}>Nearest · Most recent</div>
             </div>
 
             {loadingItems ? (
