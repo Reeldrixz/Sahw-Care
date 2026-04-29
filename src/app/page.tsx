@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import {
   MapPin, Lock, CheckCircle, XCircle, MessageCircle,
-  Gift, Plus, Search, Package, Bell, X, ChevronDown,
+  Gift, ClipboardList, Search, Package, Bell, X, ChevronDown,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import RequestReviewSheet from "@/components/RequestReviewSheet";
@@ -366,16 +366,16 @@ export default function DiscoverPage() {
     }
   };
 
-  // ── FAB action based on role ───────────────────────────────────────────────
+  // ── FAB role detection ────────────────────────────────────────────────────
+  const isMother = user?.journeyType === "pregnant" || user?.journeyType === "postpartum";
+
   const fabAction = () => {
     if (!user) { router.push("/auth"); return; }
-    if (user.journeyType === "donor") { setShowDonate(true); return; }
-    router.push("/registers/new");
+    if (isMother) { router.push("/registers/new"); return; }
+    setShowDonate(true);
   };
 
-  const fabLabel = user?.journeyType === "donor" || !user
-    ? "Offer an item"
-    : "Add to my Register";
+  const fabLabel = isMother ? "Add to my Register" : "Offer an item";
 
   // ── Location selection handler ─────────────────────────────────────────────
   const handleLocationSelect = useCallback((city: string, radius: number, byGPS: boolean) => {
@@ -814,7 +814,10 @@ export default function DiscoverPage() {
             fontSize: 12, color: "#1a1a1a", maxWidth: 220, textAlign: "center",
             lineHeight: 1.5, fontFamily: "Nunito, sans-serif", position: "relative",
           }}>
-            Have something a mother could use? Offer it here — it&apos;s free.
+            {isMother
+              ? "Create a register so donors can fulfil your needs — it’s free."
+              : "Have something a mother could use? Offer it here — it’s free."
+            }
             <button
               onClick={(e) => { e.stopPropagation(); dismissTooltip(); }}
               style={{ position: "absolute", top: 6, right: 8, background: "none", border: "none", cursor: "pointer", display: "flex" }}
@@ -839,10 +842,10 @@ export default function DiscoverPage() {
             whiteSpace: "nowrap",
           }}
         >
-          {user?.journeyType === "donor" || !user ? (
-            <Gift size={16} strokeWidth={2} />
+          {isMother ? (
+            <ClipboardList size={16} strokeWidth={2} />
           ) : (
-            <Plus size={16} strokeWidth={2.5} />
+            <Gift size={16} strokeWidth={2} />
           )}
           {fabLabel}
         </button>
