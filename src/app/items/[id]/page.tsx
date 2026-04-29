@@ -96,6 +96,10 @@ export default function ItemDetailPage() {
   const [showVerifSheet, setShowVerifSheet] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({ title: "", category: "", condition: "", quantity: "", location: "", description: "" });
@@ -500,7 +504,7 @@ export default function ItemDetailPage() {
 
             {/* Common actions */}
             {[
-              { icon: Flag, label: "Report this listing", color: "#ef4444", action: () => { setShowMenu(false); setToast("Report submitted — thank you."); } },
+              { icon: Flag, label: "Report this listing", color: "#ef4444", action: () => { setShowMenu(false); setShowReportSheet(true); } },
               { icon: Share2, label: "Share", color: "#555555", action: () => { setShowMenu(false); handleShare(); } },
               { icon: EyeOff, label: "Hide this item", color: "#555555", action: handleHide },
             ].map(({ icon: Icon, label, color, action }) => (
@@ -604,6 +608,54 @@ export default function ItemDetailPage() {
                 {editLoading ? "Saving..." : "Save changes"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Report sheet ────────────────────────────────────────────────────── */}
+      {showReportSheet && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setShowReportSheet(false); setReportReason(""); setReportSubmitted(false); }}>
+          <div style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 430, padding: "20px 20px 44px", animation: "sheetUp 0.25s ease" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: 36, height: 4, background: "#e5e7eb", borderRadius: 4, margin: "0 auto 20px" }} />
+            {reportSubmitted ? (
+              <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
+                <CheckCircle size={32} color="#1a7a5e" style={{ marginBottom: 10 }} />
+                <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 15, color: "#1a1a1a", marginBottom: 6 }}>Thank you</div>
+                <div style={{ fontSize: 13, color: "#555555", lineHeight: 1.5, fontFamily: "Nunito, sans-serif" }}>Our team will review this listing.</div>
+                <button onClick={() => { setShowReportSheet(false); setReportSubmitted(false); setReportReason(""); }} style={{ marginTop: 16, fontSize: 13, color: "#1a7a5e", background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontFamily: "Nunito, sans-serif" }}>
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 15, color: "#1a1a1a" }}>Something wrong with this listing?</div>
+                  <button onClick={() => { setShowReportSheet(false); setReportReason(""); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}>
+                    <X size={18} color="#9ca3af" />
+                  </button>
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 18, fontFamily: "Nunito, sans-serif" }}>What&apos;s wrong with this listing?</div>
+                {["This item doesn't seem genuine", "Duplicate listing", "Inappropriate content", "Other"].map((r) => (
+                  <label key={r} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #f5f5f5", cursor: "pointer" }}>
+                    <input type="radio" name="report-reason-detail" value={r} checked={reportReason === r} onChange={() => setReportReason(r)} style={{ accentColor: "#1a7a5e", width: 16, height: 16 }} />
+                    <span style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{r}</span>
+                  </label>
+                ))}
+                <button
+                  disabled={!reportReason || reportLoading}
+                  onClick={async () => {
+                    if (!reportReason || !item) return;
+                    setReportLoading(true);
+                    await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: item.id, reason: reportReason }) }).catch(() => {});
+                    setReportLoading(false);
+                    setReportSubmitted(true);
+                  }}
+                  style={{ marginTop: 20, width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "white", color: reportReason ? "#1a7a5e" : "#9ca3af", fontSize: 13, fontWeight: 700, cursor: reportReason ? "pointer" : "default", fontFamily: "Nunito, sans-serif" }}
+                >
+                  {reportLoading ? "Submitting…" : "Submit report"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
