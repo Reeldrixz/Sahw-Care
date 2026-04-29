@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Clock, CheckCircle, MapPin, ShoppingCart, Coffee, BookOpen, Building2, Pill, type LucideIcon } from "lucide-react";
+import {
+  X, Clock, CheckCircle, MapPin,
+  Coffee, ShoppingCart, Building2, BookOpen, Pill, Store,
+  type LucideIcon,
+} from "lucide-react";
 import { ItemData } from "@/components/ListCard";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { PICKUP_CATEGORIES, type PickupCategoryId } from "@/lib/pickup-categories";
 
 interface Props {
   item: ItemData;
@@ -16,72 +21,77 @@ interface Props {
 type WhoFor = "ME" | "MY_BABY" | "MY_HOUSEHOLD_FAMILY";
 type PickupPref = "PICKUP" | "DELIVERY_SUPPORT";
 
-interface Location {
+interface Suggestion {
   id: string;
   name: string;
-  type: string;
+  address: string;
   city: string;
 }
 
+interface CategoryBucket {
+  id: string;
+  label: string;
+  icon: string;
+  suggestions: Suggestion[];
+}
+
 const WHO_OPTIONS: { value: WhoFor; label: string }[] = [
-  { value: "ME",                 label: "Me" },
-  { value: "MY_BABY",            label: "My baby" },
+  { value: "ME",                  label: "Me" },
+  { value: "MY_BABY",             label: "My baby" },
   { value: "MY_HOUSEHOLD_FAMILY", label: "My household / family" },
 ];
 
-const LOCATION_ICONS: Record<string, LucideIcon> = {
-  GROCERY:          ShoppingCart,
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
   CAFE:             Coffee,
-  LIBRARY:          BookOpen,
+  GROCERY_STORE:    ShoppingCart,
   COMMUNITY_CENTRE: Building2,
+  LIBRARY:          BookOpen,
   PHARMACY:         Pill,
-  TRANSIT:          MapPin,
-};
-
-const LOCATION_LABELS: Record<string, string> = {
-  GROCERY:          "Grocery store",
-  CAFE:             "Café",
-  LIBRARY:          "Library",
-  COMMUNITY_CENTRE: "Community centre",
-  PHARMACY:         "Pharmacy",
-  TRANSIT:          "Transit hub",
+  MALL:             Store,
 };
 
 export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props) {
   const router = useRouter();
   const { user } = useAuth();
 
-  const [note, setNote]               = useState("");
-  const [whoFor, setWhoFor]           = useState<WhoFor | null>(null);
-  const [pickup, setPickup]           = useState<PickupPref | null>(null);
-  const [locationId, setLocationId]   = useState<string | null>(null);
-  const [locations, setLocations]     = useState<Location[]>([]);
-  const [locLoading, setLocLoading]   = useState(false);
-  const [loading, setLoading]         = useState(false);
-  const [submitted, setSubmitted]     = useState(false);
+  const [note, setNote]                           = useState("");
+  const [whoFor, setWhoFor]                       = useState<WhoFor | null>(null);
+  const [pickup, setPickup]                       = useState<PickupPref | null>(null);
+  const [selectedCategory, setSelectedCategory]   = useState<PickupCategoryId | null>(null);
+  const [categories, setCategories]               = useState<CategoryBucket[]>([]);
+  const [locLoading, setLocLoading]               = useState(false);
+  const [loading, setLoading]                     = useState(false);
+  const [submitted, setSubmitted]                 = useState(false);
   const [submittedRequestId, setSubmittedRequestId] = useState<string | null>(null);
-  const [apiError, setApiError]       = useState<string | null>(null);
+  const [apiError, setApiError]                   = useState<string | null>(null);
 
   const donorFirstName = item.donor.name.split(" ")[0];
   const city = user?.preferredCity ?? (item.location.includes(",") ? item.location.split(",")[0].trim() : item.location);
 
-  // Load pickup locations when user selects PICKUP
+  // Load category buckets when user selects PICKUP
   useEffect(() => {
     if (pickup !== "PICKUP") return;
     setLocLoading(true);
     fetch(`/api/pickup-locations?city=${encodeURIComponent(city)}`)
       .then((r) => r.json())
-      .then((d) => setLocations(d.locations ?? []))
+      .then((d) => setCategories(d.categories ?? []))
       .catch(() => {})
       .finally(() => setLocLoading(false));
   }, [pickup, city]);
+
+  // Derive locationId for the API from the selected category's first suggestion
+  const derivedLocationId: string | null = (() => {
+    if (!selectedCategory) return null;
+    const bucket = categories.find((c) => c.id === selectedCategory);
+    return bucket?.suggestions[0]?.id ?? null;
+  })();
 
   const noteOk = note.trim().length === 0 || note.trim().length <= 100;
   const canSubmit =
     !!whoFor &&
     !!pickup &&
     noteOk &&
-    (pickup !== "PICKUP" || !!locationId);
+    (pickup !== "PICKUP" || !!selectedCategory);
 
   const handleSubmit = async () => {
     if (!canSubmit || loading) return;
@@ -91,11 +101,11 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        itemId:          item.id,
-        requestNote:     note.trim() || null,
-        whoIsItFor:      whoFor,
+        itemId:           item.id,
+        requestNote:      note.trim() || null,
+        whoIsItFor:       whoFor,
         pickupPreference: pickup,
-        pickupLocationId: pickup === "PICKUP" ? locationId : null,
+        pickupLocationId: pickup === "PICKUP" ? derivedLocationId : null,
       }),
     });
     const d = await res.json();
@@ -109,7 +119,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
     setLoading(false);
   };
 
-  const radioBtn = (active: boolean, onClick: () => void, label: string, wide = false) => (
+  const radioBtn = (active: boolean, onClick: () => void, label: string) => (
     <button
       onClick={onClick}
       style={{
@@ -118,7 +128,6 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
         border: `1.5px solid ${active ? "var(--green)" : "var(--border)"}`,
         background: active ? "var(--green-light)" : "var(--bg)",
         cursor: "pointer", textAlign: "left",
-        ...(wide ? { flex: 1 } : {}),
       }}
     >
       <div style={{
@@ -178,7 +187,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
             </div>
             {item.urgent && (
               <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 20, background: "#fff3e0", color: "#e65100", flexShrink: 0 }}>
-                ⚡ Urgent
+                Urgent
               </span>
             )}
           </div>
@@ -232,7 +241,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
           ) : (
             /* ── Form ── */
             <>
-              {/* Request note (optional, brief) */}
+              {/* Request note */}
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", marginBottom: 6, color: "var(--ink)" }}>
                   Add a short request note <span style={{ color: "var(--light)", fontWeight: 600 }}>(optional)</span>
@@ -274,20 +283,21 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                   Can you collect in person? <span style={{ color: "var(--terra)" }}>*</span>
                 </label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {radioBtn(pickup === "PICKUP", () => { setPickup("PICKUP"); setLocationId(null); }, "I can pick up from a public place")}
-                  {radioBtn(pickup === "DELIVERY_SUPPORT", () => { setPickup("DELIVERY_SUPPORT"); setLocationId(null); }, "I need delivery support")}
+                  {radioBtn(pickup === "PICKUP", () => { setPickup("PICKUP"); setSelectedCategory(null); }, "I can pick up from a public place")}
+                  {radioBtn(pickup === "DELIVERY_SUPPORT", () => { setPickup("DELIVERY_SUPPORT"); setSelectedCategory(null); }, "I need delivery support")}
                 </div>
               </div>
 
-              {/* Location selector */}
+              {/* Category picker */}
               {pickup === "PICKUP" && (
                 <div style={{ marginBottom: 26 }}>
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)", marginBottom: 4 }}>
-                      Choose a pickup location <span style={{ color: "var(--terra)" }}>*</span>
+                  {/* Section header */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Lora, serif", color: "var(--ink)", marginBottom: 4 }}>
+                      Choose a public place type <span style={{ color: "var(--terra)" }}>*</span>
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                      Select a public place near you. No home addresses.
+                    <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.5 }}>
+                      Pick the kind of place that&apos;s easy for you. You and the donor will agree on the exact spot together.
                     </div>
                   </div>
 
@@ -295,72 +305,83 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                     <div style={{ padding: "20px 0", textAlign: "center" }}>
                       <div className="spinner" style={{ margin: "0 auto" }} />
                     </div>
-                  ) : locations.length === 0 ? (
-                    <div style={{ background: "var(--bg)", borderRadius: 12, padding: "16px", textAlign: "center" }}>
-                      <div style={{ fontSize: 13, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>
-                        We&apos;re adding pickup locations in your area soon.
-                      </div>
-                      {["Nearest grocery store", "Nearest library", "Nearest pharmacy"].map((name) => (
-                        <button
-                          key={name}
-                          onClick={() => setLocationId(name)}
-                          style={{
-                            display: "block", width: "100%", padding: "11px 14px", borderRadius: 12, marginBottom: 8,
-                            border: `1.5px solid ${locationId === name ? "var(--green)" : "var(--border)"}`,
-                            background: locationId === name ? "var(--green-light)" : "var(--bg)",
-                            fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif",
-                            color: "var(--ink)", cursor: "pointer", textAlign: "left",
-                          }}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {locations.map((loc) => {
-                        const Icon = LOCATION_ICONS[loc.type] ?? MapPin;
-                        const isSelected = locationId === loc.id;
+                      {PICKUP_CATEGORIES.map((cat) => {
+                        const Icon = CATEGORY_ICONS[cat.id] ?? MapPin;
+                        const isSelected = selectedCategory === cat.id;
+                        const bucket = categories.find((c) => c.id === cat.id);
+                        const suggestions = bucket?.suggestions ?? [];
+
                         return (
-                          <button
-                            key={loc.id}
-                            onClick={() => setLocationId(loc.id)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12,
-                              border: `1.5px solid ${isSelected ? "var(--green)" : "var(--border)"}`,
-                              background: isSelected ? "var(--green-light)" : "var(--bg)",
-                              cursor: "pointer", textAlign: "left",
-                            }}
-                          >
-                            <div style={{
-                              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                              background: isSelected ? "rgba(26,122,94,0.15)" : "white",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}>
-                              <Icon size={18} color={isSelected ? "var(--green)" : "var(--mid)"} strokeWidth={1.75} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>
-                                {loc.name}
+                          <div key={cat.id}>
+                            <button
+                              onClick={() => setSelectedCategory(cat.id as PickupCategoryId)}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 12,
+                                padding: "12px 14px", borderRadius: 12, width: "100%",
+                                border: `1.5px solid ${isSelected ? "var(--green)" : "var(--border)"}`,
+                                background: isSelected ? "var(--green-light)" : "white",
+                                cursor: "pointer", textAlign: "left",
+                              }}
+                            >
+                              <div style={{
+                                width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                                background: isSelected ? "var(--green-light)" : "var(--bg)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}>
+                                <Icon
+                                  size={20}
+                                  color={isSelected ? "var(--green)" : "var(--mid)"}
+                                  strokeWidth={1.75}
+                                />
                               </div>
-                              <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                                {LOCATION_LABELS[loc.type] ?? loc.type}
-                              </div>
-                            </div>
+                              <span style={{
+                                flex: 1,
+                                fontSize: 14, fontWeight: 700,
+                                fontFamily: "Nunito, sans-serif",
+                                color: isSelected ? "var(--green)" : "var(--ink)",
+                              }}>
+                                {cat.label}
+                              </span>
+                              {isSelected && (
+                                <CheckCircle size={16} color="var(--green)" strokeWidth={2.5} />
+                              )}
+                            </button>
+
+                            {/* Suggestions line — shown only when selected */}
                             {isSelected && (
-                              <CheckCircle size={16} color="var(--green)" strokeWidth={2.5} />
+                              <div style={{
+                                marginTop: 6, marginLeft: 14,
+                                fontSize: 13, fontWeight: 400,
+                                fontFamily: "Nunito, sans-serif",
+                                color: "#555555",
+                              }}>
+                                {suggestions.length > 0
+                                  ? `Examples near you: ${suggestions.map((s) => s.name).join(", ")}`
+                                  : "You'll agree on the exact spot together."}
+                              </div>
                             )}
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
                   )}
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                    <MapPin size={12} color="var(--mid)" />
-                    <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                      Public places only. No home addresses or private residences.
-                    </span>
+                  {/* Safety footer */}
+                  <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <MapPin size={12} color="var(--mid)" strokeWidth={1.75} />
+                      <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                        Public places only. No home addresses or private residences.
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <MapPin size={12} color="var(--mid)" strokeWidth={1.75} />
+                      <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                        For safety, keep all coordination inside Kradəl.
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}

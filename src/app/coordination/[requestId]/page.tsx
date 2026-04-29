@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { getCategoryLabel } from "@/lib/pickup-categories";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -292,7 +293,9 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
     );
   }
 
-  const locationName = coord.location?.name ?? coord.request.preferredLocation?.name ?? "TBD";
+  const locationRaw  = coord.location ?? coord.request.preferredLocation ?? null;
+  const locationLabel = locationRaw ? getCategoryLabel(locationRaw.type) : "TBD";
+  const locationSuggestion = locationRaw?.name ?? null;
   const isTerminal   = ["CONFIRMED", "CANCELLED", "REPORTED"].includes(status);
 
   return (
@@ -310,7 +313,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                 Pickup coordination
               </div>
               <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
-                {coord.request.item.title} · {locationName}
+                {coord.request.item.title} · {locationLabel}
               </div>
             </div>
           </div>
@@ -365,8 +368,13 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                 <MapPin size={18} color="#1a7a5e" strokeWidth={1.75} />
               </div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{locationName}</div>
-                <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>Agreed pickup location</div>
+                <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{locationLabel}</div>
+                {locationSuggestion && (
+                  <div style={{ fontSize: 14, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "#555555", marginTop: 2 }}>
+                    Suggested: {locationSuggestion}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>Agreed pickup location</div>
               </div>
             </div>
 
