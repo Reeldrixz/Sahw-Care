@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import {
   MapPin, Lock, CheckCircle, XCircle, MessageCircle,
-  Gift, ClipboardList, Search, Package, Bell, X, ChevronDown,
+  Gift, Search, Package, Bell, X, ChevronDown,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import RequestReviewSheet from "@/components/RequestReviewSheet";
@@ -371,11 +371,8 @@ export default function DiscoverPage() {
 
   const fabAction = () => {
     if (!user) { router.push("/auth"); return; }
-    if (isMother) { router.push("/registers/new"); return; }
     setShowDonate(true);
   };
-
-  const fabLabel = isMother ? "Add to my Register" : "Offer an item";
 
   // ── Location selection handler ─────────────────────────────────────────────
   const handleLocationSelect = useCallback((city: string, radius: number, byGPS: boolean) => {
@@ -804,7 +801,8 @@ export default function DiscoverPage() {
         </div>
       </div>{/* end discover-desktop */}
 
-      {/* ── FAB pill ─────────────────────────────────────────────────────────── */}
+      {/* ── FAB pill — donors and guests only ──────────────────────────────── */}
+      {!isMother && (
       <div style={{ position: "fixed", bottom: 86, left: "50%", transform: "translateX(-50%)", zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         {/* Tooltip (first-time only) */}
         {!tooltipDismissed && (
@@ -814,10 +812,7 @@ export default function DiscoverPage() {
             fontSize: 12, color: "#1a1a1a", maxWidth: 220, textAlign: "center",
             lineHeight: 1.5, fontFamily: "Nunito, sans-serif", position: "relative",
           }}>
-            {isMother
-              ? "Create a register so donors can fulfil your needs — it’s free."
-              : "Have something a mother could use? Offer it here — it’s free."
-            }
+            Have something a mother could use? Offer it here — it&apos;s free.
             <button
               onClick={(e) => { e.stopPropagation(); dismissTooltip(); }}
               style={{ position: "absolute", top: 6, right: 8, background: "none", border: "none", cursor: "pointer", display: "flex" }}
@@ -842,14 +837,11 @@ export default function DiscoverPage() {
             whiteSpace: "nowrap",
           }}
         >
-          {isMother ? (
-            <ClipboardList size={16} strokeWidth={2} />
-          ) : (
-            <Gift size={16} strokeWidth={2} />
-          )}
-          {fabLabel}
+          <Gift size={16} strokeWidth={2} />
+          Offer an item
         </button>
       </div>
+      )}
 
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
