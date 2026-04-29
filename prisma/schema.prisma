@@ -10,21 +10,21 @@ datasource db {
 // ==================== CORE USER ====================
 
 model User {
-  id          String     @id @default(cuid())
-  name        String
-  email       String?    @unique
-  phone       String?    @unique
-  password    String
-  role        Role       @default(DONOR)
-  avatar      String?
+  id               String  @id @default(cuid())
+  name             String
+  email            String? @unique
+  phone            String? @unique
+  password         String
+  role             Role    @default(DONOR)
+  avatar           String?
   location         String?
   preferredCity    String?
   preferredRadius  Int?    @default(10)
   locationSetByGPS Boolean @default(false)
-  isPremium   Boolean    @default(false)
+  isPremium        Boolean @default(false)
 
   // legacy 0-5 display rating (kept for donor card UI)
-  trustRating Float      @default(5.0)
+  trustRating Float @default(5.0)
 
   // anti-abuse system
   trustScore             Int       @default(0)
@@ -47,23 +47,23 @@ model User {
   updatedAt DateTime   @updatedAt
 
   // ── cohort / onboarding ──────────────────────────
-  onboardingComplete Boolean  @default(false)
-  journeyType        String?   // "pregnant" | "postpartum" | "donor"
-  gender             String   @default("unspecified") // "male" | "female" | "unspecified" — internal only, never shown publicly
+  onboardingComplete Boolean   @default(false)
+  journeyType        String? // "pregnant" | "postpartum" | "donor"
+  gender             String    @default("unspecified") // "male" | "female" | "unspecified" — internal only, never shown publicly
   dueDate            DateTime?
   babyBirthDate      DateTime?
-  currentStage       String?   // stageKey e.g. "pregnancy-4-6"
-  countryCode        String?   // ISO 3166-1 alpha-2
-  countryFlag        String?   // flag emoji derived from countryCode
+  currentStage       String? // stageKey e.g. "pregnancy-4-6"
+  countryCode        String? // ISO 3166-1 alpha-2
+  countryFlag        String? // flag emoji derived from countryCode
   subTags            String[]  @default([])
-  currentCircleId    String?   // FK (soft) to Circle — user's active cohort circle (= primaryCircleId)
+  currentCircleId    String? // FK (soft) to Circle — user's active cohort circle (= primaryCircleId)
   graduatedCircleIds String[]  @default([])
   lastStageCheck     DateTime?
 
   // ── circle identity ──────────────────────────────────────────────────────
   circleIdentitySet       Boolean   @default(false)
-  circleContext           String?   // "First-time Mom" | "Experienced Mom" | etc. | null = name only
-  circleDisplayName       String?   // user-chosen display name, max 20 chars
+  circleContext           String? // "First-time Mom" | "Experienced Mom" | etc. | null = name only
+  circleDisplayName       String? // user-chosen display name, max 20 chars
   circleIdentityUpdatedAt DateTime?
   circleIdentitySkippedAt DateTime?
 
@@ -75,18 +75,18 @@ model User {
   trustFrozenUntil DateTime?
 
   // ── extended trust / impact ──────────────────────────────────────────────
-  impactScore          Int       @default(0)
-  donorLevel           String    @default("NEW_DONOR")
-  bundleRestrictedUntil DateTime?
-  dailyPointsEarned    Int       @default(0)
-  dailyPointsDate      DateTime?
+  impactScore              Int       @default(0)
+  donorLevel               String    @default("NEW_DONOR")
+  bundleRestrictedUntil    DateTime?
+  dailyPointsEarned        Int       @default(0)
+  dailyPointsDate          DateTime?
   graceRequestsUsed        Int       @default(0)
   activeRequestLockedUntil DateTime?
   requestCountSinceReset   Int       @default(0)
   streakCurrentDays        Int       @default(0)
-  streakLastActiveDate DateTime?
-  streakWeeksCompleted Int       @default(0)
-  hasPostedIntro       Boolean   @default(false)
+  streakLastActiveDate     DateTime?
+  streakWeeksCompleted     Int       @default(0)
+  hasPostedIntro           Boolean   @default(false)
 
   trustEvents       TrustEvent[]
   trustScoreLogs    TrustScoreLog[]
@@ -113,11 +113,11 @@ model User {
   donorAssignments         ItemAssignment[]          @relation("DonorAssignments")
   sentRegisterMessages     RegisterMessage[]         @relation("SentRegisterMessages")
 
-  otpVerifications      OtpVerification[]
-  passwordResetTokens   PasswordResetToken[]
-  categoryCooldowns CategoryCooldown[]
-  urgentOverrides   UrgentOverride[]
-  deviceLogs        DeviceLog[]
+  otpVerifications    OtpVerification[]
+  passwordResetTokens PasswordResetToken[]
+  categoryCooldowns   CategoryCooldown[]
+  urgentOverrides     UrgentOverride[]
+  deviceLogs          DeviceLog[]
 
   circleMembers CircleMember[]
   circlePosts   CirclePost[]
@@ -125,7 +125,7 @@ model User {
   postComments  PostComment[]
   postReports   PostReport[]
 
-  bundleInstances     BundleInstance[]     @relation("RecipientBundles")
+  bundleInstances     BundleInstance[]      @relation("RecipientBundles")
   bundleContributions BundleContribution[]
   bundleAllocations   BundleAllocation[]
   itemFundings        RegisterItemFunding[]
@@ -134,11 +134,11 @@ model User {
   fundingCount     Int @default(0)
 
   // notification preferences
-  notifyNewPosts       Boolean @default(false)
-  notifyReplies        Boolean @default(true)
-  notifyThreadReplies  Boolean @default(true)
-  notifyBundleUpdates  Boolean @default(true)
-  notifyVerification   Boolean @default(true)
+  notifyNewPosts      Boolean @default(false)
+  notifyReplies       Boolean @default(true)
+  notifyThreadReplies Boolean @default(true)
+  notifyBundleUpdates Boolean @default(true)
+  notifyVerification  Boolean @default(true)
 
   notifications Notification[]
 }
@@ -146,24 +146,24 @@ model User {
 // ==================== ITEMS ====================
 
 model Item {
-  id          String     @id @default(cuid())
-  title       String
-  category    String
-  condition   String
-  quantity    String
-  quantityNum Int        @default(1)
-  location    String
-  description String?
-  images      String[]
-  urgent      Boolean    @default(false)
-  status      ItemStatus @default(PENDING)
-  adminBlurred Boolean   @default(false)
+  id           String     @id @default(cuid())
+  title        String
+  category     String
+  condition    String
+  quantity     String
+  quantityNum  Int        @default(1)
+  location     String
+  description  String?
+  images       String[]
+  urgent       Boolean    @default(false)
+  status       ItemStatus @default(PENDING)
+  adminBlurred Boolean    @default(false)
   frozenAt     DateTime?
   frozenReason String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  donorId  String
+  donorId    String
   donor      User        @relation(fields: [donorId], references: [id], onDelete: Cascade)
   requests   Request[]
   reports    Report[]    @relation("ReportedItemReports")
@@ -207,8 +207,8 @@ model Request {
 
   // Review-flow fields
   reasonForRequest String?
-  whoIsItFor       String?   // ME | MY_BABY | SOMEONE_I_CARE_FOR
-  pickupPreference String?   // PICKUP | DELIVERY
+  whoIsItFor       String? // ME | MY_BABY | SOMEONE_I_CARE_FOR
+  pickupPreference String? // PICKUP | DELIVERY
   reviewedAt       DateTime?
   reviewNote       String?
 
@@ -228,17 +228,17 @@ model Request {
 }
 
 model RequestFulfillment {
-  id               String            @id @default(cuid())
-  requestId        String            @unique
-  status           FulfillmentStatus @default(PENDING)
-  donorNote        String?
-  donorPhotoUrl    String?
-  markedAt         DateTime          @default(now())
+  id                String            @id @default(cuid())
+  requestId         String            @unique
+  status            FulfillmentStatus @default(PENDING)
+  donorNote         String?
+  donorPhotoUrl     String?
+  markedAt          DateTime          @default(now())
   recipientResponse String?
-  respondedAt      DateTime?
-  reminderSentAt   DateTime?
-  autoConfirmedAt  DateTime?
-  createdAt        DateTime          @default(now())
+  respondedAt       DateTime?
+  reminderSentAt    DateTime?
+  autoConfirmedAt   DateTime?
+  createdAt         DateTime          @default(now())
 
   request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
 }
@@ -296,7 +296,7 @@ model PickupCoordination {
   updatedAt     DateTime           @updatedAt
 
   request  Request               @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  location PublicPickupLocation?  @relation(fields: [locationId], references: [id])
+  location PublicPickupLocation? @relation(fields: [locationId], references: [id])
   messages CoordinationMessage[]
   reports  CoordinationReport[]
 }
@@ -347,11 +347,11 @@ model Report {
   createdAt DateTime     @default(now())
 
   reporterId   String
-  reporter     User   @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporter     User    @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
   itemId       String?
-  item         Item?  @relation("ReportedItemReports", fields: [itemId], references: [id], onDelete: SetNull)
+  item         Item?   @relation("ReportedItemReports", fields: [itemId], references: [id], onDelete: SetNull)
   targetUserId String?
-  targetUser   User?  @relation("ReportedUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
+  targetUser   User?   @relation("ReportedUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
 }
 
 // ==================== REGISTERS ====================
@@ -370,19 +370,19 @@ model Register {
 }
 
 model RegisterItem {
-  id                 String            @id @default(cuid())
+  id                 String             @id @default(cuid())
   name               String
-  category           String            @default("Other")
-  quantity           String            @default("1")
+  category           String             @default("Other")
+  quantity           String             @default("1")
   note               String?
-  storeLinks         String[]          @default([])
+  storeLinks         String[]           @default([])
   status             RegisterItemStatus @default(AVAILABLE)
   catalogItemId      String?
-  standardPriceCents Int               @default(0)
-  totalFundedCents   Int               @default(0)
-  fundingStatus      ItemFundingStatus @default(UNFUNDED)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  standardPriceCents Int                @default(0)
+  totalFundedCents   Int                @default(0)
+  fundingStatus      ItemFundingStatus  @default(UNFUNDED)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   registerId       String
   register         Register              @relation(fields: [registerId], references: [id], onDelete: Cascade)
@@ -398,11 +398,11 @@ model ItemAssignment {
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
 
-  itemId   String        @unique
-  item     RegisterItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  donorId  String
-  donor    User          @relation("DonorAssignments", fields: [donorId], references: [id], onDelete: Cascade)
-  messages RegisterMessage[]
+  itemId         String            @unique
+  item           RegisterItem      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  donorId        String
+  donor          User              @relation("DonorAssignments", fields: [donorId], references: [id], onDelete: Cascade)
+  messages       RegisterMessage[]
   fulfillmentLog FulfillmentLog?
 }
 
@@ -485,12 +485,12 @@ model UrgentOverride {
 }
 
 model DeviceLog {
-  id          String   @id @default(cuid())
-  userId      String
-  ipAddress   String?
-  userAgent   String?
-  action      String
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  action    String
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -520,16 +520,16 @@ enum ItemStatus {
 }
 
 enum RequestStatus {
-  PENDING       // submitted, waiting donor review
-  APPROVED      // legacy — treat same as ACCEPTED
-  REJECTED      // legacy — treat same as DECLINED
-  FULFILLED     // item handed over
-  ACCEPTED      // donor accepted, chat opened
-  DECLINED      // donor declined
-  CHAT_OPENED   // both in chat
+  PENDING // submitted, waiting donor review
+  APPROVED // legacy — treat same as ACCEPTED
+  REJECTED // legacy — treat same as DECLINED
+  FULFILLED // item handed over
+  ACCEPTED // donor accepted, chat opened
+  DECLINED // donor declined
+  CHAT_OPENED // both in chat
   PICKUP_AGREED // both confirmed pickup time
-  CONFIRMED     // recipient confirmed receipt
-  CANCELLED     // either party cancelled
+  CONFIRMED // recipient confirmed receipt
+  CANCELLED // either party cancelled
 }
 
 enum ReportStatus {
@@ -568,9 +568,9 @@ model Circle {
   id          String   @id @default(cuid())
   name        String
   emoji       String?
-  country     String?  @unique   // country-based circles
-  stageKey    String?  @unique   // cohort circles e.g. "pregnancy-4-6"
-  groupLetter String?            // cohort group letter e.g. "A"
+  country     String?  @unique // country-based circles
+  stageKey    String?  @unique // cohort circles e.g. "pregnancy-4-6"
+  groupLetter String? // cohort group letter e.g. "A"
   createdAt   DateTime @default(now())
 
   members  CircleMember[]
@@ -585,7 +585,7 @@ model CircleChannel {
   emoji    String
   order    Int    @default(0)
 
-  circle Circle      @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  circle Circle       @relation(fields: [circleId], references: [id], onDelete: Cascade)
   posts  CirclePost[]
 }
 
@@ -609,13 +609,13 @@ model CircleMember {
 }
 
 model CirclePost {
-  id        String       @id @default(cuid())
-  circleId  String
-  userId    String
-  content   String
-  category  PostCategory
-  photoUrl  String?
-  channelId String?
+  id          String       @id @default(cuid())
+  circleId    String
+  userId      String
+  content     String
+  category    PostCategory
+  photoUrl    String?
+  channelId   String?
   isPinned    Boolean      @default(false)
   isHidden    Boolean      @default(false)
   isIntroPost Boolean      @default(false)
@@ -649,7 +649,7 @@ model PostComment {
   postId        String
   userId        String
   content       String
-  identityLabel String?  // computed at creation: "Previously in this stage" | "Mom in [stage]" | null
+  identityLabel String? // computed at creation: "Previously in this stage" | "Mom in [stage]" | null
   createdAt     DateTime @default(now())
 
   post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -920,15 +920,15 @@ model PostLike {
 // ==================== ANTI-ABUSE MONITORING ====================
 
 model AbuseEventLog {
-  id        String         @id @default(cuid())
-  userId    String
-  eventType AbuseEventType
-  timestamp DateTime       @default(now())
+  id         String         @id @default(cuid())
+  userId     String
+  eventType  AbuseEventType
+  timestamp  DateTime       @default(now())
   trustScore Int
-  metadata  Json
-  ipAddress String?
-  deviceId  String?
-  sessionId String?
+  metadata   Json
+  ipAddress  String?
+  deviceId   String?
+  sessionId  String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -938,13 +938,13 @@ model AbuseEventLog {
 }
 
 model AbuseFlag {
-  id         String         @id @default(cuid())
+  id         String          @id @default(cuid())
   userId     String
   flagType   AbuseFlagType
   severity   Severity
   status     AbuseFlagStatus @default(OPEN)
   evidence   Json
-  createdAt  DateTime       @default(now())
+  createdAt  DateTime        @default(now())
   reviewedAt DateTime?
   reviewedBy String?
   notes      String?
@@ -973,16 +973,16 @@ model TrustScoreHistory {
 }
 
 model WeeklyAbuseSummary {
-  id                    String   @id @default(cuid())
-  weekStart             DateTime
-  weekEnd               DateTime
-  totalFlags            Int
-  highSeverityFlags     Int
-  topFlagTypes          Json
-  usersDroppedBelow60   Int
-  rapidTrustFarmers     Int
+  id                     String   @id @default(cuid())
+  weekStart              DateTime
+  weekEnd                DateTime
+  totalFlags             Int
+  highSeverityFlags      Int
+  topFlagTypes           Json
+  usersDroppedBelow60    Int
+  rapidTrustFarmers      Int
   topRequestedCategories Json
-  createdAt             DateTime @default(now())
+  createdAt              DateTime @default(now())
 }
 
 enum AbuseEventType {
@@ -1065,38 +1065,38 @@ enum CoordReportReason {
 // ==================== MONTHLY BUNDLE FUNDING ====================
 
 model MonthlyBundleGoal {
-  id                String        @id @default(cuid())
-  month             String        // "2026-04"
-  targetBundles     Int
-  costPerBundle     Int           // in cents e.g. 4000 = $40
-  deliveredBundles  Int           @default(0)
-  bundlesFundedToday Int          @default(0)
-  status            GoalStatus    @default(ACTIVE)
-  createdAt         DateTime      @default(now())
-  contributions     BundleContribution[]
-  allocations       BundleAllocation[]
+  id                 String               @id @default(cuid())
+  month              String // "2026-04"
+  targetBundles      Int
+  costPerBundle      Int // in cents e.g. 4000 = $40
+  deliveredBundles   Int                  @default(0)
+  bundlesFundedToday Int                  @default(0)
+  status             GoalStatus           @default(ACTIVE)
+  createdAt          DateTime             @default(now())
+  contributions      BundleContribution[]
+  allocations        BundleAllocation[]
 }
 
 model BundleContribution {
-  id          String        @id @default(cuid())
+  id          String            @id @default(cuid())
   goalId      String
   donorId     String
   bundleCount Int
   amountCents Int
   paymentRef  String?
-  status      PaymentStatus @default(CONFIRMED)
-  createdAt   DateTime      @default(now())
+  status      PaymentStatus     @default(CONFIRMED)
+  createdAt   DateTime          @default(now())
   goal        MonthlyBundleGoal @relation(fields: [goalId], references: [id])
   donor       User              @relation(fields: [donorId], references: [id])
 }
 
 model BundleAllocation {
-  id              String           @id @default(cuid())
+  id              String            @id @default(cuid())
   goalId          String
   recipientId     String
   bundleType      String
-  status          AllocationStatus @default(QUEUED)
-  allocatedAt     DateTime         @default(now())
+  status          AllocationStatus  @default(QUEUED)
+  allocatedAt     DateTime          @default(now())
   dispatchedAt    DateTime?
   confirmedAt     DateTime?
   deliveryAddress String?
