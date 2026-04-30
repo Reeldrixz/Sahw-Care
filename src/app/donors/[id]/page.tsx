@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
 import Avatar from "@/components/Avatar";
 
 const CAT_BG: Record<string, string> = {
@@ -21,6 +22,7 @@ interface DonorUser {
   countryFlag: string | null;
   isPremium: boolean;
   trustRating: number;
+  verificationLevel: number;
   createdAt: string;
   _count: { items: number };
   reviewsReceived: Array<{
@@ -94,10 +96,14 @@ export default function DonorProfilePage() {
             <div className="p-stat-num">{donor._count.items}</div>
             <div className="p-stat-label">Donations</div>
           </div>
-          <div className="p-stat">
-            <div className="p-stat-num">⭐{donor.trustRating.toFixed(1)}</div>
-            <div className="p-stat-label">Rating</div>
-          </div>
+          {donor.verificationLevel >= 1 && (
+            <div className="p-stat">
+              <div className="p-stat-num" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                <ShieldCheck size={20} color="#1a7a5e" strokeWidth={1.75} />
+              </div>
+              <div className="p-stat-label">Verified</div>
+            </div>
+          )}
           <div className="p-stat">
             <div className="p-stat-num">{fulfilRate}</div>
             <div className="p-stat-label">Fulfilled</div>

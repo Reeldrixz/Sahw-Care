@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 
@@ -15,7 +16,7 @@ interface Item {
   description: string | null;
   images: string[];
   urgent: boolean;
-  donor: { id: string; name: string; avatar: string | null; trustRating: number };
+  donor: { id: string; name: string; avatar: string | null; trustRating: number; verificationLevel?: number };
 }
 
 interface ItemModalProps {
@@ -89,7 +90,12 @@ export default function ItemModal({ item, onClose, onRequest, requested }: ItemM
             <Avatar src={item.donor.avatar} name={item.donor.name} size={40} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 800 }}>{item.donor.name}</div>
-              <div style={{ fontSize: 12, color: "var(--mid)" }}>⭐ {item.donor.trustRating.toFixed(1)} trust rating</div>
+              {(item.donor.verificationLevel ?? 0) >= 1 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 700, marginTop: 2 }}>
+                  <ShieldCheck size={13} color="#1a7a5e" strokeWidth={1.75} />
+                  Verified donor
+                </div>
+              )}
             </div>
           </div>
 

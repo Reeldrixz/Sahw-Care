@@ -313,7 +313,12 @@ export default function ItemDetailPage() {
         <div className="donor-info">
           <div className="donor-name-lg">{item.donor.name}</div>
           <div className="donor-stats">
-            <div className="donor-stat"><ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} /> {item.donor.trustRating.toFixed(1)}</div>
+            {isVerified && (
+              <div className="donor-stat" style={{ color: "#1a7a5e" }}>
+                <ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} />
+                <span style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", fontWeight: 700 }}>Verified</span>
+              </div>
+            )}
             <div className="donor-stat"><MapPin size={14} color="#555555" strokeWidth={1.75} /> {item.donor.location ?? item.location}</div>
           </div>
         </div>

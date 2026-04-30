@@ -17,6 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       role: true,
       isPremium: true,
       trustRating: true,
+      verificationLevel: true,
       createdAt: true,
       _count: { select: { items: true } },
       reviewsReceived: {
