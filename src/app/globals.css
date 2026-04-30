@@ -169,7 +169,7 @@ body {
 .detail-meta-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 13px; color: var(--mid); font-weight: 600; flex-wrap: wrap; }
 .detail-meta-row strong { color: var(--ink); }
 .detail-divider { height: 1px; background: var(--border); margin: 16px 0; }
-.detail-section-title { font-size: 15px; font-weight: 800; margin-bottom: 10px; }
+.detail-section-title { font-family: 'Lora', serif; font-size: 15px; font-weight: 800; margin-bottom: 10px; }
 .detail-desc { font-size: 14px; color: var(--mid); line-height: 1.7; font-weight: 500; }
 .detail-location-row { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--bg); border-radius: 12px; cursor: pointer; }
 .detail-location-icon { font-size: 20px; }

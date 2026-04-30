@@ -15,6 +15,7 @@ import {
   ArrowLeft, Heart, Share2, MoreVertical, ShieldCheck,
   Eye, EyeOff, Trash2, Snowflake, ScrollText,
   Pencil, Flag, CheckCircle, X,
+  Package, MapPin, PackageX, ImageOff,
 } from "lucide-react";
 
 interface Item {
@@ -44,12 +45,6 @@ interface Review {
   reviewer: { id: string; name: string; avatar: string | null };
 }
 
-const CAT_BG: Record<string, string> = {
-  "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
-  "Clothing": "#e3f2fd", "Hygiene": "#e8f5e9", "Recovery": "#fdf2f8",
-  "Travel": "#f0f9ff", "Other": "#f5f5f5",
-};
-
 const CONDITIONS: Record<string, string> = {
   "NEW": "New", "SEALED": "Sealed", "GENTLY_USED": "Gently used",
   "OPENED_SAFE": "Opened but safe",
@@ -58,18 +53,6 @@ const CONDITIONS: Record<string, string> = {
 
 function conditionLabel(c: string): string {
   return CONDITIONS[c] ?? c;
-}
-
-function RatingBar({ label, value, wide }: { label: string; value: number; wide?: boolean }) {
-  return (
-    <div className="rating-row">
-      <div className="rating-label" style={wide ? { width: 130 } : {}}>{label}</div>
-      <div className="rating-bar-wrap">
-        <div className="rating-bar" style={{ width: `${(value / 5) * 100}%` }} />
-      </div>
-      <div className="rating-num">{value.toFixed(1)}</div>
-    </div>
-  );
 }
 
 const FIELD: React.CSSProperties = {
@@ -90,7 +73,6 @@ export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [item, setItem] = useState<Item | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [avgRatings, setAvgRatings] = useState({ pickup: 0, quality: 0, quantity: 0 });
   const [fav, setFav] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
   const [requested, setRequested] = useState(false);
@@ -134,7 +116,6 @@ export default function ItemDetailPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.user?.reviewsReceived) setReviews(d.user.reviewsReceived);
-        if (d.ratings) setAvgRatings(d.ratings);
       });
   }, [item]);
 
@@ -148,7 +129,7 @@ export default function ItemDetailPage() {
     });
     if (res.ok) {
       setRequested(true);
-      setToast("Request sent! Donor will review and reach out 🎉");
+      setToast("Request sent. The donor will review and reach out.");
     } else {
       const d = await res.json();
       setToast(d.error ?? "Something went wrong");
@@ -269,13 +250,12 @@ export default function ItemDetailPage() {
   if (loading) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
   if (!item) return (
     <div className="empty" style={{ minHeight: "100vh" }}>
-      <div className="empty-icon">😕</div>
+      <PackageX size={48} color="#555555" strokeWidth={1.75} style={{ marginBottom: 12 }} />
       <div className="empty-title">Item not found</div>
       <button style={{ marginTop: 16, color: "var(--green)", background: "none", border: "none", cursor: "pointer", fontWeight: 700 }} onClick={() => router.back()}>Go back</button>
     </div>
   );
 
-  const bg = CAT_BG[item.category] ?? "#f5f5f5";
   const isVerified = (item.donor.verificationLevel ?? 0) >= 1;
 
   // ── Bottom bar content ────────────────────────────────────────────────────
@@ -307,8 +287,7 @@ export default function ItemDetailPage() {
     <div className="detail-body">
       <span className="detail-cat">{item.category}</span>
       <div className="detail-title">{item.title}</div>
-      <div className="detail-meta-row">📦 <strong>{item.quantity}</strong> available · <strong>{conditionLabel(item.condition)}</strong></div>
-      <div className="detail-meta-row">👥 <strong>{item._count.requests}</strong> people interested</div>
+      <div className="detail-meta-row"><Package size={16} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0 }} /> <strong>{item.quantity}</strong> available · <strong>{conditionLabel(item.condition)}</strong></div>
 
       <div className="detail-divider" />
       <div className="detail-section-title">What you&apos;ll get</div>
@@ -317,7 +296,7 @@ export default function ItemDetailPage() {
       <div className="detail-divider" />
       <div className="detail-section-title">Pickup location</div>
       <div className="detail-location-row" onClick={() => setToast("You'll agree on a public meeting spot together after approval.")}>
-        <div className="detail-location-icon">📍</div>
+        <div className="detail-location-icon"><MapPin size={20} color="#1a7a5e" strokeWidth={1.75} /></div>
         <div className="detail-location-text">
           <div className="detail-location-main">{item.location}</div>
           <div className="detail-location-sub">You&apos;ll agree on a public meeting spot together after approval.</div>
@@ -334,8 +313,8 @@ export default function ItemDetailPage() {
         <div className="donor-info">
           <div className="donor-name-lg">{item.donor.name}</div>
           <div className="donor-stats">
-            <div className="donor-stat">⭐ {item.donor.trustRating.toFixed(1)}</div>
-            <div className="donor-stat">📍 {item.donor.location ?? item.location}</div>
+            <div className="donor-stat"><ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} /> {item.donor.trustRating.toFixed(1)}</div>
+            <div className="donor-stat"><MapPin size={14} color="#555555" strokeWidth={1.75} /> {item.donor.location ?? item.location}</div>
           </div>
         </div>
         {isVerified && (
@@ -349,22 +328,11 @@ export default function ItemDetailPage() {
         <div className="donor-arrow">›</div>
       </div>
 
-      {(avgRatings.pickup > 0 || avgRatings.quality > 0) && (
-        <>
-          <div className="detail-divider" />
-          <div className="detail-section-title">Experience ratings</div>
-          <RatingBar label="Pickup" value={avgRatings.pickup} />
-          <RatingBar label="Quality" value={avgRatings.quality} />
-          <RatingBar label="Quantity" value={avgRatings.quantity} />
-        </>
-      )}
-
       {reviews.length > 0 && (
         <>
           <div className="detail-divider" />
           <div className="detail-section-title">Reviews</div>
           {reviews.slice(0, 3).map((r) => {
-            const avg = ((r.pickupRating + r.qualityRating + r.quantityRating) / 3).toFixed(1);
             const time = new Date(r.createdAt).toLocaleDateString([], { month: "short", day: "numeric" });
             return (
               <div key={r.id} className="review-item">
@@ -372,7 +340,6 @@ export default function ItemDetailPage() {
                   <Avatar src={r.reviewer.avatar} name={r.reviewer.name} size={32} />
                   <div>
                     <div className="review-name">{r.reviewer.name}</div>
-                    <div className="review-stars">{"⭐".repeat(Math.round(parseFloat(avg)))}</div>
                   </div>
                   <div className="review-time">{time}</div>
                 </div>
@@ -391,11 +358,11 @@ export default function ItemDetailPage() {
     <div className="detail">
       {/* ── Mobile layout ─────────────────────────────────────────────────── */}
       <div className="detail-mobile-view">
-        <div className="detail-hero" style={{ background: bg }}>
+        <div className="detail-hero" style={{ background: "#f5f5f5" }}>
           <button className="detail-back" onClick={() => router.back()}><ArrowLeft size={18} /></button>
           <button className="detail-share" onClick={handleShare} style={{ right: 100 }}><Share2 size={18} /></button>
           <button className="detail-fav" style={{ right: 56 }} onClick={handleFav}>
-            <Heart size={18} fill={fav ? "#e11d48" : "none"} color={fav ? "#e11d48" : "white"} strokeWidth={2} />
+            <Heart size={18} fill={fav ? "#1a7a5e" : "none"} color={fav ? "#1a7a5e" : "#555555"} strokeWidth={1.75} />
           </button>
           <button
             onClick={() => setShowMenu(true)}
@@ -411,7 +378,10 @@ export default function ItemDetailPage() {
               sizes="430px"
             />
           ) : (
-            <span style={{ fontSize: 80 }}>📦</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8 }}>
+              <ImageOff size={40} color="#555555" strokeWidth={1.75} />
+              <span style={{ fontSize: 14, fontFamily: "Nunito, sans-serif", color: "#555555", fontWeight: 400 }}>No image</span>
+            </div>
           )}
           {item.adminBlurred && (
             <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "#d97706", color: "white", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>
@@ -431,10 +401,10 @@ export default function ItemDetailPage() {
         <div className="detail-desktop-wrap">
           <div>
             <button className="detail-back" style={{ position: "relative", top: "auto", left: "auto", marginBottom: 12, display: "flex" }} onClick={() => router.back()}><ArrowLeft size={18} /></button>
-            <div className="detail-hero" style={{ background: bg, position: "relative" }}>
+            <div className="detail-hero" style={{ background: "#f5f5f5", position: "relative" }}>
               <button className="detail-share" onClick={handleShare} style={{ right: 100 }}><Share2 size={18} /></button>
               <button className="detail-fav" style={{ right: 56 }} onClick={handleFav}>
-                <Heart size={18} fill={fav ? "#e11d48" : "none"} color={fav ? "#e11d48" : "white"} strokeWidth={2} />
+                <Heart size={18} fill={fav ? "#1a7a5e" : "none"} color={fav ? "#1a7a5e" : "#555555"} strokeWidth={1.75} />
               </button>
               <button
                 onClick={() => setShowMenu(true)}
@@ -450,7 +420,10 @@ export default function ItemDetailPage() {
                   sizes="500px"
                 />
               ) : (
-                <span style={{ fontSize: 80 }}>📦</span>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 8 }}>
+                  <ImageOff size={40} color="#555555" strokeWidth={1.75} />
+                  <span style={{ fontSize: 14, fontFamily: "Nunito, sans-serif", color: "#555555", fontWeight: 400 }}>No image</span>
+                </div>
               )}
               {item.adminBlurred && (
                 <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "#d97706", color: "white", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>
