@@ -89,7 +89,13 @@ export default function DonorProfilePage() {
           {donor.countryFlag && <span style={{ marginRight: 6 }}>{donor.countryFlag}</span>}
           {donor.name}
         </div>
-        <div className="profile-role-badge">🎁 Donor · ✓ Verified{donor.isPremium ? " · ✨ Premium" : ""}</div>
+        <div className="profile-role-badge" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          Donor
+          {donor.verificationLevel >= 1 && (
+            <><span style={{ margin: "0 2px" }}>·</span><ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} />Verified</>
+          )}
+          {donor.isPremium && <><span style={{ margin: "0 2px" }}>·</span>✨ Premium</>}
+        </div>
 
         <div className="profile-stats-row">
           <div className="p-stat">
