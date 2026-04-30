@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import {
   Compass, ClipboardList, Users,
-  CircleUser, Heart, MessageCircle, Gift,
+  CircleUser, Gift, PackageCheck,
 } from "lucide-react";
 
 const ACTIVE_COLOR   = "#1a7a5e";
@@ -19,7 +19,7 @@ const MOM_TABS = [
   { path: "/registers",   label: "Registers",  Icon: ClipboardList },
   { path: "/bundles",     label: "Bundles",    Icon: Gift          },
   { path: "/circles",     label: "Circles",    Icon: Users         },
-  { path: "/favourites",  label: "Favourites", Icon: Heart         },
+  { path: "/pickups",     label: "Pickups",    Icon: PackageCheck  },
   { path: "/profile",     label: "Profile",    Icon: CircleUser    },
 ];
 
@@ -28,7 +28,7 @@ const DONOR_TABS = [
   { path: "/",           label: "Discover",  Icon: Compass       },
   { path: "/registers",  label: "Registers", Icon: ClipboardList },
   { path: "/bundles",    label: "Bundles",   Icon: Gift          },
-  { path: "/chat",       label: "Messages",  Icon: MessageCircle },
+  { path: "/pickups",    label: "Pickups",   Icon: PackageCheck  },
   { path: "/profile",    label: "Profile",   Icon: CircleUser    },
 ];
 
@@ -43,7 +43,9 @@ export default function BottomNav() {
   return (
     <nav className="bnav" aria-label="Main navigation">
       {TABS.map(({ path, label, Icon }) => {
-        const isActive  = path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
+        const isActive  = path === "/" ? pathname === "/" :
+          path === "/pickups" ? (pathname === "/pickups" || pathname.startsWith("/pickups/") || pathname.startsWith("/coordination/")) :
+          pathname === path || pathname.startsWith(path + "/");
         const isProfile = path === "/profile";
         const color     = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
 

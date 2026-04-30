@@ -19,6 +19,41 @@ function containsContactInfo(text: string): boolean {
   return phoneRegex.test(text) || emailRegex.test(text) || socialRegex.test(text);
 }
 
+function notifyOtherParty(
+  otherPartyId: string,
+  senderId: string,
+  senderFirstName: string,
+  messageType: string,
+  content: string | undefined,
+  requestId: string,
+) {
+  const titleMap: Record<string, string> = {
+    IM_HERE:         `${senderFirstName} is here`,
+    ON_MY_WAY:       `${senderFirstName} is on the way`,
+    RUNNING_LATE:    `${senderFirstName} is running late`,
+    CANT_MAKE_IT:    `${senderFirstName} can't make it`,
+    PICKUP_COMPLETE: `${senderFirstName} marked the pickup complete`,
+    CUSTOM:          "New coordination update",
+  };
+
+  const title = titleMap[messageType] ?? "New coordination update";
+  const trimmed = (content ?? "").trim();
+  const message = messageType === "CUSTOM"
+    ? (trimmed.length > 80 ? trimmed.slice(0, 80) + "…" : trimmed)
+    : "Tap to coordinate your pickup.";
+
+  prisma.notification.create({
+    data: {
+      userId:            otherPartyId,
+      type:              "REQUEST_RECEIVED",
+      title,
+      message,
+      link:              `/coordination/${requestId}`,
+      triggeredByUserId: senderId,
+    },
+  }).catch(() => {});
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ requestId: string }> }) {
   const { requestId } = await params;
   const token = await getTokenFromRequest(req);
@@ -46,6 +81,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
 
   if (!messageType) return NextResponse.json({ error: "messageType is required" }, { status: 400 });
 
+  const otherPartyId = user.userId === donorId ? recipientId : donorId;
+
   // Quick messages: no content needed
   if (messageType !== "CUSTOM") {
     if (!QUICK_MESSAGES[messageType]) {
@@ -55,6 +92,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
       data: { coordinationId: coordination.id, senderId: user.userId, messageType },
       include: { sender: { select: { id: true, name: true } } },
     });
+    notifyOtherParty(otherPartyId, user.userId, message.sender.name.split(" ")[0], messageType, undefined, requestId);
     return NextResponse.json({ message });
   }
 
@@ -66,7 +104,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     return NextResponse.json({ error: "Message too long (max 200 characters)" }, { status: 400 });
   }
   if (containsContactInfo(content)) {
-    // Create an abuse flag silently
     prisma.abuseFlag.create({
       data: {
         userId: user.userId,
@@ -86,6 +123,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     data: { coordinationId: coordination.id, senderId: user.userId, messageType: "CUSTOM", content: content.trim() },
     include: { sender: { select: { id: true, name: true } } },
   });
+  notifyOtherParty(otherPartyId, user.userId, message.sender.name.split(" ")[0], "CUSTOM", content, requestId);
 
   return NextResponse.json({ message });
 }

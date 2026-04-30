@@ -1,3 +1,5 @@
+// DEPRECATED: chat replaced by PickupCoordination system.
+// Kept temporarily; remove after 30 days of no production traffic.
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";

@@ -213,6 +213,27 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
 
   useEffect(() => { fetchCoord(); }, [fetchCoord]);
 
+  // Poll every 8s when tab is visible; pause when hidden
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === "visible") {
+        fetch(`/api/coordination/${requestId}`)
+          .then(r => r.json())
+          .then(d => { if (d.coordination) setCoord(d.coordination); })
+          .catch(() => {});
+      }
+    };
+    const interval = setInterval(poll, 8000);
+    const onVisibility = () => { if (document.visibilityState === "visible") poll(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    // Record visit for badge tracking
+    try { localStorage.setItem("kradel_pickups_last_seen", new Date().toISOString()); } catch {}
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [requestId]);
+
   // Show safety banner when SCHEDULED
   useEffect(() => {
     if (coord?.status === "SCHEDULED" && !safetyDismissed) setShowSafety(true);

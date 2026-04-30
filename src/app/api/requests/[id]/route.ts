@@ -80,6 +80,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     }).catch(() => {});
 
+    // Notify donor — gives them a persistent trail back to the coordination view
+    prisma.notification.create({
+      data: {
+        userId:            request.item.donorId,
+        type:              "REQUEST_RECEIVED",
+        title:             "Coordination started",
+        message:           `You accepted a request for ${request.item.title}. Tap to coordinate the pickup.`,
+        link:              coordLink,
+        triggeredByUserId: request.requesterId,
+      },
+    }).catch(() => {});
+
     return NextResponse.json({ request: updated, coordinationLink: coordLink });
   }
 

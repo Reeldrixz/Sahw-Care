@@ -54,6 +54,7 @@ interface MyItem {
 
 interface MyRequest {
   id: string; status: string; createdAt: string; notes: string | null;
+  coordinationId: string | null;
   item: { id: string; title: string; images: string[]; donor?: { name: string } | null } | null;
 }
 
@@ -600,20 +601,31 @@ export default function ProfilePage() {
                 </div>
               ) : visibleRequests.map(req => {
                 const sc = STATUS_COLORS[req.status] ?? STATUS_COLORS.PENDING;
+                const isAccepted = req.status === "ACCEPTED" && !!req.coordinationId;
                 return (
-                  <div key={req.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                  <div
+                    key={req.id}
+                    onClick={() => isAccepted && router.push(`/coordination/${req.id}`)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 0", borderBottom: "1px solid var(--border)",
+                      cursor: isAccepted ? "pointer" : "default",
+                    }}
+                  >
                     <div style={{ width: 40, height: 40, background: "var(--bg)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>📦</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {req.item?.title ?? "Item removed"}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                        {new Date(req.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
-                        {req.item?.donor ? ` · from ${req.item.donor.name}` : ""}
+                        {req.status === "PENDING"
+                          ? "Waiting for donor to respond"
+                          : new Date(req.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })
+                            + (req.item?.donor ? ` · from ${req.item.donor.name}` : "")}
                       </div>
                     </div>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: sc.bg, color: sc.color, flexShrink: 0, fontFamily: "Nunito, sans-serif" }}>
-                      {req.status.charAt(0) + req.status.slice(1).toLowerCase()}
+                      {isAccepted ? "Coordinate →" : req.status.charAt(0) + req.status.slice(1).toLowerCase()}
                     </span>
                   </div>
                 );

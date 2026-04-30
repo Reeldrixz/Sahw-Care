@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
             donor: { select: { id: true, name: true, avatar: true } },
           },
         },
+        coordination: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
     });
