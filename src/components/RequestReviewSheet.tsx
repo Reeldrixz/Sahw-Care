@@ -66,9 +66,9 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
   const donorFirstName = item.donor.name.split(" ")[0];
   const city = user?.preferredCity ?? (item.location.includes(",") ? item.location.split(",")[0].trim() : item.location);
 
-  // Load category buckets when user selects PICKUP
+  // Load category buckets when user selects any pickup mode
   useEffect(() => {
-    if (pickup !== "PICKUP") return;
+    if (!pickup) return;
     setLocLoading(true);
     fetch(`/api/pickup-locations?city=${encodeURIComponent(city)}`)
       .then((r) => r.json())
@@ -89,7 +89,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
     !!whoFor &&
     !!pickup &&
     noteOk &&
-    (pickup !== "PICKUP" || !!selectedCategory);
+    !!selectedCategory;
 
   const handleSubmit = async () => {
     if (!canSubmit || loading) return;
@@ -104,7 +104,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
         whoIsItFor:       whoFor,
         pickupPreference: pickup,
         pickupMode:       pickup ?? "PICKUP",
-        pickupCategoryId: pickup === "PICKUP" ? (selectedCategory ?? null) : null,
+        pickupCategoryId: selectedCategory ?? null,
         pickupLocationId: pickup === "PICKUP" ? derivedLocationId : null,
       }),
     });
@@ -183,11 +183,11 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
               <Package size={18} color="var(--green)" strokeWidth={1.75} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "Nunito, sans-serif", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "Lora, serif", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {item.title}
               </div>
               <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified donor" : "Shared by a Kradəl member"} · {item.condition} · {item.location.split(",")[0]}
+                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified donor" : "Shared by a Kradəl member"} · {item.location.split(",")[0]}
               </div>
             </div>
             {item.urgent && (
@@ -286,7 +286,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
               </div>
 
               {/* Can you collect in person */}
-              <div style={{ marginBottom: pickup === "PICKUP" ? 20 : 26 }}>
+              <div style={{ marginBottom: 20 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", marginBottom: 10, color: "var(--ink)" }}>
                   Can you collect in person? <span style={{ color: "var(--terra)" }}>*</span>
                 </label>
@@ -296,26 +296,31 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                 </div>
                 {pickup === "DELIVERY_SUPPORT" && (
                   <div style={{
-                    marginTop: 12, background: "#fffbeb",
-                    border: "1.5px solid #fbbf24", borderRadius: 12, padding: "12px 14px",
+                    marginTop: 12, background: "#e8f5f1",
+                    border: "1px solid #1a7a5e", borderRadius: 12, padding: "12px 14px",
+                    display: "flex", alignItems: "flex-start", gap: 10,
                   }}>
-                    <div style={{ fontSize: 13, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                      <strong>Delivery support is limited and not guaranteed.</strong> Our team will check whether it&apos;s available in your area. Choosing a nearby public pickup location is usually faster and easier to arrange.
+                    <ShieldCheck size={20} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                      Delivery support depends on the donor&apos;s availability. If they can, they&apos;ll personally drop the item off near you. Kradəl doesn&apos;t operate delivery.
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Category picker */}
-              {pickup === "PICKUP" && (
+              {/* Category picker — shown for both PICKUP and DELIVERY_SUPPORT */}
+              {pickup && (
                 <div style={{ marginBottom: 26 }}>
                   {/* Section header */}
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Lora, serif", color: "var(--ink)", marginBottom: 4 }}>
-                      Choose a public place type <span style={{ color: "var(--terra)" }}>*</span>
+                      {pickup === "PICKUP" ? "Choose a public place type" : "Where should the donor meet you?"}{" "}
+                      <span style={{ color: "var(--terra)" }}>*</span>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.5, marginBottom: 6 }}>
-                      Pick the kind of place that&apos;s easy for you. You and the donor will agree on the exact spot together.
+                      {pickup === "PICKUP"
+                        ? "Pick the kind of place that's easy for you. You and the donor will agree on the exact spot together."
+                        : "Pick a public place type near you. You'll agree on the exact spot together."}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <ShieldCheck size={13} color="var(--green)" strokeWidth={1.75} />
@@ -373,8 +378,8 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                               )}
                             </button>
 
-                            {/* Suggestions line — shown only when selected */}
-                            {isSelected && (
+                            {/* Suggestions — hidden in DELIVERY_SUPPORT mode */}
+                            {isSelected && pickup === "PICKUP" && (
                               <div style={{
                                 marginTop: 6, marginLeft: 14,
                                 fontSize: 13, fontWeight: 400,
@@ -401,7 +406,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                       </span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <MapPin size={12} color="var(--mid)" strokeWidth={1.75} />
+                      <ShieldCheck size={12} color="var(--mid)" strokeWidth={1.75} />
                       <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
                         For safety, keep all coordination inside Kradəl.
                       </span>

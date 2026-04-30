@@ -10,8 +10,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
 import {
   MapPin, Lock, CheckCircle, XCircle, MessageCircle,
-  Gift, Search, Package, Bell, X, ChevronDown,
+  Gift, Search, Package, Bell, X, ChevronDown, Truck,
 } from "lucide-react";
+import { getCategoryLabel } from "@/lib/pickup-categories";
 import NotificationBell from "@/components/NotificationBell";
 import RequestReviewSheet from "@/components/RequestReviewSheet";
 import BundleStatusTracker from "@/components/BundleStatusTracker";
@@ -50,6 +51,7 @@ interface PendingRequest {
   requesterId: string; requesterName: string; requesterAvatar: string | null;
   requesterTrustScore: number;
   reasonForRequest: string | null; whoIsItFor: string | null; pickupPreference: string | null;
+  pickupCategoryId: string | null;
   requestedAt: string;
 }
 
@@ -520,7 +522,7 @@ export default function DiscoverPage() {
               {pendingRequests.map((r) => {
                 const isTrusted = r.requesterTrustScore >= 70;
                 const whoLabel: Record<string, string> = { ME: "For themselves", MY_BABY: "For their baby", SOMEONE_I_CARE_FOR: "For someone they care for", MY_HOUSEHOLD_FAMILY: "For their household" };
-                const pickupLabel: Record<string, string> = { PICKUP: "Can pick up", DELIVERY: "Needs delivery support" };
+                const pickupLabel: Record<string, string> = { PICKUP: "Can pick up", DELIVERY_SUPPORT: "Needs delivery support" };
                 return (
                   <div key={r.requestId} style={{ background: "var(--white)", borderRadius: 14, border: "1.5px solid var(--border)", padding: "14px 16px", marginBottom: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -563,6 +565,14 @@ export default function DiscoverPage() {
                         </span>
                       )}
                     </div>
+                    {r.pickupPreference === "DELIVERY_SUPPORT" && (
+                      <div style={{ marginBottom: 12, background: "#e8f5f1", border: "1px solid #1a7a5e", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                        <Truck size={20} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                          This request is for delivery support. The recipient is asking if you can drop the item off near them. They&apos;ve suggested meeting at a <strong>{r.pickupCategoryId ? getCategoryLabel(r.pickupCategoryId) : "public place"}</strong> in their area. Delivery is voluntary — only accept if you can comfortably travel.
+                        </div>
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={() => handleAcceptRequest(r.requestId)}

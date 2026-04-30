@@ -559,7 +559,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0 4px" }}>
               <ShieldCheck size={13} color="#1a7a5e" strokeWidth={1.75} />
               <span style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}>
-                Keep all coordination inside Kradəl
+                For safety, keep all coordination inside Kradəl.
               </span>
             </div>
 

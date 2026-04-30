@@ -141,6 +141,7 @@ export async function GET(req: NextRequest) {
     reasonForRequest:    r.reasonForRequest,
     whoIsItFor:          r.whoIsItFor,
     pickupPreference:    r.pickupPreference,
+    pickupCategoryId:    r.pickupCategoryId,
     requestedAt:         r.createdAt.toISOString(),
   }));
 
