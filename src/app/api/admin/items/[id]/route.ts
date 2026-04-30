@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cancelActiveRequestsForItem } from "@/lib/cancel-item-requests";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(status !== "FROZEN" && { frozenAt: null, frozenReason: null }),
       },
     });
+
+    if (status === "REMOVED") {
+      await cancelActiveRequestsForItem(
+        id,
+        item.title,
+        "Item removed by admin",
+        admin.userId,
+      ).catch(() => {});
+    }
+
     return NextResponse.json({ item });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

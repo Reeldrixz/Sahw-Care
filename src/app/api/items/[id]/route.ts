@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
+import { cancelActiveRequestsForItem } from "@/lib/cancel-item-requests";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       donor: { select: { id: true, name: true, avatar: true } },
     },
   });
+
+  if (status === "REMOVED") {
+    await cancelActiveRequestsForItem(
+      id,
+      updated.title,
+      "Item removed by donor",
+      user.userId,
+    ).catch(() => {});
+  }
 
   return NextResponse.json({ item: updated });
 }

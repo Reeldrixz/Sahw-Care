@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       where: {
         status:      { in: ["APPROVED", "ACCEPTED"] },
         fulfillment: null,
-        item:        { donorId: userId },
+        item:        { donorId: userId, status: { notIn: ["REMOVED", "FROZEN"] } },
       },
       include: {
         item:      { select: { id: true, title: true } },
