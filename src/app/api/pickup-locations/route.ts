@@ -24,30 +24,30 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Fetch all active locations once
-  const allLocations = await prisma.publicPickupLocation.findMany({
-    where: { isActive: true },
+  // No city → return all categories with empty suggestions
+  if (!userCity) {
+    const categories = PICKUP_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      label: cat.label,
+      icon: cat.icon,
+      suggestions: [],
+    }));
+    return NextResponse.json({ categories });
+  }
+
+  // Strict city filter — no cross-city fallback
+  const cityLocations = await prisma.publicPickupLocation.findMany({
+    where: { isActive: true, city: { equals: userCity, mode: "insensitive" } },
     select: { id: true, name: true, type: true, address: true, city: true },
     orderBy: [{ name: "asc" }],
   });
 
-  // Build category buckets — city-first, up to 3 suggestions each
+  // Build category buckets, up to 3 suggestions each
   const categories = PICKUP_CATEGORIES.map((cat) => {
-    const matching = allLocations.filter((l) => l.type === cat.id);
-
-    // City rows first, then rest; cap at 3
-    const cityRows = matching.filter(
-      (l) => userCity && l.city.toLowerCase() === userCity.toLowerCase()
-    );
-    const otherRows = matching.filter(
-      (l) => !userCity || l.city.toLowerCase() !== userCity.toLowerCase()
-    );
-    const suggestions = [...cityRows, ...otherRows].slice(0, 3).map((l) => ({
-      id: l.id,
-      name: l.name,
-      address: l.address,
-      city: l.city,
-    }));
+    const suggestions = cityLocations
+      .filter((l) => l.type === cat.id)
+      .slice(0, 3)
+      .map((l) => ({ id: l.id, name: l.name, address: l.address, city: l.city }));
 
     return {
       id: cat.id,

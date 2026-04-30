@@ -35,7 +35,7 @@ interface CategoryBucket {
 }
 
 const WHO_OPTIONS: { value: WhoFor; label: string }[] = [
-  { value: "ME",       label: "Me" },
+  { value: "ME",       label: "Myself" },
   { value: "MY_BABY",  label: "My baby" },
 ];
 
@@ -285,10 +285,10 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                 </div>
               </div>
 
-              {/* Can you collect in person */}
+              {/* Receive method */}
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", marginBottom: 10, color: "var(--ink)" }}>
-                  Can you collect in person? <span style={{ color: "var(--terra)" }}>*</span>
+                  How would you like to receive it? <span style={{ color: "var(--terra)" }}>*</span>
                 </label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {radioBtn(pickup === "PICKUP", () => { setPickup("PICKUP"); setSelectedCategory(null); }, "I can pick up from a public place")}
@@ -378,17 +378,15 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                               )}
                             </button>
 
-                            {/* Suggestions — hidden in DELIVERY_SUPPORT mode */}
-                            {isSelected && pickup === "PICKUP" && (
+                            {/* Suggestions — hidden in DELIVERY_SUPPORT mode or when none available */}
+                            {isSelected && pickup === "PICKUP" && suggestions.length > 0 && (
                               <div style={{
                                 marginTop: 6, marginLeft: 14,
                                 fontSize: 13, fontWeight: 400,
                                 fontFamily: "Nunito, sans-serif",
                                 color: "#555555",
                               }}>
-                                {suggestions.length > 0
-                                  ? `Examples near you: ${suggestions.map((s) => s.name).join(", ")}`
-                                  : "You'll agree on the exact spot together."}
+                                {`Examples near you: ${suggestions.map((s) => s.name).join(", ")}`}
                               </div>
                             )}
                           </div>
