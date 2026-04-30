@@ -59,6 +59,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const isAdmin = user.role === "ADMIN";
   const frozenAt = status === "FROZEN" ? new Date() : undefined;
 
+  // Owners can toggle between ACTIVE and REMOVED only; admins can set any status
+  if (status && !isAdmin) {
+    if (!["ACTIVE", "REMOVED"].includes(status)) {
+      return NextResponse.json({ error: "You can only mark a listing as active or unavailable." }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.item.update({
     where: { id },
     data: {
@@ -70,7 +77,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(description !== undefined && { description }),
       ...(images && { images }),
       ...(urgent !== undefined && { urgent }),
-      ...(status && isAdmin && { status }),
+      ...(status && { status }),
       ...(adminBlurred !== undefined && isAdmin && { adminBlurred }),
       ...(frozenAt && { frozenAt }),
       ...(frozenReason !== undefined && isAdmin && { frozenReason: frozenReason ?? null }),

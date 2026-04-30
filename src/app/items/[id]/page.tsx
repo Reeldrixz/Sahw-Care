@@ -1,3 +1,8 @@
+// TODO(delete): donor-facing Delete listing UX deferred. Three
+// blockers: (1) endpoint cascades through PickupCoordination
+// without warning, destroying recipient records; (2) no
+// notification fires to pending requesters; (3) hard delete
+// leaves no audit trail. Implement safeguards before exposing.
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -179,14 +184,21 @@ export default function ItemDetailPage() {
     }
   };
 
-  const handleMarkUnavailable = async () => {
+  const handleToggleAvailability = async () => {
     if (!item) return;
+    const newStatus = item.status === "ACTIVE" ? "REMOVED" : "ACTIVE";
     const res = await fetch(`/api/items/${item.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "REMOVED" }),
+      body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) setToast("Listing marked as unavailable.");
+    if (res.ok) {
+      const d = await res.json();
+      setItem((prev) => prev ? { ...prev, ...d.item } : prev);
+      setToast(newStatus === "REMOVED"
+        ? "This listing is no longer visible to others."
+        : "Your listing is visible again.");
+    }
     setShowMenu(false);
   };
 
@@ -253,13 +265,6 @@ export default function ItemDetailPage() {
     setToast("This item won't appear in your feed.");
   };
 
-  const handleDeleteItem = async () => {
-    if (!item || !confirm("Delete this listing? This cannot be undone.")) return;
-    const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
-    if (res.ok) { router.push("/"); }
-    else setToast("Delete failed");
-    setShowMenu(false);
-  };
 
   if (loading) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
   if (!item) return (
@@ -277,20 +282,13 @@ export default function ItemDetailPage() {
   const BottomBar = ({ desktop }: { desktop?: boolean }) => {
     if (isOwnItem && !isAdmin) {
       return (
-        <div className={desktop ? "reserve-bar" : "reserve-bar"} style={{ display: "flex", gap: 10 }}>
+        <div className="reserve-bar">
           <button
             onClick={openEdit}
-            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", background: "#f5f5f5", border: "none", borderRadius: 12, fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14, color: "#1a1a1a", cursor: "pointer" }}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", background: "#f5f5f5", border: "none", borderRadius: 12, fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14, color: "#1a1a1a", cursor: "pointer" }}
           >
-            <Pencil size={16} />
+            <Pencil size={16} strokeWidth={1.75} />
             Edit listing
-          </button>
-          <button
-            onClick={handleMarkUnavailable}
-            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px", background: "#fff8ed", border: "1.5px solid #f59e0b", borderRadius: 12, fontFamily: "Nunito, sans-serif", fontWeight: 700, fontSize: 14, color: "#d97706", cursor: "pointer" }}
-          >
-            <EyeOff size={16} />
-            Mark unavailable
           </button>
         </div>
       );
@@ -521,8 +519,7 @@ export default function ItemDetailPage() {
                 <div style={{ padding: "8px 20px 4px", fontSize: 11, fontWeight: 700, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.05em" }}>Your listing</div>
                 {[
                   { icon: Pencil, label: "Edit listing", color: "#1a7a5e", action: openEdit },
-                  { icon: EyeOff, label: "Mark unavailable", color: "#d97706", action: handleMarkUnavailable },
-                  { icon: Trash2, label: "Delete listing", color: "#ef4444", action: handleDeleteItem },
+                  { icon: item.status === "ACTIVE" ? EyeOff : Eye, label: item.status === "ACTIVE" ? "Mark unavailable" : "Mark available", color: "#d97706", action: handleToggleAvailability },
                 ].map(({ icon: Icon, label, color, action }) => (
                   <button key={label} onClick={action} style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "14px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
                     <Icon size={18} color={color} strokeWidth={1.5} />
