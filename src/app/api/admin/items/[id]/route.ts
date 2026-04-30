@@ -19,6 +19,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
+    const previous = status
+      ? await prisma.item.findUnique({ where: { id }, select: { status: true } })
+      : null;
+
     const item = await prisma.item.update({
       where: { id },
       data: {
@@ -37,6 +41,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         "Item removed by admin",
         admin.userId,
       ).catch(() => {});
+    }
+
+    if (status === "ACTIVE" && previous?.status === "PENDING") {
+      prisma.notification.create({
+        data: {
+          userId:            item.donorId,
+          type:              "REQUEST_RECEIVED",
+          title:             "Your listing is live",
+          message:           `Your ${item.title} listing is now visible to mothers in ${item.location}. Tap to view.`,
+          link:              `/items/${item.id}`,
+          triggeredByUserId: null,
+        },
+      }).catch(() => {});
     }
 
     return NextResponse.json({ item });

@@ -296,7 +296,7 @@ export default function ItemDetailPage() {
     return (
       <div className="reserve-bar">
         <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
-          {requested ? "✓ Request Sent — Awaiting donor" : "Request this item — Free"}
+          {requested ? "✓ Request Sent — Awaiting donor" : "Request"}
         </button>
       </div>
     );
@@ -316,11 +316,11 @@ export default function ItemDetailPage() {
 
       <div className="detail-divider" />
       <div className="detail-section-title">Pickup location</div>
-      <div className="detail-location-row" onClick={() => setToast("Exact location shared after approval")}>
+      <div className="detail-location-row" onClick={() => setToast("You'll agree on a public meeting spot together after approval.")}>
         <div className="detail-location-icon">📍</div>
         <div className="detail-location-text">
           <div className="detail-location-main">{item.location}</div>
-          <div className="detail-location-sub">Exact address shared after approval</div>
+          <div className="detail-location-sub">You&apos;ll agree on a public meeting spot together after approval.</div>
         </div>
         <div className="detail-location-arrow">›</div>
       </div>
