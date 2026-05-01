@@ -7,7 +7,15 @@ export async function GET() {
   try {
     const items = await prisma.itemCatalog.findMany({
       where: { isActive: true },
-      orderBy: [{ category: "asc" }, { name: "asc" }],
+      orderBy: [{ category: "asc" }, { sku: "asc" }],
+      select: {
+        id: true, sku: true, name: true, category: true,
+        standardPriceCents: true, priceCentsMin: true, priceCentsMax: true,
+        description: true, imageUrl: true,
+        preferredVendor: true, ageStage: true, requiresSize: true,
+        isActive: true, lastVerifiedAt: true, createdAt: true, updatedAt: true,
+        // preferredVendorUrl and substituteNote are admin-only — omitted
+      },
     });
 
     const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {

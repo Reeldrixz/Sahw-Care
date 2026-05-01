@@ -171,8 +171,13 @@ interface Financials {
 }
 
 interface CatalogAdminEntry {
-  id: string; name: string; category: string; standardPriceCents: number;
-  description: string | null; isActive: boolean; createdAt: string;
+  id: string; sku: string; name: string; category: string;
+  standardPriceCents: number; priceCentsMin: number; priceCentsMax: number;
+  description: string | null; imageUrl: string | null;
+  preferredVendor: string | null; preferredVendorUrl: string | null;
+  substituteNote: string | null; ageStage: string | null;
+  requiresSize: boolean; isActive: boolean;
+  lastVerifiedAt: string | null; createdAt: string; updatedAt: string;
   _count: { registerItems: number };
 }
 
@@ -226,10 +231,11 @@ export default function AdminPage() {
   const [financials,         setFinancials]         = useState<Financials | null>(null);
 
   // Catalog management state
-  const [catalogItems,       setCatalogItems]       = useState<CatalogAdminEntry[]>([]);
-  const [catalogLoading,     setCatalogLoading]     = useState(false);
-  const [editingCatalog,     setEditingCatalog]     = useState<CatalogAdminEntry | null>(null);
-  const [newCatalogForm,     setNewCatalogForm]     = useState({ name: "", category: "", standardPriceCents: "" });
+  const [catalogItems,         setCatalogItems]         = useState<CatalogAdminEntry[]>([]);
+  const [catalogLoading,       setCatalogLoading]       = useState(false);
+  const [editingCatalog,       setEditingCatalog]       = useState<CatalogAdminEntry | null>(null);
+  const [catalogImgUploading,  setCatalogImgUploading]  = useState(false);
+  const [newCatalogForm,       setNewCatalogForm]       = useState({ name: "", category: "", standardPriceCents: "" });
 
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
@@ -1919,7 +1925,7 @@ export default function AdminPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Item Catalog</div>
                   <button
-                    onClick={() => setEditingCatalog({ id: "", name: "", category: "", standardPriceCents: 0, description: null, isActive: true, createdAt: "", _count: { registerItems: 0 } })}
+                    onClick={() => setEditingCatalog({ id: "", sku: "", name: "", category: "Feeding", standardPriceCents: 0, priceCentsMin: 0, priceCentsMax: 0, description: null, imageUrl: null, preferredVendor: null, preferredVendorUrl: null, substituteNote: null, ageStage: null, requiresSize: false, isActive: true, lastVerifiedAt: null, createdAt: "", updatedAt: "", _count: { registerItems: 0 } })}
                     style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
                     + Add item
                   </button>
@@ -1928,87 +1934,231 @@ export default function AdminPage() {
                 {catalogLoading ? (
                   <div style={{ textAlign: "center", padding: 40 }}><div className="spinner" /></div>
                 ) : (
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Used</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {catalogItems.map((c) => (
-                        <tr key={c.id} style={{ opacity: c.isActive ? 1 : 0.5 }}>
-                          <td style={{ fontWeight: 700, fontSize: 12 }}>{c.name}</td>
-                          <td style={{ fontSize: 12, color: "var(--mid)" }}>{c.category}</td>
-                          <td style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e" }}>${(c.standardPriceCents / 100).toFixed(0)}</td>
-                          <td style={{ fontSize: 12, color: "var(--mid)" }}>{c._count.registerItems}</td>
-                          <td>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: c.isActive ? "#e8f5f1" : "#f3f4f6", color: c.isActive ? "#1a7a5e" : "var(--mid)" }}>
-                              {c.isActive ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-                          <td style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => setEditingCatalog(c)}
-                              style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
-                              Edit
-                            </button>
-                            <button
-                              onClick={async () => {
-                                await fetch("/api/admin/catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, name: c.name, category: c.category, standardPriceCents: c.standardPriceCents, isActive: !c.isActive }) });
-                                fetchCatalogAdmin();
-                                setToast(c.isActive ? "Item deactivated" : "Item activated");
-                              }}
-                              style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", color: c.isActive ? "var(--terra)" : "var(--green)" }}>
-                              {c.isActive ? "Deactivate" : "Activate"}
-                            </button>
-                          </td>
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>SKU</th>
+                          <th>Image</th>
+                          <th>Item</th>
+                          <th>Category</th>
+                          <th>Vendor</th>
+                          <th>Price</th>
+                          <th>Used</th>
+                          <th>Status</th>
+                          <th>Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {catalogItems.map((c) => (
+                          <tr key={c.id} style={{ opacity: c.isActive ? 1 : 0.5 }}>
+                            <td style={{ fontSize: 11, fontWeight: 800, color: "var(--mid)", fontFamily: "monospace" }}>{c.sku}</td>
+                            <td>
+                              {c.imageUrl
+                                ? <img src={c.imageUrl} alt={c.name} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 6 }} />
+                                : <div style={{ width: 32, height: 32, borderRadius: 6, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>—</div>
+                              }
+                            </td>
+                            <td style={{ fontWeight: 700, fontSize: 12 }}>{c.name}</td>
+                            <td style={{ fontSize: 12, color: "var(--mid)" }}>{c.category}</td>
+                            <td style={{ fontSize: 12, color: "var(--mid)" }}>{c.preferredVendor ?? "—"}</td>
+                            <td style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e" }}>${(c.standardPriceCents / 100).toFixed(0)}</td>
+                            <td style={{ fontSize: 12, color: "var(--mid)" }}>{c._count.registerItems}</td>
+                            <td>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: c.isActive ? "#e8f5f1" : "#f3f4f6", color: c.isActive ? "#1a7a5e" : "var(--mid)" }}>
+                                {c.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                            <td style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => setEditingCatalog(c)}
+                                style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                Edit
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  await fetch("/api/admin/catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: c.id, sku: c.sku, name: c.name, category: c.category, standardPriceCents: c.standardPriceCents, isActive: !c.isActive }) });
+                                  fetchCatalogAdmin();
+                                  setToast(c.isActive ? "Item deactivated" : "Item activated");
+                                }}
+                                style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", color: c.isActive ? "var(--terra)" : "var(--green)" }}>
+                                {c.isActive ? "Deactivate" : "Activate"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
 
                 {/* Add/Edit modal */}
                 {editingCatalog !== null && (
                   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-                    <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%" }}>
+                    <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 520, width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
                       <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 16 }}>
                         {editingCatalog.id ? "Edit item" : "Add new item"}
                       </div>
+
+                      {/* SKU */}
                       <div className="form-group">
-                        <label className="form-label">Item name</label>
+                        <label className="form-label">SKU <span style={{ color: "var(--terra)" }}>*</span></label>
+                        <input className="form-input" placeholder="e.g. F01" value={editingCatalog.sku} onChange={(e) => setEditingCatalog((p) => p ? { ...p, sku: e.target.value.toUpperCase() } : p)} style={{ fontFamily: "monospace" }} />
+                      </div>
+
+                      {/* Name */}
+                      <div className="form-group">
+                        <label className="form-label">Item name <span style={{ color: "var(--terra)" }}>*</span></label>
                         <input className="form-input" value={editingCatalog.name} onChange={(e) => setEditingCatalog((p) => p ? { ...p, name: e.target.value } : p)} />
                       </div>
+
+                      {/* Category */}
                       <div className="form-group">
-                        <label className="form-label">Category</label>
+                        <label className="form-label">Category <span style={{ color: "var(--terra)" }}>*</span></label>
                         <select className="form-input" value={editingCatalog.category} onChange={(e) => setEditingCatalog((p) => p ? { ...p, category: e.target.value } : p)} style={{ fontFamily: "Nunito, sans-serif" }}>
-                          {["Feeding/Diapering", "Clothing", "Hygiene", "Maternity", "Other"].map((c) => <option key={c}>{c}</option>)}
+                          {["Feeding", "Diapering", "Clothing", "Maternity & Postpartum", "Hygiene & Bath", "Other"].map((c) => <option key={c}>{c}</option>)}
                         </select>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Standard price ($)</label>
-                        <input className="form-input" type="number" value={editingCatalog.standardPriceCents / 100} onChange={(e) => setEditingCatalog((p) => p ? { ...p, standardPriceCents: Math.round(parseFloat(e.target.value) * 100) } : p)} />
+
+                      {/* Prices */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                        <div className="form-group">
+                          <label className="form-label">Display price ($)</label>
+                          <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.standardPriceCents / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, standardPriceCents: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Min ($)</label>
+                          <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.priceCentsMin / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, priceCentsMin: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Max ($)</label>
+                          <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.priceCentsMax / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, priceCentsMax: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
+                        </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+
+                      {/* Description */}
+                      <div className="form-group">
+                        <label className="form-label">Description</label>
+                        <textarea className="form-input" rows={2} value={editingCatalog.description ?? ""} onChange={(e) => setEditingCatalog((p) => p ? { ...p, description: e.target.value || null } : p)} style={{ resize: "vertical", fontFamily: "Nunito, sans-serif" }} />
+                      </div>
+
+                      {/* Image upload */}
+                      <div className="form-group">
+                        <label className="form-label">Product image</label>
+                        {editingCatalog.imageUrl && (
+                          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+                            <img src={editingCatalog.imageUrl} alt="preview" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1.5px solid var(--border)" }} />
+                            <button onClick={() => setEditingCatalog((p) => p ? { ...p, imageUrl: null } : p)} style={{ fontSize: 11, color: "var(--terra)", background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Remove</button>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={catalogImgUploading}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setCatalogImgUploading(true);
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            const res = await fetch("/api/upload", { method: "POST", body: fd });
+                            setCatalogImgUploading(false);
+                            if (res.ok) {
+                              const d = await res.json();
+                              setEditingCatalog((p) => p ? { ...p, imageUrl: d.url } : p);
+                            } else {
+                              setToast("Image upload failed");
+                            }
+                            e.target.value = "";
+                          }}
+                          style={{ fontSize: 12, fontFamily: "Nunito, sans-serif" }}
+                        />
+                        {catalogImgUploading && <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 4 }}>Uploading…</div>}
+                      </div>
+
+                      {/* Vendor */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div className="form-group">
+                          <label className="form-label">Preferred vendor</label>
+                          <select className="form-input" value={editingCatalog.preferredVendor ?? ""} onChange={(e) => setEditingCatalog((p) => p ? { ...p, preferredVendor: e.target.value || null } : p)} style={{ fontFamily: "Nunito, sans-serif" }}>
+                            <option value="">— None —</option>
+                            {["Walmart.ca", "Amazon.ca", "Shoppers Drug Mart", "Costco Canada"].map((v) => <option key={v}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Vendor URL</label>
+                          <input
+                            className="form-input"
+                            placeholder="https://…"
+                            value={editingCatalog.preferredVendorUrl ?? ""}
+                            onChange={(e) => setEditingCatalog((p) => p ? { ...p, preferredVendorUrl: e.target.value || null } : p)}
+                            onBlur={(e) => {
+                              const v = e.target.value;
+                              if (v && !v.startsWith("http://") && !v.startsWith("https://")) setToast("Vendor URL must start with https://");
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Substitute note */}
+                      <div className="form-group">
+                        <label className="form-label">Substitute note <span style={{ fontSize: 11, color: "var(--mid)" }}>(max 300 chars)</span></label>
+                        <textarea className="form-input" rows={2} maxLength={300} value={editingCatalog.substituteNote ?? ""} onChange={(e) => setEditingCatalog((p) => p ? { ...p, substituteNote: e.target.value || null } : p)} style={{ resize: "vertical", fontFamily: "Nunito, sans-serif" }} />
+                      </div>
+
+                      {/* Age stage + Requires size */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "end" }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Age stage</label>
+                          <input className="form-input" placeholder="e.g. 0-3 months" value={editingCatalog.ageStage ?? ""} onChange={(e) => setEditingCatalog((p) => p ? { ...p, ageStage: e.target.value || null } : p)} />
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 2 }}>
+                          <input type="checkbox" id="requiresSize" checked={editingCatalog.requiresSize} onChange={(e) => setEditingCatalog((p) => p ? { ...p, requiresSize: e.target.checked } : p)} style={{ width: 16, height: 16, cursor: "pointer" }} />
+                          <label htmlFor="requiresSize" style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", fontWeight: 600, cursor: "pointer" }}>Requires size</label>
+                        </div>
+                      </div>
+
+                      {/* Last verified (read-only) */}
+                      {editingCatalog.lastVerifiedAt && (
+                        <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 12 }}>
+                          Last verified: {new Date(editingCatalog.lastVerifiedAt).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                         <button onClick={() => setEditingCatalog(null)} className="btn-clear" style={{ flex: 1 }}>Cancel</button>
                         <button
                           onClick={async () => {
-                            if (!editingCatalog.name || !editingCatalog.category) { setToast("Name and category required"); return; }
-                            await fetch("/api/admin/catalog", {
+                            if (!editingCatalog.sku.trim()) { setToast("SKU is required"); return; }
+                            if (!editingCatalog.name) { setToast("Name is required"); return; }
+                            if (!editingCatalog.category) { setToast("Category is required"); return; }
+                            const vendorUrl = editingCatalog.preferredVendorUrl;
+                            if (vendorUrl && !vendorUrl.startsWith("http://") && !vendorUrl.startsWith("https://")) { setToast("Vendor URL must start with https://"); return; }
+                            const res = await fetch("/api/admin/catalog", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
                               body: JSON.stringify({
                                 id: editingCatalog.id || undefined,
+                                sku: editingCatalog.sku.trim().toUpperCase(),
                                 name: editingCatalog.name,
                                 category: editingCatalog.category,
                                 standardPriceCents: editingCatalog.standardPriceCents,
+                                priceCentsMin: editingCatalog.priceCentsMin,
+                                priceCentsMax: editingCatalog.priceCentsMax,
+                                description: editingCatalog.description || null,
+                                imageUrl: editingCatalog.imageUrl || null,
+                                preferredVendor: editingCatalog.preferredVendor || null,
+                                preferredVendorUrl: editingCatalog.preferredVendorUrl || null,
+                                substituteNote: editingCatalog.substituteNote || null,
+                                ageStage: editingCatalog.ageStage || null,
+                                requiresSize: editingCatalog.requiresSize,
                                 isActive: editingCatalog.isActive,
                               }),
                             });
+                            if (!res.ok) {
+                              const d = await res.json();
+                              setToast(d.error ?? "Save failed");
+                              return;
+                            }
                             setEditingCatalog(null);
                             fetchCatalogAdmin();
                             setToast("Catalog updated!");

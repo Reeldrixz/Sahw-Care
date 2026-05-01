@@ -1151,12 +1151,23 @@ enum ItemFundingStatus {
 
 model ItemCatalog {
   id                 String         @id @default(cuid())
+  sku                String         @unique
   name               String
   category           String
   standardPriceCents Int
+  priceCentsMin      Int            @default(0)
+  priceCentsMax      Int            @default(0)
   description        String?
+  imageUrl           String?
+  preferredVendor    String?
+  preferredVendorUrl String?
+  substituteNote     String?
+  ageStage           String?
+  requiresSize       Boolean        @default(false)
   isActive           Boolean        @default(true)
+  lastVerifiedAt     DateTime?
   createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   registerItems      RegisterItem[]
 }
 
