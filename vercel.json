@@ -1,7 +1,8 @@
 {
   "crons": [
-    { "path": "/api/cron/daily-abuse",  "schedule": "0 0 * * *" },
-    { "path": "/api/cron/weekly-abuse", "schedule": "0 0 * * 0" },
-    { "path": "/api/cron/auto-confirm", "schedule": "0 2 * * *" }
+    { "path": "/api/cron/daily-abuse",       "schedule": "0 0 * * *" },
+    { "path": "/api/cron/weekly-abuse",      "schedule": "0 0 * * 0" },
+    { "path": "/api/cron/auto-confirm",      "schedule": "0 2 * * *" },
+    { "path": "/api/cron/redact-addresses",  "schedule": "0 3 * * *" }
   ]
 }

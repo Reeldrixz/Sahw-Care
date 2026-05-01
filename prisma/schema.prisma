@@ -359,16 +359,21 @@ model Report {
 // ==================== REGISTERS ====================
 
 model Register {
-  id        String   @id @default(cuid())
-  title     String
-  city      String
-  dueDate   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String              @id @default(cuid())
+  title       String
+  city        String
+  dueDate     DateTime
+  addressMode RegisterAddressMode @default(ASK_PER_SHIPMENT)
+  status      RegisterStatus      @default(DRAFT)
+  completedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
-  creatorId String
-  creator   User           @relation("CreatorRegisters", fields: [creatorId], references: [id], onDelete: Cascade)
-  items     RegisterItem[]
+  creatorId    String
+  creator      User            @relation("CreatorRegisters", fields: [creatorId], references: [id], onDelete: Cascade)
+  items        RegisterItem[]
+  savedAddress RegisterAddress?
 }
 
 model RegisterItem {
@@ -392,6 +397,7 @@ model RegisterItem {
   assignment       ItemAssignment?
   funding          RegisterItemFunding[]
   fulfillmentQueue FulfillmentQueue?
+  shipmentAddress  ShipmentAddress?
 }
 
 model ItemAssignment {
@@ -544,6 +550,21 @@ enum RegisterItemStatus {
   AVAILABLE
   RESERVED
   FULFILLED
+  DELIVERED
+  CANCELLED
+}
+
+enum RegisterAddressMode {
+  ASK_PER_SHIPMENT
+  SAVED_PER_REGISTER
+}
+
+enum RegisterStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CLOSED
+  ABANDONED
 }
 
 enum ItemAssignmentStatus {
@@ -1198,4 +1219,57 @@ model FulfillmentQueue {
   deliveredAt      DateTime?
 
   registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
+}
+
+// ==================== ADDRESS HANDLING ====================
+
+model RegisterAddress {
+  id            String    @id @default(cuid())
+  registerId    String    @unique
+  fullName      String
+  streetAddress String
+  unit          String?
+  city          String
+  province      String
+  postalCode    String
+  country       String    @default("Canada")
+  phone         String
+  redactedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  register Register @relation(fields: [registerId], references: [id], onDelete: Cascade)
+}
+
+model ShipmentAddress {
+  id             String    @id @default(cuid())
+  registerItemId String    @unique
+  fullName       String
+  streetAddress  String
+  unit           String?
+  city           String
+  province       String
+  postalCode     String
+  country        String    @default("Canada")
+  phone          String
+  redactedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
+}
+
+model AddressAuditSnapshot {
+  id               String   @id @default(cuid())
+  registerId       String?
+  registerItemId   String?
+  city             String
+  province         String
+  country          String
+  postalCodeFirst3 String
+  addressHash      String
+  redactedAt       DateTime @default(now())
+
+  @@index([registerId])
+  @@index([registerItemId])
 }
