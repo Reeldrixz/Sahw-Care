@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import ListCard, { ItemData } from "@/components/ListCard";
@@ -19,6 +19,7 @@ import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
 import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
 import LocationSelector from "@/components/LocationSelector";
+import { useUserLocation } from "@/hooks/useUserLocation";
 import SearchBar from "@/components/SearchBar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -112,48 +113,12 @@ export default function DiscoverPage() {
   const [loadingItems,     setLoadingItems]     = useState(true);
   const [noLocalItems,     setNoLocalItems]     = useState(false);
   const [showLocationSheet,setShowLocationSheet]= useState(false);
-  const [activeCity,       setActiveCity]       = useState<string | null>(null);
-  const [activeRadius,     setActiveRadius]     = useState(10);
-  const [activeSetByGPS,   setActiveSetByGPS]   = useState(false);
+  const { activeCity, activeRadius, activeSetByGPS, handleLocationSelect: persistLocation } = useUserLocation();
 
   const [tooltipDismissed, dismissTooltip] = useTooltipDismissed();
-  const locationInitRef = useRef(false);
 
   const selectedCat = CATS[catIdx];
   const showToast = (msg: string) => setToast(msg);
-
-  // ── Location init — from user.preferredCity or localStorage ───────────────
-  useEffect(() => {
-    if (loading || locationInitRef.current) return;
-    locationInitRef.current = true;
-
-    if (user?.preferredCity) {
-      setActiveCity(user.preferredCity);
-      setActiveRadius(user.preferredRadius ?? 10);
-      setActiveSetByGPS(user.locationSetByGPS ?? false);
-      return;
-    }
-
-    try {
-      const stored = localStorage.getItem("kradel_location");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed?.city) {
-          setActiveCity(parsed.city);
-          setActiveRadius(parsed.radius ?? 10);
-          setActiveSetByGPS(parsed.setByGPS ?? false);
-          // Migrate to DB if logged in but no preferredCity yet
-          if (user) {
-            fetch("/api/user/location", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ city: parsed.city, radius: parsed.radius ?? 10, setByGPS: parsed.setByGPS ?? false }),
-            }).catch(() => {});
-          }
-        }
-      }
-    } catch { /* ignore */ }
-  }, [loading, user]);
 
   // ── Trust strip count ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -378,22 +343,9 @@ export default function DiscoverPage() {
 
   // ── Location selection handler ─────────────────────────────────────────────
   const handleLocationSelect = useCallback((city: string, radius: number, byGPS: boolean) => {
-    setActiveCity(city);
-    setActiveRadius(radius);
-    setActiveSetByGPS(byGPS);
+    persistLocation(city, radius, byGPS);
     showToast(`Showing items in ${city}`);
-    if (user) {
-      fetch("/api/user/location", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ city, radius, setByGPS: byGPS }),
-      }).catch(() => {});
-    } else {
-      try {
-        localStorage.setItem("kradel_location", JSON.stringify({ city, radius, setByGPS: byGPS }));
-      } catch { /* ignore */ }
-    }
-  }, [user]);
+  }, [persistLocation]);
 
   const locationLabel = activeSetByGPS
     ? "Near you"

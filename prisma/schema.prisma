@@ -141,6 +141,7 @@ model User {
   notifyVerification  Boolean @default(true)
 
   notifications Notification[]
+  savedRegisters           SavedRegister[]
 }
 
 // ==================== ITEMS ====================
@@ -180,6 +181,20 @@ model Favourite {
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId])
+}
+
+model SavedRegister {
+  id         String   @id @default(cuid())
+  userId     String
+  registerId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  register Register @relation(fields: [registerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, registerId])
+  @@index([userId])
+  @@index([registerId])
 }
 
 model Review {
@@ -374,6 +389,7 @@ model Register {
   creator      User            @relation("CreatorRegisters", fields: [creatorId], references: [id], onDelete: Cascade)
   items        RegisterItem[]
   savedAddress RegisterAddress?
+  savedBy      SavedRegister[]
 }
 
 model RegisterItem {

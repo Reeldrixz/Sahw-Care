@@ -9,6 +9,9 @@ export async function GET(req: NextRequest) {
   const city = searchParams.get("city");
   const creatorId = searchParams.get("creatorId");
 
+  const token = await getTokenFromRequest(req);
+  const auth = token ? await verifyToken(token) : null;
+
   const registers = await prisma.register.findMany({
     where: {
       ...(city && { city: { contains: city, mode: "insensitive" } }),
@@ -34,7 +37,17 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ registers });
+  const savedIds = auth
+    ? new Set(
+        (await prisma.savedRegister.findMany({
+          where: { userId: auth.userId },
+          select: { registerId: true },
+        })).map((s) => s.registerId)
+      )
+    : new Set<string>();
+
+  const result = registers.map((r) => ({ ...r, savedByMe: savedIds.has(r.id) }));
+  return NextResponse.json({ registers: result });
 }
 
 export async function POST(req: NextRequest) {

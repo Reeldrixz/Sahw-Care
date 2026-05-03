@@ -2,11 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, MapPin, Heart } from "lucide-react";
+import { BadgeCheck, MapPin, Heart, Bookmark, SlidersHorizontal } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import HowKradelWorks from "@/components/HowKradelWorks";
 import TrustAndSafety from "@/components/TrustAndSafety";
+import LocationSelector from "@/components/LocationSelector";
+import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserLocation } from "@/hooks/useUserLocation";
 
 interface RegisterListItem {
   id: string;
@@ -24,9 +27,12 @@ interface RegisterData {
   city: string;
   dueDate: string;
   createdAt: string;
+  savedByMe: boolean;
   creator: { id: string; name: string; location: string | null; verificationLevel: number };
   items: RegisterListItem[];
 }
+
+type TabKey = "all" | "nearby" | "due-soon" | "verified";
 
 function fmtMoney(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
@@ -44,24 +50,65 @@ function getStagePill(dueDate: string) {
   return { label: `Newborn · ${weeksOld}w old`, isNewborn: true };
 }
 
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "all",      label: "All"      },
+  { key: "nearby",   label: "Nearby"   },
+  { key: "due-soon", label: "Due Soon" },
+  { key: "verified", label: "Verified" },
+];
+
+const TAB_EMPTY: Record<TabKey, string> = {
+  "all":      "No registers yet — be the first to create one.",
+  "nearby":   "No registers in this city yet.",
+  "due-soon": "No registers due in the next 6 weeks.",
+  "verified": "No verified registers yet.",
+};
+
 export default function RegistersPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [registers, setRegisters] = useState<RegisterData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const { activeCity, activeRadius, activeSetByGPS, handleLocationSelect } = useUserLocation();
+
+  const [registers, setRegisters]           = useState<RegisterData[]>([]);
+  const [loading, setLoading]               = useState(true);
+  const [search, setSearch]                 = useState("");
+  const [tab, setTab]                       = useState<TabKey>("all");
+  const [savedState, setSavedState]         = useState<Record<string, boolean>>({});
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+  const [toast, setToast]                   = useState<string | null>(null);
+
+  const savedCount = Object.values(savedState).filter(Boolean).length;
 
   const fetchRegisters = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/registers");
     if (res.ok) {
       const data = await res.json();
-      setRegisters(data.registers ?? []);
+      const regs: RegisterData[] = data.registers ?? [];
+      setRegisters(regs);
+      const init: Record<string, boolean> = {};
+      for (const r of regs) { init[r.id] = r.savedByMe ?? false; }
+      setSavedState(init);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchRegisters(); }, [fetchRegisters]);
+
+  const handleToggleSave = async (e: React.MouseEvent, registerId: string) => {
+    e.stopPropagation();
+    if (!user) return;
+    const prev = savedState[registerId] ?? false;
+    setSavedState((s) => ({ ...s, [registerId]: !prev }));
+    const res = await fetch(`/api/registers/${registerId}/save`, { method: "POST" });
+    if (res.ok) {
+      const d = await res.json();
+      setSavedState((s) => ({ ...s, [registerId]: d.saved }));
+    } else {
+      setSavedState((s) => ({ ...s, [registerId]: prev }));
+      setToast("Failed to save register");
+    }
+  };
 
   const filtered = registers.filter(
     (r) =>
@@ -70,33 +117,91 @@ export default function RegistersPage() {
       r.creator.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  const tabFiltered = filtered.filter((r) => {
+    if (tab === "all") return true;
+    if (tab === "nearby") {
+      if (!activeCity) return false;
+      return r.city.toLowerCase() === activeCity.toLowerCase();
+    }
+    if (tab === "due-soon") {
+      const diffDays = Math.round((new Date(r.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 42;
+    }
+    if (tab === "verified") {
+      return (r.creator?.verificationLevel ?? 0) >= 2;
+    }
+    return true;
+  });
+
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
       <div className="discover-desktop">
+
         {/* Header */}
         <div style={{ background: "var(--white)", padding: "16px 16px 0" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700 }}>Registers</div>
-            {user && user.journeyType !== "donor" && (
-              <button
-                onClick={() => router.push("/registers/new")}
-                style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
-              >
-                + Create
-              </button>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {user && (
+                <button
+                  onClick={() => router.push("/registers/saved")}
+                  style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", padding: "4px 0" }}
+                >
+                  <Bookmark size={15} strokeWidth={1.75} />
+                  Saved{savedCount > 0 ? ` (${savedCount})` : ""}
+                </button>
+              )}
+              {user && user.journeyType !== "donor" && (
+                <button
+                  onClick={() => router.push("/registers/new")}
+                  style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                >
+                  + Create
+                </button>
+              )}
+            </div>
           </div>
           <p style={{ fontSize: 13, color: "var(--mid)", marginBottom: 14 }}>
             Mothers share what they need. You choose what to give.
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg)", borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
-            <span style={{ fontSize: 14, color: "var(--light)" }}>🔍</span>
-            <input
-              placeholder="Search by name or city..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ border: "none", background: "transparent", fontFamily: "Nunito, sans-serif", fontSize: 14, color: "var(--ink)", outline: "none", flex: 1 }}
-            />
+
+          {/* Search + filter icon */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--bg)", borderRadius: 12, padding: "10px 14px", flex: 1 }}>
+              <span style={{ fontSize: 14, color: "var(--light)" }}>🔍</span>
+              <input
+                placeholder="Search by name or city..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ border: "none", background: "transparent", fontFamily: "Nunito, sans-serif", fontSize: 14, color: "var(--ink)", outline: "none", flex: 1 }}
+              />
+            </div>
+            <button
+              onClick={() => setShowLocationSheet(true)}
+              style={{ background: "var(--bg)", border: "none", borderRadius: 12, padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+            >
+              <SlidersHorizontal size={20} strokeWidth={1.75} color="#555555" />
+            </button>
+          </div>
+
+          {/* Filter tabs */}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
+            {TABS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                style={{
+                  padding: "8px 16px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                  cursor: "pointer", whiteSpace: "nowrap", fontFamily: "Nunito, sans-serif",
+                  flexShrink: 0, transition: "all 0.15s",
+                  background: tab === key ? "#1a7a5e" : "var(--white)",
+                  color: tab === key ? "white" : "#555555",
+                  border: tab === key ? "none" : "1px solid #e0e0e0",
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -104,22 +209,39 @@ export default function RegistersPage() {
         <div style={{ padding: "16px 16px 0" }}>
           {loading ? (
             <div className="loading" style={{ marginTop: 60 }}><div className="spinner" /></div>
-          ) : filtered.length === 0 ? (
+          ) : tab === "nearby" && !activeCity ? (
+            <div className="empty" style={{ marginTop: 40 }}>
+              <div className="empty-icon">📍</div>
+              <div className="empty-title">Set your location</div>
+              <div style={{ marginBottom: 20, fontSize: 13, color: "var(--mid)" }}>See registers in your area.</div>
+              <button
+                className="btn-primary"
+                style={{ width: "auto", padding: "10px 24px" }}
+                onClick={() => setShowLocationSheet(true)}
+              >
+                Set location
+              </button>
+            </div>
+          ) : tabFiltered.length === 0 ? (
             <div className="empty" style={{ marginTop: 40 }}>
               <div className="empty-icon">📋</div>
-              <div className="empty-title">No registers yet</div>
-              <div style={{ marginBottom: 20 }}>Be the first to create one!</div>
-              {user && user.journeyType !== "donor" && (
-                <button className="btn-primary" style={{ width: "auto", padding: "10px 24px" }} onClick={() => router.push("/registers/new")}>
+              <div className="empty-title">
+                {tab === "nearby" && activeCity
+                  ? `No registers in ${activeCity} yet.`
+                  : TAB_EMPTY[tab]}
+              </div>
+              {tab === "all" && user && user.journeyType !== "donor" && (
+                <button className="btn-primary" style={{ width: "auto", padding: "10px 24px", marginTop: 16 }} onClick={() => router.push("/registers/new")}>
                   + Create Register
                 </button>
               )}
             </div>
           ) : (
-            filtered.map((reg) => {
+            tabFiltered.map((reg) => {
               const stage = getStagePill(reg.dueDate);
               const firstName = reg.creator.name.split(" ")[0];
               const isVerified = (reg.creator.verificationLevel ?? 0) >= 2;
+              const isSaved = savedState[reg.id] ?? false;
 
               const totalFunded = reg.items.reduce((s, i) => s + i.totalFundedCents, 0);
               const totalNeeded = reg.items.reduce((s, i) => s + i.standardPriceCents, 0);
@@ -130,10 +252,7 @@ export default function RegistersPage() {
               const hasNoFunding = totalFunded === 0;
               const totalDonors = reg.items.reduce((s, i) => s + i._count.funding, 0);
 
-              // Image strip (Section 1)
-              const itemImages = reg.items
-                .map((i) => i.catalogItem?.imageUrl)
-                .filter((u): u is string => !!u);
+              const itemImages = reg.items.map((i) => i.catalogItem?.imageUrl).filter((u): u is string => !!u);
               const hasImages = itemImages.length > 0;
               const moreThanFive = reg.items.length > 5;
               const stripImages = moreThanFive ? itemImages.slice(0, 4) : itemImages.slice(0, 5);
@@ -144,6 +263,7 @@ export default function RegistersPage() {
                   key={reg.id}
                   onClick={() => router.push(`/registers/${reg.id}`)}
                   style={{
+                    position: "relative",
                     background: "var(--white)", borderRadius: "var(--r)", padding: "16px",
                     marginBottom: 12, boxShadow: "var(--shadow)", cursor: "pointer",
                     transition: "transform 0.2s, box-shadow 0.2s",
@@ -151,8 +271,31 @@ export default function RegistersPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow-lg)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = "var(--shadow)"; }}
                 >
+                  {/* Heart save button */}
+                  {user && (
+                    <button
+                      onClick={(e) => handleToggleSave(e, reg.id)}
+                      style={{
+                        position: "absolute", top: 12, right: 12,
+                        background: "none", border: "none", cursor: "pointer",
+                        padding: 4, display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "transform 0.15s",
+                        zIndex: 1,
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.15)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = ""; }}
+                    >
+                      <Heart
+                        size={22}
+                        strokeWidth={1.75}
+                        color={isSaved ? "#1a7a5e" : "#555555"}
+                        fill={isSaved ? "#1a7a5e" : "none"}
+                      />
+                    </button>
+                  )}
+
                   {/* Stage pill + verified */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, paddingRight: user ? 32 : 0 }}>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, flexShrink: 0,
                       background: stage.isNewborn ? "#e8f5f1" : "#fff8e6",
@@ -182,17 +325,12 @@ export default function RegistersPage() {
                     {totalDonors > 0 && <span style={{ marginLeft: 6, color: "#1a7a5e" }}>· {totalDonors} contributor{totalDonors !== 1 ? "s" : ""}</span>}
                   </div>
 
-                  {/* Image strip (Section 1) */}
+                  {/* Image strip */}
                   {hasImages && (
                     <div style={{ display: "flex", gap: 8, marginBottom: 12, overflow: "hidden" }}>
                       {stripImages.map((url, idx) => (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          key={idx}
-                          src={url}
-                          alt=""
-                          style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", border: "1px solid #e0e0e0", flexShrink: 0 }}
-                        />
+                        <img key={idx} src={url} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", border: "1px solid #e0e0e0", flexShrink: 0 }} />
                       ))}
                       {moreCount > 0 && (
                         <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f3f4f6", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 10, fontWeight: 700, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
@@ -234,8 +372,8 @@ export default function RegistersPage() {
           )}
         </div>
 
-        {/* How it works + Trust & Safety + Closing strip — shown when list has results */}
-        {!loading && filtered.length > 0 && (
+        {/* How it works + Trust & Safety + Closing strip */}
+        {!loading && tabFiltered.length > 0 && (
           <>
             <div style={{ padding: "0 16px" }}><HowKradelWorks /></div>
             <TrustAndSafety />
@@ -249,10 +387,23 @@ export default function RegistersPage() {
           </>
         )}
 
-        {/* Bottom padding for empty/loading state */}
-        {(loading || filtered.length === 0) && <div style={{ height: 100 }} />}
+        {(loading || tabFiltered.length === 0) && <div style={{ height: 100 }} />}
       </div>
+
       <BottomNav />
+      <Toast message={toast} onClose={() => setToast(null)} />
+      {showLocationSheet && (
+        <LocationSelector
+          currentCity={activeCity}
+          setByGPS={activeSetByGPS}
+          radius={activeRadius}
+          onSelect={(city, radius, byGPS) => {
+            handleLocationSelect(city, radius, byGPS);
+            setShowLocationSheet(false);
+          }}
+          onClose={() => setShowLocationSheet(false)}
+        />
+      )}
     </div>
   );
 }
