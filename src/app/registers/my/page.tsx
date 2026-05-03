@@ -10,8 +10,16 @@ interface RegisterData {
   title: string;
   city: string;
   dueDate: string;
+  status: string;
   items: { id: string; status: string }[];
 }
+
+const REG_STATUS_PILL: Record<string, { label: string; color: string; bg: string } | undefined> = {
+  DRAFT:     { label: "Draft",     color: "#b8860b", bg: "#fff8e6" },
+  CLOSED:    { label: "Closed",    color: "#6b7280", bg: "#f3f4f6" },
+  COMPLETED: { label: "Completed", color: "#1a7a5e", bg: "#e8f5f1" },
+  ABANDONED: { label: "Inactive",  color: "#6b7280", bg: "#f3f4f6" },
+};
 
 interface AssignmentData {
   id: string;
@@ -115,7 +123,14 @@ export default function MyRegistersPage() {
                         onClick={() => router.push(`/registers/${reg.id}`)}
                         style={{ background: "var(--white)", borderRadius: 12, padding: "14px", marginBottom: 10, boxShadow: "var(--shadow)", cursor: "pointer" }}
                       >
-                        <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{reg.title}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700 }}>{reg.title}</div>
+                          {REG_STATUS_PILL[reg.status] && (
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: REG_STATUS_PILL[reg.status]!.bg, color: REG_STATUS_PILL[reg.status]!.color, flexShrink: 0 }}>
+                              {REG_STATUS_PILL[reg.status]!.label}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: 12, color: "var(--mid)", marginBottom: 8 }}>📍 {reg.city} · {total} items</div>
                         {total > 0 && (
                           <>

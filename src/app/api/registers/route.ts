@@ -12,7 +12,10 @@ export async function GET(req: NextRequest) {
   const registers = await prisma.register.findMany({
     where: {
       ...(city && { city: { contains: city, mode: "insensitive" } }),
-      ...(creatorId && { creatorId }),
+      ...(creatorId
+        ? { creatorId }
+        : { status: "ACTIVE" }
+      ),
     },
     orderBy: { createdAt: "desc" },
     include: {

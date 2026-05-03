@@ -325,8 +325,8 @@ export default function NewRegisterPage() {
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 10 }}>Delivery address</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
               {([
-                { val: "ASK_PER_SHIPMENT", title: "Ask per shipment", desc: "Donors request your address each time they pick an item" },
-                { val: "SAVED_PER_REGISTER", title: "Save one address", desc: "One address is used for all deliveries on this register" },
+                { val: "ASK_PER_SHIPMENT", title: "Ask per shipment", desc: "We'll ask you for the address when each item is ready to ship. Most private." },
+                { val: "SAVED_PER_REGISTER", title: "Save one address", desc: "One address is used for all deliveries on this register. We delete it when the register closes." },
               ] as const).map((opt) => (
                 <button
                   key={opt.val}
@@ -342,6 +342,10 @@ export default function NewRegisterPage() {
                   <div style={{ fontSize: 11, color: "var(--mid)", lineHeight: 1.4 }}>{opt.desc}</div>
                 </button>
               ))}
+            </div>
+
+            <div style={{ fontSize: 12, color: "var(--mid)", marginBottom: 12, fontFamily: "Nunito, sans-serif" }}>
+              🔒 Donors never see your address. Only Kradəl uses it to ship.
             </div>
 
             {addressMode === "SAVED_PER_REGISTER" && (
