@@ -10,7 +10,7 @@ export async function GET() {
       orderBy: [{ category: "asc" }, { sku: "asc" }],
       select: {
         id: true, sku: true, name: true, category: true,
-        standardPriceCents: true, priceCentsMin: true, priceCentsMax: true,
+        standardPriceCents: true,
         description: true, imageUrl: true,
         preferredVendor: true, ageStage: true, requiresSize: true,
         isActive: true, lastVerifiedAt: true, createdAt: true, updatedAt: true,

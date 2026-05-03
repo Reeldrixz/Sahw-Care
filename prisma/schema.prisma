@@ -1176,8 +1176,6 @@ model ItemCatalog {
   name               String
   category           String
   standardPriceCents Int
-  priceCentsMin      Int            @default(0)
-  priceCentsMax      Int            @default(0)
   description        String?
   imageUrl           String?
   preferredVendor    String?

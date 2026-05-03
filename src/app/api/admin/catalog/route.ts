@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const {
-      id, sku, name, category, standardPriceCents, priceCentsMin, priceCentsMax,
+      id, sku, name, category, standardPriceCents,
       description, imageUrl, preferredVendor, preferredVendorUrl,
       substituteNote, ageStage, requiresSize, isActive,
     } = await req.json();
@@ -41,8 +41,6 @@ export async function POST(req: NextRequest) {
         name, category, standardPriceCents, isActive: isActive ?? true,
         lastVerifiedAt: new Date(),
         ...(sku                             && { sku: String(sku).toUpperCase() }),
-        ...(priceCentsMin  !== undefined     && { priceCentsMin }),
-        ...(priceCentsMax  !== undefined     && { priceCentsMax }),
         ...(description    !== undefined     && { description: description ?? null }),
         ...(imageUrl       !== undefined     && { imageUrl: imageUrl ?? null }),
         ...(preferredVendor !== undefined    && { preferredVendor: preferredVendor ?? null }),
@@ -61,7 +59,6 @@ export async function POST(req: NextRequest) {
     const created = await prisma.itemCatalog.create({
       data: {
         sku: String(sku).toUpperCase(), name, category, standardPriceCents,
-        priceCentsMin: priceCentsMin ?? 0, priceCentsMax: priceCentsMax ?? 0,
         description: description ?? null, imageUrl: imageUrl ?? null,
         preferredVendor: preferredVendor ?? null, preferredVendorUrl: preferredVendorUrl ?? null,
         substituteNote: substituteNote ?? null, ageStage: ageStage ?? null,

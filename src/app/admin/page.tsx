@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { ExternalLink } from "lucide-react";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -172,13 +173,21 @@ interface Financials {
 
 interface CatalogAdminEntry {
   id: string; sku: string; name: string; category: string;
-  standardPriceCents: number; priceCentsMin: number; priceCentsMax: number;
+  standardPriceCents: number;
   description: string | null; imageUrl: string | null;
   preferredVendor: string | null; preferredVendorUrl: string | null;
   substituteNote: string | null; ageStage: string | null;
   requiresSize: boolean; isActive: boolean;
   lastVerifiedAt: string | null; createdAt: string; updatedAt: string;
   _count: { registerItems: number };
+}
+
+function catalogStalePill(lastVerifiedAt: string | null): { label: string; color: string; bg: string } {
+  if (!lastVerifiedAt) return { label: "Verify needed", color: "#c0392b", bg: "#fee2e2" };
+  const days = Math.floor((Date.now() - new Date(lastVerifiedAt).getTime()) / 86_400_000);
+  if (days <= 7)  return { label: days === 0 ? "Verified today" : `Verified ${days}d ago`, color: "#1a7a5e", bg: "#e8f5f1" };
+  if (days <= 30) return { label: `Verified ${days}d ago`, color: "#d97706", bg: "#fef3c7" };
+  return { label: `Verified ${days}d ago`, color: "#c0392b", bg: "#fee2e2" };
 }
 
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
@@ -352,6 +361,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (section === "register-queue") { fetchRegQueue(regQueueTab); fetchFinancials(); }
   }, [section, regQueueTab, fetchRegQueue, fetchFinancials]);
+  useEffect(() => { fetchCatalogAdmin(); }, [fetchCatalogAdmin]);
   useEffect(() => {
     if (section === "catalog") fetchCatalogAdmin();
   }, [section, fetchCatalogAdmin]);
@@ -538,7 +548,12 @@ export default function AdminPage() {
 
   if (authLoading || !user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
-  const NAV_ITEMS: [Section, string][] = [
+  const staleCount = catalogItems.filter((c) => {
+    if (!c.lastVerifiedAt) return true;
+    return (Date.now() - new Date(c.lastVerifiedAt).getTime()) / 86_400_000 > 7;
+  }).length;
+
+  const NAV_ITEMS: [Section, string, string?][] = [
     ["overview",     "📊 Overview"],
     ["users",        "👥 Users"],
     ["listings",     "📦 Listings"],
@@ -550,7 +565,8 @@ export default function AdminPage() {
     ["bundle-system",  "🎁 Bundle System"],
     ["fulfillments",   "📦 Fulfillments"],
     ["register-queue", "🛍️ Register Queue"],
-    ["catalog",        "📋 Item Catalog"],
+    ["catalog",        `📋 Item Catalog${staleCount > 0 ? ` 🔴 ${staleCount}` : ""}`,
+                       staleCount > 0 ? `${staleCount} item${staleCount === 1 ? "" : "s"} need price verification` : undefined],
     ["abuse",          "🔍 Abuse Monitor"],
     ["coordination",   "📍 Coordination"],
   ];
@@ -565,8 +581,8 @@ export default function AdminPage() {
         <div className="admin-layout">
           {/* Sidebar */}
           <div className="admin-nav">
-            {NAV_ITEMS.map(([key, label]) => (
-              <div key={key} className={`admin-nav-item ${section === key ? "active" : ""}`} onClick={() => setSection(key)}>
+            {NAV_ITEMS.map(([key, label, tooltip]) => (
+              <div key={key} className={`admin-nav-item ${section === key ? "active" : ""}`} onClick={() => setSection(key)} title={tooltip}>
                 {label}
               </div>
             ))}
@@ -1925,7 +1941,7 @@ export default function AdminPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Item Catalog</div>
                   <button
-                    onClick={() => setEditingCatalog({ id: "", sku: "", name: "", category: "Feeding", standardPriceCents: 0, priceCentsMin: 0, priceCentsMax: 0, description: null, imageUrl: null, preferredVendor: null, preferredVendorUrl: null, substituteNote: null, ageStage: null, requiresSize: false, isActive: true, lastVerifiedAt: null, createdAt: "", updatedAt: "", _count: { registerItems: 0 } })}
+                    onClick={() => setEditingCatalog({ id: "", sku: "", name: "", category: "Feeding", standardPriceCents: 0, description: null, imageUrl: null, preferredVendor: null, preferredVendorUrl: null, substituteNote: null, ageStage: null, requiresSize: false, isActive: true, lastVerifiedAt: null, createdAt: "", updatedAt: "", _count: { registerItems: 0 } })}
                     style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
                     + Add item
                   </button>
@@ -1946,6 +1962,7 @@ export default function AdminPage() {
                           <th>Price</th>
                           <th>Used</th>
                           <th>Status</th>
+                          <th>Verified</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -1969,7 +1986,19 @@ export default function AdminPage() {
                                 {c.isActive ? "Active" : "Inactive"}
                               </span>
                             </td>
+                            <td>
+                              {(() => { const p = catalogStalePill(c.lastVerifiedAt); return (
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: p.bg, color: p.color, whiteSpace: "nowrap" }}>{p.label}</span>
+                              ); })()}
+                            </td>
                             <td style={{ display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() => { if (c.preferredVendorUrl) window.open(c.preferredVendorUrl, "_blank", "noopener"); }}
+                                disabled={!c.preferredVendorUrl}
+                                title={c.preferredVendorUrl ? "Open product URL to verify price" : "Add product URL first"}
+                                style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, padding: "4px 8px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: c.preferredVendorUrl ? "pointer" : "not-allowed", fontFamily: "Nunito, sans-serif", opacity: c.preferredVendorUrl ? 1 : 0.4 }}>
+                                <ExternalLink size={12} strokeWidth={1.75} />Verify
+                              </button>
                               <button onClick={() => setEditingCatalog(c)}
                                 style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
                                 Edit
@@ -2019,20 +2048,10 @@ export default function AdminPage() {
                         </select>
                       </div>
 
-                      {/* Prices */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                        <div className="form-group">
-                          <label className="form-label">Display price ($)</label>
-                          <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.standardPriceCents / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, standardPriceCents: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Min ($)</label>
-                          <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.priceCentsMin / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, priceCentsMin: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">Max ($)</label>
-                          <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.priceCentsMax / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, priceCentsMax: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
-                        </div>
+                      {/* Price */}
+                      <div className="form-group">
+                        <label className="form-label">Price (CAD) <span style={{ color: "var(--terra)" }}>*</span></label>
+                        <input className="form-input" type="number" min="0" step="0.01" value={(editingCatalog.standardPriceCents / 100).toFixed(2)} onChange={(e) => setEditingCatalog((p) => p ? { ...p, standardPriceCents: Math.round(parseFloat(e.target.value || "0") * 100) } : p)} />
                       </div>
 
                       {/* Description */}
@@ -2142,8 +2161,6 @@ export default function AdminPage() {
                                 name: editingCatalog.name,
                                 category: editingCatalog.category,
                                 standardPriceCents: editingCatalog.standardPriceCents,
-                                priceCentsMin: editingCatalog.priceCentsMin,
-                                priceCentsMax: editingCatalog.priceCentsMax,
                                 description: editingCatalog.description || null,
                                 imageUrl: editingCatalog.imageUrl || null,
                                 preferredVendor: editingCatalog.preferredVendor || null,
