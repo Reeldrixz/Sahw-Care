@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, MapPin, Heart, Shield, Package, Eye } from "lucide-react";
+import { BadgeCheck, MapPin, Heart } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import HowKradelWorks from "@/components/HowKradelWorks";
+import TrustAndSafety from "@/components/TrustAndSafety";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface RegisterListItem {
@@ -232,25 +234,19 @@ export default function RegistersPage() {
           )}
         </div>
 
-        {/* Trust footer (Section 2) — shown when list has results */}
+        {/* How it works + Trust & Safety + Closing strip — shown when list has results */}
         {!loading && filtered.length > 0 && (
-          <div style={{ margin: "4px 16px 100px", padding: "16px", background: "var(--white)", borderRadius: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div style={{ textAlign: "center" }}>
-              <Shield size={18} color="#1a7a5e" strokeWidth={1.75} style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Secure</div>
-              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>Payments are processed via Stripe. We never see card numbers.</div>
+          <>
+            <div style={{ padding: "0 16px" }}><HowKradelWorks /></div>
+            <TrustAndSafety />
+            <div style={{ margin: "24px 16px 100px", padding: "16px", background: "#e8f5f1", borderRadius: 12, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Heart size={16} color="#1a7a5e" strokeWidth={1.75} />
+                <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a7a5e" }}>Every contribution makes a real difference.</span>
+              </div>
+              <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#555555" }}>Thank you for helping mothers feel supported, not alone.</span>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <Package size={18} color="#1a7a5e" strokeWidth={1.75} style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Kradəl delivers</div>
-              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>We purchase and ship items directly to mothers using your contribution.</div>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <Eye size={18} color="#1a7a5e" strokeWidth={1.75} style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Verified</div>
-              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>Every mother is identity-verified before her register goes live.</div>
-            </div>
-          </div>
+          </>
         )}
 
         {/* Bottom padding for empty/loading state */}

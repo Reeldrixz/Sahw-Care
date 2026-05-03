@@ -3,12 +3,15 @@
 import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CheckCircle, Package, Loader2, Users, Heart, Shield, Eye,
+  CheckCircle, Package, Loader2, Users, Heart, Shield,
   BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
-  ShieldCheck, ImageOff, AlertCircle,
+  ShieldCheck, ImageOff, AlertCircle, HandHeart,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
+import HowKradelWorks from "@/components/HowKradelWorks";
+import TrustAndSafety from "@/components/TrustAndSafety";
+import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface FundingEntry {
@@ -27,7 +30,7 @@ interface RegisterItemData {
   totalFundedCents: number;
   fundingStatus: "UNFUNDED" | "PARTIAL" | "FULLY_FUNDED" | "IN_FULFILLMENT" | "FULFILLED";
   _count?: { funding: number };
-  catalogItem: { imageUrl: string | null } | null;
+  catalogItem: { imageUrl: string | null; sku: string | null } | null;
 }
 
 interface RegisterData {
@@ -326,7 +329,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
         {/* ── Part 3: Emotional context card ─────────────── */}
         {isDonorView && (
           <div style={{ margin: "16px 16px 0", background: "var(--white)", borderRadius: 12, borderLeft: "3px solid #1a7a5e", padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <Heart size={18} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
+            <HandHeart size={18} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)", marginBottom: 4 }}>
                 {firstName} is preparing for her baby
@@ -410,6 +413,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   const isCancelledItem = item.status === "CANCELLED";
                   const canRemove       = isMom && !isClosed && item.fundingStatus === "UNFUNDED" && !isFulfilled && !isCancelledItem;
                   const whyText         = getWhyItMatters(item.category, item.name);
+                  const needLevel       = calculateNeedLevel(item.catalogItem?.sku);
+                  const needCfg         = needLevel === "HIGH"
+                    ? { bg: "#fef3c7", color: "#c0392b", label: "High need" }
+                    : needLevel === "LOW"
+                    ? { bg: "#f3f4f6", color: "#555555", label: "Low need" }
+                    : { bg: "#dbeafe", color: "#1e40af", label: "Medium need" };
                   const itemPct         = item.standardPriceCents > 0
                     ? Math.min(100, (item.totalFundedCents / item.standardPriceCents) * 100)
                     : 0;
@@ -485,6 +494,13 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           )}
 
+                          {/* Need level badge */}
+                          {isDonorView && !isFulfilled && !isPending && !isCancelledItem && (
+                            <span style={{ display: "inline-block", marginTop: 4, marginBottom: 4, fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 20, background: needCfg.bg, color: needCfg.color, fontFamily: "Nunito, sans-serif" }}>
+                              {needCfg.label}
+                            </span>
+                          )}
+
                           {/* Why it matters */}
                           {isDonorView && !isFulfilled && (
                             <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 3, lineHeight: 1.5 }}>
@@ -534,25 +550,19 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
 
-        {/* ── Part 7: Trust & safety footer ──────────────── */}
+        {/* ── Part 7: Trust & safety + How it works + Closing strip ── */}
         {isDonorView && register.items.length > 0 && (
-          <div style={{ margin: "8px 16px 140px", padding: "16px", background: "var(--white)", borderRadius: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div style={{ textAlign: "center" }}>
-              <Shield size={18} color="#1a7a5e" style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Secure</div>
-              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>Payments processed safely. No card details shared.</div>
+          <>
+            <div style={{ marginTop: 8 }}><TrustAndSafety /></div>
+            <div style={{ padding: "0 16px" }}><HowKradelWorks /></div>
+            <div style={{ margin: "0 16px 140px", padding: "16px", background: "#e8f5f1", borderRadius: 12, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Heart size={16} color="#1a7a5e" strokeWidth={1.75} />
+                <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 600, color: "#1a7a5e" }}>Every contribution makes a real difference.</span>
+              </div>
+              <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#555555" }}>Thank you for helping mothers feel supported, not alone.</span>
             </div>
-            <div style={{ textAlign: "center" }}>
-              <Package size={18} color="#1a7a5e" style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Kradəl delivers</div>
-              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>We purchase and deliver items directly — donors don't ship anything.</div>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <Eye size={18} color="#1a7a5e" style={{ margin: "0 auto 6px" }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Verified</div>
-              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>Every mother is document-verified before creating a register.</div>
-            </div>
-          </div>
+          </>
         )}
 
         {!isDonorView && <div style={{ height: 140 }} />}
@@ -688,19 +698,17 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               </div>
             ) : (
               <>
-                {/* Hero image + name (Section 4B) */}
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                {/* Hero image — full-width 1:1 square (Section 7) */}
+                <div style={{ width: "100%", aspectRatio: "1", background: "#f5f1ec", borderRadius: 16, marginBottom: 16, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {selectedItem.catalogItem?.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={selectedItem.catalogItem.imageUrl}
                       alt=""
-                      style={{ width: 80, height: 80, borderRadius: 12, objectFit: "cover", border: "1px solid #e0e0e0" }}
+                      style={{ width: "100%", height: "100%", objectFit: "contain" }}
                     />
                   ) : (
-                    <div style={{ width: 80, height: 80, borderRadius: 12, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ImageOff size={32} color="#9ca3af" strokeWidth={1.75} />
-                    </div>
+                    <ImageOff size={48} color="#9ca3af" strokeWidth={1.75} />
                   )}
                 </div>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a3a2e", textAlign: "center", marginBottom: 2 }}>

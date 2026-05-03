@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             },
           },
           _count: { select: { funding: true } },
-          catalogItem: { select: { imageUrl: true } },
+          catalogItem: { select: { imageUrl: true, sku: true } },
         },
       },
     },
