@@ -6,13 +6,16 @@ import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from "@/components/Toast";
 import DocumentUploadSheet from "@/components/DocumentUploadSheet";
-import { ALL_CATEGORIES } from "@/lib/cooldown";
 
 interface CatalogEntry {
   id: string;
   name: string;
   category: string;
   standardPriceCents: number;
+  imageUrl: string | null;
+  ageStage: string | null;
+  requiresSize: boolean;
+  requiresApproval: boolean;
 }
 
 interface DraftItem {
@@ -21,6 +24,7 @@ interface DraftItem {
   isCustom: boolean;
   quantity: string;
   note: string;
+  sizeNote: string;
 }
 
 interface CooldownInfo {
@@ -36,15 +40,32 @@ interface OverrideStatus {
   overridesRemaining: number;
 }
 
+interface SavedAddress {
+  fullName: string;
+  streetAddress: string;
+  unit: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  phone: string;
+}
+
+const PROVINCES = [
+  "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
+];
+
 export default function NewRegisterPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [city, setCity] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [items, setItems] = useState<DraftItem[]>([{ catalogItemId: "", customName: "", isCustom: false, quantity: "1", note: "" }]);
+  const [addressMode, setAddressMode] = useState<"ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER">("ASK_PER_SHIPMENT");
+  const [savedAddress, setSavedAddress] = useState<SavedAddress>({ fullName: "", streetAddress: "", unit: "", city: "", province: "", postalCode: "", phone: "" });
+  const [items, setItems] = useState<DraftItem[]>([{ catalogItemId: "", customName: "", isCustom: false, quantity: "1", note: "", sizeNote: "" }]);
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [catalogSearch, setCatalogSearch] = useState<Record<number, string>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [cooldowns, setCooldowns] = useState<CooldownInfo[]>([]);
   const [overrideStatus, setOverrideStatus] = useState<OverrideStatus | null>(null);
   const [overridingCategories, setOverridingCategories] = useState<Set<string>>(new Set());
@@ -74,7 +95,7 @@ export default function NewRegisterPage() {
 
   const getCooldown = (cat: string) => cooldowns.find((c) => c.category === cat);
 
-  const addItem = () => setItems((p) => [...p, { catalogItemId: "", customName: "", isCustom: false, quantity: "1", note: "" }]);
+  const addItem = () => setItems((p) => [...p, { catalogItemId: "", customName: "", isCustom: false, quantity: "1", note: "", sizeNote: "" }]);
   const removeItem = (i: number) => setItems((p) => p.filter((_, idx) => idx !== i));
   const updateItem = <K extends keyof DraftItem>(i: number, field: K, val: DraftItem[K]) =>
     setItems((p) => p.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
@@ -87,12 +108,35 @@ export default function NewRegisterPage() {
     });
   };
 
+  const toggleCategory = (cat: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+  };
+
+  // Group catalog by category for the picker
+  const catalogByCategory = catalog.reduce<Record<string, CatalogEntry[]>>((acc, c) => {
+    if (!acc[c.category]) acc[c.category] = [];
+    acc[c.category].push(c);
+    return acc;
+  }, {});
+
   const handleSubmit = async () => {
     if (!title || !city || !dueDate) { setToast("Title, city and due date are required"); return; }
+
+    if (addressMode === "SAVED_PER_REGISTER") {
+      const { fullName, streetAddress, city: addrCity, province, postalCode, phone } = savedAddress;
+      if (!fullName || !streetAddress || !addrCity || !province || !postalCode || !phone) {
+        setToast("All address fields are required for saved address mode");
+        return;
+      }
+    }
+
     const validItems = items.filter((i) => i.catalogItemId || (i.isCustom && i.customName.trim()));
     if (validItems.length === 0) { setToast("Add at least one item from the catalog"); return; }
 
-    // Cooldown check uses catalog item category
     const blockedItems = validItems.filter((item) => {
       const cat = item.catalogItemId
         ? (catalog.find((c) => c.id === item.catalogItemId)?.category ?? "Other")
@@ -101,11 +145,10 @@ export default function NewRegisterPage() {
       return cd?.inCooldown && !overridingCategories.has(cat);
     });
     if (blockedItems.length > 0) {
-      setToast(`Some items are in cooldown. Use urgent override or remove them.`);
+      setToast("Some items are in cooldown. Use urgent override or remove them.");
       return;
     }
 
-    // Validate override reasons for items using override
     for (const cat of overridingCategories) {
       if (!overrideReasons[cat]?.trim()) {
         setToast(`Please provide a reason for the urgent override for "${cat}"`);
@@ -115,7 +158,6 @@ export default function NewRegisterPage() {
 
     setLoading(true);
     try {
-      // Apply urgent overrides first
       for (const cat of overridingCategories) {
         const res = await fetch("/api/urgent-override", {
           method: "POST",
@@ -125,28 +167,29 @@ export default function NewRegisterPage() {
         if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Override failed"); }
       }
 
-      // Create register
+      const body: Record<string, unknown> = { title, city, dueDate, addressMode };
+      if (addressMode === "SAVED_PER_REGISTER") body.savedAddress = savedAddress;
+
       const res = await fetch("/api/registers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, city, dueDate }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed"); }
       const { register } = await res.json();
 
-      // Add items
       await Promise.all(
-        validItems.map((item) =>
-          fetch(`/api/registers/${register.id}/items`, {
+        validItems.map((item) => {
+          const payload: Record<string, unknown> = item.isCustom
+            ? { name: item.customName, quantity: item.quantity || "1", note: item.note || null }
+            : { catalogItemId: item.catalogItemId, quantity: item.quantity || "1", note: item.note || null };
+          if (item.sizeNote) payload.note = [item.note, item.sizeNote].filter(Boolean).join(" · ");
+          return fetch(`/api/registers/${register.id}/items`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(
-              item.isCustom
-                ? { name: item.customName, quantity: item.quantity || "1", note: item.note || null }
-                : { catalogItemId: item.catalogItemId, quantity: item.quantity || "1", note: item.note || null }
-            ),
-          })
-        )
+            body: JSON.stringify(payload),
+          });
+        })
       );
 
       router.push(`/registers/${register.id}`);
@@ -158,7 +201,6 @@ export default function NewRegisterPage() {
 
   if (!user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
-  // verificationLevel >= 2 is a full bypass (manually verified accounts)
   const fullyVerified = user.verificationLevel >= 2;
   const layer1Done = fullyVerified || ((user.phoneVerified || user.emailVerified) && !!user.avatar);
   const layer2Done = fullyVerified || user.docStatus === "VERIFIED";
@@ -175,7 +217,7 @@ export default function NewRegisterPage() {
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Complete your profile first</div>
             <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 24 }}>
-              Before creating a Register, please verify your phone or email and add a profile photo. This helps protect our community and ensures donations reach real families.
+              Before creating a Register, please verify your phone or email and add a profile photo.
             </p>
             <div style={{ background: "var(--white)", borderRadius: 14, padding: "14px 16px", marginBottom: 20, textAlign: "left" }}>
               {[
@@ -188,9 +230,7 @@ export default function NewRegisterPage() {
                 </div>
               ))}
             </div>
-            <button className="btn-primary" onClick={() => router.push("/profile")}>
-              Go to profile settings →
-            </button>
+            <button className="btn-primary" onClick={() => router.push("/profile")}>Go to profile settings →</button>
           </div>
         </div>
         <BottomNav />
@@ -212,11 +252,8 @@ export default function NewRegisterPage() {
                 <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Document under review</div>
                 <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 20 }}>
-                  Your {user.documentType} is being reviewed by our team. This usually takes less than 24 hours. We'll notify you as soon as it's confirmed!
+                  Your {user.documentType} is being reviewed — usually within 24 hours. We'll notify you when it's confirmed!
                 </p>
-                <div style={{ background: "var(--yellow-light)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "#7a5500", fontWeight: 600 }}>
-                  ✉️ You'll be able to create your Register as soon as your document is verified.
-                </div>
               </>
             ) : user.docStatus === "REJECTED" ? (
               <>
@@ -225,23 +262,16 @@ export default function NewRegisterPage() {
                 <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 16 }}>
                   {user.documentNote ?? "We weren't able to verify your document. Please try uploading a clearer version."}
                 </p>
-                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>
-                  Upload new document
-                </button>
+                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>Upload new document</button>
               </>
             ) : (
               <>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>🤱</div>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>One more step to protect you</div>
                 <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 16 }}>
-                  To create a Register, we ask all mothers to upload one document — a hospital letter, pregnancy scan, birth certificate, or immunisation card. This helps ensure every donation goes to a real family.
+                  To create a Register, we ask all mothers to upload one document — a hospital letter, pregnancy scan, birth certificate, or immunisation card.
                 </p>
-                <div style={{ background: "var(--green-light)", borderRadius: 12, padding: "12px 16px", fontSize: 13, color: "var(--green)", fontWeight: 600, marginBottom: 20 }}>
-                  💛 Your document is kept private and only seen by our small verification team.
-                </div>
-                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>
-                  Upload a document →
-                </button>
+                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>Upload a document →</button>
               </>
             )}
           </div>
@@ -267,7 +297,6 @@ export default function NewRegisterPage() {
         </div>
 
         <div style={{ padding: "20px 16px 120px" }}>
-          {/* Override status banner */}
           {overrideStatus && (
             <div style={{ background: overrideStatus.overridesRemaining > 0 ? "var(--yellow-light)" : "var(--terra-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: overrideStatus.overridesRemaining > 0 ? "#b8860b" : "var(--terra)", fontWeight: 600 }}>
               ⚡ Urgent overrides this month: {overrideStatus.overridesUsed}/{overrideStatus.overrideLimit} used · {overrideStatus.overridesRemaining} remaining
@@ -291,7 +320,73 @@ export default function NewRegisterPage() {
             <input className="form-input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} min={new Date().toISOString().split("T")[0]} />
           </div>
 
-          {/* Items */}
+          {/* ── Address mode ── */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 10 }}>Delivery address</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+              {([
+                { val: "ASK_PER_SHIPMENT", title: "Ask per shipment", desc: "Donors request your address each time they pick an item" },
+                { val: "SAVED_PER_REGISTER", title: "Save one address", desc: "One address is used for all deliveries on this register" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.val}
+                  onClick={() => setAddressMode(opt.val)}
+                  style={{
+                    textAlign: "left", padding: "12px 14px", borderRadius: 12,
+                    border: `2px solid ${addressMode === opt.val ? "var(--green)" : "var(--border)"}`,
+                    background: addressMode === opt.val ? "var(--green-light)" : "var(--white)",
+                    cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 800, color: addressMode === opt.val ? "var(--green)" : "var(--ink)", marginBottom: 3 }}>{opt.title}</div>
+                  <div style={{ fontSize: 11, color: "var(--mid)", lineHeight: 1.4 }}>{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {addressMode === "SAVED_PER_REGISTER" && (
+              <div style={{ background: "var(--white)", borderRadius: 12, padding: "14px", boxShadow: "var(--shadow)" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)", marginBottom: 12 }}>Your delivery address (kept private)</div>
+                <div className="form-group">
+                  <label className="form-label">Full name</label>
+                  <input className="form-input" placeholder="Recipient's full name" value={savedAddress.fullName} onChange={(e) => setSavedAddress((p) => ({ ...p, fullName: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Street address</label>
+                  <input className="form-input" placeholder="123 Main Street" value={savedAddress.streetAddress} onChange={(e) => setSavedAddress((p) => ({ ...p, streetAddress: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Unit / Apt (optional)</label>
+                  <input className="form-input" placeholder="Unit 4B" value={savedAddress.unit} onChange={(e) => setSavedAddress((p) => ({ ...p, unit: e.target.value }))} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div className="form-group">
+                    <label className="form-label">City</label>
+                    <input className="form-input" placeholder="City" value={savedAddress.city} onChange={(e) => setSavedAddress((p) => ({ ...p, city: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Province</label>
+                    <select className="form-input" value={savedAddress.province} onChange={(e) => setSavedAddress((p) => ({ ...p, province: e.target.value }))}>
+                      <option value="">Select</option>
+                      {PROVINCES.map((pv) => <option key={pv} value={pv}>{pv}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div className="form-group">
+                    <label className="form-label">Postal code</label>
+                    <input className="form-input" placeholder="A1B 2C3" value={savedAddress.postalCode} onChange={(e) => setSavedAddress((p) => ({ ...p, postalCode: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Phone</label>
+                    <input className="form-input" type="tel" placeholder="+1 555 000 0000" value={savedAddress.phone} onChange={(e) => setSavedAddress((p) => ({ ...p, phone: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Items ── */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>Items needed</span>
@@ -300,15 +395,22 @@ export default function NewRegisterPage() {
 
             {items.map((item, i) => {
               const selectedCatalogEntry = catalog.find((c) => c.id === item.catalogItemId);
-              const cat    = selectedCatalogEntry?.category ?? "Other";
-              const cd     = getCooldown(cat);
-              const isInCooldown  = cd?.inCooldown && !item.isCustom;
+              const cat          = selectedCatalogEntry?.category ?? "Other";
+              const cd           = getCooldown(cat);
+              const isInCooldown = cd?.inCooldown && !item.isCustom;
               const usingOverride = overridingCategories.has(cat);
-              const search = catalogSearch[i] ?? "";
-              const filtered = catalog.filter((c) =>
-                c.name.toLowerCase().includes(search.toLowerCase()) ||
-                c.category.toLowerCase().includes(search.toLowerCase())
-              );
+              const search       = catalogSearch[i] ?? "";
+
+              const filteredByCategory = search
+                ? catalog.filter((c) =>
+                    c.name.toLowerCase().includes(search.toLowerCase()) ||
+                    c.category.toLowerCase().includes(search.toLowerCase())
+                  ).reduce<Record<string, CatalogEntry[]>>((acc, c) => {
+                    if (!acc[c.category]) acc[c.category] = [];
+                    acc[c.category].push(c);
+                    return acc;
+                  }, {})
+                : catalogByCategory;
 
               return (
                 <div key={i} style={{ background: "var(--white)", borderRadius: 12, padding: "14px", marginBottom: 10, boxShadow: "var(--shadow)", border: isInCooldown && !usingOverride ? "1.5px solid var(--terra)" : "1.5px solid transparent" }}>
@@ -330,30 +432,87 @@ export default function NewRegisterPage() {
                           }}
                         />
                       </div>
-                      {search && !item.catalogItemId && (
-                        <div style={{ border: "1px solid var(--border)", borderRadius: 8, marginBottom: 8, maxHeight: 160, overflowY: "auto" }}>
-                          {filtered.map((c) => (
-                            <div key={c.id} onClick={() => {
-                              updateItem(i, "catalogItemId", c.id);
-                              setCatalogSearch((p) => ({ ...p, [i]: c.name }));
-                            }}
-                              style={{ padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif" }}>{c.name}</div>
-                                <div style={{ fontSize: 11, color: "var(--mid)" }}>{c.category}</div>
+
+                      {/* Category-grouped picker */}
+                      {(search || !item.catalogItemId) && (
+                        <div style={{ border: "1px solid var(--border)", borderRadius: 8, marginBottom: 8, maxHeight: 280, overflowY: "auto" }}>
+                          {Object.entries(filteredByCategory).map(([catName, catItems]) => {
+                            const isExpanded = expandedCategories.has(catName) || !!search;
+                            return (
+                              <div key={catName}>
+                                <button
+                                  onClick={() => toggleCategory(catName)}
+                                  style={{ width: "100%", textAlign: "left", padding: "8px 12px", background: "#f9fafb", border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "Nunito, sans-serif" }}
+                                >
+                                  <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--mid)" }}>{catName}</span>
+                                  <span style={{ fontSize: 11, color: "var(--mid)" }}>{isExpanded ? "▲" : "▼"} {catItems.length}</span>
+                                </button>
+                                {isExpanded && catItems.map((c) => (
+                                  <div
+                                    key={c.id}
+                                    onClick={() => {
+                                      updateItem(i, "catalogItemId", c.id);
+                                      setCatalogSearch((p) => ({ ...p, [i]: c.name }));
+                                    }}
+                                    style={{
+                                      padding: "10px 12px", cursor: "pointer",
+                                      borderBottom: "1px solid var(--border)",
+                                      background: item.catalogItemId === c.id ? "#e8f5f1" : "var(--white)",
+                                      display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                                      {c.imageUrl && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={c.imageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                                      )}
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                          {c.name}
+                                          {c.requiresApproval && (
+                                            <span style={{ fontSize: 10, fontWeight: 700, background: "#fff8e6", color: "#d97706", padding: "2px 6px", borderRadius: 10 }}>Needs review</span>
+                                          )}
+                                        </div>
+                                        {c.ageStage && <div style={{ fontSize: 10, color: "var(--mid)" }}>{c.ageStage}</div>}
+                                      </div>
+                                    </div>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: "var(--green)", flexShrink: 0 }}>${(c.standardPriceCents / 100).toFixed(0)}</span>
+                                  </div>
+                                ))}
                               </div>
-                              <span style={{ fontSize: 13, fontWeight: 800, color: "var(--green)" }}>${(c.standardPriceCents / 100).toFixed(0)}</span>
-                            </div>
-                          ))}
-                          {filtered.length === 0 && <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--mid)" }}>No items found</div>}
+                            );
+                          })}
+                          {Object.keys(filteredByCategory).length === 0 && (
+                            <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--mid)" }}>No items found</div>
+                          )}
                         </div>
                       )}
+
                       {selectedCatalogEntry && (
-                        <div style={{ background: "#e8f5f1", borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 12, color: "#1a7a5e", fontWeight: 700, display: "flex", justifyContent: "space-between" }}>
-                          <span>✓ {selectedCatalogEntry.name} — {selectedCatalogEntry.category}</span>
-                          <span>${(selectedCatalogEntry.standardPriceCents / 100).toFixed(0)}</span>
+                        <div style={{ background: "#e8f5f1", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div style={{ fontSize: 12, color: "#1a7a5e", fontWeight: 700 }}>
+                              ✓ {selectedCatalogEntry.name}
+                              {selectedCatalogEntry.requiresApproval && (
+                                <span style={{ marginLeft: 6, fontSize: 10, background: "#fff8e6", color: "#d97706", padding: "2px 6px", borderRadius: 10, fontWeight: 700 }}>Needs admin review</span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: "#1a7a5e" }}>${(selectedCatalogEntry.standardPriceCents / 100).toFixed(0)}</span>
+                          </div>
+                          {selectedCatalogEntry.requiresApproval && (
+                            <div style={{ fontSize: 11, color: "#7a5500", marginTop: 4 }}>This item requires admin review before it appears on your register.</div>
+                          )}
                         </div>
                       )}
+
+                      {/* requiresSize dropdown */}
+                      {selectedCatalogEntry?.requiresSize && (
+                        <div className="form-group" style={{ marginBottom: 6 }}>
+                          <label className="form-label">Size</label>
+                          <input className="form-input" placeholder="e.g. Newborn, 0-3M, 3-6M" value={item.sizeNote} onChange={(e) => updateItem(i, "sizeNote", e.target.value)} />
+                        </div>
+                      )}
+
                       <button onClick={() => updateItem(i, "isCustom", true)}
                         style={{ fontSize: 11, color: "var(--mid)", background: "none", border: "none", cursor: "pointer", fontFamily: "Nunito, sans-serif", textDecoration: "underline", marginBottom: 8 }}>
                         + Add custom item instead

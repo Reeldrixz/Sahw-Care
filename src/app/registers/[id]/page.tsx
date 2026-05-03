@@ -21,6 +21,7 @@ interface RegisterItemData {
   category: string;
   quantity: string;
   note: string | null;
+  status: "AVAILABLE" | "PENDING_APPROVAL" | "RESERVED" | "FULFILLED" | "DELIVERED" | "CANCELLED";
   standardPriceCents: number;
   totalFundedCents: number;
   fundingStatus: "UNFUNDED" | "PARTIAL" | "FULLY_FUNDED" | "IN_FULFILLMENT" | "FULFILLED";
@@ -32,6 +33,8 @@ interface RegisterData {
   title: string;
   city: string;
   dueDate: string;
+  status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
+  addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
   creator: { id: string; name: string; location: string | null; verificationLevel?: number };
   items: RegisterItemData[];
 }
@@ -113,6 +116,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [newItemQty, setNewItemQty]         = useState("1");
   const [newItemNote, setNewItemNote]       = useState("");
   const [toast, setToast]                   = useState<string | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [closingRegister, setClosingRegister] = useState(false);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
 
   const fetchRegister = useCallback(async () => {
     const res = await fetch(`/api/registers/${id}`);
@@ -191,6 +197,37 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const handleRemoveItem = async (itemId: string) => {
+    setRemovingItemId(itemId);
+    const res = await fetch(`/api/registers/${id}/items/${itemId}`, { method: "DELETE" });
+    setRemovingItemId(null);
+    if (res.ok) {
+      await fetchRegister();
+      setToast("Item removed");
+    } else {
+      const d = await res.json();
+      setToast(d.error ?? "Failed to remove item");
+    }
+  };
+
+  const handleCloseRegister = async () => {
+    setClosingRegister(true);
+    const res = await fetch(`/api/registers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "CLOSED" }),
+    });
+    setClosingRegister(false);
+    setShowCloseConfirm(false);
+    if (res.ok) {
+      await fetchRegister();
+      setToast("Register closed");
+    } else {
+      const d = await res.json();
+      setToast(d.error ?? "Failed to close register");
+    }
+  };
+
   if (loading) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
   if (!register) return (
     <div className="empty" style={{ paddingTop: 80 }}>
@@ -201,19 +238,26 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
   const isMom        = user?.id === register.creator.id;
   const isDonorView  = !isMom;
+  const isClosed     = register.status === "CLOSED";
   const firstName    = register.creator.name.split(" ")[0];
   const isVerified   = (register.creator.verificationLevel ?? 0) >= 2;
   const stageLine    = getStageLine(register.dueDate);
-  const totalFunded  = register.items.reduce((s, i) => s + i.totalFundedCents, 0);
-  const totalNeeded  = register.items.reduce((s, i) => s + i.standardPriceCents, 0);
-  const fulfilledCount = register.items.filter((i) => i.fundingStatus === "FULFILLED").length;
-  const totalItems   = register.items.length;
-  const totalDonors  = register.items.reduce((s, i) => s + (i._count?.funding ?? 0), 0);
+
+  // Donors never see PENDING_APPROVAL items (belt and suspenders — API already filters)
+  const visibleItems = isDonorView
+    ? register.items.filter((i) => i.status !== "PENDING_APPROVAL" && i.status !== "CANCELLED")
+    : register.items;
+
+  const totalFunded  = visibleItems.reduce((s, i) => s + i.totalFundedCents, 0);
+  const totalNeeded  = visibleItems.reduce((s, i) => s + i.standardPriceCents, 0);
+  const fulfilledCount = visibleItems.filter((i) => i.fundingStatus === "FULFILLED").length;
+  const totalItems   = visibleItems.length;
+  const totalDonors  = visibleItems.reduce((s, i) => s + (i._count?.funding ?? 0), 0);
   const pct          = totalNeeded > 0 ? Math.min(1, totalFunded / totalNeeded) : 0;
   const isFullyFunded = totalNeeded > 0 && totalFunded >= totalNeeded;
   const allFulfilled  = totalItems > 0 && fulfilledCount === totalItems;
 
-  const groupedItems = groupByCategory(register.items);
+  const groupedItems = groupByCategory(visibleItems);
 
   const filteredCatalog = catalog.filter((c) =>
     c.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
@@ -257,6 +301,11 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             {allFulfilled && (
               <span style={{ fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "rgba(26,122,94,0.12)", padding: "3px 10px", borderRadius: 20 }}>
                 Completed ✓
+              </span>
+            )}
+            {isClosed && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#c0392b", background: "rgba(192,57,43,0.1)", padding: "3px 10px", borderRadius: 20 }}>
+                Closed
               </span>
             )}
           </div>
@@ -321,11 +370,17 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
         <div style={{ padding: "16px 16px 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700 }}>What she needs</div>
-            {isMom && (
-              <button
-                onClick={() => setAddingItem(true)}
-                style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
-              >+ Add item</button>
+            {isMom && !isClosed && (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setAddingItem(true)}
+                  style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                >+ Add item</button>
+                <button
+                  onClick={() => setShowCloseConfirm(true)}
+                  style={{ background: "none", color: "var(--terra)", border: "1.5px solid var(--terra)", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                >Close register</button>
+              </div>
             )}
           </div>
 
@@ -349,6 +404,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   const isFulfilled     = item.fundingStatus === "FULFILLED";
                   const isInFulfillment = item.fundingStatus === "IN_FULFILLMENT" || item.fundingStatus === "FULLY_FUNDED";
                   const canFundThis     = ["UNFUNDED", "PARTIAL"].includes(item.fundingStatus) && isDonorView;
+                  const isPending       = item.status === "PENDING_APPROVAL";
+                  const isCancelledItem = item.status === "CANCELLED";
+                  const canRemove       = isMom && !isClosed && item.fundingStatus === "UNFUNDED" && !isFulfilled && !isCancelledItem;
                   const whyText         = getWhyItMatters(item.category, item.name);
                   const itemPct         = item.standardPriceCents > 0
                     ? Math.min(100, (item.totalFundedCents / item.standardPriceCents) * 100)
@@ -357,27 +415,32 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   return (
                     <div
                       key={item.id}
-                      onClick={() => openItem(item)}
+                      onClick={() => !isPending && !isCancelledItem && openItem(item)}
                       style={{
                         background:   "var(--white)",
                         borderRadius: 12,
-                        border:       `1.5px solid ${isFulfilled ? "#c6e9de" : "var(--border)"}`,
+                        border:       `1.5px solid ${isFulfilled ? "#c6e9de" : isPending ? "#fde68a" : isCancelledItem ? "#fee2e2" : "var(--border)"}`,
                         padding:      "14px",
                         marginBottom: 8,
-                        cursor:       "pointer",
-                        opacity:      isFulfilled ? 0.8 : 1,
+                        cursor:       isPending || isCancelledItem ? "default" : "pointer",
+                        opacity:      isFulfilled || isCancelledItem ? 0.75 : 1,
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                         <div style={{ flexShrink: 0, marginTop: 1 }}>
-                          <ItemStateIcon status={item.fundingStatus} />
+                          {isPending
+                            ? <span style={{ fontSize: 16 }}>⏳</span>
+                            : isCancelledItem
+                            ? <span style={{ fontSize: 16 }}>✕</span>
+                            : <ItemStateIcon status={item.fundingStatus} />
+                          }
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                             <div style={{
                               fontSize: 14, fontWeight: 700,
-                              textDecoration: isFulfilled ? "line-through" : "none",
-                              color: isFulfilled ? "var(--mid)" : "var(--ink)",
+                              textDecoration: isFulfilled || isCancelledItem ? "line-through" : "none",
+                              color: isFulfilled || isCancelledItem ? "var(--mid)" : "var(--ink)",
                               fontFamily: "Nunito, sans-serif",
                             }}>
                               {item.name}
@@ -392,6 +455,18 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                             )}
                           </div>
 
+                          {/* Mom-only status badges */}
+                          {isMom && isPending && (
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#d97706", background: "#fff8e6", borderRadius: 8, padding: "3px 8px", marginTop: 4, display: "inline-block" }}>
+                              Pending admin review
+                            </div>
+                          )}
+                          {isMom && isCancelledItem && (
+                            <div style={{ fontSize: 11, fontWeight: 700, color: "#c0392b", background: "#fee2e2", borderRadius: 8, padding: "3px 8px", marginTop: 4, display: "inline-block" }}>
+                              Not approved
+                            </div>
+                          )}
+
                           {/* Why it matters */}
                           {isDonorView && !isFulfilled && (
                             <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 3, lineHeight: 1.5 }}>
@@ -400,7 +475,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                           )}
 
                           {/* Funding bar */}
-                          {item.standardPriceCents > 0 && !isFulfilled && (
+                          {item.standardPriceCents > 0 && !isFulfilled && !isPending && !isCancelledItem && (
                             <div style={{ marginTop: 8 }}>
                               <div style={{ height: 4, borderRadius: 4, background: "#e5e7eb", overflow: "hidden" }}>
                                 <div style={{ width: `${itemPct}%`, height: "100%", background: "#1a7a5e", borderRadius: 4, transition: "width 0.4s" }} />
@@ -421,7 +496,17 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           )}
                         </div>
-                        <ChevronRight size={14} color="var(--light)" style={{ flexShrink: 0, marginTop: 2 }} />
+                        {canRemove ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRemoveItem(item.id); }}
+                            disabled={removingItemId === item.id}
+                            style={{ flexShrink: 0, background: "none", border: "none", color: "var(--terra)", fontSize: 18, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}
+                          >
+                            {removingItemId === item.id ? "…" : "×"}
+                          </button>
+                        ) : (
+                          !isPending && !isCancelledItem && <ChevronRight size={14} color="var(--light)" style={{ flexShrink: 0, marginTop: 2 }} />
+                        )}
                       </div>
                     </div>
                   );
@@ -735,6 +820,36 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Close register confirmation modal ───────────── */}
+      {showCloseConfirm && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCloseConfirm(false); }}
+        >
+          <div style={{ background: "var(--white)", borderRadius: 16, padding: "24px 20px", width: "100%", maxWidth: 380 }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 10 }}>Close this register?</div>
+            <p style={{ fontSize: 13, color: "var(--mid)", lineHeight: 1.6, marginBottom: 20 }}>
+              All unfunded items will be cancelled. Items that already have contributions will not be affected. This action cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1.5px solid var(--border)", background: "var(--white)", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "var(--mid)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCloseRegister}
+                disabled={closingRegister}
+                style={{ flex: 1, padding: "12px", borderRadius: 12, border: "none", background: closingRegister ? "#9ca3af" : "var(--terra)", color: "white", fontSize: 14, fontWeight: 800, cursor: closingRegister ? "default" : "pointer", fontFamily: "Nunito, sans-serif" }}
+              >
+                {closingRegister ? "Closing…" : "Close register"}
+              </button>
+            </div>
           </div>
         </div>
       )}

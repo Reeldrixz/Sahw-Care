@@ -33,6 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let resolvedName: string;
   let resolvedCategory = "Other";
   let standardPriceCents = 0;
+  let itemStatus: "AVAILABLE" | "PENDING_APPROVAL" = "AVAILABLE";
 
   if (catalogItemId) {
     const catalogItem = await prisma.itemCatalog.findUnique({ where: { id: catalogItemId, isActive: true } });
@@ -40,13 +41,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     resolvedName       = catalogItem.name;
     resolvedCategory   = catalogItem.category;
     standardPriceCents = catalogItem.standardPriceCents;
+    itemStatus         = catalogItem.requiresApproval ? "PENDING_APPROVAL" : "AVAILABLE";
   } else {
-    // Custom item — requires manual name
+    // Custom item — always requires approval
     if (!name || typeof name !== "string" || !name.trim())
       return NextResponse.json({ error: "Item name is required for custom items" }, { status: 400 });
     if (name.trim().length > 200)
       return NextResponse.json({ error: "Item name must be 200 characters or less" }, { status: 400 });
     resolvedName = name.trim();
+    itemStatus   = "PENDING_APPROVAL";
   }
 
   // Validate store links — only allow http/https URLs, max 5
@@ -66,6 +69,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  // DRAFT → ACTIVE on first item add
+  if (register.status === "DRAFT") {
+    await prisma.register.update({ where: { id }, data: { status: "ACTIVE" } });
+  }
+
   const item = await prisma.registerItem.create({
     data: {
       registerId:        id,
@@ -77,6 +85,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       catalogItemId:     catalogItemId ?? null,
       standardPriceCents,
       fundingStatus:     "UNFUNDED",
+      status:            itemStatus,
     },
   });
 

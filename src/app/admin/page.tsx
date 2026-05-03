@@ -123,7 +123,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals";
 
 interface BundleGoalAdmin {
   id: string; month: string; targetBundles: number; costPerBundle: number;
@@ -177,9 +177,15 @@ interface CatalogAdminEntry {
   description: string | null; imageUrl: string | null;
   preferredVendor: string | null; preferredVendorUrl: string | null;
   substituteNote: string | null; ageStage: string | null;
-  requiresSize: boolean; isActive: boolean;
+  requiresSize: boolean; requiresApproval: boolean; isActive: boolean;
   lastVerifiedAt: string | null; createdAt: string; updatedAt: string;
   _count: { registerItems: number };
+}
+
+interface PendingApproval {
+  id: string; name: string; category: string; quantity: string; note: string | null; createdAt: string;
+  catalogItem: { id: string; name: string; sku: string; requiresApproval: boolean } | null;
+  register: { id: string; title: string; city: string; creator: { id: string; name: string } };
 }
 
 function catalogStalePill(lastVerifiedAt: string | null): { label: string; color: string; bg: string } {
@@ -245,6 +251,12 @@ export default function AdminPage() {
   const [editingCatalog,       setEditingCatalog]       = useState<CatalogAdminEntry | null>(null);
   const [catalogImgUploading,  setCatalogImgUploading]  = useState(false);
   const [newCatalogForm,       setNewCatalogForm]       = useState({ name: "", category: "", standardPriceCents: "" });
+
+  // Register item approvals state
+  const [pendingApprovals,     setPendingApprovals]     = useState<PendingApproval[]>([]);
+  const [approvalsLoading,     setApprovalsLoading]     = useState(false);
+  const [rejectReasonMap,      setRejectReasonMap]      = useState<Record<string, string>>({});
+  const [showRejectModal,      setShowRejectModal]      = useState<string | null>(null);
 
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
@@ -358,13 +370,21 @@ export default function AdminPage() {
     setCatalogLoading(false);
   }, []);
 
+  const fetchPendingApprovals = useCallback(async () => {
+    setApprovalsLoading(true);
+    const r = await fetch("/api/admin/register-items/pending");
+    if (r.ok) { const d = await r.json(); setPendingApprovals(d.items ?? []); }
+    setApprovalsLoading(false);
+  }, []);
+
   useEffect(() => {
     if (section === "register-queue") { fetchRegQueue(regQueueTab); fetchFinancials(); }
   }, [section, regQueueTab, fetchRegQueue, fetchFinancials]);
-  useEffect(() => { fetchCatalogAdmin(); }, [fetchCatalogAdmin]);
+  useEffect(() => { fetchCatalogAdmin(); fetchPendingApprovals(); }, [fetchCatalogAdmin, fetchPendingApprovals]);
   useEffect(() => {
     if (section === "catalog") fetchCatalogAdmin();
-  }, [section, fetchCatalogAdmin]);
+    if (section === "approvals") fetchPendingApprovals();
+  }, [section, fetchCatalogAdmin, fetchPendingApprovals]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -567,6 +587,8 @@ export default function AdminPage() {
     ["register-queue", "🛍️ Register Queue"],
     ["catalog",        `📋 Item Catalog${staleCount > 0 ? ` 🔴 ${staleCount}` : ""}`,
                        staleCount > 0 ? `${staleCount} item${staleCount === 1 ? "" : "s"} need price verification` : undefined],
+    ["approvals",      `✅ Item Approvals${pendingApprovals.length > 0 ? ` (${pendingApprovals.length})` : ""}`,
+                       pendingApprovals.length > 0 ? `${pendingApprovals.length} register item${pendingApprovals.length === 1 ? "" : "s"} pending review` : undefined],
     ["abuse",          "🔍 Abuse Monitor"],
     ["coordination",   "📍 Coordination"],
   ];
@@ -1941,7 +1963,7 @@ export default function AdminPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Item Catalog</div>
                   <button
-                    onClick={() => setEditingCatalog({ id: "", sku: "", name: "", category: "Feeding", standardPriceCents: 0, description: null, imageUrl: null, preferredVendor: null, preferredVendorUrl: null, substituteNote: null, ageStage: null, requiresSize: false, isActive: true, lastVerifiedAt: null, createdAt: "", updatedAt: "", _count: { registerItems: 0 } })}
+                    onClick={() => setEditingCatalog({ id: "", sku: "", name: "", category: "Feeding", standardPriceCents: 0, description: null, imageUrl: null, preferredVendor: null, preferredVendorUrl: null, substituteNote: null, ageStage: null, requiresSize: false, requiresApproval: false, isActive: true, lastVerifiedAt: null, createdAt: "", updatedAt: "", _count: { registerItems: 0 } })}
                     style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
                     + Add item
                   </button>
@@ -2134,6 +2156,10 @@ export default function AdminPage() {
                           <input type="checkbox" id="requiresSize" checked={editingCatalog.requiresSize} onChange={(e) => setEditingCatalog((p) => p ? { ...p, requiresSize: e.target.checked } : p)} style={{ width: 16, height: 16, cursor: "pointer" }} />
                           <label htmlFor="requiresSize" style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", fontWeight: 600, cursor: "pointer" }}>Requires size</label>
                         </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 2 }}>
+                          <input type="checkbox" id="requiresApproval" checked={editingCatalog.requiresApproval} onChange={(e) => setEditingCatalog((p) => p ? { ...p, requiresApproval: e.target.checked } : p)} style={{ width: 16, height: 16, cursor: "pointer" }} />
+                          <label htmlFor="requiresApproval" style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", fontWeight: 600, cursor: "pointer" }}>Requires admin approval</label>
+                        </div>
                       </div>
 
                       {/* Last verified (read-only) */}
@@ -2168,6 +2194,7 @@ export default function AdminPage() {
                                 substituteNote: editingCatalog.substituteNote || null,
                                 ageStage: editingCatalog.ageStage || null,
                                 requiresSize: editingCatalog.requiresSize,
+                                requiresApproval: editingCatalog.requiresApproval,
                                 isActive: editingCatalog.isActive,
                               }),
                             });
@@ -2185,6 +2212,132 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── ITEM APPROVALS ───────────────────────────────────────────── */}
+            {section === "approvals" && (
+              <div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 20 }}>
+                  Register Item Approvals
+                  {pendingApprovals.length > 0 && (
+                    <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 700, background: "#fff8e6", color: "#d97706", padding: "3px 10px", borderRadius: 20 }}>
+                      {pendingApprovals.length} pending
+                    </span>
+                  )}
+                </div>
+
+                {approvalsLoading ? (
+                  <div className="loading"><div className="spinner" /></div>
+                ) : pendingApprovals.length === 0 ? (
+                  <div className="empty">
+                    <div className="empty-icon">✅</div>
+                    <div className="empty-title">No items pending review</div>
+                  </div>
+                ) : (
+                  <div>
+                    {pendingApprovals.map((item) => (
+                      <div key={item.id} style={{ background: "var(--white)", borderRadius: 12, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)", border: "1.5px solid #fde68a" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{item.name}</div>
+                            <div style={{ fontSize: 12, color: "var(--mid)" }}>
+                              {item.category} · Qty: {item.quantity}
+                              {item.note && ` · ${item.note}`}
+                            </div>
+                            {item.catalogItem ? (
+                              <div style={{ fontSize: 11, color: "#d97706", fontWeight: 600, marginTop: 4 }}>
+                                Catalog item · SKU: {item.catalogItem.sku}
+                                {item.catalogItem.requiresApproval && " · Marked as requires approval"}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 11, color: "#7a5500", fontWeight: 600, marginTop: 4 }}>Custom item (not in catalog)</div>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--mid)", flexShrink: 0 }}>
+                            {new Date(item.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                          </div>
+                        </div>
+
+                        <div style={{ background: "#f9fafb", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 12 }}>
+                          <div style={{ fontWeight: 700, marginBottom: 2 }}>Register: {item.register.title}</div>
+                          <div style={{ color: "var(--mid)" }}>
+                            by {item.register.creator.name} · {item.register.city}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`/api/admin/register-items/${item.id}/approve`, { method: "PATCH" });
+                              if (res.ok) { fetchPendingApprovals(); setToast(`"${item.name}" approved`); }
+                              else { const d = await res.json(); setToast(d.error ?? "Failed"); }
+                            }}
+                            style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: "var(--green)", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            onClick={() => setShowRejectModal(item.id)}
+                            style={{ padding: "8px 16px", borderRadius: 20, border: "1.5px solid var(--terra)", background: "none", color: "var(--terra)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                          >
+                            ✕ Reject
+                          </button>
+                          <a
+                            href={`/registers/${item.register.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", textDecoration: "underline", marginLeft: "auto" }}
+                          >
+                            View register ↗
+                          </a>
+                        </div>
+
+                        {/* Reject modal for this item */}
+                        {showRejectModal === item.id && (
+                          <div style={{ marginTop: 12, background: "#fff8e6", borderRadius: 10, padding: "12px" }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#7a5500" }}>Rejection reason (required, max 200 chars)</div>
+                            <input
+                              className="form-input"
+                              placeholder="e.g. This item is not available in our catalog"
+                              maxLength={200}
+                              value={rejectReasonMap[item.id] ?? ""}
+                              onChange={(e) => setRejectReasonMap((p) => ({ ...p, [item.id]: e.target.value }))}
+                              style={{ marginBottom: 8 }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button
+                                onClick={() => setShowRejectModal(null)}
+                                style={{ flex: 1, padding: "8px", borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--white)", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", color: "var(--mid)" }}
+                              >Cancel</button>
+                              <button
+                                onClick={async () => {
+                                  const reason = rejectReasonMap[item.id]?.trim();
+                                  if (!reason) { setToast("Reason is required"); return; }
+                                  const res = await fetch(`/api/admin/register-items/${item.id}/reject`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ reason }),
+                                  });
+                                  if (res.ok) {
+                                    setShowRejectModal(null);
+                                    setRejectReasonMap((p) => { const n = { ...p }; delete n[item.id]; return n; });
+                                    fetchPendingApprovals();
+                                    setToast(`"${item.name}" rejected`);
+                                  } else {
+                                    const d = await res.json();
+                                    setToast(d.error ?? "Failed");
+                                  }
+                                }}
+                                style={{ flex: 2, padding: "8px", borderRadius: 10, border: "none", background: "var(--terra)", color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                              >Confirm reject</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

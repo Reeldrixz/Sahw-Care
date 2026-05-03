@@ -4,13 +4,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  const token = await getTokenFromRequest(req);
+  const auth = token ? await verifyToken(token) : null;
 
   const register = await prisma.register.findUnique({
     where: { id },
     include: {
-      creator: { select: { id: true, name: true, location: true } },
+      creator: { select: { id: true, name: true, location: true, verificationLevel: true } },
       items: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -27,7 +30,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ register });
+
+  const isCreator = auth?.userId === register.creatorId;
+  const responseRegister = isCreator
+    ? register
+    : { ...register, items: register.items.filter((i) => i.status !== "PENDING_APPROVAL") };
+
+  return NextResponse.json({ register: responseRegister });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +49,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, city, dueDate } = await req.json();
+  const { title, city, dueDate, status } = await req.json();
+
+  if (status === "CLOSED") {
+    const updated = await prisma.$transaction(async (tx) => {
+      const reg = await tx.register.update({
+        where: { id },
+        data: { status: "CLOSED", closedAt: new Date() },
+      });
+      // Cancel all unfunded items — refund of partial contributions deferred to Phase 4
+      await tx.registerItem.updateMany({
+        where: {
+          registerId: id,
+          status: { in: ["AVAILABLE", "PENDING_APPROVAL"] },
+          fundingStatus: "UNFUNDED",
+        },
+        data: { status: "CANCELLED" },
+      });
+      return reg;
+    });
+    return NextResponse.json({ register: updated });
+  }
+
   const updated = await prisma.register.update({
     where: { id },
     data: {

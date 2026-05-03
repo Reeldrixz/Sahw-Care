@@ -38,6 +38,7 @@ export async function fetchDonorRegister(registerId: string): Promise<DonorFacin
       creatorId:   true,
       // savedAddress intentionally absent
       items: {
+        where: { status: { not: "PENDING_APPROVAL" } },
         select: {
           id:                 true,
           name:               true,

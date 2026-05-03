@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const {
       id, sku, name, category, standardPriceCents,
       description, imageUrl, preferredVendor, preferredVendorUrl,
-      substituteNote, ageStage, requiresSize, isActive,
+      substituteNote, ageStage, requiresSize, requiresApproval, isActive,
     } = await req.json();
 
     if (!name || !category || typeof standardPriceCents !== "number") {
@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
         ...(preferredVendorUrl !== undefined && { preferredVendorUrl: preferredVendorUrl ?? null }),
         ...(substituteNote !== undefined     && { substituteNote: substituteNote ?? null }),
         ...(ageStage       !== undefined     && { ageStage: ageStage ?? null }),
-        ...(requiresSize   !== undefined     && { requiresSize: Boolean(requiresSize) }),
+        ...(requiresSize      !== undefined && { requiresSize: Boolean(requiresSize) }),
+        ...(requiresApproval !== undefined && { requiresApproval: Boolean(requiresApproval) }),
       };
       const updated = await prisma.itemCatalog.update({ where: { id }, data });
       return NextResponse.json({ item: updated });
@@ -62,7 +63,8 @@ export async function POST(req: NextRequest) {
         description: description ?? null, imageUrl: imageUrl ?? null,
         preferredVendor: preferredVendor ?? null, preferredVendorUrl: preferredVendorUrl ?? null,
         substituteNote: substituteNote ?? null, ageStage: ageStage ?? null,
-        requiresSize: requiresSize ?? false, isActive: isActive ?? true,
+        requiresSize: requiresSize ?? false, requiresApproval: requiresApproval ?? false,
+        isActive: isActive ?? true,
         lastVerifiedAt: new Date(),
       },
     });

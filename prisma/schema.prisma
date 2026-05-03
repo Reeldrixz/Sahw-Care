@@ -552,6 +552,7 @@ enum RegisterItemStatus {
   FULFILLED
   DELIVERED
   CANCELLED
+  PENDING_APPROVAL
 }
 
 enum RegisterAddressMode {
@@ -878,6 +879,10 @@ enum NotifType {
   COORDINATION_SCHEDULED
   COORDINATION_CANCELLED
   COORDINATION_DELIVERED
+
+  // Register item review
+  REGISTER_ITEM_APPROVED
+  REGISTER_ITEM_REJECTED
 }
 
 enum BundleInstanceStatus {
@@ -1183,6 +1188,7 @@ model ItemCatalog {
   substituteNote     String?
   ageStage           String?
   requiresSize       Boolean        @default(false)
+  requiresApproval   Boolean        @default(false)
   isActive           Boolean        @default(true)
   lastVerifiedAt     DateTime?
   createdAt          DateTime       @default(now())

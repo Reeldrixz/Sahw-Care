@@ -69,22 +69,51 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { title, city, dueDate } = await req.json();
+  const { title, city, dueDate, addressMode, savedAddress } = await req.json();
   if (!title || !city || !dueDate) {
     return NextResponse.json({ error: "Title, city and due date are required" }, { status: 400 });
   }
 
-  const register = await prisma.register.create({
-    data: {
-      title,
-      city,
-      dueDate: new Date(dueDate),
-      creatorId: auth.userId,
-    },
-    include: {
-      creator: { select: { id: true, name: true, location: true } },
-      items: true,
-    },
+  const mode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER" =
+    addressMode === "SAVED_PER_REGISTER" ? "SAVED_PER_REGISTER" : "ASK_PER_SHIPMENT";
+
+  if (mode === "SAVED_PER_REGISTER" && !savedAddress) {
+    return NextResponse.json({ error: "Saved address required for this mode" }, { status: 400 });
+  }
+  if (mode === "ASK_PER_SHIPMENT" && savedAddress) {
+    return NextResponse.json({ error: "Address not needed for ask-per-shipment mode" }, { status: 400 });
+  }
+  if (mode === "SAVED_PER_REGISTER") {
+    const { fullName, streetAddress, city: addrCity, province, postalCode, phone } = savedAddress ?? {};
+    if (!fullName || !streetAddress || !addrCity || !province || !postalCode || !phone) {
+      return NextResponse.json({ error: "All address fields are required" }, { status: 400 });
+    }
+  }
+
+  const register = await prisma.$transaction(async (tx) => {
+    const reg = await tx.register.create({
+      data: {
+        title, city, dueDate: new Date(dueDate),
+        creatorId: auth.userId,
+        addressMode: mode,
+      },
+      include: { creator: { select: { id: true, name: true, location: true } }, items: true },
+    });
+    if (mode === "SAVED_PER_REGISTER" && savedAddress) {
+      await tx.registerAddress.create({
+        data: {
+          registerId: reg.id,
+          fullName:      String(savedAddress.fullName),
+          streetAddress: String(savedAddress.streetAddress),
+          unit:          savedAddress.unit ? String(savedAddress.unit) : null,
+          city:          String(savedAddress.city),
+          province:      String(savedAddress.province),
+          postalCode:    String(savedAddress.postalCode),
+          phone:         String(savedAddress.phone),
+        },
+      });
+    }
+    return reg;
   });
 
   return NextResponse.json({ register }, { status: 201 });

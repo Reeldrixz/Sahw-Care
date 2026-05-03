@@ -59,6 +59,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const itemToDelete = await prisma.registerItem.findUnique({
+    where: { id: itemId },
+    select: { totalFundedCents: true },
+  });
+  if (!itemToDelete) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (itemToDelete.totalFundedCents > 0) {
+    return NextResponse.json({ error: "Items with contributions cannot be removed. Contact Kradəl for help." }, { status: 400 });
+  }
+
   await prisma.registerItem.delete({ where: { id: itemId } });
   return NextResponse.json({ ok: true });
 }

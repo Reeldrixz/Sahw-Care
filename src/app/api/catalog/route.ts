@@ -12,7 +12,7 @@ export async function GET() {
         id: true, sku: true, name: true, category: true,
         standardPriceCents: true,
         description: true, imageUrl: true,
-        preferredVendor: true, ageStage: true, requiresSize: true,
+        preferredVendor: true, ageStage: true, requiresSize: true, requiresApproval: true,
         isActive: true, lastVerifiedAt: true, createdAt: true, updatedAt: true,
         // preferredVendorUrl and substituteNote are admin-only — omitted
       },
