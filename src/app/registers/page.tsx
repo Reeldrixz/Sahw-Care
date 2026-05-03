@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, MapPin, Heart } from "lucide-react";
+import { BadgeCheck, MapPin, Heart, Shield, Package, Eye } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -13,6 +13,7 @@ interface RegisterListItem {
   standardPriceCents: number;
   totalFundedCents: number;
   _count: { funding: number };
+  catalogItem: { imageUrl: string | null } | null;
 }
 
 interface RegisterData {
@@ -47,7 +48,6 @@ export default function RegistersPage() {
   const [registers, setRegisters] = useState<RegisterData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-
 
   const fetchRegisters = useCallback(async () => {
     setLoading(true);
@@ -99,7 +99,7 @@ export default function RegistersPage() {
         </div>
 
         {/* List */}
-        <div style={{ padding: "16px 16px 100px" }}>
+        <div style={{ padding: "16px 16px 0" }}>
           {loading ? (
             <div className="loading" style={{ marginTop: 60 }}><div className="spinner" /></div>
           ) : filtered.length === 0 ? (
@@ -128,6 +128,15 @@ export default function RegistersPage() {
               const hasNoFunding = totalFunded === 0;
               const totalDonors = reg.items.reduce((s, i) => s + i._count.funding, 0);
 
+              // Image strip (Section 1)
+              const itemImages = reg.items
+                .map((i) => i.catalogItem?.imageUrl)
+                .filter((u): u is string => !!u);
+              const hasImages = itemImages.length > 0;
+              const moreThanFive = reg.items.length > 5;
+              const stripImages = moreThanFive ? itemImages.slice(0, 4) : itemImages.slice(0, 5);
+              const moreCount = moreThanFive ? reg.items.length - 4 : 0;
+
               return (
                 <div
                   key={reg.id}
@@ -151,7 +160,7 @@ export default function RegistersPage() {
                     </span>
                     {isVerified && (
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "#e8f5f1", padding: "3px 8px", borderRadius: 20 }}>
-                        <BadgeCheck size={11} strokeWidth={2.5} /> Verified
+                        <BadgeCheck size={11} strokeWidth={1.75} /> Verified
                       </span>
                     )}
                     {isFullyFunded && (
@@ -166,21 +175,41 @@ export default function RegistersPage() {
                     {firstName}&apos;s Register
                   </div>
                   <div style={{ fontSize: 12, color: "var(--mid)", fontWeight: 600, display: "flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
-                    <MapPin size={11} />
+                    <MapPin size={11} strokeWidth={1.75} />
                     {reg.city}
                     {totalDonors > 0 && <span style={{ marginLeft: 6, color: "#1a7a5e" }}>· {totalDonors} contributor{totalDonors !== 1 ? "s" : ""}</span>}
                   </div>
+
+                  {/* Image strip (Section 1) */}
+                  {hasImages && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12, overflow: "hidden" }}>
+                      {stripImages.map((url, idx) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={idx}
+                          src={url}
+                          alt=""
+                          style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", border: "1px solid #e0e0e0", flexShrink: 0 }}
+                        />
+                      ))}
+                      {moreCount > 0 && (
+                        <div style={{ width: 40, height: 40, borderRadius: 8, background: "#f3f4f6", border: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 10, fontWeight: 700, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                          +{moreCount}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Funding progress */}
                   {totalItems > 0 && totalNeeded > 0 && (
                     <>
                       <div style={{ height: 6, borderRadius: 6, background: "var(--bg)", overflow: "hidden", marginBottom: 6 }}>
-                        <div style={{ width: `${pct * 100}%`, height: "100%", background: isFullyFunded ? "#1a7a5e" : "#1a7a5e", borderRadius: 6, transition: "width 0.4s", opacity: isFullyFunded ? 1 : 0.7 }} />
+                        <div style={{ width: `${pct * 100}%`, height: "100%", background: "#1a7a5e", borderRadius: 6, transition: "width 0.4s", opacity: isFullyFunded ? 1 : 0.7 }} />
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "var(--mid)", fontWeight: 600, marginBottom: 12 }}>
                         {hasNoFunding ? (
                           <span style={{ color: "#d97706", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Heart size={11} /> Be the first to help
+                            <Heart size={11} strokeWidth={1.75} /> Be the first to help
                           </span>
                         ) : (
                           <span>{fmtMoney(totalFunded)} funded of {fmtMoney(totalNeeded)}</span>
@@ -202,6 +231,30 @@ export default function RegistersPage() {
             })
           )}
         </div>
+
+        {/* Trust footer (Section 2) — shown when list has results */}
+        {!loading && filtered.length > 0 && (
+          <div style={{ margin: "4px 16px 100px", padding: "16px", background: "var(--white)", borderRadius: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ textAlign: "center" }}>
+              <Shield size={18} color="#1a7a5e" strokeWidth={1.75} style={{ margin: "0 auto 6px" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Secure</div>
+              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>Payments are processed via Stripe. We never see card numbers.</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <Package size={18} color="#1a7a5e" strokeWidth={1.75} style={{ margin: "0 auto 6px" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Kradəl delivers</div>
+              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>We purchase and ship items directly to mothers using your contribution.</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <Eye size={18} color="#1a7a5e" strokeWidth={1.75} style={{ margin: "0 auto 6px" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>Verified</div>
+              <div style={{ fontSize: 10, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>Every mother is identity-verified before her register goes live.</div>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom padding for empty/loading state */}
+        {(loading || filtered.length === 0) && <div style={{ height: 100 }} />}
       </div>
       <BottomNav />
     </div>

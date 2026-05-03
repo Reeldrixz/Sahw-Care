@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle, Package, Loader2, Users, Heart, Shield, Eye,
-  BadgeCheck, MapPin, Square, CheckSquare, SquareDot, ChevronRight,
+  BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
+  ShieldCheck, ImageOff, AlertCircle,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -26,6 +27,7 @@ interface RegisterItemData {
   totalFundedCents: number;
   fundingStatus: "UNFUNDED" | "PARTIAL" | "FULLY_FUNDED" | "IN_FULFILLMENT" | "FULFILLED";
   _count?: { funding: number };
+  catalogItem: { imageUrl: string | null } | null;
 }
 
 interface RegisterData {
@@ -427,13 +429,29 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                        <div style={{ flexShrink: 0, marginTop: 1 }}>
-                          {isPending
-                            ? <span style={{ fontSize: 16 }}>⏳</span>
-                            : isCancelledItem
-                            ? <span style={{ fontSize: 16 }}>✕</span>
-                            : <ItemStateIcon status={item.fundingStatus} />
-                          }
+                        {/* Catalog image with status overlay (Section 4A) */}
+                        <div style={{ position: "relative", width: 48, height: 48, flexShrink: 0 }}>
+                          {item.catalogItem?.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={item.catalogItem.imageUrl}
+                              alt=""
+                              style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: "1px solid #e0e0e0" }}
+                            />
+                          ) : (
+                            <div style={{ width: 48, height: 48, borderRadius: 8, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <ImageOff size={24} color="#9ca3af" strokeWidth={1.75} />
+                            </div>
+                          )}
+                          {/* Status icon overlaid bottom-right */}
+                          <div style={{ position: "absolute", bottom: -4, right: -4, background: "white", borderRadius: "50%", padding: 2, boxShadow: "0 1px 3px rgba(0,0,0,0.15)", lineHeight: 0 }}>
+                            {isPending
+                              ? <span style={{ fontSize: 12, lineHeight: 1 }}>⏳</span>
+                              : isCancelledItem
+                              ? <span style={{ fontSize: 12, lineHeight: 1 }}>✕</span>
+                              : <ItemStateIcon status={item.fundingStatus} />
+                            }
+                          </div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -450,7 +468,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                             {canFundThis && (
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 800, color: "#1a7a5e", border: "1.5px solid #1a7a5e", borderRadius: 20, padding: "3px 10px", flexShrink: 0, fontFamily: "Nunito, sans-serif" }}>
-                                Help fund this
+                                Help provide this
                               </span>
                             )}
                           </div>
@@ -670,18 +688,33 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               </div>
             ) : (
               <>
-                {/* Item icon + heading */}
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Heart size={20} color="#1a7a5e" strokeWidth={2} />
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: "#1a3a2e" }}>{selectedItem.name}</div>
-                    <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}>
-                      {selectedItem.category}
-                      {selectedItem.quantity && selectedItem.quantity !== "1" && ` · Qty: ${selectedItem.quantity}`}
+                {/* Hero image + name (Section 4B) */}
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                  {selectedItem.catalogItem?.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={selectedItem.catalogItem.imageUrl}
+                      alt=""
+                      style={{ width: 80, height: 80, borderRadius: 12, objectFit: "cover", border: "1px solid #e0e0e0" }}
+                    />
+                  ) : (
+                    <div style={{ width: 80, height: 80, borderRadius: 12, background: "#f3f4f6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ImageOff size={32} color="#9ca3af" strokeWidth={1.75} />
                     </div>
-                  </div>
+                  )}
+                </div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a3a2e", textAlign: "center", marginBottom: 2 }}>
+                  {selectedItem.name}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", fontWeight: 600, textAlign: "center", marginBottom: 6 }}>
+                  {selectedItem.category}
+                  {selectedItem.quantity && selectedItem.quantity !== "1" && ` · Qty: ${selectedItem.quantity}`}
+                </div>
+
+                {/* Verified badge line (Section 3) */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 14, fontSize: 12, fontWeight: 600, color: isVerified ? "#1a7a5e" : "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                  {isVerified && <ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} />}
+                  {isVerified ? `Helping ${firstName} — Verified mother` : `Helping ${firstName}`}
                 </div>
 
                 {/* Status badges */}
@@ -766,10 +799,18 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                     </div>
 
                     {/* Trust block */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
-                      <Shield size={14} color="#1a7a5e" strokeWidth={2} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                      <Shield size={14} color="#1a7a5e" strokeWidth={1.75} />
                       <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
                         Your contribution is secure. Kradəl buys and delivers directly — you never ship anything.
+                      </span>
+                    </div>
+
+                    {/* Payments coming soon banner (Section 5) */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#fef3c7", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+                      <AlertCircle size={16} color="#92400e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ fontSize: 11, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                        Payments launching soon. Your contribution is recorded but not yet processed. We'll reach out before the first real payment cycle.
                       </span>
                     </div>
 
@@ -785,7 +826,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                           fontFamily: "Nunito, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                         }}
                       >
-                        {funding ? "Processing…" : fundAmount && parseFloat(fundAmount) > 0 ? `Contribute ${fmtMoney(Math.round(parseFloat(fundAmount) * 100))}` : "Enter an amount to contribute"}
+                        {funding ? "Processing…" : fundAmount && parseFloat(fundAmount) > 0 ? "Continue to contribute" : "Enter an amount to contribute"}
                       </button>
                     ) : (
                       <button
