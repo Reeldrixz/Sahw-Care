@@ -418,7 +418,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                     ? { bg: "#fef3c7", color: "#c0392b", label: "High need" }
                     : needLevel === "LOW"
                     ? { bg: "#f3f4f6", color: "#555555", label: "Low need" }
-                    : { bg: "#dbeafe", color: "#1e40af", label: "Medium need" };
+                    : null;
                   const itemPct         = item.standardPriceCents > 0
                     ? Math.min(100, (item.totalFundedCents / item.standardPriceCents) * 100)
                     : 0;
@@ -494,8 +494,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                             </div>
                           )}
 
-                          {/* Need level badge */}
-                          {isDonorView && !isFulfilled && !isPending && !isCancelledItem && (
+                          {/* Need level badge — only for HIGH and LOW items */}
+                          {isDonorView && !isFulfilled && !isPending && !isCancelledItem && needCfg && (
                             <span style={{ display: "inline-block", marginTop: 4, marginBottom: 4, fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 20, background: needCfg.bg, color: needCfg.color, fontFamily: "Nunito, sans-serif" }}>
                               {needCfg.label}
                             </span>

@@ -1,4 +1,4 @@
-type NeedLevel = "HIGH" | "MEDIUM" | "LOW";
+type NeedLevel = "HIGH" | "LOW" | null;
 
 const HIGH_NEED_SKUS = new Set([
   "F02", // Ready-to-feed formula
@@ -17,8 +17,8 @@ const LOW_NEED_SKUS = new Set([
 ]);
 
 export function calculateNeedLevel(sku: string | null | undefined): NeedLevel {
-  if (!sku) return "MEDIUM";
+  if (!sku) return null;
   if (HIGH_NEED_SKUS.has(sku)) return "HIGH";
   if (LOW_NEED_SKUS.has(sku)) return "LOW";
-  return "MEDIUM";
+  return null;
 }
