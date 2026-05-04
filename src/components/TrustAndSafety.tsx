@@ -1,6 +1,7 @@
 "use client";
 
-import { ShieldCheck, Package, Lock } from "lucide-react";
+import { ShieldCheck, Package, Lock, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 const COLUMNS = [
   {
@@ -40,6 +41,24 @@ export default function TrustAndSafety() {
             </div>
           </div>
         ))}
+      </div>
+      <div style={{ marginTop: 16, textAlign: "center" }}>
+        <Link
+          href="/privacy"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontFamily: "Nunito, sans-serif",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#1a7a5e",
+            textDecoration: "none",
+          }}
+        >
+          Read our full Privacy Policy
+          <ExternalLink size={14} strokeWidth={1.75} />
+        </Link>
       </div>
     </div>
   );
