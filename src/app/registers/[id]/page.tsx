@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CheckCircle, Package, Loader2, Users, Heart, Shield,
+  CheckCircle, Package, Loader2, Users, Heart,
   BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
-  ShieldCheck, ImageOff, AlertCircle, HandHeart,
+  ShieldCheck, ImageOff, HandHeart,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -109,7 +109,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [selectedItem, setSelectedItem]     = useState<RegisterItemData | null>(null);
   const [fundingDetails, setFundingDetails] = useState<{ donorCount: number; contributors: FundingEntry[] } | null>(null);
   const [fundAmount, setFundAmount]         = useState("");
-  const [funding, setFunding]               = useState(false);
+  const [processing, setProcessing]         = useState(false);
   const [funded, setFunded]                 = useState(false);
   const [fundedAmount, setFundedAmount]     = useState(0);
   const [addingItem, setAddingItem]         = useState(false);
@@ -132,6 +132,23 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   }, [id]);
 
   useEffect(() => { fetchRegister(); }, [fetchRegister]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    if (payment === "success") {
+      setToast("Payment confirmed! Kradəl will purchase and deliver this item soon.");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      url.searchParams.delete("item");
+      window.history.replaceState({}, "", url.toString());
+    } else if (payment === "cancel") {
+      setToast("Payment cancelled. Your contribution was not processed.");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -162,20 +179,19 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     if (!selectedItem || !fundAmount) return;
     const cents = Math.round(parseFloat(fundAmount) * 100);
     if (!cents || cents <= 0) { setToast("Enter a valid amount"); return; }
-    setFunding(true);
+    setProcessing(true);
     const res = await fetch(`/api/registers/${id}/items/${selectedItem.id}/fund`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amountCents: cents }),
     });
-    setFunding(false);
     if (res.ok) {
-      setFundedAmount(cents);
-      setFunded(true);
-      await fetchRegister();
+      const { sessionUrl } = await res.json();
+      window.location.href = sessionUrl;
     } else {
+      setProcessing(false);
       const d = await res.json();
-      setToast(d.error ?? "Failed to fund item");
+      setToast(d.error ?? "Failed to initiate payment");
     }
   };
 
@@ -807,34 +823,26 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                     </div>
 
                     {/* Trust block */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
-                      <Shield size={14} color="#1a7a5e" strokeWidth={1.75} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
+                      <ShieldCheck size={14} color="#1a7a5e" strokeWidth={1.75} />
                       <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                        Your contribution is secure. Kradəl buys and delivers directly — you never ship anything.
-                      </span>
-                    </div>
-
-                    {/* Payments coming soon banner (Section 5) */}
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#fef3c7", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
-                      <AlertCircle size={16} color="#92400e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
-                      <span style={{ fontSize: 11, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                        Payments launching soon. Your contribution is recorded but not yet processed. We'll reach out before the first real payment cycle.
+                        Secure payment via Stripe. Your card details never touch our servers.
                       </span>
                     </div>
 
                     {user ? (
                       <button
                         onClick={handleFund}
-                        disabled={funding || !fundAmount || parseFloat(fundAmount) <= 0}
+                        disabled={processing || !fundAmount || parseFloat(fundAmount) <= 0}
                         style={{
                           width: "100%", padding: "14px", borderRadius: 12, border: "none",
-                          background: funding || !fundAmount || parseFloat(fundAmount) <= 0 ? "#9ca3af" : "var(--green)",
+                          background: processing || !fundAmount || parseFloat(fundAmount) <= 0 ? "#9ca3af" : "var(--green)",
                           color: "white", fontSize: 14, fontWeight: 800,
-                          cursor: funding || !fundAmount || parseFloat(fundAmount) <= 0 ? "default" : "pointer",
+                          cursor: processing || !fundAmount || parseFloat(fundAmount) <= 0 ? "default" : "pointer",
                           fontFamily: "Nunito, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                         }}
                       >
-                        {funding ? "Processing…" : fundAmount && parseFloat(fundAmount) > 0 ? "Continue to contribute" : "Enter an amount to contribute"}
+                        {processing ? "Redirecting to payment…" : fundAmount && parseFloat(fundAmount) > 0 ? "Contribute via Stripe" : "Enter an amount to contribute"}
                       </button>
                     ) : (
                       <button

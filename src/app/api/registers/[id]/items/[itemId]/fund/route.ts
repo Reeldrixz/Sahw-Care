@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { awardImpactPoints } from "@/lib/trust";
-import { logAbuseEvent } from "@/lib/abuse";
+import { getStripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const [item, donor] = await Promise.all([
     prisma.registerItem.findUnique({
       where:   { id: itemId },
-      include: { register: { select: { creatorId: true, title: true } } },
+      include: { register: { select: { id: true, creatorId: true, title: true } } },
     }),
     prisma.user.findUnique({ where: { id: auth.userId }, select: { id: true, name: true, email: true } }),
   ]);
@@ -40,93 +39,63 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "This item is already fully funded" }, { status: 409 });
   }
 
-  const newTotal = item.totalFundedCents + amountCents;
-  const isFullyFunded = item.standardPriceCents > 0 && newTotal >= item.standardPriceCents;
+  const existingPending = await prisma.registerItemFunding.findFirst({
+    where: { registerItemId: itemId, donorId: auth.userId, status: "PENDING" },
+  });
+  if (existingPending) {
+    return NextResponse.json({ error: "You already have a pending payment for this item" }, { status: 409 });
+  }
 
-  const newFundingStatus = isFullyFunded
-    ? "FULLY_FUNDED"
-    : newTotal > 0
-      ? "PARTIAL"
-      : "UNFUNDED";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const registerId = item.register.id;
 
-  const isFullFundInOne = isFullyFunded && item.totalFundedCents === 0;
-
-  const previousDonorIds = isFullyFunded
-    ? (await prisma.registerItemFunding.findMany({
-        where: { registerItemId: itemId, donorId: { not: auth.userId }, status: "CONFIRMED" },
-        select: { donorId: true },
-        distinct: ["donorId"],
-      })).map((f) => f.donorId)
-    : [];
-
-  await prisma.$transaction(async (tx) => {
-    await tx.registerItemFunding.create({
-      data: { registerItemId: itemId, donorId: auth.userId, amountCents, status: "CONFIRMED" },
-    });
-    await tx.registerItem.update({
-      where: { id: itemId },
-      data: { totalFundedCents: newTotal, fundingStatus: newFundingStatus },
-    });
-    await tx.user.update({
-      where: { id: auth.userId },
-      data: {
-        totalFundedCents: { increment: amountCents },
-        fundingCount:     { increment: 1 },
-      },
-    });
-    if (isFullyFunded) {
-      await tx.fulfillmentQueue.create({
-        data: { registerItemId: itemId, totalFundedCents: newTotal, status: "QUEUED" },
-      });
-      await tx.registerItem.update({
-        where: { id: itemId },
-        data:  { fundingStatus: "IN_FULFILLMENT" },
-      });
-      // Notify mother
-      await tx.notification.create({
-        data: {
-          userId:  item.register.creatorId,
-          type:    "ITEM_FULLY_FUNDED",
-          message: `Your item "${item.name}" has been fully funded! Kradəl will fulfill it soon.`,
-          link:    `/registers/${item.registerId}`,
-        },
-      });
-      // Notify the completing donor
-      await tx.notification.create({
-        data: {
-          userId:  auth.userId,
-          type:    "ITEM_FULLY_FUNDED",
-          message: `You completed funding "${item.name}"! Kradəl will purchase and deliver it soon.`,
-          link:    `/registers/${item.registerId}`,
-        },
-      });
-      // Notify previous donors that the item is now fully funded
-      for (const donorId of previousDonorIds) {
-        await tx.notification.create({
-          data: {
-            userId:  donorId,
-            type:    "ITEM_FULLY_FUNDED",
-            message: `An item you helped fund, "${item.name}", is now fully funded and will be fulfilled soon.`,
-            link:    `/registers/${item.registerId}`,
-          },
-        });
-      }
-    }
+  const funding = await prisma.registerItemFunding.create({
+    data: { registerItemId: itemId, donorId: auth.userId, amountCents, status: "PENDING" },
   });
 
-  // Award impact points (fire-and-forget)
-  Promise.all([
-    awardImpactPoints(auth.userId, "REGISTER_ITEM_FUNDED", itemId),
-    isFullFundInOne
-      ? awardImpactPoints(auth.userId, "REGISTER_ITEM_FULL_FUND", itemId)
-      : Promise.resolve(null),
-    logAbuseEvent(auth.userId, "DISCOVER_REQUEST_CREATED", 0, { action: "ITEM_FUNDED", itemId, amountCents }, req),
-  ]).catch(() => {});
+  let stripe;
+  try {
+    stripe = getStripe();
+  } catch {
+    await prisma.registerItemFunding.delete({ where: { id: funding.id } });
+    return NextResponse.json({ error: "Payment service is unavailable" }, { status: 503 });
+  }
 
-  return NextResponse.json({
-    ok: true,
-    newTotal,
-    fundingStatus: isFullyFunded ? "IN_FULFILLMENT" : newFundingStatus,
-    isFullyFunded,
-  }, { status: 201 });
+  let session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [{
+        quantity: 1,
+        price_data: {
+          currency: "cad",
+          unit_amount: amountCents,
+          product_data: {
+            name: item.name,
+            description: `Contribution to ${item.register.title}`,
+          },
+        },
+      }],
+      metadata: {
+        fundingId:  funding.id,
+        itemId,
+        donorId:    auth.userId,
+        registerId,
+      },
+      success_url: `${appUrl}/registers/${registerId}?payment=success&item=${itemId}`,
+      cancel_url:  `${appUrl}/registers/${registerId}?payment=cancel`,
+    });
+  } catch (err) {
+    await prisma.registerItemFunding.delete({ where: { id: funding.id } });
+    console.error("Stripe session creation failed:", err);
+    return NextResponse.json({ error: "Failed to create payment session" }, { status: 500 });
+  }
+
+  await prisma.registerItemFunding.update({
+    where: { id: funding.id },
+    data:  { stripeSessionId: session.id },
+  });
+
+  return NextResponse.json({ sessionUrl: session.url }, { status: 201 });
 }

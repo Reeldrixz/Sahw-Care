@@ -1213,15 +1213,25 @@ model ItemCatalog {
 }
 
 model RegisterItemFunding {
-  id             String        @id @default(cuid())
-  registerItemId String
-  donorId        String
-  amountCents    Int
-  status         FundingStatus @default(CONFIRMED)
-  createdAt      DateTime      @default(now())
+  id                   String        @id @default(cuid())
+  registerItemId       String
+  donorId              String
+  amountCents          Int
+  status               FundingStatus @default(PENDING)
+  stripeSessionId      String?
+  stripePaymentIntentId String?
+  refundedAt           DateTime?
+  createdAt            DateTime      @default(now())
 
   registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
   donor        User         @relation(fields: [donorId], references: [id], onDelete: Cascade)
+}
+
+model StripeEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  type        String
+  processedAt DateTime @default(now())
 }
 
 model FulfillmentQueue {
