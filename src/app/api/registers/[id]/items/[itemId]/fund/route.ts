@@ -42,8 +42,23 @@ export async function POST(req: NextRequest, { params }: Params) {
   const existingPending = await prisma.registerItemFunding.findFirst({
     where: { registerItemId: itemId, donorId: auth.userId, status: "PENDING" },
   });
+
   if (existingPending) {
-    return NextResponse.json({ error: "You already have a pending payment for this item" }, { status: 409 });
+    if (existingPending.stripeSessionId) {
+      try {
+        const stripe = getStripe();
+        const existingSession = await stripe.checkout.sessions.retrieve(existingPending.stripeSessionId);
+        if (existingSession.status === "open") {
+          // Session still valid — send donor back to their existing checkout page
+          return NextResponse.json({ sessionUrl: existingSession.url }, { status: 200 });
+        }
+        // "expired" or "complete" — stale, fall through to create a fresh session
+      } catch {
+        // Session not found or Stripe API error — fall through
+      }
+    }
+    // Delete the stale PENDING row before creating a new one
+    await prisma.registerItemFunding.delete({ where: { id: existingPending.id } });
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
