@@ -1,6 +1,4 @@
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { getResend } from "@/lib/resend";
 
 const FROM    = process.env.EMAIL_FROM          ?? "Kradəl <onboarding@resend.dev>";
 const NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL  ?? "";
@@ -18,7 +16,7 @@ export async function sendPasswordResetEmail(opts: {
   email: string;
   resetUrl: string;
 }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from:    FROM,
     to:      opts.email,
     subject: "Reset your Kradəl password",
@@ -53,7 +51,7 @@ export async function sendBundleRequestReceived(opts: {
   templateName: string;
 }) {
   if (!opts.email) return;
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
     subject: "Your Kradəl bundle request was received 💛",
@@ -81,7 +79,7 @@ export async function sendAdminNewBundleRequest(opts: {
   instanceId: string;
 }) {
   if (!NOTIFY) return;
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM,
     to:      NOTIFY,
     subject: `New bundle request from ${opts.firstName} in ${opts.city}`,
@@ -106,7 +104,7 @@ export async function sendBundleApproved(opts: {
   templateName: string;
 }) {
   if (!opts.email) return;
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
     subject: "Your Kradəl bundle has been approved! 🎉",
@@ -131,7 +129,7 @@ export async function sendBundleShipped(opts: {
   trackingNumber: string | null;
 }) {
   if (!opts.email) return;
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
     subject: "Your Kradəl bundle is on its way! 🚚",
@@ -171,7 +169,7 @@ export async function sendNewSignupNotification(opts: {
     timeStyle: "short",
   }) + " UTC";
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM,
     to:      NOTIFY,
     subject: "New Kradəl signup 🎉",
