@@ -906,6 +906,9 @@ enum NotifType {
   // Address confirmation flow
   ADDRESS_REMINDER
   ADDRESS_TIMEOUT_CANCELLED
+
+  // Bundle lifecycle
+  BUNDLE_DISPATCHED
 }
 
 enum BundleInstanceStatus {

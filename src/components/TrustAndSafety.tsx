@@ -21,6 +21,10 @@ const COLUMNS = [
   },
 ];
 
+// Only rendered on register surfaces (/registers and /registers/[id]).
+// The "donors never share addresses" copy is accurate there because Kradəl
+// handles all purchasing and delivery. Do NOT add this component to Discover
+// surfaces where donors arrange their own delivery — the copy would be wrong.
 export default function TrustAndSafety() {
   return (
     <div style={{ margin: "0 16px", padding: "24px", background: "var(--white)", borderRadius: 16, border: "1px solid #e0e0e0" }}>

@@ -3,7 +3,7 @@
 import {
   Bell, CheckCircle, XCircle, Clock, Heart, AlertTriangle, Package, Gift,
   MessageSquare, Shield, ShieldCheck, ShieldX, MessageCircle, Star,
-  TrendingUp, TrendingDown, Crown, Unlock, type LucideIcon,
+  TrendingUp, TrendingDown, Crown, Unlock, AlertCircle, type LucideIcon,
 } from "lucide-react";
 
 export interface Notif {
@@ -60,6 +60,9 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   REQUEST_LOCK_CLEARED:     { Icon: Unlock,         iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
   FULFILLMENT_PENDING:      { Icon: Clock,          iconColor: "#d97706", iconBg: "#fff8ed" },
   FULFILLMENT_REMINDER:     { Icon: Bell,           iconColor: "#d97706", iconBg: "#fff8ed" },
+  ADDRESS_REMINDER:         { Icon: AlertCircle,    iconColor: "#d97706", iconBg: "#fef3c7" },
+  ADDRESS_TIMEOUT_CANCELLED:{ Icon: XCircle,        iconColor: "#c0392b", iconBg: "#fee2e2" },
+  BUNDLE_DISPATCHED:        { Icon: Package,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
 };
 
 const DEFAULT_CONFIG: TypeConfig = { Icon: Bell, iconColor: "#555555", iconBg: "#f5f5f5" };

@@ -38,7 +38,7 @@ export async function PATCH(
     prisma.notification.create({
       data: {
         userId: allocation.recipientId,
-        type: "RBW_RESTRICTION", // using an available type — ideally add BUNDLE_DISPATCHED
+        type: "BUNDLE_DISPATCHED",
         message: `Your care bundle (${allocation.bundleType}) has been dispatched! Keep an eye out for delivery.`,
         link: "/bundles",
       },

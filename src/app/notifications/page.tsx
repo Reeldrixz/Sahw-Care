@@ -7,14 +7,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import NotifCard, { type Notif } from "@/components/NotifCard";
 
-type Filter = "all" | "unread" | "requests" | "circles" | "bundles";
+type Filter = "all" | "unread" | "requests" | "registers" | "circles" | "bundles";
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all",      label: "All"      },
-  { key: "unread",   label: "Unread"   },
-  { key: "requests", label: "Requests" },
-  { key: "circles",  label: "Circles"  },
-  { key: "bundles",  label: "Bundles"  },
+  { key: "all",       label: "All"       },
+  { key: "unread",    label: "Unread"    },
+  { key: "requests",  label: "Requests"  },
+  { key: "registers", label: "Registers" },
+  { key: "circles",   label: "Circles"   },
+  { key: "bundles",   label: "Bundles"   },
 ];
 
 const PAGE_SIZE = 20;
