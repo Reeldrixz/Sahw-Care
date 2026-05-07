@@ -45,7 +45,30 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
+async function handlePlatformSupportCompleted(session: Stripe.Checkout.Session) {
+  const contributionId = session.metadata?.contributionId;
+  const donorId        = session.metadata?.donorId;
+  if (!contributionId || !donorId) return;
+
+  const contribution = await prisma.supportContribution.findUnique({ where: { id: contributionId } });
+  if (!contribution || contribution.status !== "PENDING") return;
+
+  const paymentIntentId = typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+
+  await prisma.supportContribution.update({
+    where: { id: contributionId },
+    data:  { status: "CONFIRMED", stripePaymentIntentId: paymentIntentId, confirmedAt: new Date() },
+  });
+}
+
 async function handleSessionCompleted(session: Stripe.Checkout.Session) {
+  if (session.metadata?.type === "platform_support") {
+    await handlePlatformSupportCompleted(session);
+    return;
+  }
+
   const fundingId  = session.metadata?.fundingId;
   const itemId     = session.metadata?.itemId;
   const donorId    = session.metadata?.donorId;
@@ -145,11 +168,14 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
 
 async function handleSessionExpired(session: Stripe.Checkout.Session) {
   const fundingId = session.metadata?.fundingId;
-  if (!fundingId) return;
-
-  await prisma.registerItemFunding.deleteMany({
-    where: { id: fundingId, status: "PENDING" },
-  });
+  if (fundingId) {
+    await prisma.registerItemFunding.deleteMany({ where: { id: fundingId, status: "PENDING" } });
+    return;
+  }
+  const contributionId = session.metadata?.contributionId;
+  if (contributionId) {
+    await prisma.supportContribution.deleteMany({ where: { id: contributionId, status: "PENDING" } });
+  }
 }
 
 async function handleChargeRefunded(charge: Stripe.Charge) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShieldCheck, Package, Lock, ExternalLink } from "lucide-react";
+import { ShieldCheck, Package, Lock, ExternalLink, Heart } from "lucide-react";
 import Link from "next/link";
 
 const COLUMNS = [
@@ -42,7 +42,7 @@ export default function TrustAndSafety() {
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 16, textAlign: "center" }}>
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         <Link
           href="/privacy"
           style={{
@@ -58,6 +58,22 @@ export default function TrustAndSafety() {
         >
           Read our full Privacy Policy
           <ExternalLink size={14} strokeWidth={1.75} />
+        </Link>
+        <Link
+          href="/support"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontFamily: "Nunito, sans-serif",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#1a7a5e",
+            textDecoration: "none",
+          }}
+        >
+          <Heart size={14} strokeWidth={1.75} />
+          Support Kradəl →
         </Link>
       </div>
     </div>

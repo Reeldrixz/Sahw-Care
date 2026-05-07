@@ -128,7 +128,8 @@ model User {
   bundleInstances     BundleInstance[]      @relation("RecipientBundles")
   bundleContributions BundleContribution[]
   bundleAllocations   BundleAllocation[]
-  itemFundings        RegisterItemFunding[]
+  itemFundings         RegisterItemFunding[]
+  supportContributions SupportContribution[]
 
   totalFundedCents Int @default(0)
   fundingCount     Int @default(0)
@@ -1287,6 +1288,21 @@ model ShipmentAddress {
   updatedAt      DateTime  @updatedAt
 
   registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
+}
+
+// ==================== PLATFORM SUPPORT ====================
+
+model SupportContribution {
+  id                    String    @id @default(cuid())
+  donorId               String
+  amountCents           Int
+  status                String    @default("PENDING")
+  stripeSessionId       String?
+  stripePaymentIntentId String?
+  createdAt             DateTime  @default(now())
+  confirmedAt           DateTime?
+
+  donor User @relation(fields: [donorId], references: [id], onDelete: Cascade)
 }
 
 model AddressAuditSnapshot {

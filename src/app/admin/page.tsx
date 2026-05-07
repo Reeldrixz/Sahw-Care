@@ -123,7 +123,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds";
 
 interface BundleGoalAdmin {
   id: string; month: string; targetBundles: number; costPerBundle: number;
@@ -186,6 +186,12 @@ interface PendingApproval {
   id: string; name: string; category: string; quantity: string; note: string | null; createdAt: string;
   catalogItem: { id: string; name: string; sku: string; requiresApproval: boolean } | null;
   register: { id: string; title: string; city: string; creator: { id: string; name: string } };
+}
+
+interface AdminRefundEntry {
+  id: string; amountCents: number; createdAt: string; stripePaymentIntentId: string | null;
+  donor: { name: string; email: string | null };
+  registerItem: { name: string; register: { title: string; creator: { name: string } } };
 }
 
 function catalogStalePill(lastVerifiedAt: string | null): { label: string; color: string; bg: string } {
@@ -257,6 +263,10 @@ export default function AdminPage() {
   const [approvalsLoading,     setApprovalsLoading]     = useState(false);
   const [rejectReasonMap,      setRejectReasonMap]      = useState<Record<string, string>>({});
   const [showRejectModal,      setShowRejectModal]      = useState<string | null>(null);
+
+  // Refunds state
+  const [refunds,       setRefunds]       = useState<AdminRefundEntry[]>([]);
+  const [confirmRefund, setConfirmRefund] = useState<AdminRefundEntry | null>(null);
 
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
@@ -377,6 +387,13 @@ export default function AdminPage() {
     setApprovalsLoading(false);
   }, []);
 
+  const fetchRefunds = useCallback(async () => {
+    setLoading(true);
+    const r = await fetch("/api/admin/refunds");
+    if (r.ok) { const d = await r.json(); setRefunds(d.fundings ?? []); }
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (section === "register-queue") { fetchRegQueue(regQueueTab); fetchFinancials(); }
   }, [section, regQueueTab, fetchRegQueue, fetchFinancials]);
@@ -385,6 +402,7 @@ export default function AdminPage() {
     if (section === "catalog") fetchCatalogAdmin();
     if (section === "approvals") fetchPendingApprovals();
   }, [section, fetchCatalogAdmin, fetchPendingApprovals]);
+  useEffect(() => { if (section === "refunds") fetchRefunds(); }, [section, fetchRefunds]);
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -566,6 +584,23 @@ export default function AdminPage() {
     if (res.ok) { const d = await res.json(); setTrustUsers((p) => p.map((u) => u.id === userId ? { ...u, trustScore: d.trustScore } : u)); setToast(`Trust score updated: ${d.trustScore}`); }
   };
 
+  const issueRefund = async (fundingId: string) => {
+    const res = await fetch("/api/admin/refunds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fundingId }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      setRefunds((p) => p.filter((r) => r.id !== fundingId));
+      setConfirmRefund(null);
+      setToast("Refund issued");
+    } else {
+      setToast(d.error ?? "Refund failed");
+      setConfirmRefund(null);
+    }
+  };
+
   if (authLoading || !user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
   const staleCount = catalogItems.filter((c) => {
@@ -591,6 +626,7 @@ export default function AdminPage() {
                        pendingApprovals.length > 0 ? `${pendingApprovals.length} register item${pendingApprovals.length === 1 ? "" : "s"} pending review` : undefined],
     ["abuse",          "🔍 Abuse Monitor"],
     ["coordination",   "📍 Coordination"],
+    ["refunds",        "💳 Refunds"],
   ];
 
   return (
@@ -2346,6 +2382,81 @@ export default function AdminPage() {
             {/* ── COORDINATION ─────────────────────────────────────────────── */}
             {section === "coordination" && (
               <CoordinationAdmin />
+            )}
+
+            {/* ── REFUNDS ──────────────────────────────────────────────── */}
+            {section === "refunds" && (
+              <div className="admin-table">
+                <div className="admin-table-header">
+                  <div className="admin-table-title">Confirmed Fundings — Issue Refund</div>
+                </div>
+                {loading ? (
+                  <div className="loading"><div className="spinner" /></div>
+                ) : refunds.length === 0 ? (
+                  <div className="empty"><div className="empty-title">No confirmed fundings</div></div>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr><th>Date</th><th>Donor</th><th>Item</th><th>Register</th><th>Amount</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                      {refunds.map((r) => (
+                        <tr key={r.id}>
+                          <td style={{ color: "var(--mid)", fontSize: 12 }}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                          <td>
+                            <div><strong>{r.donor.name}</strong></div>
+                            <div style={{ fontSize: 11, color: "var(--mid)" }}>{r.donor.email}</div>
+                          </td>
+                          <td>{r.registerItem.name}</td>
+                          <td style={{ fontSize: 12, color: "var(--mid)" }}>
+                            <div>{r.registerItem.register.title}</div>
+                            <div style={{ fontSize: 11 }}>{r.registerItem.register.creator.name}</div>
+                          </td>
+                          <td style={{ fontWeight: 700 }}>${(r.amountCents / 100).toFixed(2)}</td>
+                          <td>
+                            <button
+                              onClick={() => setConfirmRefund(r)}
+                              style={{
+                                padding: "6px 14px", borderRadius: 8, border: "none",
+                                background: "#fdecea", color: "#c0392b",
+                                fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer",
+                              }}
+                            >
+                              Refund
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {confirmRefund && (
+                  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+                    <div style={{ background: "var(--white)", borderRadius: 16, padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+                      <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Confirm Refund</div>
+                      <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, color: "#555555", marginBottom: 20 }}>
+                        Refund <strong>${(confirmRefund.amountCents / 100).toFixed(2)}</strong> to{" "}
+                        <strong>{confirmRefund.donor.name}</strong> for &ldquo;{confirmRefund.registerItem.name}&rdquo;?
+                        This will reverse the Stripe charge and update the register.
+                      </p>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button
+                          onClick={() => issueRefund(confirmRefund.id)}
+                          style={{ flex: 1, padding: "12px", borderRadius: 10, border: "none", background: "#c0392b", color: "#fff", fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Yes, refund
+                        </button>
+                        <button
+                          onClick={() => setConfirmRefund(null)}
+                          style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1.5px solid var(--border)", background: "var(--white)", color: "var(--ink)", fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
           </div>
