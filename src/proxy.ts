@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/", "/auth", "/items", "/donors", "/favourites", "/browse", "/api/auth/login", "/api/auth/register", "/api/items", "/api/users"];
+const PUBLIC_PATHS = ["/", "/auth", "/items", "/donors", "/favourites", "/browse", "/api/auth/login", "/api/auth/register", "/api/items", "/api/users", "/api/webhooks"];
 const ADMIN_PATHS = ["/admin", "/api/admin"];
 
 export async function proxy(req: NextRequest) {
