@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle, Package, Loader2, Users, Heart,
   BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
-  ShieldCheck, ImageOff, HandHeart,
+  ShieldCheck, ImageOff, HandHeart, AlertCircle,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -25,7 +25,7 @@ interface RegisterItemData {
   category: string;
   quantity: string;
   note: string | null;
-  status: "AVAILABLE" | "PENDING_APPROVAL" | "RESERVED" | "FULFILLED" | "DELIVERED" | "CANCELLED";
+  status: "AVAILABLE" | "PENDING_APPROVAL" | "RESERVED" | "FULFILLED" | "DELIVERED" | "CANCELLED" | "AWAITING_ADDRESS" | "AWAITING_PURCHASE";
   standardPriceCents: number;
   totalFundedCents: number;
   fundingStatus: "UNFUNDED" | "PARTIAL" | "FULLY_FUNDED" | "IN_FULFILLMENT" | "FULFILLED";
@@ -125,6 +125,19 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [closingRegister, setClosingRegister] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
 
+  // Address confirmation flow
+  const [confirmMode,       setConfirmMode]       = useState(false);
+  const [showAddressSheet,  setShowAddressSheet]  = useState(false);
+  const [addressItem,       setAddressItem]       = useState<RegisterItemData | null>(null);
+  const [addrFullName,      setAddrFullName]      = useState("");
+  const [addrStreet,        setAddrStreet]        = useState("");
+  const [addrUnit,          setAddrUnit]          = useState("");
+  const [addrCity,          setAddrCity]          = useState("");
+  const [addrProvince,      setAddrProvince]      = useState("");
+  const [addrPostal,        setAddrPostal]        = useState("");
+  const [addrPhone,         setAddrPhone]         = useState("");
+  const [confirmingAddress, setConfirmingAddress] = useState(false);
+
   const fetchRegister = useCallback(async () => {
     const res = await fetch(`/api/registers/${id}`);
     if (res.ok) { const data = await res.json(); setRegister(data.register); }
@@ -149,6 +162,18 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("confirm") === "true") {
+      setConfirmMode(true);
+      const itemParam = params.get("item");
+      if (itemParam && register) {
+        const target = register.items.find((i) => i.id === itemParam && i.status === "AWAITING_ADDRESS");
+        if (target) { setAddressItem(target); setShowAddressSheet(true); }
+      }
+    }
+  }, [register]);
 
   useEffect(() => {
     fetch("/api/catalog")
@@ -249,6 +274,38 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const handleConfirmAddress = async () => {
+    if (!addressItem) return;
+    if (!addrFullName.trim() || !addrStreet.trim() || !addrCity.trim() || !addrProvince || !addrPostal.trim() || !addrPhone.trim()) {
+      setToast("Please fill in all required address fields");
+      return;
+    }
+    setConfirmingAddress(true);
+    const res = await fetch(`/api/registers/${id}/items/${addressItem.id}/confirm-address`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: addrFullName, streetAddress: addrStreet, unit: addrUnit || null,
+        city: addrCity, province: addrProvince, postalCode: addrPostal, phone: addrPhone,
+      }),
+    });
+    setConfirmingAddress(false);
+    if (res.ok) {
+      setShowAddressSheet(false);
+      setConfirmMode(false);
+      setAddressItem(null);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("confirm");
+      url.searchParams.delete("item");
+      window.history.replaceState({}, "", url.toString());
+      await fetchRegister();
+      setToast("Address confirmed! We'll begin fulfilling your item.");
+    } else {
+      const d = await res.json();
+      setToast(d.error ?? "Failed to confirm address");
+    }
+  };
+
   if (loading) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
   if (!register) return (
     <div className="empty" style={{ paddingTop: 80 }}>
@@ -277,6 +334,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const pct          = totalNeeded > 0 ? Math.min(1, totalFunded / totalNeeded) : 0;
   const isFullyFunded = totalNeeded > 0 && totalFunded >= totalNeeded;
   const allFulfilled  = totalItems > 0 && fulfilledCount === totalItems;
+
+  const awaitingItems = register.items.filter((i) => i.status === "AWAITING_ADDRESS");
 
   const groupedItems = groupByCategory(visibleItems);
 
@@ -383,6 +442,31 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   {totalDonors} contributor{totalDonors !== 1 ? "s" : ""}
                 </span>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Address confirmation prompt (mom only) ──────── */}
+        {isMom && awaitingItems.length > 0 && (
+          <div style={{ margin: "16px 16px 0", background: "#fff8e6", borderRadius: 12, border: "1.5px solid #f59e0b", padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <AlertCircle size={18} color="#d97706" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#7a4f00", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                  Shipping address needed
+                </div>
+                <div style={{ fontSize: 12, color: "#7a5500", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 10 }}>
+                  {awaitingItems.length === 1
+                    ? `Your ${awaitingItems[0].name} is fully funded! Confirm your shipping address so we can send it to you.`
+                    : `${awaitingItems.length} items are fully funded and waiting for your shipping address.`}
+                </div>
+                <button
+                  onClick={() => { setAddressItem(awaitingItems[0]); setShowAddressSheet(true); }}
+                  style={{ padding: "8px 16px", borderRadius: 20, border: "none", background: "#d97706", color: "white", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                >
+                  Confirm shipping address
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -905,6 +989,94 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 style={{ flex: 1, padding: "12px", borderRadius: 12, border: "none", background: closingRegister ? "#9ca3af" : "var(--terra)", color: "white", fontSize: 14, fontWeight: 800, cursor: closingRegister ? "default" : "pointer", fontFamily: "Nunito, sans-serif" }}
               >
                 {closingRegister ? "Closing…" : "Close register"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Address confirmation sheet (mom only) ───────── */}
+      {showAddressSheet && addressItem && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAddressSheet(false); }}
+        >
+          <div style={{ background: "var(--white)", borderRadius: "24px 24px 0 0", padding: "20px 16px 40px", width: "100%", maxWidth: 430, maxHeight: "92vh", overflowY: "auto", animation: "sheetUp 0.3s ease" }}>
+            <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "0 auto 16px" }} />
+            <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Confirm shipping address</div>
+            <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 16 }}>
+              For: <strong>{addressItem.name}</strong>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Full name *</label>
+              <input className="form-input" placeholder="As it appears on ID" value={addrFullName} onChange={(e) => setAddrFullName(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Street address *</label>
+              <input className="form-input" placeholder="123 Main Street" value={addrStreet} onChange={(e) => setAddrStreet(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Apt / Unit (optional)</label>
+              <input className="form-input" placeholder="Unit 4B" value={addrUnit} onChange={(e) => setAddrUnit(e.target.value)} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div className="form-group">
+                <label className="form-label">City *</label>
+                <input className="form-input" placeholder="Toronto" value={addrCity} onChange={(e) => setAddrCity(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Province *</label>
+                <select className="form-input" value={addrProvince} onChange={(e) => setAddrProvince(e.target.value)} style={{ background: "var(--white)" }}>
+                  <option value="">Select…</option>
+                  <option value="AB">Alberta</option>
+                  <option value="BC">British Columbia</option>
+                  <option value="MB">Manitoba</option>
+                  <option value="NB">New Brunswick</option>
+                  <option value="NL">Newfoundland and Labrador</option>
+                  <option value="NS">Nova Scotia</option>
+                  <option value="NT">Northwest Territories</option>
+                  <option value="NU">Nunavut</option>
+                  <option value="ON">Ontario</option>
+                  <option value="PE">Prince Edward Island</option>
+                  <option value="QC">Quebec</option>
+                  <option value="SK">Saskatchewan</option>
+                  <option value="YT">Yukon</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div className="form-group">
+                <label className="form-label">Postal code *</label>
+                <input className="form-input" placeholder="M5V 2T6" value={addrPostal} onChange={(e) => setAddrPostal(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Phone *</label>
+                <input className="form-input" type="tel" placeholder="416-555-0100" value={addrPhone} onChange={(e) => setAddrPhone(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ background: "#e8f5f1", borderRadius: 10, padding: "10px 12px", marginBottom: 16, fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+              Your address is only used to ship this item and is never shared with donors.
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setShowAddressSheet(false)}
+                className="btn-clear" style={{ flex: 1 }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmAddress}
+                disabled={confirmingAddress}
+                style={{
+                  flex: 2, padding: "14px", borderRadius: 12, border: "none",
+                  background: confirmingAddress ? "#9ca3af" : "var(--green)",
+                  color: "white", fontSize: 14, fontWeight: 800,
+                  cursor: confirmingAddress ? "default" : "pointer",
+                  fontFamily: "Nunito, sans-serif",
+                }}>
+                {confirmingAddress ? "Confirming…" : "Confirm address"}
               </button>
             </div>
           </div>

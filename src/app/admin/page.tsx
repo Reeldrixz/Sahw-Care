@@ -166,6 +166,11 @@ interface RegQueueEntry {
   };
 }
 
+interface AwaitingAddressEntry {
+  id: string; name: string; updatedAt: string;
+  register: { id: string; creatorId: string; city: string | null; creator: { id: string; name: string } };
+}
+
 interface Financials {
   month: string; totalFundedCents: number; totalSpentCents: number; surplusCents: number;
   itemsInQueue: number; itemsFulfilledThisMonth: number; allTimeFundedCents: number;
@@ -244,11 +249,12 @@ export default function AdminPage() {
   const [flagNotes,        setFlagNotes]        = useState<Record<string, string>>({});
 
   // Register fulfillment queue state
-  const [regQueueTab,        setRegQueueTab]        = useState<"QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED">("QUEUED");
-  const [regQueue,           setRegQueue]           = useState<RegQueueEntry[]>([]);
-  const [regQueueLoading,    setRegQueueLoading]    = useState(false);
-  const [regQueueModal,      setRegQueueModal]      = useState<{ id: string; name: string; nextStatus: string } | null>(null);
-  const [regQueueForm,       setRegQueueForm]       = useState<Record<string, string>>({});
+  const [regQueueTab,          setRegQueueTab]          = useState<"AWAITING_ADDRESS" | "QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED">("AWAITING_ADDRESS");
+  const [regQueue,             setRegQueue]             = useState<RegQueueEntry[]>([]);
+  const [awaitingAddressItems, setAwaitingAddressItems] = useState<AwaitingAddressEntry[]>([]);
+  const [regQueueLoading,      setRegQueueLoading]      = useState(false);
+  const [regQueueModal,        setRegQueueModal]        = useState<{ id: string; name: string; nextStatus: string } | null>(null);
+  const [regQueueForm,         setRegQueueForm]         = useState<Record<string, string>>({});
   const [financials,         setFinancials]         = useState<Financials | null>(null);
 
   // Catalog management state
@@ -369,6 +375,13 @@ export default function AdminPage() {
     if (r.ok) { const d = await r.json(); setRegQueue(d.queue ?? []); }
     setRegQueueLoading(false);
   }, []);
+
+  const fetchAwaitingAddress = useCallback(async () => {
+    setRegQueueLoading(true);
+    const r = await fetch("/api/admin/fulfillment-queue?status=AWAITING_ADDRESS");
+    if (r.ok) { const d = await r.json(); setAwaitingAddressItems(d.awaitingAddress ?? []); }
+    setRegQueueLoading(false);
+  }, []);
   const fetchFinancials = useCallback(async () => {
     const r = await fetch("/api/admin/financials/summary");
     if (r.ok) { const d = await r.json(); setFinancials(d); }
@@ -395,8 +408,11 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (section === "register-queue") { fetchRegQueue(regQueueTab); fetchFinancials(); }
-  }, [section, regQueueTab, fetchRegQueue, fetchFinancials]);
+    if (section === "register-queue") {
+      if (regQueueTab === "AWAITING_ADDRESS") { fetchAwaitingAddress(); fetchFinancials(); }
+      else { fetchRegQueue(regQueueTab); fetchFinancials(); }
+    }
+  }, [section, regQueueTab, fetchRegQueue, fetchAwaitingAddress, fetchFinancials]);
   useEffect(() => { fetchCatalogAdmin(); fetchPendingApprovals(); }, [fetchCatalogAdmin, fetchPendingApprovals]);
   useEffect(() => {
     if (section === "catalog") fetchCatalogAdmin();
@@ -1845,7 +1861,7 @@ export default function AdminPage() {
 
                 {/* Sub-tabs */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-                  {(["QUEUED", "PURCHASED", "DISPATCHED", "DELIVERED"] as const).map((s) => (
+                  {(["AWAITING_ADDRESS", "QUEUED", "PURCHASED", "DISPATCHED", "DELIVERED"] as const).map((s) => (
                     <button key={s} onClick={() => setRegQueueTab(s)}
                       style={{
                         padding: "7px 16px", borderRadius: 20,
@@ -1854,13 +1870,59 @@ export default function AdminPage() {
                         color: regQueueTab === s ? "#1a7a5e" : "var(--ink)",
                         fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "Nunito, sans-serif",
                       }}>
-                      {s === "QUEUED" ? "⏳ Queued" : s === "PURCHASED" ? "🛒 Purchased" : s === "DISPATCHED" ? "🚚 Dispatched" : "✅ Delivered"}
+                      {s === "AWAITING_ADDRESS" ? "📍 Awaiting Address" : s === "QUEUED" ? "⏳ Queued" : s === "PURCHASED" ? "🛒 Purchased" : s === "DISPATCHED" ? "🚚 Dispatched" : "✅ Delivered"}
                     </button>
                   ))}
                 </div>
 
                 {regQueueLoading ? (
                   <div style={{ textAlign: "center", padding: 40 }}><div className="spinner" /></div>
+                ) : regQueueTab === "AWAITING_ADDRESS" ? (
+                  awaitingAddressItems.length === 0 ? (
+                    <div style={{ textAlign: "center", color: "var(--mid)", padding: "32px 0", fontFamily: "Nunito, sans-serif" }}>
+                      No items awaiting address confirmation.
+                    </div>
+                  ) : (
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Mother</th>
+                          <th>Days waiting</th>
+                          <th>Days left</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {awaitingAddressItems.map((entry) => {
+                          const daysWaiting = Math.floor((Date.now() - new Date(entry.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
+                          const daysLeft    = 14 - daysWaiting;
+                          const urgency     = daysLeft <= 3 ? "#c0392b" : daysLeft <= 7 ? "#d97706" : "#1a7a5e";
+                          return (
+                            <tr key={entry.id}>
+                              <td style={{ fontWeight: 700, fontSize: 12 }}>{entry.name}</td>
+                              <td style={{ fontSize: 12 }}>
+                                {entry.register.creator.name.split(" ")[0]}
+                                <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.register.city}</div>
+                              </td>
+                              <td style={{ fontSize: 12, color: urgency, fontWeight: 700 }}>{daysWaiting}d</td>
+                              <td style={{ fontSize: 12, color: urgency, fontWeight: 700 }}>{Math.max(0, daysLeft)}d</td>
+                              <td>
+                                <button
+                                  onClick={async () => {
+                                    await fetch("/api/admin/fulfillment-queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: entry.id }) });
+                                    setToast("Nudge sent to mother");
+                                  }}
+                                  style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#d97706", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                  Nudge mother
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )
                 ) : regQueue.filter((e) => e.status === regQueueTab).length === 0 ? (
                   <div style={{ textAlign: "center", color: "var(--mid)", padding: "32px 0", fontFamily: "Nunito, sans-serif" }}>
                     No items in {regQueueTab.toLowerCase()} status.

@@ -570,6 +570,8 @@ enum RegisterItemStatus {
   DELIVERED
   CANCELLED
   PENDING_APPROVAL
+  AWAITING_ADDRESS
+  AWAITING_PURCHASE
 }
 
 enum RegisterAddressMode {
@@ -900,6 +902,10 @@ enum NotifType {
   // Register item review
   REGISTER_ITEM_APPROVED
   REGISTER_ITEM_REJECTED
+
+  // Address confirmation flow
+  ADDRESS_REMINDER
+  ADDRESS_TIMEOUT_CANCELLED
 }
 
 enum BundleInstanceStatus {

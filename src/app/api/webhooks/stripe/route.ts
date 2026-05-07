@@ -85,7 +85,14 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
 
   const item = await prisma.registerItem.findUnique({
     where:   { id: itemId },
-    include: { register: { select: { creatorId: true, title: true } } },
+    include: {
+      register: {
+        select: {
+          creatorId: true, title: true, addressMode: true,
+          savedAddress: { select: { id: true } },
+        },
+      },
+    },
   });
   if (!item) return;
 
@@ -121,21 +128,43 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
     });
 
     if (isFullyFunded) {
-      await tx.fulfillmentQueue.create({
-        data: { registerItemId: itemId, totalFundedCents: newTotal, status: "QUEUED" },
-      });
-      await tx.registerItem.update({
-        where: { id: itemId },
-        data:  { fundingStatus: "IN_FULFILLMENT" },
-      });
-      await tx.notification.create({
-        data: {
-          userId:  item.register.creatorId,
-          type:    "ITEM_FULLY_FUNDED",
-          message: `Your item "${item.name}" has been fully funded! Kradəl will fulfill it soon.`,
-          link:    `/registers/${registerId}`,
-        },
-      });
+      const hasSavedAddress = !!item.register.savedAddress;
+      const useSavedAddress = item.register.addressMode === "SAVED_PER_REGISTER" && hasSavedAddress;
+
+      if (useSavedAddress) {
+        // Address on file — go straight to fulfilment queue
+        await tx.fulfillmentQueue.create({
+          data: { registerItemId: itemId, totalFundedCents: newTotal, status: "QUEUED" },
+        });
+        await tx.registerItem.update({
+          where: { id: itemId },
+          data:  { status: "AWAITING_PURCHASE", fundingStatus: "IN_FULFILLMENT" },
+        });
+        await tx.notification.create({
+          data: {
+            userId:  item.register.creatorId,
+            type:    "ITEM_FULLY_FUNDED",
+            message: `Your ${item.name} is fully funded and will ship to your saved address. We'll notify you when it's on its way.`,
+            link:    `/registers/${registerId}`,
+          },
+        });
+      } else {
+        // Ask per shipment — hold for address confirmation
+        await tx.registerItem.update({
+          where: { id: itemId },
+          data:  { status: "AWAITING_ADDRESS", fundingStatus: "FULLY_FUNDED" },
+        });
+        await tx.notification.create({
+          data: {
+            userId:  item.register.creatorId,
+            type:    "ITEM_FULLY_FUNDED",
+            message: `Your ${item.name} is fully funded! Please confirm your shipping address so we can send it to you.`,
+            link:    `/registers/${registerId}?confirm=true`,
+          },
+        });
+      }
+
+      // Notify contributing donor
       await tx.notification.create({
         data: {
           userId:  donorId,
