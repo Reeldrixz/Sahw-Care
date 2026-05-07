@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight, LayoutDashboard, Users, Flag, FileText, Package,
-  ShieldCheck, Bell, Gift, Crown, TrendingUp, CheckCircle,
+  ShieldCheck, Bell, Gift, Crown, TrendingUp, CheckCircle, Heart,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Avatar from "@/components/Avatar";
@@ -771,6 +771,28 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+
+            {/* Support Kradəl */}
+            <div style={{ background: "var(--white)", borderRadius: 16, border: "1px solid #e0e0e0", padding: 16, marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <Heart size={20} color="#1a7a5e" strokeWidth={1.75} />
+                <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--ink)" }}>Support Kradəl</div>
+              </div>
+              <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "var(--mid)", marginBottom: 14, lineHeight: 1.5 }}>
+                Help keep the platform running for mothers who need it.
+              </div>
+              <button
+                onClick={() => router.push("/support")}
+                style={{
+                  width: "100%", padding: "12px", borderRadius: 12, border: "none",
+                  background: "#1a7a5e", color: "#fff",
+                  fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Contribute to operations →
+              </button>
+            </div>
           </>
         )}
 
