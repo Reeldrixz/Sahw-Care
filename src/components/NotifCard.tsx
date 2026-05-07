@@ -62,7 +62,9 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   FULFILLMENT_REMINDER:     { Icon: Bell,           iconColor: "#d97706", iconBg: "#fff8ed" },
   ADDRESS_REMINDER:         { Icon: AlertCircle,    iconColor: "#d97706", iconBg: "#fef3c7" },
   ADDRESS_TIMEOUT_CANCELLED:{ Icon: XCircle,        iconColor: "#c0392b", iconBg: "#fee2e2" },
-  BUNDLE_DISPATCHED:        { Icon: Package,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
+  BUNDLE_DISPATCHED:             { Icon: Package,     iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
+  BUNDLE_APPLICATION_APPROVED:  { Icon: Gift,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
+  BUNDLE_APPLICATION_REJECTED:  { Icon: XCircle,     iconColor: "#c0392b", iconBg: "#fdecea" },
 };
 
 const DEFAULT_CONFIG: TypeConfig = { Icon: Bell, iconColor: "#555555", iconBg: "#f5f5f5" };

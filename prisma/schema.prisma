@@ -127,9 +127,10 @@ model User {
 
   bundleInstances     BundleInstance[]      @relation("RecipientBundles")
   bundleContributions BundleContribution[]
-  bundleAllocations   BundleAllocation[]
+  bundleAllocations    BundleAllocation[]
   itemFundings         RegisterItemFunding[]
   supportContributions SupportContribution[]
+  bundleApplications   BundleApplication[]
 
   totalFundedCents Int @default(0)
   fundingCount     Int @default(0)
@@ -909,6 +910,10 @@ enum NotifType {
 
   // Bundle lifecycle
   BUNDLE_DISPATCHED
+
+  // Bundle application
+  BUNDLE_APPLICATION_APPROVED
+  BUNDLE_APPLICATION_REJECTED
 }
 
 enum BundleInstanceStatus {
@@ -1327,4 +1332,72 @@ model AddressAuditSnapshot {
 
   @@index([registerId])
   @@index([registerItemId])
+}
+
+// ==================== BUNDLE CATALOGUE (Phase 9) ====================
+
+enum BundleStage {
+  PREGNANCY
+  LABOUR
+  NEWBORN
+  POSTPARTUM
+}
+
+enum BundleApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+model Bundle {
+  id              String      @id @default(cuid())
+  code            String      @unique  // B01, B02, …, B12
+  name            String
+  stage           BundleStage
+  description     String
+  contentsMarkdown String
+  estimatedValue  Int         // cents
+  slotsPerMonth   Int         @default(10)
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  applications BundleApplication[]
+}
+
+model BundleApplication {
+  id          String                  @id @default(cuid())
+  bundleId    String
+  // Applicant details (no account required)
+  fullName    String
+  phone       String
+  city        String
+  province    String
+  dueDate     DateTime?
+  babyDob     DateTime?
+  story       String
+  // Delivery address
+  streetAddress String
+  unit          String?
+  postalCode    String
+  // Status
+  status      BundleApplicationStatus @default(PENDING)
+  adminNote   String?
+  reviewedAt  DateTime?
+  reviewedBy  String?               // admin userId
+  // Linking (optional — if applicant has an account)
+  userId      String?
+  // Fulfilment tracking
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  bundle Bundle @relation(fields: [bundleId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([bundleId])
+  @@index([status])
+  @@index([userId])
 }

@@ -123,7 +123,23 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "bundles" | "abuse" | "bundle-system" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps";
+
+interface BundleCatalogueAdmin {
+  id: string; code: string; name: string; stage: string; description: string;
+  estimatedValue: number; slotsPerMonth: number; isActive: boolean;
+  totalApplications: number; monthPending: number; monthApproved: number;
+  slotsUsed: number; slotsRemaining: number;
+}
+
+interface BundleApplicationAdmin {
+  id: string; bundleId: string; fullName: string; phone: string;
+  city: string; province: string; dueDate: string | null; babyDob: string | null;
+  story: string; streetAddress: string; unit: string | null; postalCode: string;
+  status: string; adminNote: string | null; reviewedAt: string | null;
+  createdAt: string;
+  bundle: { id: string; code: string; name: string; stage: string };
+}
 
 interface BundleGoalAdmin {
   id: string; month: string; targetBundles: number; costPerBundle: number;
@@ -274,6 +290,16 @@ export default function AdminPage() {
   const [refunds,       setRefunds]       = useState<AdminRefundEntry[]>([]);
   const [confirmRefund, setConfirmRefund] = useState<AdminRefundEntry | null>(null);
 
+  // Bundle applications state (Phase 9)
+  const [bundleAppCatalogue,    setBundleAppCatalogue]    = useState<BundleCatalogueAdmin[]>([]);
+  const [bundleAppCatalogueLoading, setBundleAppCatalogueLoading] = useState(false);
+  const [bundleApps,            setBundleApps]            = useState<BundleApplicationAdmin[]>([]);
+  const [bundleAppsLoading,     setBundleAppsLoading]     = useState(false);
+  const [bundleAppsFilter,      setBundleAppsFilter]      = useState<"PENDING" | "APPROVED" | "REJECTED" | "WAITLISTED">("PENDING");
+  const [bundleAppsView,        setBundleAppsView]        = useState<"catalogue" | "applications">("catalogue");
+  const [bundleAppsTotal,       setBundleAppsTotal]       = useState(0);
+  const [appNoteMap,            setAppNoteMap]            = useState<Record<string, string>>({});
+
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
   const [bundleCampaigns,  setBundleCampaigns]  = useState<AdminCampaign[]>([]);
@@ -419,6 +445,41 @@ export default function AdminPage() {
     if (section === "approvals") fetchPendingApprovals();
   }, [section, fetchCatalogAdmin, fetchPendingApprovals]);
   useEffect(() => { if (section === "refunds") fetchRefunds(); }, [section, fetchRefunds]);
+
+  const fetchBundleAppCatalogue = useCallback(async () => {
+    setBundleAppCatalogueLoading(true);
+    const r = await fetch("/api/admin/bundles/catalogue");
+    if (r.ok) { const d = await r.json(); setBundleAppCatalogue(d.bundles ?? []); }
+    setBundleAppCatalogueLoading(false);
+  }, []);
+
+  const fetchBundleApps = useCallback(async (status: string) => {
+    setBundleAppsLoading(true);
+    const r = await fetch(`/api/admin/bundles/applications?status=${status}&limit=50`);
+    if (r.ok) { const d = await r.json(); setBundleApps(d.applications ?? []); setBundleAppsTotal(d.total ?? 0); }
+    setBundleAppsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (section === "bundle-apps") {
+      fetchBundleAppCatalogue();
+      fetchBundleApps(bundleAppsFilter);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, fetchBundleAppCatalogue, fetchBundleApps]);
+
+  const reviewBundleApp = async (id: string, status: string) => {
+    const note = appNoteMap[id] ?? "";
+    const r = await fetch(`/api/admin/bundles/applications/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, adminNote: note || undefined }),
+    });
+    if (r.ok) {
+      setBundleApps((prev) => prev.filter((a) => a.id !== id));
+      setToast(`Application ${status.toLowerCase()}`);
+    }
+  };
 
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
@@ -643,6 +704,7 @@ export default function AdminPage() {
     ["abuse",          "🔍 Abuse Monitor"],
     ["coordination",   "📍 Coordination"],
     ["refunds",        "💳 Refunds"],
+    ["bundle-apps",    `📬 Bundle Apps${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0) > 0 ? ` (${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0)})` : ""}`],
   ];
 
   return (
@@ -2516,6 +2578,177 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Bundle Applications ── */}
+            {section === "bundle-apps" && (
+              <div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 20, color: "var(--ink)" }}>
+                  Bundle Applications
+                </div>
+
+                {/* Seed button */}
+                <div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
+                  <button
+                    onClick={async () => {
+                      const r = await fetch("/api/admin/bundles/seed-catalogue", { method: "POST" });
+                      if (r.ok) { fetchBundleAppCatalogue(); setToast("Catalogue seeded (12 bundles)"); }
+                      else setToast("Seed failed");
+                    }}
+                    style={{ padding: "8px 16px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Seed / Refresh Catalogue
+                  </button>
+                </div>
+
+                {/* Sub-view tabs */}
+                <div style={{ display: "flex", gap: 0, borderBottom: "2px solid #e0e0e0", marginBottom: 20 }}>
+                  {(["catalogue", "applications"] as const).map((v) => (
+                    <button key={v} onClick={() => { setBundleAppsView(v); if (v === "applications") fetchBundleApps(bundleAppsFilter); }}
+                      style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: `2px solid ${bundleAppsView === v ? "#1a7a5e" : "transparent"}`, marginBottom: -2, fontSize: 13, fontWeight: 700, color: bundleAppsView === v ? "#1a7a5e" : "#555", cursor: "pointer", fontFamily: "Nunito, sans-serif", textTransform: "capitalize" }}>
+                      {v === "catalogue" ? "Bundle Catalogue" : "Applications Queue"}
+                    </button>
+                  ))}
+                </div>
+
+                {bundleAppsView === "catalogue" && (
+                  bundleAppCatalogueLoading ? <div className="loading"><div className="spinner" /></div> : (
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "Nunito, sans-serif" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
+                          {["Code", "Name", "Stage", "Est. Value", "Slots/mo", "This month", "Remaining", "Status"].map((h) => (
+                            <th key={h} style={{ textAlign: "left", padding: "8px 10px", fontWeight: 800, color: "#555" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bundleAppCatalogue.map((b) => (
+                          <tr key={b.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                            <td style={{ padding: "10px 10px", fontWeight: 800 }}>{b.code}</td>
+                            <td style={{ padding: "10px 10px" }}>{b.name}</td>
+                            <td style={{ padding: "10px 10px" }}>
+                              <span style={{
+                                background: b.stage === "PREGNANCY" ? "#e8f5f1" : b.stage === "LABOUR" ? "#fff8ed" : b.stage === "NEWBORN" ? "#e0f2fe" : "#fce7f3",
+                                color: b.stage === "PREGNANCY" ? "#1a7a5e" : b.stage === "LABOUR" ? "#d97706" : b.stage === "NEWBORN" ? "#0284c7" : "#be185d",
+                                fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 20, textTransform: "capitalize",
+                              }}>
+                                {b.stage.charAt(0) + b.stage.slice(1).toLowerCase()}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 10px" }}>${(b.estimatedValue / 100).toFixed(0)}</td>
+                            <td style={{ padding: "10px 10px" }}>{b.slotsPerMonth}</td>
+                            <td style={{ padding: "10px 10px" }}>
+                              <span style={{ color: "#d97706", fontWeight: 700 }}>{b.monthPending} pending</span>
+                              {b.monthApproved > 0 && <span style={{ color: "#1a7a5e", marginLeft: 6 }}>{b.monthApproved} approved</span>}
+                            </td>
+                            <td style={{ padding: "10px 10px" }}>
+                              <span style={{ color: b.slotsRemaining === 0 ? "#c0392b" : b.slotsRemaining <= 2 ? "#d97706" : "#1a7a5e", fontWeight: 700 }}>
+                                {b.slotsRemaining}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 10px" }}>
+                              <button
+                                onClick={async () => {
+                                  await fetch("/api/admin/bundles/catalogue", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, isActive: !b.isActive }) });
+                                  fetchBundleAppCatalogue();
+                                }}
+                                style={{ padding: "4px 12px", borderRadius: 8, border: "1.5px solid " + (b.isActive ? "#1a7a5e" : "#e0e0e0"), background: "none", color: b.isActive ? "#1a7a5e" : "#9ca3af", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                              >
+                                {b.isActive ? "Active" : "Paused"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )
+                )}
+
+                {bundleAppsView === "applications" && (
+                  <div>
+                    {/* Status filter */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                      {(["PENDING", "APPROVED", "REJECTED", "WAITLISTED"] as const).map((s) => (
+                        <button key={s} onClick={() => { setBundleAppsFilter(s); fetchBundleApps(s); }}
+                          style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px solid " + (bundleAppsFilter === s ? "#1a7a5e" : "#e0e0e0"), background: bundleAppsFilter === s ? "#1a7a5e" : "white", color: bundleAppsFilter === s ? "white" : "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                          {s.charAt(0) + s.slice(1).toLowerCase()}
+                        </button>
+                      ))}
+                    </div>
+
+                    {bundleAppsLoading ? <div className="loading"><div className="spinner" /></div> : bundleApps.length === 0 ? (
+                      <div style={{ padding: "40px 0", textAlign: "center", color: "#555", fontSize: 14, fontFamily: "Nunito, sans-serif" }}>
+                        No {bundleAppsFilter.toLowerCase()} applications.
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {bundleApps.map((app) => (
+                          <div key={app.id} style={{ background: "white", border: "1px solid #e0e0e0", borderRadius: 12, padding: "16px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                              <div>
+                                <div style={{ fontWeight: 800, fontSize: 15, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>{app.fullName}</div>
+                                <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
+                                  {app.bundle.code} — {app.bundle.name} · {app.city}, {app.province}
+                                </div>
+                                <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
+                                  Applied {new Date(app.createdAt).toLocaleDateString("en-CA")} · {app.phone}
+                                </div>
+                              </div>
+                              <span style={{
+                                background: app.status === "APPROVED" ? "#e8f5f1" : app.status === "REJECTED" ? "#fdecea" : app.status === "WAITLISTED" ? "#fff8ed" : "#f5f5f5",
+                                color: app.status === "APPROVED" ? "#1a7a5e" : app.status === "REJECTED" ? "#c0392b" : app.status === "WAITLISTED" ? "#d97706" : "#555",
+                                fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, fontFamily: "Nunito, sans-serif",
+                              }}>
+                                {app.status}
+                              </span>
+                            </div>
+
+                            {/* Address */}
+                            <div style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 10, fontSize: 12, fontFamily: "Nunito, sans-serif", color: "#555" }}>
+                              <strong style={{ color: "#1a1a1a" }}>Delivery address:</strong>{" "}
+                              {app.streetAddress}{app.unit ? `, ${app.unit}` : ""}, {app.city}, {app.province} {app.postalCode}
+                            </div>
+
+                            {/* Story */}
+                            <div style={{ fontSize: 13, color: "#333", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 12, padding: "10px 12px", background: "#fafafa", borderRadius: 8 }}>
+                              {app.story}
+                            </div>
+
+                            {app.dueDate && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>Due date: {new Date(app.dueDate).toLocaleDateString("en-CA")}</div>}
+                            {app.babyDob && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>Baby DOB: {new Date(app.babyDob).toLocaleDateString("en-CA")}</div>}
+
+                            {app.status === "PENDING" && (
+                              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                                <textarea
+                                  placeholder="Admin note (optional)…"
+                                  value={appNoteMap[app.id] ?? ""}
+                                  onChange={(e) => setAppNoteMap((m) => ({ ...m, [app.id]: e.target.value }))}
+                                  rows={2}
+                                  style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" }}
+                                />
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button onClick={() => reviewBundleApp(app.id, "APPROVED")}
+                                    style={{ flex: 1, padding: "9px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                    Approve
+                                  </button>
+                                  <button onClick={() => reviewBundleApp(app.id, "WAITLISTED")}
+                                    style={{ flex: 1, padding: "9px", background: "#fff8ed", border: "1.5px solid #d97706", borderRadius: 8, color: "#d97706", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                    Waitlist
+                                  </button>
+                                  <button onClick={() => reviewBundleApp(app.id, "REJECTED")}
+                                    style={{ flex: 1, padding: "9px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
