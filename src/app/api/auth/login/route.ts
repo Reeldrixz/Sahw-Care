@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    // Brute-force protection: 10 attempts per IP per 15 minutes
+    // Brute-force protection: 10 attempts per IP per 60 seconds
     const ip    = getClientIp(req);
-    const limit = rateLimit(`login:${ip}`, 10, 15 * 60 * 1000);
+    const limit = rateLimit(`login:${ip}`, 10, 60 * 1000);
     if (!limit.ok) {
       return NextResponse.json(
         { error: `Too many login attempts. Try again in ${limit.retryAfter} seconds.` },
