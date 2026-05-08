@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Package, X, CheckCircle, ArrowRight, Box, Sparkles,
+  Package, X, CheckCircle, Box, Sparkles,
   ChevronDown, ChevronRight, Gift, Heart, Users, Truck,
-  Shield, Lock, Building2,
+  Shield, Lock, Building2, Clock, AlertCircle,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
@@ -25,13 +25,13 @@ const STAGE_LABEL: Record<BundleStage, string> = {
 };
 
 const STAGE_THEME: Record<BundleStage, {
-  imageBg: string; cardBorder: string; text: string; bar: string;
+  imageBg: string; cardBorder: string; text: string;
   pillBg: string; pillText: string; dotColor: string;
 }> = {
-  PREGNANCY:  { imageBg: "#d4edda", cardBorder: "#c3e6cb", text: "#1a7a5e", bar: "#1a7a5e", pillBg: "#e8f5f1", pillText: "#1a7a5e", dotColor: "#a8d5b5" },
-  LABOUR:     { imageBg: "#fff3cd", cardBorder: "#fde8a0", text: "#b45309", bar: "#d97706", pillBg: "#fef3c7", pillText: "#b45309", dotColor: "#f9d07a" },
-  NEWBORN:    { imageBg: "#d1ecf1", cardBorder: "#bee5eb", text: "#1e50a2", bar: "#3b82f6", pillBg: "#dbeafe", pillText: "#1e50a2", dotColor: "#93c5fd" },
-  POSTPARTUM: { imageBg: "#f8d7da", cardBorder: "#f5c6cb", text: "#9d174d", bar: "#ec4899", pillBg: "#fce7f3", pillText: "#9d174d", dotColor: "#f9a8d4" },
+  PREGNANCY:  { imageBg: "#d4edda", cardBorder: "#c3e6cb", text: "#1a7a5e", pillBg: "#e8f5f1", pillText: "#1a7a5e", dotColor: "#a8d5b5" },
+  LABOUR:     { imageBg: "#fff3cd", cardBorder: "#fde8a0", text: "#b45309", pillBg: "#fef3c7", pillText: "#b45309", dotColor: "#f9d07a" },
+  NEWBORN:    { imageBg: "#d1ecf1", cardBorder: "#bee5eb", text: "#1e50a2", pillBg: "#dbeafe", pillText: "#1e50a2", dotColor: "#93c5fd" },
+  POSTPARTUM: { imageBg: "#f8d7da", cardBorder: "#f5c6cb", text: "#9d174d", pillBg: "#fce7f3", pillText: "#9d174d", dotColor: "#f9a8d4" },
 };
 
 const STAGE_FILTERS: { key: StageFilter; label: string }[] = [
@@ -47,34 +47,41 @@ const PROVINCES = [
 ];
 
 const FAQS: { q: string; a: string }[] = [
-  { q: "Who receives bundles?", a: "Verified mothers in Canada who are pregnant, in labour, have a newborn, or are in the postpartum period. Every application is reviewed by our team to ensure bundles reach those who need them most." },
-  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations and our generous sponsor community. No mother ever pays for a bundle — they are fully covered by Kradəl." },
-  { q: "Can I choose which mother receives my support?", a: "No. To protect every mother's privacy and ensure the system is fair, our matching process is entirely private. All mothers are treated equally regardless of location, background, or circumstance." },
-  { q: "Can I apply for a second bundle?", a: "Yes. Each bundle type resets every month. If your situation changes — for example your baby is born after you applied for a Pregnancy bundle — you are welcome to apply for the bundle that matches your current stage." },
+  { q: "Who is eligible for a bundle?", a: "Verified mothers in Canada who are pregnant, have a newborn, or are in the postpartum period. Every application is reviewed by our team to ensure bundles reach those who need them most." },
+  { q: "Is this a first-come-first-served system?", a: "No. Applications are reviewed privately by the Kradəl team. Selection considers timing, stage of journey, urgency, verification status, and relevance to the bundle — not simply who applies first." },
+  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, sponsors, and CSR partners. No mother ever pays for a bundle — they are fully covered." },
+  { q: "Can I apply for more than one bundle?", a: "One application per monthly cycle. This ensures fairness across all mothers. If your application is not approved, you're welcome to apply to another relevant bundle in the next cycle." },
+  { q: "How long does the review take?", a: "Our team reviews applications within 2–3 business days. You'll receive a private notification through the platform once a decision has been made." },
 ];
 
 const JOURNEY_STEPS = [
-  { label: "Application",     detail: "Submit a short form with your stage and situation." },
-  { label: "Review & Match",  detail: "Our team reviews every application privately and carefully." },
+  { label: "Application",     detail: "Submit a short form sharing your stage and situation." },
+  { label: "Private Review",  detail: "Our team reviews every application carefully and privately." },
   { label: "Bundle Prepared", detail: "Kradəl sources and packs your curated essentials." },
   { label: "Delivered",       detail: "Your bundle is shipped directly to your door, free." },
   { label: "Ongoing Support", detail: "You're welcomed into the Kradəl community." },
 ];
 
 const TRUST_PRINCIPLES = [
-  { Icon: Heart,        label: "Dignity First",              desc: "Every mother is treated with care and respect." },
-  { Icon: CheckCircle,  label: "Quality Guaranteed",         desc: "Only vetted, high-quality products in every bundle." },
-  { Icon: Shield,       label: "Transparent & Responsible",  desc: "We publish how resources are allocated." },
-  { Icon: Lock,         label: "Privacy Protected",          desc: "Personal information is never shared or sold." },
+  { Icon: Heart,       label: "Dignity First",             desc: "Every mother is treated with care and respect — no public competition, no pressure." },
+  { Icon: CheckCircle, label: "Quality Guaranteed",        desc: "Only vetted, high-quality products are included in every bundle." },
+  { Icon: Shield,      label: "Reviewed Fairly",           desc: "Applications are matched by our team based on stage, urgency, and need — not speed." },
+  { Icon: Lock,        label: "Privacy Protected",         desc: "Personal information is never shared, published, or visible to other users." },
 ];
 
 const fmt = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
+function getPreviewItems(md: string, n: number): string[] {
+  return md.split("\n")
+    .filter(l => l.startsWith("- "))
+    .slice(0, n)
+    .map(l => l.slice(2).replace(/\*[^*]+\*/g, "").trim());
+}
 
 function parseMd(md: string): React.ReactNode[] {
-  return md.split("\n").map((line, i) => {
-    const text  = line.replace(/^- /, "");
+  return md.split("\n").filter(l => l.startsWith("- ")).map((line, i) => {
+    const text  = line.slice(2);
     const parts = text.split(/(\*[^*]+\*)/g).map((p, j) =>
       p.startsWith("*") && p.endsWith("*") ? <em key={j}>{p.slice(1, -1)}</em> : p
     );
@@ -95,28 +102,33 @@ const EMPTY_FORM: ApplyForm = {
 const MOST_POPULAR = "B06";
 
 export default function BundlesPage() {
-  const [bundles, setBundles]         = useState<BundleItem[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [stageFilter, setStageFilter] = useState<StageFilter>("ALL");
-  const [expanded, setExpanded]       = useState<string | null>(null);
-  const [applying, setApplying]       = useState<BundleItem | null>(null);
-  const [form, setForm]               = useState<ApplyForm>(EMPTY_FORM);
-  const [submitting, setSubmitting]   = useState(false);
-  const [submitted, setSubmitted]     = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [openFaq, setOpenFaq]         = useState<number | null>(null);
+  const [bundles,                    setBundles]                    = useState<BundleItem[]>([]);
+  const [myActiveApplicationBundleId, setMyActiveApplicationBundleId] = useState<string | null>(null);
+  const [loading,                    setLoading]                    = useState(true);
+  const [stageFilter,                setStageFilter]                = useState<StageFilter>("ALL");
+  const [expanded,                   setExpanded]                   = useState<string | null>(null);
+  const [applying,                   setApplying]                   = useState<BundleItem | null>(null);
+  const [form,                       setForm]                       = useState<ApplyForm>(EMPTY_FORM);
+  const [submitting,                 setSubmitting]                 = useState(false);
+  const [submitted,                  setSubmitted]                  = useState(false);
+  const [error,                      setError]                      = useState<string | null>(null);
+  const [openFaq,                    setOpenFaq]                    = useState<number | null>(null);
 
   const fetchBundles = useCallback(async () => {
     setLoading(true);
     const r = await fetch("/api/bundles/catalogue");
-    if (r.ok) { const d = await r.json(); setBundles(d.bundles ?? []); }
+    if (r.ok) {
+      const d = await r.json();
+      setBundles(d.bundles ?? []);
+      setMyActiveApplicationBundleId(d.myActiveApplicationBundleId ?? null);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchBundles(); }, [fetchBundles]);
 
-  const visible          = stageFilter === "ALL" ? bundles : bundles.filter((b) => b.stage === stageFilter);
-  const totalInProgress  = bundles.reduce((s, b) => s + b.slotsUsed, 0);
+  const visible         = stageFilter === "ALL" ? bundles : bundles.filter((b) => b.stage === stageFilter);
+  const totalInProgress = bundles.reduce((s, b) => s + b.slotsUsed, 0);
 
   const openApply  = (b: BundleItem) => { setApplying(b); setForm(EMPTY_FORM); setSubmitted(false); setError(null); };
   const closeApply = () => { setApplying(null); setForm(EMPTY_FORM); setSubmitted(false); setError(null); };
@@ -136,7 +148,10 @@ export default function BundlesPage() {
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         setError(d.error ?? "Something went wrong. Please try again.");
-      } else { setSubmitted(true); fetchBundles(); }
+      } else {
+        setSubmitted(true);
+        fetchBundles();
+      }
     } catch { setError("Network error. Please check your connection."); }
     setSubmitting(false);
   };
@@ -147,42 +162,34 @@ export default function BundlesPage() {
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
       <style>{`
-        /* Hero */
         .hero-inner { display: flex; flex-direction: column; gap: 20px; }
         @media (min-width: 768px) {
           .hero-inner { flex-direction: row; align-items: flex-start; gap: 28px; }
           .hero-left  { flex: 1; }
           .hero-right { width: 280px; flex-shrink: 0; }
         }
-        /* Bundle grid */
         .bundle-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
         @media (min-width: 600px)  { .bundle-grid { grid-template-columns: 1fr 1fr; } }
         @media (min-width: 1024px) { .bundle-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
-        /* Card */
         .bundle-card { background: white; border-radius: 16px; overflow: hidden; transition: box-shadow 0.2s ease, transform 0.2s ease; }
         .bundle-card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.11); transform: translateY(-2px); }
-        /* Bottom row */
+        .bundle-card.disabled-card { opacity: 0.55; pointer-events: none; }
         .bottom-row { display: flex; flex-direction: column; gap: 14px; }
         @media (min-width: 768px) { .bottom-row { flex-direction: row; align-items: flex-start; } }
         .journey-col { flex: 65; }
         .sponsor-col { flex: 35; }
-        /* Journey steps */
         .journey-steps { display: flex; flex-direction: column; }
         @media (min-width: 600px) { .journey-steps { flex-direction: row; align-items: flex-start; } }
-        /* Trust grid */
         .trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         @media (min-width: 768px) { .trust-grid { grid-template-columns: 1fr 1fr 1fr 1fr; } }
       `}</style>
 
       <div className="discover-desktop">
 
-        {/* ══════════════════════════════════════
-            HERO — 2-col on desktop
-        ══════════════════════════════════════ */}
-        <div style={{ background: "#1a7a5e", padding: "36px 20px 32px", borderRadius: "0 0 0 0" }}>
+        {/* ── HERO ───────────────────────────────────────────────────────── */}
+        <div style={{ background: "#1a7a5e", padding: "36px 20px 32px" }}>
           <div className="hero-inner">
 
-            {/* Left column */}
             <div className="hero-left">
               <div style={{ fontFamily: "Lora, serif", fontSize: 30, fontWeight: 700, color: "white", marginBottom: 8, lineHeight: 1.2 }}>
                 Kradəl Bundles
@@ -191,12 +198,11 @@ export default function BundlesPage() {
                 Curated essentials. Delivered with dignity.
               </div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 24 }}>
-                Every month, Kradəl assembles and ships curated care bundles to mothers across Canada —
-                free of charge. From pregnancy vitamins to newborn starter kits, each bundle is chosen
-                with intention and delivered with love.
+                Each month, Kradəl assembles carefully curated care bundles for mothers across Canada —
+                fully funded and delivered free of charge. Each bundle is a structured care program,
+                reviewed and matched privately by our team.
               </div>
 
-              {/* CTA buttons */}
               <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
                 <a href="#bundle-grid" style={{
                   flex: 1, display: "block", textAlign: "center",
@@ -205,30 +211,25 @@ export default function BundlesPage() {
                   color: "#1a7a5e", fontFamily: "Nunito, sans-serif",
                   textDecoration: "none",
                 }}>
-                  Browse Bundles
+                  Browse Programs
                 </a>
                 <button style={{
                   flex: 1, padding: "12px 0",
                   background: "rgba(255,255,255,0.15)",
                   border: "1.5px solid rgba(255,255,255,0.4)",
                   borderRadius: 12, fontSize: 14, fontWeight: 800,
-                  color: "white", cursor: "pointer",
-                  fontFamily: "Nunito, sans-serif",
+                  color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif",
                 }}>
                   Become a Sponsor
                 </button>
               </div>
 
-              {/* Trust pills */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["✓  Verified Mothers Only", "✓  Private & Respectful", "✓  Delivered Directly"].map((pill) => (
+                {["✓  Verified Mothers Only", "✓  Privately Reviewed", "✓  Delivered Free"].map((pill) => (
                   <span key={pill} style={{
-                    background: "rgba(255,255,255,0.15)",
-                    border: "1px solid rgba(255,255,255,0.3)",
-                    color: "rgba(255,255,255,0.95)",
-                    fontSize: 11, fontWeight: 700,
-                    padding: "5px 12px", borderRadius: 20,
-                    fontFamily: "Nunito, sans-serif",
+                    background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)",
+                    color: "rgba(255,255,255,0.95)", fontSize: 11, fontWeight: 700,
+                    padding: "5px 12px", borderRadius: 20, fontFamily: "Nunito, sans-serif",
                   }}>
                     {pill}
                   </span>
@@ -236,49 +237,33 @@ export default function BundlesPage() {
               </div>
             </div>
 
-            {/* Right column — This Month at a Glance */}
+            {/* Right — This Month at a Glance */}
             <div className="hero-right">
-              <div style={{
-                background: "white", borderRadius: 16,
-                padding: "18px 18px 14px",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-              }}>
+              <div style={{ background: "white", borderRadius: 16, padding: "18px 18px 14px", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 14 }}>
                   This Month at a Glance
                 </div>
-
-                {/* 4 stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                   {[
-                    { Icon: Package, value: totalInProgress || "—", label: "Bundles in progress", color: "#1a7a5e", bg: "#e8f5f1" },
-                    { Icon: Truck,   value: 4,                      label: "Deliveries this week", color: "#b45309", bg: "#fef3c7" },
-                    { Icon: Heart,   value: "47+",                  label: "Mothers supported",    color: "#9d174d", bg: "#fce7f3" },
-                    { Icon: Users,   value: 3,                      label: "Communities active",   color: "#1e50a2", bg: "#dbeafe" },
+                    { Icon: Package, value: totalInProgress || "—", label: "Applications in review", color: "#1a7a5e", bg: "#e8f5f1" },
+                    { Icon: Truck,   value: 4,                      label: "Deliveries this week",  color: "#b45309", bg: "#fef3c7" },
+                    { Icon: Heart,   value: "47+",                  label: "Mothers supported",     color: "#9d174d", bg: "#fce7f3" },
+                    { Icon: Users,   value: 3,                      label: "Communities active",    color: "#1e50a2", bg: "#dbeafe" },
                   ].map(({ Icon, value, label, color, bg }) => (
                     <div key={label} style={{ background: bg, borderRadius: 12, padding: "10px 10px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
                       <div style={{ width: 28, height: 28, borderRadius: "50%", background: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Icon size={14} color={color} strokeWidth={2} />
                       </div>
-                      <div style={{ fontSize: 20, fontWeight: 900, color, fontFamily: "Nunito, sans-serif", lineHeight: 1 }}>
-                        {value}
-                      </div>
-                      <div style={{ fontSize: 10, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.3 }}>
-                        {label}
-                      </div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color, fontFamily: "Nunito, sans-serif", lineHeight: 1 }}>{value}</div>
+                      <div style={{ fontSize: 10, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.3 }}>{label}</div>
                     </div>
                   ))}
                 </div>
-
-                {/* Gift note */}
-                <div style={{
-                  display: "flex", alignItems: "flex-start", gap: 8,
-                  padding: "10px 12px", background: "#f8faf9",
-                  borderRadius: 10, border: "1px solid #e0ede8",
-                }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", background: "#f8faf9", borderRadius: 10, border: "1px solid #e0ede8" }}>
                   <Gift size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ fontSize: 11, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                    <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Powered by Kradəl and our amazing sponsors.</span>
-                    {" "}Together we build stronger starts for families.
+                    <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Funded by Kradəl and our sponsors.</span>
+                    {" "}Every bundle is fully covered — no cost to any mother.
                   </div>
                 </div>
               </div>
@@ -286,13 +271,8 @@ export default function BundlesPage() {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════
-            STICKY FILTER TABS
-        ══════════════════════════════════════ */}
-        <div style={{
-          background: "var(--white)", borderBottom: "1px solid var(--border)",
-          padding: "14px 16px 0", position: "sticky", top: 0, zIndex: 10,
-        }}>
+        {/* ── STICKY FILTER TABS ─────────────────────────────────────────── */}
+        <div style={{ background: "var(--white)", borderBottom: "1px solid var(--border)", padding: "14px 16px 0", position: "sticky", top: 0, zIndex: 10 }}>
           <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none" }}>
             {STAGE_FILTERS.map(({ key, label }) => (
               <button key={key} onClick={() => setStageFilter(key)} style={{
@@ -312,17 +292,27 @@ export default function BundlesPage() {
         {/* How it works strip */}
         <div style={{ margin: "12px 16px", padding: "14px 16px", background: "#e8f5f1", borderRadius: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
-            How it works
+            How our support programs work
           </div>
           <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-            Choose a bundle that matches your stage, fill in a short application, and our team will review it.
-            Approved bundles are purchased and delivered directly to you — completely free. Each bundle has 10 slots per month.
+            Browse the programs below and apply for the one that matches your stage. Applications are reviewed
+            privately by the Kradəl team — selection is based on stage, urgency, and relevance, not first-come-first-served.
+            Approved bundles are packed and delivered directly to you, completely free.
           </div>
         </div>
 
-        {/* ══════════════════════════════════════
-            BUNDLE GRID
-        ══════════════════════════════════════ */}
+        {/* Active application notice */}
+        {myActiveApplicationBundleId && (
+          <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <AlertCircle size={16} color="#b45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+              <strong style={{ fontWeight: 800 }}>You have an active application this cycle.</strong>
+              {" "}Other bundles are paused while your application is under review. If it is not approved, you may apply to a different program next cycle.
+            </div>
+          </div>
+        )}
+
+        {/* ── BUNDLE GRID ────────────────────────────────────────────────── */}
         <div id="bundle-grid" style={{ padding: "0 16px 8px" }}>
           {loading ? (
             <div className="loading"><div className="spinner" /></div>
@@ -334,29 +324,54 @@ export default function BundlesPage() {
             <div className="bundle-grid">
               {visible.map((b) => {
                 const th      = STAGE_THEME[b.stage];
-                const count   = b.itemCount;
-                const pct     = Math.round((b.slotsUsed / b.slotsPerMonth) * 100);
                 const full    = b.slotsRemaining === 0;
                 const popular = b.code === MOST_POPULAR;
                 const isOpen  = expanded === b.id;
 
-                return (
-                  <div key={b.id} className="bundle-card" style={{ border: `1px solid ${th.cardBorder}` }}>
+                const isMyApplication = b.id === myActiveApplicationBundleId;
+                const isDisabled      = !!myActiveApplicationBundleId && !isMyApplication;
+                const preview         = getPreviewItems(b.contentsMarkdown, 3);
 
-                    {/* Image area — coloured bg + dot pattern */}
+                const btnLabel = isMyApplication
+                  ? "Application submitted ✓"
+                  : isDisabled
+                  ? "Another application active"
+                  : full
+                  ? "Intake closed"
+                  : "Apply for support →";
+
+                const btnStyle: React.CSSProperties = {
+                  flex: 1, padding: "10px 0",
+                  border: "none", borderRadius: 10,
+                  fontSize: 12, fontWeight: 800,
+                  fontFamily: "Nunito, sans-serif",
+                  cursor: (isMyApplication || isDisabled || full) ? "default" : "pointer",
+                  background: isMyApplication ? "#e8f5f1"
+                    : (isDisabled || full) ? "#f0f0f0"
+                    : th.text,
+                  color: isMyApplication ? "#1a7a5e"
+                    : (isDisabled || full) ? "#9ca3af"
+                    : "white",
+                };
+
+                return (
+                  <div
+                    key={b.id}
+                    className={`bundle-card${isDisabled ? " disabled-card" : ""}`}
+                    style={{ border: `1px solid ${isMyApplication ? "#1a7a5e" : th.cardBorder}`, position: "relative" }}
+                  >
+                    {/* Image area */}
                     <div style={{
-                      height: 220, position: "relative",
+                      height: 200, position: "relative",
                       background: th.imageBg,
                       backgroundImage: `radial-gradient(${th.dotColor}99 1.5px, transparent 1.5px)`,
                       backgroundSize: "22px 22px",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       overflow: "hidden",
                     }}>
-                      {/* Frosted icon circle */}
                       <div style={{
                         width: 72, height: 72, borderRadius: "50%",
-                        background: "rgba(255,255,255,0.6)",
-                        backdropFilter: "blur(4px)",
+                        background: "rgba(255,255,255,0.6)", backdropFilter: "blur(4px)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                       }}>
@@ -364,7 +379,7 @@ export default function BundlesPage() {
                       </div>
 
                       {/* Most Popular badge */}
-                      {popular && (
+                      {popular && !isMyApplication && (
                         <div style={{
                           position: "absolute", top: 12, left: 12,
                           background: "#1a7a5e", color: "white",
@@ -377,11 +392,24 @@ export default function BundlesPage() {
                         </div>
                       )}
 
+                      {/* "Application submitted" badge on my bundle */}
+                      {isMyApplication && (
+                        <div style={{
+                          position: "absolute", top: 12, left: 12,
+                          background: "#1a7a5e", color: "white",
+                          fontSize: 10, fontWeight: 800, padding: "4px 10px",
+                          borderRadius: 20, fontFamily: "Nunito, sans-serif",
+                          display: "flex", alignItems: "center", gap: 4,
+                        }}>
+                          <CheckCircle size={10} strokeWidth={2.5} />
+                          Applied
+                        </div>
+                      )}
+
                       {/* Value chip */}
                       <div style={{
                         position: "absolute", top: 12, right: 12,
-                        background: "rgba(255,255,255,0.80)",
-                        backdropFilter: "blur(4px)",
+                        background: "rgba(255,255,255,0.85)", backdropFilter: "blur(4px)",
                         padding: "4px 10px", borderRadius: 20,
                         fontSize: 12, fontWeight: 800, color: th.text,
                         fontFamily: "Nunito, sans-serif",
@@ -406,7 +434,7 @@ export default function BundlesPage() {
                         {b.name}
                       </div>
 
-                      {/* Description — 2-line clamp */}
+                      {/* Description */}
                       <div style={{
                         fontSize: 12, color: "#666", fontFamily: "Nunito, sans-serif",
                         lineHeight: 1.5, marginBottom: 10,
@@ -416,32 +444,48 @@ export default function BundlesPage() {
                         {b.description}
                       </div>
 
-                      {/* Metadata tags */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#555", fontFamily: "Nunito, sans-serif" }}>
-                          <Box size={11} color={th.text} strokeWidth={2} />
-                          {count} essentials
-                        </span>
-                        <span style={{ color: "#d0d0d0", fontSize: 11 }}>·</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#555", fontFamily: "Nunito, sans-serif" }}>
-                          <Sparkles size={11} color={th.text} strokeWidth={2} />
-                          {STAGE_LABEL[b.stage]}
-                        </span>
+                      {/* Inline content preview chips */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                        {preview.map((item) => (
+                          <span key={item} style={{
+                            fontSize: 10, fontWeight: 700, padding: "2px 8px",
+                            borderRadius: 20, background: th.pillBg, color: th.pillText,
+                            fontFamily: "Nunito, sans-serif",
+                          }}>
+                            {item}
+                          </span>
+                        ))}
+                        {b.itemCount > 3 && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: "2px 8px",
+                            borderRadius: 20, background: "#f3f4f6", color: "#6b7280",
+                            fontFamily: "Nunito, sans-serif",
+                          }}>
+                            +{b.itemCount - 3} more
+                          </span>
+                        )}
                       </div>
 
-                      {/* Slot bar */}
+                      {/* Intake status (replaces progress bar) */}
                       <div style={{ marginBottom: 14 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, alignItems: "center" }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: full ? "#c0392b" : "#555", fontFamily: "Nunito, sans-serif" }}>
-                            {full ? "All slots filled" : `${b.slotsRemaining} slot${b.slotsRemaining !== 1 ? "s" : ""} left`}
-                          </span>
-                          <span style={{ fontSize: 10, fontWeight: 800, color: full ? "#c0392b" : th.text, fontFamily: "Nunito, sans-serif" }}>
-                            {pct}% filled
-                          </span>
+                        <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginBottom: 5, fontWeight: 600 }}>
+                          Monthly intake: {b.slotsPerMonth} mothers
                         </div>
-                        <div style={{ height: 5, borderRadius: 3, background: "#ebebeb", overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 3, background: full ? "#c0392b" : th.bar, width: `${pct}%`, transition: "width 0.4s ease" }} />
-                        </div>
+                        {full ? (
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#fef3c7", borderRadius: 20, padding: "4px 10px" }}>
+                            <Clock size={10} color="#b45309" strokeWidth={2.5} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#b45309", fontFamily: "Nunito, sans-serif" }}>Applications under review</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: isMyApplication ? "#e8f5f1" : `${th.pillBg}`, borderRadius: 20, padding: "4px 10px" }}>
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: isMyApplication ? "#1a7a5e" : th.text, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, fontWeight: 700, color: isMyApplication ? "#1a7a5e" : th.text, fontFamily: "Nunito, sans-serif" }}>
+                              {isMyApplication
+                                ? "Your application is under review"
+                                : `${b.slotsRemaining} ${b.slotsRemaining === 1 ? "space" : "spaces"} remaining · Intake open`}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Actions */}
@@ -455,36 +499,27 @@ export default function BundlesPage() {
                             display: "flex", alignItems: "center", justifyContent: "center",
                             cursor: "pointer", transition: "background 0.15s",
                           }}
-                          title="See what's included"
+                          title="View contents"
                         >
-                          <ArrowRight size={16} color={th.text} strokeWidth={2}
+                          <ChevronRight size={16} color={th.text} strokeWidth={2}
                             style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "0.2s" }} />
                         </button>
                         <button
-                          onClick={() => !full && openApply(b)}
-                          disabled={full}
-                          style={{
-                            flex: 1, padding: "10px 0",
-                            background: full ? "#f0f0f0" : th.text,
-                            border: "none", borderRadius: 10,
-                            fontSize: 13, fontWeight: 800,
-                            color: full ? "#9ca3af" : "white",
-                            cursor: full ? "not-allowed" : "pointer",
-                            fontFamily: "Nunito, sans-serif",
-                          }}
+                          onClick={() => !isMyApplication && !isDisabled && !full && openApply(b)}
+                          style={btnStyle}
                         >
-                          {full ? "Full this month" : "Apply now →"}
+                          {btnLabel}
                         </button>
                       </div>
                     </div>
 
-                    {/* Expandable contents */}
+                    {/* Expandable full contents */}
                     {isOpen && (
                       <div style={{ borderTop: `1px solid ${th.cardBorder}`, padding: "12px 14px 14px", background: th.pillBg }}>
                         <div style={{ fontSize: 11, fontWeight: 800, color: th.text, fontFamily: "Nunito, sans-serif", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                          What&apos;s included
+                          What&apos;s included ({b.itemCount} items)
                         </div>
-                        <ul style={{ margin: 0, paddingLeft: 16, listStyle: "disc", fontSize: 12, color: "#444", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                        <ul style={{ margin: 0, paddingLeft: 16, listStyle: "disc", fontSize: 12, color: "#444", fontFamily: "Nunito, sans-serif", lineHeight: 1.7 }}>
                           {parseMd(b.contentsMarkdown)}
                         </ul>
                       </div>
@@ -495,38 +530,48 @@ export default function BundlesPage() {
             </div>
           )}
 
-          {/* View all button */}
           {!loading && (
             <div style={{ textAlign: "center", marginTop: 20 }}>
               <button
                 onClick={() => { setStageFilter("ALL"); document.getElementById("bundle-grid")?.scrollIntoView({ behavior: "smooth" }); }}
                 style={{
-                  padding: "11px 28px",
-                  background: "none",
-                  border: "1.5px solid #1a7a5e",
-                  borderRadius: 12,
+                  padding: "11px 28px", background: "none",
+                  border: "1.5px solid #1a7a5e", borderRadius: 12,
                   fontSize: 13, fontWeight: 800, color: "#1a7a5e",
                   cursor: "pointer", fontFamily: "Nunito, sans-serif",
                 }}
               >
-                View all 12 bundle programs →
+                View all 12 support programs →
               </button>
             </div>
           )}
         </div>
 
-        {/* ══════════════════════════════════════
-            BOTTOM ROW: Journey + Sponsor
-        ══════════════════════════════════════ */}
+        {/* ── PRIVATE REVIEW NOTE ────────────────────────────────────────── */}
+        <div style={{ margin: "12px 16px 0", padding: "16px 18px", background: "white", borderRadius: 14, border: "1px solid #e8e8e8", display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Shield size={17} color="#1a7a5e" strokeWidth={1.75} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 3 }}>
+              Applications are reviewed privately
+            </div>
+            <div style={{ fontSize: 12, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+              Selection is not first-come-first-served. Our team reviews every application privately
+              to ensure fair and relevant support — considering your stage, urgency, and verification status.
+            </div>
+          </div>
+        </div>
+
+        {/* ── BOTTOM ROW: Journey + Sponsor ──────────────────────────────── */}
         <div className="bottom-row" style={{ padding: "12px 16px 0" }}>
 
-          {/* Journey — 65% */}
           <div className="journey-col" style={{ background: "white", borderRadius: 16, border: "1px solid #e8e8e8", padding: "22px 20px" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
-              How bundles reach mothers
+              How support reaches mothers
             </div>
             <div style={{ fontSize: 12, color: "#666", fontFamily: "Nunito, sans-serif", marginBottom: 20, lineHeight: 1.5 }}>
-              A private, careful process — from application to doorstep.
+              A private, careful process — from application to your doorstep.
             </div>
 
             <div className="journey-steps">
@@ -556,46 +601,41 @@ export default function BundlesPage() {
             </div>
 
             <div style={{ padding: "10px 14px", background: "#fafafa", borderRadius: 10, border: "1px solid #e8e8e8", display: "flex", alignItems: "flex-start", gap: 8 }}>
-              <ChevronRight size={14} color="#9ca3af" style={{ flexShrink: 0, marginTop: 1 }} />
+              <Lock size={13} color="#9ca3af" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontSize: 11, color: "#888", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, fontStyle: "italic" }}>
-                Internal matching logic is never shown — we keep the system fair and private for every mother.
+                The matching and review process is always private. No mother&apos;s application is visible to anyone outside the Kradəl team.
               </div>
             </div>
           </div>
 
-          {/* Sponsor panel — 35% */}
           <div className="sponsor-col" style={{ background: "#0f5c45", borderRadius: 16, padding: "24px 20px" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white", marginBottom: 8 }}>
               Sponsors Make It Possible
             </div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 20 }}>
               Every bundle delivered is made possible by the generosity of our sponsors.
-              Join a growing community of organisations committed to maternal dignity across Canada.
+              Join organisations committed to maternal dignity across Canada.
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
               {[
-                { Icon: Gift,       text: "Sponsor a Bundle Cycle" },
-                { Icon: Users,      text: "Sponsor a Community"    },
-                { Icon: Building2,  text: "Corporate Partnerships" },
+                { Icon: Gift,      text: "Sponsor a Bundle Cycle" },
+                { Icon: Users,     text: "Sponsor a Community"    },
+                { Icon: Building2, text: "Corporate Partnerships" },
               ].map(({ Icon, text }) => (
                 <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon size={15} color="rgba(255,255,255,0.9)" strokeWidth={1.75} />
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", fontFamily: "Nunito, sans-serif" }}>
-                    {text}
-                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", fontFamily: "Nunito, sans-serif" }}>{text}</span>
                 </div>
               ))}
             </div>
 
             <button style={{
-              width: "100%", padding: "11px 0",
-              background: "transparent",
-              border: "1.5px solid rgba(255,255,255,0.5)",
-              borderRadius: 12, fontSize: 13, fontWeight: 800,
-              color: "white", cursor: "pointer",
+              width: "100%", padding: "11px 0", background: "transparent",
+              border: "1.5px solid rgba(255,255,255,0.5)", borderRadius: 12,
+              fontSize: 13, fontWeight: 800, color: "white", cursor: "pointer",
               fontFamily: "Nunito, sans-serif",
             }}>
               Learn about CSR benefits →
@@ -603,9 +643,7 @@ export default function BundlesPage() {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════
-            TRUST PRINCIPLES — 4 columns
-        ══════════════════════════════════════ */}
+        {/* ── TRUST PRINCIPLES ───────────────────────────────────────────── */}
         <div style={{ padding: "12px 16px 0" }}>
           <div className="trust-grid">
             {TRUST_PRINCIPLES.map(({ Icon, label, desc }) => (
@@ -613,20 +651,14 @@ export default function BundlesPage() {
                 <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
                   <Icon size={17} color="#1a7a5e" strokeWidth={1.75} />
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
-                  {label}
-                </div>
-                <div style={{ fontSize: 11, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                  {desc}
-                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>{label}</div>
+                <div style={{ fontSize: 11, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>{desc}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ══════════════════════════════════════
-            FAQ ACCORDION
-        ══════════════════════════════════════ */}
+        {/* ── FAQ ACCORDION ──────────────────────────────────────────────── */}
         <div style={{ margin: "12px 16px 0", padding: "22px 20px 6px", background: "white", borderRadius: 16, border: "1px solid #e8e8e8" }}>
           <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 18 }}>
             Frequently asked questions
@@ -643,9 +675,7 @@ export default function BundlesPage() {
                   <ChevronDown size={16} color="#9ca3af" strokeWidth={2} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "0.2s" }} />
                 </button>
                 {open && (
-                  <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, paddingBottom: 14 }}>
-                    {a}
-                  </div>
+                  <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, paddingBottom: 14 }}>{a}</div>
                 )}
               </div>
             );
@@ -657,9 +687,7 @@ export default function BundlesPage() {
 
       <BottomNav />
 
-      {/* ══════════════════════════════════════
-          APPLY MODAL
-      ══════════════════════════════════════ */}
+      {/* ── APPLY MODAL ────────────────────────────────────────────────── */}
       {applying && (
         <div
           style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
@@ -670,7 +698,7 @@ export default function BundlesPage() {
               <div>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Apply — {applying.name}</div>
                 <div style={{ fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif" }}>
-                  {applying.slotsRemaining} slot{applying.slotsRemaining !== 1 ? "s" : ""} remaining this month
+                  Reviewed privately by the Kradəl team
                 </div>
               </div>
               <button onClick={closeApply} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>
@@ -683,15 +711,25 @@ export default function BundlesPage() {
                 <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
                   <CheckCircle size={28} color="#1a7a5e" strokeWidth={1.75} />
                 </div>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Application received!</div>
-                <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 24 }}>
-                  Thank you for applying for the <strong>{applying.name}</strong> bundle.
-                  Our team will review your application and be in touch within 2–3 business days.
+                <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Application received</div>
+                <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 8, maxWidth: 340, margin: "0 auto 8px" }}>
+                  Thank you for applying for the <strong>{applying.name}</strong>.
+                </div>
+                <div style={{ fontSize: 12, color: "#888", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, maxWidth: 340, margin: "0 auto 24px" }}>
+                  Our team will review your application privately. You&apos;ll receive a notification within 2–3 business days. This is not a first-come-first-served process — every application is read carefully.
                 </div>
                 <button onClick={closeApply} style={{ padding: "12px 32px", background: "#1a7a5e", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Done</button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ padding: "20px 20px 0" }}>
+                {/* Private review notice */}
+                <div style={{ background: "#e8f5f1", borderRadius: 10, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <Shield size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                    Your application is reviewed privately by our team. Selection is based on stage, urgency, and relevance — not speed of submission.
+                  </div>
+                </div>
+
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>About you</div>
                   <label style={labelStyle}>Full name *</label>
@@ -716,15 +754,19 @@ export default function BundlesPage() {
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Your story *</div>
-                  <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>Tell us a little about your situation and why this bundle would help (100–500 characters).</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Your situation *</div>
+                  <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>
+                    Tell us a little about your situation and why this bundle would support you (100–500 characters).
+                  </div>
                   <textarea required minLength={100} maxLength={500} value={form.story} onChange={(e) => setForm((f) => ({ ...f, story: e.target.value }))} placeholder="Share a bit about your journey…" rows={4} style={{ ...inputStyle, resize: "vertical", minHeight: 90 }} />
                   <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "right" }}>{form.story.length}/500</div>
                 </div>
 
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Delivery address</div>
-                  <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>Your bundle will be delivered directly to this address. Your address is only shared with our fulfilment team and never published.</div>
+                  <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>
+                    Your bundle will be delivered here. Your address is only shared with our fulfilment team and never published.
+                  </div>
                   <label style={labelStyle}>Street address *</label>
                   <input required value={form.streetAddress} onChange={(e) => setForm((f) => ({ ...f, streetAddress: e.target.value }))} placeholder="123 Main St" style={inputStyle} />
                   <label style={labelStyle}>Unit / Apt (optional)</label>
@@ -733,7 +775,11 @@ export default function BundlesPage() {
                   <input required value={form.postalCode} onChange={(e) => setForm((f) => ({ ...f, postalCode: e.target.value }))} placeholder="A1A 1A1" style={{ ...inputStyle, maxWidth: 160 }} />
                 </div>
 
-                {error && <div style={{ padding: "10px 14px", background: "#fdecea", borderRadius: 10, fontSize: 13, color: "#c0392b", fontFamily: "Nunito, sans-serif", marginBottom: 16 }}>{error}</div>}
+                {error && (
+                  <div style={{ padding: "10px 14px", background: "#fdecea", borderRadius: 10, fontSize: 13, color: "#c0392b", fontFamily: "Nunito, sans-serif", marginBottom: 16 }}>
+                    {error}
+                  </div>
+                )}
 
                 <button type="submit" disabled={submitting} style={{ width: "100%", padding: "14px", background: submitting ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, color: "white", cursor: submitting ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>
                   {submitting ? "Submitting…" : "Submit application"}
