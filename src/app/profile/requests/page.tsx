@@ -50,6 +50,8 @@ export default function RequestsPage() {
 
   const visible = tab === "all"
     ? requests
+    : tab === "fulfilled"
+    ? requests.filter(r => r.status === "FULFILLED" || r.status === "CONFIRMED")
     : requests.filter(r => r.status.toLowerCase() === tab);
 
   return (

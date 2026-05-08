@@ -602,21 +602,26 @@ export default function ProfilePage() {
             {/* Circle identity */}
             {user.journeyType && (
               <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>Circle identity</div>
-                  <button onClick={() => setShowIdentityModal(true)} style={{ fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
-                    {user.circleIdentitySet ? "Edit" : "Set up"}
-                  </button>
-                </div>
-                <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.6, marginBottom: 10 }}>How you appear to other moms in your circle.</p>
-                <div style={{ background: "var(--bg)", borderRadius: 12, padding: "12px 14px", border: "1.5px solid var(--border)" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 10 }}>Circle identity</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   {user.circleIdentitySet ? (
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>
-                      {user.circleContext ? `${user.circleContext} • ` : ""}{user.circleDisplayName?.trim() || user.name.split(" ")[0]}
+                    <div style={{
+                      display: "inline-flex", alignItems: "center",
+                      background: "#e8f5f1", border: "1.5px solid #a7d9c8",
+                      borderRadius: 20, padding: "6px 14px",
+                      fontSize: 13, fontWeight: 700, color: "#1a7a5e",
+                    }}>
+                      {user.circleContext ? `${user.circleContext} · ` : ""}{user.circleDisplayName?.trim() || user.name.split(" ")[0]}
                     </div>
                   ) : (
                     <div style={{ fontSize: 13, color: "var(--mid)", fontStyle: "italic" }}>Not set — your first name is shown by default</div>
                   )}
+                  <button
+                    onClick={() => setShowIdentityModal(true)}
+                    style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "var(--green)", background: "var(--green-light)", border: "none", padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif", flexShrink: 0 }}
+                  >
+                    {user.circleIdentitySet ? "Edit" : "Set up"}
+                  </button>
                 </div>
               </div>
             )}
@@ -631,7 +636,7 @@ export default function ProfilePage() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>Your support journey</div>
-                <div style={{ fontSize: 12, color: "var(--mid)" }}>Track your requests and help received</div>
+                <div style={{ fontSize: 12, color: "var(--mid)" }}>You&apos;re not alone. We&apos;re here with you every step of the way.</div>
               </div>
               <ChevronRight size={18} color="#9ca3af" />
             </div>
@@ -646,7 +651,7 @@ export default function ProfilePage() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 2 }}>Circle connection</div>
-                <div style={{ fontSize: 12, color: "var(--mid)" }}>Your community of mothers at your stage</div>
+                <div style={{ fontSize: 12, color: "var(--mid)" }}>You&apos;re part of a safe space to share, learn, and grow together.</div>
               </div>
               <ChevronRight size={18} color="#9ca3af" />
             </div>

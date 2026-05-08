@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const [requestsTotal, requestsPending, requestsFulfilled, requestsCancelled, registersCount] = await Promise.all([
     prisma.request.count({ where: { requesterId: auth.userId } }),
     prisma.request.count({ where: { requesterId: auth.userId, status: "PENDING" } }),
-    prisma.request.count({ where: { requesterId: auth.userId, status: "FULFILLED" } }),
+    prisma.request.count({ where: { requesterId: auth.userId, status: { in: ["FULFILLED", "CONFIRMED"] } } }),
     prisma.request.count({ where: { requesterId: auth.userId, status: "CANCELLED" } }),
     prisma.register.count({ where: { creatorId: auth.userId } }),
   ]);
