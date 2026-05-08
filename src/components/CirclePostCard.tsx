@@ -203,10 +203,25 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
           </span>
         </div>
 
-        {/* Content */}
-        <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink)", margin: "0 0 12px", whiteSpace: "pre-wrap" }}>
-          {post.content}
-        </p>
+        {/* Content — first line bold title if multi-line */}
+        {(() => {
+          const nl = post.content.indexOf("\n");
+          if (nl === -1) {
+            return (
+              <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--ink)", margin: "0 0 12px", whiteSpace: "pre-wrap" }}>
+                {post.content}
+              </p>
+            );
+          }
+          const title = post.content.slice(0, nl).trim();
+          const body  = post.content.slice(nl + 1).trimStart();
+          return (
+            <div style={{ marginBottom: 12 }}>
+              {title && <p style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.4, color: "var(--ink)", margin: "0 0 5px" }}>{title}</p>}
+              {body  && <p style={{ fontSize: 14, lineHeight: 1.65, color: "var(--mid)", margin: 0, whiteSpace: "pre-wrap" }}>{body}</p>}
+            </div>
+          );
+        })()}
 
         {/* Photo */}
         {post.photoUrl && (
