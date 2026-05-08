@@ -14,6 +14,7 @@ interface BundleItem {
   id: string; code: string; name: string; stage: BundleStage;
   description: string; contentsMarkdown: string;
   estimatedValue: number; slotsPerMonth: number; slotsUsed: number; slotsRemaining: number;
+  itemCount: number;
 }
 
 type StageFilter = "ALL" | BundleStage;
@@ -70,9 +71,6 @@ const TRUST_PRINCIPLES = [
 const fmt = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
-function itemCount(md: string) {
-  return md.split("\n").filter((l) => l.startsWith("- ")).length;
-}
 
 function parseMd(md: string): React.ReactNode[] {
   return md.split("\n").map((line, i) => {
@@ -336,7 +334,7 @@ export default function BundlesPage() {
             <div className="bundle-grid">
               {visible.map((b) => {
                 const th      = STAGE_THEME[b.stage];
-                const count   = itemCount(b.contentsMarkdown);
+                const count   = b.itemCount;
                 const pct     = Math.round((b.slotsUsed / b.slotsPerMonth) * 100);
                 const full    = b.slotsRemaining === 0;
                 const popular = b.code === MOST_POPULAR;

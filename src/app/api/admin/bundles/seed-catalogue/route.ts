@@ -4,13 +4,23 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// Target item counts: B01–B05=8, B06/B07/B08/B12=10, B09/B10=8, B11=12
 const BUNDLES = [
   {
     code: "B01",
     name: "Prenatal Essentials",
     stage: "PREGNANCY" as const,
     description: "Everything a first-time mother needs during her pregnancy journey — vitamins, comfort aids, and reading material to prepare.",
-    contentsMarkdown: `- Prenatal multivitamin (90-day supply)\n- Pregnancy pillow\n- Stretch-mark cream (2×)\n- Belly band / maternity support belt\n- Pregnancy journal\n- *What to Expect When You're Expecting* book`,
+    contentsMarkdown: [
+      "- Prenatal multivitamin (90-day supply)",
+      "- Pregnancy pillow",
+      "- Stretch-mark cream (2×)",
+      "- Belly band / maternity support belt",
+      "- Pregnancy journal",
+      "- *What to Expect When You're Expecting* book",
+      "- Compression socks (1 pair)",
+      "- Pregnancy-safe lip balm & skin care set",
+    ].join("\n"),
     estimatedValue: 18000,
   },
   {
@@ -18,7 +28,16 @@ const BUNDLES = [
     name: "Maternity Comfort Kit",
     stage: "PREGNANCY" as const,
     description: "Targeted relief for the physical demands of pregnancy — swollen feet, back pain, and restless nights.",
-    contentsMarkdown: `- Compression socks (2 pairs)\n- Heating pad (back & belly safe)\n- Body pillow case (waterproof)\n- Cooling towel\n- Prenatal yoga DVD / resistance band set\n- Lavender bath salts`,
+    contentsMarkdown: [
+      "- Compression socks (2 pairs)",
+      "- Heating pad (back & belly safe)",
+      "- Body pillow case (waterproof)",
+      "- Cooling towel",
+      "- Prenatal resistance band set",
+      "- Lavender bath salts",
+      "- Pregnancy-safe massage oil",
+      "- Lumbar support wedge cushion",
+    ].join("\n"),
     estimatedValue: 14000,
   },
   {
@@ -26,7 +45,16 @@ const BUNDLES = [
     name: "Nutrition & Wellness Bundle",
     stage: "PREGNANCY" as const,
     description: "Nutritional support for mother and growing baby, including supplements and healthy snack options.",
-    contentsMarkdown: `- DHA / Omega-3 supplement\n- Iron supplement\n- Protein powder (pregnancy-safe)\n- Assorted healthy snack bars (24-pack)\n- Hydration electrolyte sachets (30-pack)\n- Insulated water bottle`,
+    contentsMarkdown: [
+      "- DHA / Omega-3 supplement",
+      "- Iron supplement",
+      "- Protein powder (pregnancy-safe)",
+      "- Assorted healthy snack bars (24-pack)",
+      "- Hydration electrolyte sachets (30-pack)",
+      "- Insulated water bottle",
+      "- Ginger chews for morning sickness (50-pack)",
+      "- Prenatal probiotic (30-day supply)",
+    ].join("\n"),
     estimatedValue: 12000,
   },
   {
@@ -34,7 +62,16 @@ const BUNDLES = [
     name: "Labour Prep Bundle",
     stage: "LABOUR" as const,
     description: "Practical items to help mothers feel prepared and comfortable during labour and delivery.",
-    contentsMarkdown: `- Hospital bag checklist & organiser\n- Nursing-friendly robe\n- Non-slip socks (2 pairs)\n- Lip balm & toiletry kit\n- Snack bag for labour (granola bars, nuts, electrolytes)\n- Small speaker / white noise machine`,
+    contentsMarkdown: [
+      "- Hospital bag checklist & organiser",
+      "- Nursing-friendly robe",
+      "- Non-slip socks (2 pairs)",
+      "- Lip balm & toiletry kit",
+      "- Snack bag for labour (granola bars, nuts, electrolytes)",
+      "- Small speaker / white noise machine",
+      "- Birth affirmation card set",
+      "- Perineal cooling pads (20-pack)",
+    ].join("\n"),
     estimatedValue: 10000,
   },
   {
@@ -42,7 +79,16 @@ const BUNDLES = [
     name: "Birth Partner Support Kit",
     stage: "LABOUR" as const,
     description: "Tools and comforts to help a birth partner provide meaningful support during labour.",
-    contentsMarkdown: `- Birth partner guide book\n- Massage roller & hand lotion\n- Comfort focal-point card set\n- Snacks for the support person\n- Portable phone charger`,
+    contentsMarkdown: [
+      "- Birth partner guide book",
+      "- Massage roller & hand lotion",
+      "- Comfort focal-point card set",
+      "- Snacks for the support person",
+      "- Portable phone charger",
+      "- Cooling spray bottle",
+      "- Hand-held mini fan",
+      "- Encouraging messages card set",
+    ].join("\n"),
     estimatedValue: 8000,
   },
   {
@@ -50,7 +96,18 @@ const BUNDLES = [
     name: "Newborn Starter Bundle",
     stage: "NEWBORN" as const,
     description: "The absolute essentials a newborn needs in the first weeks of life.",
-    contentsMarkdown: `- Newborn onesies (6-pack, gender-neutral)\n- Swaddle blankets (3-pack)\n- Baby beanie & mittens set\n- Newborn nappies (pack of 48)\n- Fragrance-free baby wipes (pack of 64)\n- Baby nail file set`,
+    contentsMarkdown: [
+      "- Newborn onesies (6-pack, gender-neutral)",
+      "- Swaddle blankets (3-pack)",
+      "- Baby beanie & mittens set",
+      "- Newborn nappies (pack of 48)",
+      "- Fragrance-free baby wipes (pack of 64)",
+      "- Baby nail file set",
+      "- Digital baby thermometer",
+      "- Muslin burp cloths (4-pack)",
+      "- Baby bath wash & lotion set",
+      "- Baby hair brush & comb set",
+    ].join("\n"),
     estimatedValue: 15000,
   },
   {
@@ -58,7 +115,18 @@ const BUNDLES = [
     name: "Sleep & Soothe Bundle",
     stage: "NEWBORN" as const,
     description: "Help baby and mother get the rest they need with sleep aids and soothing essentials.",
-    contentsMarkdown: `- White noise machine\n- Baby sleep sack (0–3 months)\n- Swaddle wraps (2-pack)\n- Pacifiers (orthodontic, 2-pack)\n- Gripe water\n- Lavender-infused baby lotion`,
+    contentsMarkdown: [
+      "- White noise machine",
+      "- Baby sleep sack (0–3 months)",
+      "- Swaddle wraps (2-pack)",
+      "- Pacifiers (orthodontic, 2-pack)",
+      "- Gripe water",
+      "- Lavender-infused baby lotion",
+      "- Infant gas drops",
+      "- Blackout window clings (2-pack)",
+      "- Baby massage oil (fragrance-free)",
+      "- Nightlight with timer",
+    ].join("\n"),
     estimatedValue: 13000,
   },
   {
@@ -66,7 +134,18 @@ const BUNDLES = [
     name: "Feeding Support Bundle",
     stage: "NEWBORN" as const,
     description: "Support for breastfeeding and bottle-feeding through the early weeks.",
-    contentsMarkdown: `- Manual breast pump\n- Breast pads (reusable, 8-pack)\n- Nipple cream\n- Bottle set (3 bottles with slow-flow nipples)\n- Bottle brush & drying rack\n- Nursing cover`,
+    contentsMarkdown: [
+      "- Manual breast pump",
+      "- Breast pads (reusable, 8-pack)",
+      "- Nipple cream",
+      "- Bottle set (3 bottles with slow-flow nipples)",
+      "- Bottle brush & drying rack",
+      "- Nursing cover",
+      "- Milk storage bags (50-pack)",
+      "- Nursing bra (1)",
+      "- Lactation support tea (30 bags)",
+      "- Baby feeding pillow",
+    ].join("\n"),
     estimatedValue: 20000,
   },
   {
@@ -74,7 +153,16 @@ const BUNDLES = [
     name: "Postpartum Recovery Bundle",
     stage: "POSTPARTUM" as const,
     description: "Essential recovery items to help mothers heal physically after childbirth.",
-    contentsMarkdown: `- Postpartum mesh underwear (10-pack)\n- Perineal spray\n- Sitz bath kit\n- Stool softener (gentle, 30-day)\n- Postpartum belly wrap / binder\n- Nipple shields`,
+    contentsMarkdown: [
+      "- Postpartum mesh underwear (10-pack)",
+      "- Perineal spray",
+      "- Sitz bath kit",
+      "- Stool softener (gentle, 30-day)",
+      "- Postpartum belly wrap / binder",
+      "- Nipple shields",
+      "- Peri bottle (postpartum hygiene)",
+      "- Witch hazel pads (40-pack)",
+    ].join("\n"),
     estimatedValue: 16000,
   },
   {
@@ -82,7 +170,16 @@ const BUNDLES = [
     name: "Mental Wellness Bundle",
     stage: "POSTPARTUM" as const,
     description: "Resources and self-care items to support maternal mental health in the fourth trimester.",
-    contentsMarkdown: `- Postpartum wellness journal\n- Mindfulness meditation app gift card (3 months)\n- Herbal stress-relief tea (30 bags)\n- Self-care planner\n- *The Fourth Trimester* book\n- Affirmation card deck`,
+    contentsMarkdown: [
+      "- Postpartum wellness journal",
+      "- Mindfulness meditation app gift card (3 months)",
+      "- Herbal stress-relief tea (30 bags)",
+      "- Self-care planner",
+      "- *The Fourth Trimester* book",
+      "- Affirmation card deck",
+      "- Relaxing bath soak set",
+      "- Calming soy candle",
+    ].join("\n"),
     estimatedValue: 11000,
   },
   {
@@ -90,7 +187,20 @@ const BUNDLES = [
     name: "Postpartum Nutrition Bundle",
     stage: "POSTPARTUM" as const,
     description: "Nutritional support for recovery and breastfeeding in the months after birth.",
-    contentsMarkdown: `- Postnatal multivitamin (60-day supply)\n- Omega-3 supplement\n- Lactation tea (30 bags)\n- Lactation cookies (2 boxes)\n- Protein meal-replacement shakes (1-week supply)\n- Reusable snack bags`,
+    contentsMarkdown: [
+      "- Postnatal multivitamin (60-day supply)",
+      "- Omega-3 supplement",
+      "- Lactation tea (30 bags)",
+      "- Lactation cookies (2 boxes)",
+      "- Protein meal-replacement shakes (1-week supply)",
+      "- Reusable snack bags",
+      "- Iron supplement (postpartum)",
+      "- Collagen peptides powder (30 servings)",
+      "- Bone broth sachets (10-pack)",
+      "- Nut & seed trail mix (500g)",
+      "- Electrolyte drink mix (30-pack)",
+      "- Postpartum meal prep guide",
+    ].join("\n"),
     estimatedValue: 13500,
   },
   {
@@ -98,7 +208,18 @@ const BUNDLES = [
     name: "Baby Development Bundle",
     stage: "POSTPARTUM" as const,
     description: "Stimulating and developmental toys for babies aged 0–6 months.",
-    contentsMarkdown: `- High-contrast black & white sensory cards\n- Soft sensory play mat\n- Rattles & teething rings set\n- Baby mirror toy\n- Board books (set of 4, 0–6 months)\n- Baby gym / activity arch`,
+    contentsMarkdown: [
+      "- High-contrast black & white sensory cards",
+      "- Soft sensory play mat",
+      "- Rattles & teething rings set",
+      "- Baby mirror toy",
+      "- Board books (set of 4, 0–6 months)",
+      "- Baby gym / activity arch",
+      "- Soft stacking rings",
+      "- Crinkle sensory toy",
+      "- Baby musical shaker & drum set",
+      "- Tummy time support pillow",
+    ].join("\n"),
     estimatedValue: 17000,
   },
 ];
@@ -109,6 +230,7 @@ export async function POST(_req: NextRequest) {
 
   const results = [];
   for (const b of BUNDLES) {
+    const itemCount = b.contentsMarkdown.split("\n").filter((l) => l.startsWith("- ")).length;
     const bundle = await prisma.bundle.upsert({
       where: { code: b.code },
       update: {
@@ -129,7 +251,7 @@ export async function POST(_req: NextRequest) {
         isActive: true,
       },
     });
-    results.push({ code: bundle.code, name: bundle.name });
+    results.push({ code: bundle.code, name: bundle.name, itemCount });
   }
 
   return NextResponse.json({ seeded: results.length, bundles: results });

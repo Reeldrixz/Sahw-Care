@@ -36,6 +36,7 @@ export async function GET(_req: NextRequest) {
     slotsPerMonth: b.slotsPerMonth,
     slotsUsed: b._count.applications,
     slotsRemaining: Math.max(0, b.slotsPerMonth - b._count.applications),
+    itemCount: b.contentsMarkdown.split("\n").filter((l) => l.startsWith("- ")).length,
   }));
 
   return NextResponse.json({ bundles: data });
