@@ -359,7 +359,7 @@ export default function CircleDetailPage() {
               </div>
             </div>
             <button
-              onClick={() => router.push("/circles")}
+              onClick={() => router.push("/circles/all")}
               style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, marginTop: 2 }}
               title="All circles"
             >
@@ -403,7 +403,7 @@ export default function CircleDetailPage() {
         <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "16px 16px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button
-              onClick={() => router.push("/circles")}
+              onClick={() => router.push("/circles/all")}
               style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "7px 12px", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif", flexShrink: 0 }}
             >
               ← Back
