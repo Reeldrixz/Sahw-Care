@@ -42,11 +42,12 @@ export async function GET(req: NextRequest) {
   }
 
   // Recipient
-  const [requestsTotal, requestsPending, requestsFulfilled, registersCount] = await Promise.all([
+  const [requestsTotal, requestsPending, requestsFulfilled, requestsCancelled, registersCount] = await Promise.all([
     prisma.request.count({ where: { requesterId: auth.userId } }),
     prisma.request.count({ where: { requesterId: auth.userId, status: "PENDING" } }),
     prisma.request.count({ where: { requesterId: auth.userId, status: "FULFILLED" } }),
+    prisma.request.count({ where: { requesterId: auth.userId, status: "CANCELLED" } }),
     prisma.register.count({ where: { creatorId: auth.userId } }),
   ]);
-  return NextResponse.json({ role: "RECIPIENT", requestsTotal, requestsPending, requestsFulfilled, registersCount });
+  return NextResponse.json({ role: "RECIPIENT", requestsTotal, requestsPending, requestsFulfilled, requestsCancelled, registersCount });
 }
