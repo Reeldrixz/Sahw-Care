@@ -138,7 +138,11 @@ interface BundleApplicationAdmin {
   story: string; streetAddress: string; unit: string | null; postalCode: string;
   status: string; adminNote: string | null; reviewedAt: string | null;
   createdAt: string;
-  bundle: { id: string; code: string; name: string; stage: string };
+  bundle: { id: string; code: string; name: string; stage: string; itemCount: number };
+  userEmail: string | null;
+  currentStage: string | null;
+  lifetimeApproved: number;
+  daysSince: number;
 }
 
 interface BundleGoalAdmin {
@@ -299,6 +303,7 @@ export default function AdminPage() {
   const [bundleAppsView,        setBundleAppsView]        = useState<"catalogue" | "applications">("catalogue");
   const [bundleAppsTotal,       setBundleAppsTotal]       = useState(0);
   const [appNoteMap,            setAppNoteMap]            = useState<Record<string, string>>({});
+  const [expandedAppId,         setExpandedAppId]         = useState<string | null>(null);
 
   // Bundles state
   const [bundleTab,        setBundleTab]        = useState<"campaigns" | "queue" | "all" | "templates">("campaigns");
@@ -2672,11 +2677,14 @@ export default function AdminPage() {
                     {/* Status filter */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                       {(["PENDING", "APPROVED", "REJECTED", "WAITLISTED"] as const).map((s) => (
-                        <button key={s} onClick={() => { setBundleAppsFilter(s); fetchBundleApps(s); }}
+                        <button key={s} onClick={() => { setBundleAppsFilter(s); fetchBundleApps(s); setExpandedAppId(null); }}
                           style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px solid " + (bundleAppsFilter === s ? "#1a7a5e" : "#e0e0e0"), background: bundleAppsFilter === s ? "#1a7a5e" : "white", color: bundleAppsFilter === s ? "white" : "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                           {s.charAt(0) + s.slice(1).toLowerCase()}
                         </button>
                       ))}
+                      <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af", fontFamily: "Nunito, sans-serif", alignSelf: "center" }}>
+                        {bundleAppsTotal} total
+                      </span>
                     </div>
 
                     {bundleAppsLoading ? <div className="loading"><div className="spinner" /></div> : bundleApps.length === 0 ? (
@@ -2684,69 +2692,148 @@ export default function AdminPage() {
                         No {bundleAppsFilter.toLowerCase()} applications.
                       </div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {bundleApps.map((app) => (
-                          <div key={app.id} style={{ background: "white", border: "1px solid #e0e0e0", borderRadius: 12, padding: "16px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                              <div>
-                                <div style={{ fontWeight: 800, fontSize: 15, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>{app.fullName}</div>
+                      <div style={{ border: "1px solid #e0e0e0", borderRadius: 12, overflow: "hidden" }}>
+                        {/* Column header */}
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 90px 110px 190px 24px", gap: 12, padding: "9px 16px", background: "#f9f9f9", borderBottom: "1px solid #e0e0e0", fontSize: 11, fontWeight: 800, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          <span>Mother</span><span>Bundle</span><span>Applied</span><span>Status</span><span>Actions</span><span />
+                        </div>
+
+                        {bundleApps.map((app, idx) => {
+                          const isExpanded = expandedAppId === app.id;
+                          const sc = app.status === "APPROVED"   ? { bg: "#e8f5f1", color: "#1a7a5e"  }
+                                   : app.status === "REJECTED"   ? { bg: "#fdecea", color: "#c0392b"  }
+                                   : app.status === "WAITLISTED" ? { bg: "#fff8ed", color: "#d97706"  }
+                                   :                               { bg: "#f5f5f5", color: "#555"     };
+                          return (
+                            <div key={app.id} style={{ borderBottom: idx < bundleApps.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+
+                              {/* ── Row ── */}
+                              <div
+                                onClick={() => setExpandedAppId(isExpanded ? null : app.id)}
+                                style={{ display: "grid", gridTemplateColumns: "2fr 2fr 90px 110px 190px 24px", gap: 12, padding: "12px 16px", alignItems: "center", cursor: "pointer", background: isExpanded ? "#fafafa" : "white" }}
+                              >
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{app.fullName}</div>
+                                  <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>{app.city}, {app.province}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{app.bundle.code} — {app.bundle.name}</div>
+                                  <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>{app.bundle.itemCount} items</div>
+                                </div>
                                 <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
-                                  {app.bundle.code} — {app.bundle.name} · {app.city}, {app.province}
+                                  {new Date(app.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
                                 </div>
-                                <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
-                                  Applied {new Date(app.createdAt).toLocaleDateString("en-CA")} · {app.phone}
+                                <div>
+                                  <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, fontFamily: "Nunito, sans-serif", background: sc.bg, color: sc.color }}>
+                                    {app.status.charAt(0) + app.status.slice(1).toLowerCase()}
+                                  </span>
                                 </div>
+                                <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                  {app.status === "PENDING" && (
+                                    <>
+                                      <button onClick={() => reviewBundleApp(app.id, "APPROVED")}
+                                        style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                                        Approve
+                                      </button>
+                                      <button onClick={() => reviewBundleApp(app.id, "REJECTED")}
+                                        style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: "#fdecea", color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: 13, color: "#ccc", textAlign: "center" }}>{isExpanded ? "▲" : "▼"}</div>
                               </div>
-                              <span style={{
-                                background: app.status === "APPROVED" ? "#e8f5f1" : app.status === "REJECTED" ? "#fdecea" : app.status === "WAITLISTED" ? "#fff8ed" : "#f5f5f5",
-                                color: app.status === "APPROVED" ? "#1a7a5e" : app.status === "REJECTED" ? "#c0392b" : app.status === "WAITLISTED" ? "#d97706" : "#555",
-                                fontSize: 11, fontWeight: 800, padding: "3px 10px", borderRadius: 20, fontFamily: "Nunito, sans-serif",
-                              }}>
-                                {app.status}
-                              </span>
-                            </div>
 
-                            {/* Address */}
-                            <div style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", marginBottom: 10, fontSize: 12, fontFamily: "Nunito, sans-serif", color: "#555" }}>
-                              <strong style={{ color: "#1a1a1a" }}>Delivery address:</strong>{" "}
-                              {app.streetAddress}{app.unit ? `, ${app.unit}` : ""}, {app.city}, {app.province} {app.postalCode}
-                            </div>
+                              {/* ── Detail panel ── */}
+                              {isExpanded && (
+                                <div style={{ background: "#fafafa", borderTop: "1px solid #e8e8e8", padding: "20px 20px 24px" }}>
 
-                            {/* Story */}
-                            <div style={{ fontSize: 13, color: "#333", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 12, padding: "10px 12px", background: "#fafafa", borderRadius: 8 }}>
-                              {app.story}
-                            </div>
+                                  {/* Two-column: identity + meta */}
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 18 }}>
+                                    <div>
+                                      <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Applicant</div>
+                                      <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", marginBottom: 3, fontFamily: "Nunito, sans-serif" }}>{app.fullName}</div>
+                                      {app.userEmail && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>{app.userEmail}</div>}
+                                      <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>{app.phone}</div>
+                                      {app.currentStage && (
+                                        <div style={{ marginTop: 7 }}>
+                                          <span style={{ fontSize: 11, fontWeight: 700, background: "#e8f5f1", color: "#1a7a5e", padding: "2px 9px", borderRadius: 20, fontFamily: "Nunito, sans-serif" }}>
+                                            {app.currentStage.replace(/-/g, " ")}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Application</div>
+                                      <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                        <strong style={{ color: "#1a1a1a" }}>Bundle:</strong> {app.bundle.code} — {app.bundle.name} ({app.bundle.itemCount} items)
+                                      </div>
+                                      <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                        <strong style={{ color: "#1a1a1a" }}>Submitted:</strong>{" "}
+                                        {app.daysSince === 0 ? "Today" : `${app.daysSince} day${app.daysSince !== 1 ? "s" : ""} ago`}
+                                        {" "}({new Date(app.createdAt).toLocaleDateString("en-CA")})
+                                      </div>
+                                      <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                        <strong style={{ color: "#1a1a1a" }}>Lifetime bundles received:</strong>{" "}
+                                        <span style={{ fontWeight: 700, color: app.lifetimeApproved > 0 ? "#1a7a5e" : "#9ca3af" }}>
+                                          {app.lifetimeApproved} approved
+                                        </span>
+                                      </div>
+                                      {app.dueDate && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}><strong style={{ color: "#1a1a1a" }}>Due date:</strong> {new Date(app.dueDate).toLocaleDateString("en-CA")}</div>}
+                                      {app.babyDob && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}><strong style={{ color: "#1a1a1a" }}>Baby DOB:</strong> {new Date(app.babyDob).toLocaleDateString("en-CA")}</div>}
+                                    </div>
+                                  </div>
 
-                            {app.dueDate && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>Due date: {new Date(app.dueDate).toLocaleDateString("en-CA")}</div>}
-                            {app.babyDob && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>Baby DOB: {new Date(app.babyDob).toLocaleDateString("en-CA")}</div>}
+                                  {/* Story */}
+                                  <div style={{ marginBottom: 14 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Story</div>
+                                    <div style={{ fontSize: 13, color: "#333", lineHeight: 1.7, background: "white", padding: "12px 14px", borderRadius: 8, border: "1px solid #e0e0e0", fontFamily: "Nunito, sans-serif" }}>
+                                      {app.story}
+                                    </div>
+                                  </div>
 
-                            {app.status === "PENDING" && (
-                              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-                                <textarea
-                                  placeholder="Admin note (optional)…"
-                                  value={appNoteMap[app.id] ?? ""}
-                                  onChange={(e) => setAppNoteMap((m) => ({ ...m, [app.id]: e.target.value }))}
-                                  rows={2}
-                                  style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" }}
-                                />
-                                <div style={{ display: "flex", gap: 8 }}>
-                                  <button onClick={() => reviewBundleApp(app.id, "APPROVED")}
-                                    style={{ flex: 1, padding: "9px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                                    Approve
-                                  </button>
-                                  <button onClick={() => reviewBundleApp(app.id, "WAITLISTED")}
-                                    style={{ flex: 1, padding: "9px", background: "#fff8ed", border: "1.5px solid #d97706", borderRadius: 8, color: "#d97706", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                                    Waitlist
-                                  </button>
-                                  <button onClick={() => reviewBundleApp(app.id, "REJECTED")}
-                                    style={{ flex: 1, padding: "9px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                                    Reject
-                                  </button>
+                                  {/* Delivery address */}
+                                  <div style={{ marginBottom: 18 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Delivery Address</div>
+                                    <div style={{ fontSize: 12, color: "#555", background: "white", padding: "10px 14px", borderRadius: 8, border: "1px solid #e0e0e0", lineHeight: 1.8, fontFamily: "Nunito, sans-serif" }}>
+                                      {app.streetAddress}{app.unit ? `, ${app.unit}` : ""}<br />
+                                      {app.city}, {app.province} {app.postalCode}
+                                    </div>
+                                  </div>
+
+                                  {/* Admin actions */}
+                                  {app.status === "PENDING" && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                      <textarea
+                                        placeholder="Admin note (optional, max 200 chars)…"
+                                        maxLength={200}
+                                        value={appNoteMap[app.id] ?? ""}
+                                        onChange={(e) => setAppNoteMap((m) => ({ ...m, [app.id]: e.target.value }))}
+                                        rows={2}
+                                        style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const }}
+                                      />
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <button onClick={() => reviewBundleApp(app.id, "APPROVED")}
+                                          style={{ flex: 1, padding: "10px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                          Approve
+                                        </button>
+                                        <button onClick={() => reviewBundleApp(app.id, "WAITLISTED")}
+                                          style={{ flex: 1, padding: "10px", background: "#fff8ed", border: "1.5px solid #d97706", borderRadius: 8, color: "#d97706", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                          Waitlist
+                                        </button>
+                                        <button onClick={() => reviewBundleApp(app.id, "REJECTED")}
+                                          style={{ flex: 1, padding: "10px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                          Reject
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
