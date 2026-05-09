@@ -15,7 +15,6 @@ import {
 import { getCategoryLabel } from "@/lib/pickup-categories";
 import NotificationBell from "@/components/NotificationBell";
 import RequestReviewSheet from "@/components/RequestReviewSheet";
-import BundleStatusTracker from "@/components/BundleStatusTracker";
 import FulfillmentConfirmBanner, { PendingFulfillment } from "@/components/FulfillmentConfirmBanner";
 import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
 import LocationSelector from "@/components/LocationSelector";
@@ -24,20 +23,6 @@ import SearchBar from "@/components/SearchBar";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface BundleItem { name: string; quantity: string }
-interface LiveCampaign {
-  id: string; title: string; sponsorName: string;
-  bundlesRemaining: number; totalBundles: number;
-  template: { name: string; itemSummary: string; items: BundleItem[] };
-  eligibility: { eligible: boolean; reason: string | null; daysUntilEligible?: number };
-}
-interface MyBundle {
-  id: string; status: string; requestedAt: string;
-  approvedAt: string | null; shippedAt: string | null; confirmedAt: string | null;
-  trackingNumber: string | null;
-  campaign: { title: string; sponsorName: string };
-  template: { name: string; items: BundleItem[] };
-}
 interface ToFulfillItem {
   requestId: string; itemId: string; itemTitle: string;
   requesterName: string; requesterAvatar: string | null; requestedAt: string;
@@ -99,8 +84,6 @@ export default function DiscoverPage() {
   const [toast,           setToast]           = useState<string | null>(null);
   const [showDonate,      setShowDonate]      = useState(false);
   const [trustCount,      setTrustCount]      = useState(0);
-  const [campaigns,       setCampaigns]       = useState<LiveCampaign[]>([]);
-  const [myBundle,        setMyBundle]        = useState<MyBundle | null>(null);
   const [toConfirm,       setToConfirm]       = useState<PendingFulfillment[]>([]);
   const [toFulfill,       setToFulfill]       = useState<ToFulfillItem[]>([]);
   const [donorSentItems,  setDonorSentItems]  = useState<DonorSentItem[]>([]);
@@ -195,19 +178,6 @@ export default function DiscoverPage() {
     } catch {
       setFavs((f) => ({ ...f, [itemId]: !f[itemId] }));
     }
-  }, [user]);
-
-  // ── Bundle campaigns ───────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch("/api/bundles").then((r) => r.json()).then((d) => setCampaigns(d.campaigns ?? [])).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!user || user.journeyType === "donor" || !user.activeBundleId) return;
-    fetch("/api/bundles/my").then((r) => r.json()).then((d) => {
-      const active = (d.instances ?? []).find((i: MyBundle) => !["COMPLETED", "REJECTED"].includes(i.status));
-      setMyBundle(active ?? null);
-    }).catch(() => {});
   }, [user]);
 
   // ── Fulfillment pending ────────────────────────────────────────────────────
@@ -635,62 +605,21 @@ export default function DiscoverPage() {
             );
           })()}
 
-          {/* ── Bundle section ─────────────────────────────────────────────── */}
-          {(campaigns.length > 0 || myBundle) && (
-            <div className="section">
-              <div className="section-head" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-                <div className="section-title">Community bundles</div>
-                <div style={{ fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif" }}>Funded together, delivered by Kradəl</div>
-              </div>
-
-              {myBundle && (
-                <div style={{ marginBottom: 14 }}>
-                  <BundleStatusTracker
-                    instance={myBundle}
-                    onConfirmed={() => { setMyBundle(null); setToast("Bundle confirmed! Thank you."); }}
-                  />
-                </div>
-              )}
-
-              {!myBundle && campaigns.length > 0 && (
-                <div className="hscroll">
-                  {campaigns.map((c) => {
-                    const { eligible, reason, daysUntilEligible } = c.eligibility;
-                    const CARD_COLORS = ["#e8f5f1", "#fff8e6", "#f0f4ff", "#fdf0e8"];
-                    const bg = CARD_COLORS[campaigns.indexOf(c) % CARD_COLORS.length];
-                    return (
-                      <div key={c.id} className="bundle-card" onClick={() => router.push(`/bundles/${c.id}`)}>
-                        <div className="bundle-img" style={{ background: bg }}>
-                          <div className="bundle-tag" style={{ background: "white", color: "var(--green)", border: "1.5px solid var(--green)" }}>
-                            {c.bundlesRemaining} left
-                          </div>
-                          <Package size={36} color="#1a7a5e" strokeWidth={1.25} style={{ opacity: 0.6 }} />
-                        </div>
-                        <div className="bundle-body">
-                          <div className="bundle-title">{c.template.name}</div>
-                          <div className="bundle-items">Includes: {c.template.itemSummary}</div>
-                          <div className="bundle-footer">
-                            <div className="bundle-count">{c.template.items.length} items</div>
-                            {eligible ? (
-                              <div style={{ fontSize: 12, fontWeight: 800, color: "var(--green)" }}>Request →</div>
-                            ) : reason === "not_logged_in" ? (
-                              <div style={{ fontSize: 11, color: "var(--mid)" }}>Sign in →</div>
-                            ) : reason === "not_verified" ? (
-                              <div style={{ fontSize: 11, color: "var(--mid)" }}>Verify to unlock</div>
-                            ) : reason === "cooldown" ? (
-                              <div style={{ fontSize: 11, color: "var(--mid)" }}>In {daysUntilEligible}d</div>
-                            ) : reason === "active_bundle" ? (
-                              <div style={{ fontSize: 11, color: "var(--mid)" }}>In progress</div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {/* ── Bundles entry point ────────────────────────────────────────── */}
+          <div style={{ margin: "0 16px 14px", background: "white", borderRadius: 16, border: "1px solid #e0e0e0", padding: 16, display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Gift size={20} color="#1a7a5e" strokeWidth={1.75} />
             </div>
-          )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Kradəl Bundles</div>
+              <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                12 care programmes — curated essentials delivered free to verified mothers.
+              </div>
+            </div>
+            <a href="/bundles" style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap", textDecoration: "none", flexShrink: 0 }}>
+              Explore programmes →
+            </a>
+          </div>
 
           {/* ── Items section ──────────────────────────────────────────────── */}
           <div className="section" style={{ paddingBottom: 100 }}>
