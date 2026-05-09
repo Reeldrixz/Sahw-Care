@@ -206,7 +206,7 @@ const BUNDLES = [
   {
     code: "B12",
     name: "First Month Home Kit",
-    stage: "POSTPARTUM" as const,
+    stage: "NEWBORN" as const,
     description: "Stimulating and developmental toys for babies aged 0–6 months.",
     contentsMarkdown: [
       "- High-contrast black & white sensory cards",
