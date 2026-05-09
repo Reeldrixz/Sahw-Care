@@ -869,7 +869,6 @@ enum NotifType {
 
   // Bundle updates
   BUNDLE_UPDATE
-  BUNDLE_GOAL_MET
   BUNDLE_DELIVERED
 
   // Admin & moderation
@@ -1348,6 +1347,7 @@ enum BundleApplicationStatus {
   APPROVED
   REJECTED
   WAITLISTED
+  DELIVERED
 }
 
 model Bundle {
@@ -1387,6 +1387,7 @@ model BundleApplication {
   reviewedAt  DateTime?
   reviewedBy  String?               // admin userId
   // Linking (optional — if applicant has an account)
+  email       String?
   userId      String?
   // Fulfilment tracking
   dispatchedAt DateTime?

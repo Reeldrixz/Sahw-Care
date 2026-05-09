@@ -90,12 +90,12 @@ function parseMd(md: string): React.ReactNode[] {
 }
 
 interface ApplyForm {
-  fullName: string; phone: string; city: string; province: string;
+  fullName: string; phone: string; email: string; city: string; province: string;
   dueDate: string; babyDob: string; story: string;
   streetAddress: string; unit: string; postalCode: string;
 }
 const EMPTY_FORM: ApplyForm = {
-  fullName: "", phone: "", city: "", province: "",
+  fullName: "", phone: "", email: "", city: "", province: "",
   dueDate: "", babyDob: "", story: "", streetAddress: "", unit: "", postalCode: "",
 };
 
@@ -104,6 +104,7 @@ const MOST_POPULAR = "B06";
 export default function BundlesPage() {
   const [bundles,                    setBundles]                    = useState<BundleItem[]>([]);
   const [myActiveApplicationBundleId, setMyActiveApplicationBundleId] = useState<string | null>(null);
+  const [myLifetimeApproved,         setMyLifetimeApproved]         = useState(0);
   const [loading,                    setLoading]                    = useState(true);
   const [stageFilter,                setStageFilter]                = useState<StageFilter>("ALL");
   const [expanded,                   setExpanded]                   = useState<string | null>(null);
@@ -121,6 +122,7 @@ export default function BundlesPage() {
       const d = await r.json();
       setBundles(d.bundles ?? []);
       setMyActiveApplicationBundleId(d.myActiveApplicationBundleId ?? null);
+      setMyLifetimeApproved(d.myLifetimeApproved ?? 0);
     }
     setLoading(false);
   }, []);
@@ -142,6 +144,7 @@ export default function BundlesPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bundleId: applying.id, ...form,
+          email: form.email || null,
           dueDate: form.dueDate || null, babyDob: form.babyDob || null, unit: form.unit || null,
         }),
       });
@@ -301,16 +304,31 @@ export default function BundlesPage() {
           </div>
         </div>
 
-        {/* Active application notice */}
-        {myActiveApplicationBundleId && (
-          <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <AlertCircle size={16} color="#b45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div style={{ fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-              <strong style={{ fontWeight: 800 }}>You have an active application this cycle.</strong>
-              {" "}Other bundles are paused while your application is under review. If it is not approved, you may apply to a different program next cycle.
+        {myLifetimeApproved >= 9 ? (
+          /* ── PROGRAMME COMPLETION BANNER ─────────────────────────────── */
+          <div id="bundle-grid" style={{ margin: "16px", padding: "40px 24px", background: "white", borderRadius: 16, border: "1px solid #c3e6cb", textAlign: "center" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <CheckCircle size={28} color="#1a7a5e" strokeWidth={1.75} />
+            </div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
+              You&apos;ve received 9 Kradəl bundles — the full programme.
+            </div>
+            <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7 }}>
+              Thank you for allowing us to support your journey.
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            {/* Active application notice */}
+            {myActiveApplicationBundleId && (
+              <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <AlertCircle size={16} color="#b45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                  <strong style={{ fontWeight: 800 }}>You have an active application this cycle.</strong>
+                  {" "}Other bundles are paused while your application is under review. If it is not approved, you may apply to a different program next cycle.
+                </div>
+              </div>
+            )}
 
         {/* ── BUNDLE GRID ────────────────────────────────────────────────── */}
         <div id="bundle-grid" style={{ padding: "0 16px 8px" }}>
@@ -546,6 +564,8 @@ export default function BundlesPage() {
             </div>
           )}
         </div>
+          </>
+        )}
 
         {/* ── PRIVATE REVIEW NOTE ────────────────────────────────────────── */}
         <div style={{ margin: "12px 16px 0", padding: "16px 18px", background: "white", borderRadius: 14, border: "1px solid #e8e8e8", display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -736,6 +756,8 @@ export default function BundlesPage() {
                   <input required value={form.fullName} onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))} placeholder="Your full name" style={inputStyle} />
                   <label style={labelStyle}>Phone number *</label>
                   <input required type="tel" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="e.g. 416-555-0100" style={inputStyle} />
+                  <label style={labelStyle}>Email address (for updates if you don&apos;t have an account)</label>
+                  <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="you@example.com" style={inputStyle} />
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <label style={labelStyle}>City *</label>

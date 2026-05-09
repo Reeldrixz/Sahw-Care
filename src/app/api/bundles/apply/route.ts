@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getResend } from "@/lib/resend";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
 
   const {
-    bundleId, fullName, phone, city, province,
+    bundleId, fullName, phone, email, city, province,
     dueDate, babyDob, story,
     streetAddress, unit, postalCode,
   } = body;
@@ -26,11 +27,20 @@ export async function POST(req: NextRequest) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  // Optional: link to logged-in user
   const currentUser = await getCurrentUser().catch(() => null);
 
-  // One active application per cycle for logged-in users
   if (currentUser) {
+    // 9-bundle lifetime cap
+    const lifetimeCount = await prisma.bundleApplication.count({
+      where: { userId: currentUser.userId, status: { in: ["APPROVED", "DELIVERED"] } },
+    });
+    if (lifetimeCount >= 9) {
+      return NextResponse.json({
+        error: "You have completed the Kradəl Bundles programme (9 bundles received). Thank you for letting us support your journey.",
+      }, { status: 400 });
+    }
+
+    // One active application per cycle
     const existing = await prisma.bundleApplication.findFirst({
       where: {
         userId: currentUser.userId,
@@ -64,6 +74,7 @@ export async function POST(req: NextRequest) {
       bundleId,
       fullName:      fullName.trim(),
       phone:         phone.trim(),
+      email:         email?.trim() || null,
       city:          city.trim(),
       province:      province.trim(),
       dueDate:       dueDate ? new Date(dueDate) : null,
@@ -84,6 +95,13 @@ export async function POST(req: NextRequest) {
         message: `Your application for the ${bundle.name} has been received. Our team will review it privately and be in touch soon.`,
         link:    "/bundles",
       },
+    }).catch(() => {});
+  } else if (email?.trim()) {
+    getResend().emails.send({
+      from:    process.env.EMAIL_FROM ?? "noreply@kradel.ca",
+      to:      email.trim(),
+      subject: "Your Kradəl Bundle application was received",
+      html:    `<p>Hi ${fullName},</p><p>We've received your application for the <strong>${bundle.name}</strong>. We'll be in touch soon.</p><p>The Kradəl Team</p>`,
     }).catch(() => {});
   }
 

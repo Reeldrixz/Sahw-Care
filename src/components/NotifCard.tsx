@@ -35,7 +35,6 @@ const TYPE_CONFIG: Record<string, TypeConfig> = {
   FULFILLMENT_DISPUTED:     { Icon: AlertTriangle,  iconColor: "#c0392b", iconBg: "#fdecea" },
   BUNDLE_UPDATE:            { Icon: Package,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
   BUNDLE_DELIVERED:         { Icon: Package,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
-  BUNDLE_GOAL_MET:          { Icon: Gift,           iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
   BUNDLE_ALLOCATION_CONFIRM:{ Icon: Package,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
   ITEM_FULLY_FUNDED:        { Icon: Gift,           iconColor: "#1a7a5e", iconBg: "#e8f5f1" },
   ITEM_PURCHASED:           { Icon: Package,        iconColor: "#1a7a5e", iconBg: "#e8f5f1" },

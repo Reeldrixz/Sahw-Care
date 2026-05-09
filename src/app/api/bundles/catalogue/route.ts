@@ -29,18 +29,28 @@ export async function GET(_req: NextRequest) {
     getCurrentUser().catch(() => null),
   ]);
 
-  // Check if logged-in user already has an active application this cycle
   let myActiveApplicationBundleId: string | null = null;
+  let myLifetimeApproved = 0;
+
   if (currentUser) {
-    const existing = await prisma.bundleApplication.findFirst({
-      where: {
-        userId: currentUser.userId,
-        status: { in: ["PENDING", "APPROVED"] },
-        createdAt: { gte: monthStart, lt: monthEnd },
-      },
-      select: { bundleId: true },
-    });
+    const [existing, lifetimeCount] = await Promise.all([
+      prisma.bundleApplication.findFirst({
+        where: {
+          userId: currentUser.userId,
+          status: { in: ["PENDING", "APPROVED"] },
+          createdAt: { gte: monthStart, lt: monthEnd },
+        },
+        select: { bundleId: true },
+      }),
+      prisma.bundleApplication.count({
+        where: {
+          userId: currentUser.userId,
+          status: { in: ["APPROVED", "DELIVERED"] },
+        },
+      }),
+    ]);
     myActiveApplicationBundleId = existing?.bundleId ?? null;
+    myLifetimeApproved = lifetimeCount;
   }
 
   const data = bundles.map((b) => ({
@@ -57,5 +67,5 @@ export async function GET(_req: NextRequest) {
     itemCount:        b.contentsMarkdown.split("\n").filter((l) => l.startsWith("- ")).length,
   }));
 
-  return NextResponse.json({ bundles: data, myActiveApplicationBundleId });
+  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved });
 }
