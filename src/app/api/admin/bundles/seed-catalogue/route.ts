@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const BUNDLES = [
   {
     code: "B01",
-    name: "Prenatal Essentials",
+    name: "First Trimester Essentials",
     stage: "PREGNANCY" as const,
     description: "Everything a first-time mother needs during her pregnancy journey — vitamins, comfort aids, and reading material to prepare.",
     contentsMarkdown: [
@@ -25,7 +25,7 @@ const BUNDLES = [
   },
   {
     code: "B02",
-    name: "Maternity Comfort Kit",
+    name: "Second Trimester Comfort Kit",
     stage: "PREGNANCY" as const,
     description: "Targeted relief for the physical demands of pregnancy — swollen feet, back pain, and restless nights.",
     contentsMarkdown: [
@@ -42,7 +42,7 @@ const BUNDLES = [
   },
   {
     code: "B03",
-    name: "Nutrition & Wellness Bundle",
+    name: "Third Trimester Preparation Kit",
     stage: "PREGNANCY" as const,
     description: "Nutritional support for mother and growing baby, including supplements and healthy snack options.",
     contentsMarkdown: [
@@ -59,7 +59,7 @@ const BUNDLES = [
   },
   {
     code: "B04",
-    name: "Labour Prep Bundle",
+    name: "Hospital Bag — Mother",
     stage: "LABOUR" as const,
     description: "Practical items to help mothers feel prepared and comfortable during labour and delivery.",
     contentsMarkdown: [
@@ -76,7 +76,7 @@ const BUNDLES = [
   },
   {
     code: "B05",
-    name: "Birth Partner Support Kit",
+    name: "Hospital Bag — Baby",
     stage: "LABOUR" as const,
     description: "Tools and comforts to help a birth partner provide meaningful support during labour.",
     contentsMarkdown: [
@@ -93,7 +93,7 @@ const BUNDLES = [
   },
   {
     code: "B06",
-    name: "Newborn Starter Bundle",
+    name: "Complete Newborn Bundle",
     stage: "NEWBORN" as const,
     description: "The absolute essentials a newborn needs in the first weeks of life.",
     contentsMarkdown: [
@@ -112,7 +112,7 @@ const BUNDLES = [
   },
   {
     code: "B07",
-    name: "Sleep & Soothe Bundle",
+    name: "Feeding Kit",
     stage: "NEWBORN" as const,
     description: "Help baby and mother get the rest they need with sleep aids and soothing essentials.",
     contentsMarkdown: [
@@ -131,7 +131,7 @@ const BUNDLES = [
   },
   {
     code: "B08",
-    name: "Feeding Support Bundle",
+    name: "Hygiene & Care Kit",
     stage: "NEWBORN" as const,
     description: "Support for breastfeeding and bottle-feeding through the early weeks.",
     contentsMarkdown: [
@@ -150,7 +150,7 @@ const BUNDLES = [
   },
   {
     code: "B09",
-    name: "Postpartum Recovery Bundle",
+    name: "Postpartum Recovery Kit",
     stage: "POSTPARTUM" as const,
     description: "Essential recovery items to help mothers heal physically after childbirth.",
     contentsMarkdown: [
@@ -167,7 +167,7 @@ const BUNDLES = [
   },
   {
     code: "B10",
-    name: "Mental Wellness Bundle",
+    name: "Breastfeeding Support Kit",
     stage: "POSTPARTUM" as const,
     description: "Resources and self-care items to support maternal mental health in the fourth trimester.",
     contentsMarkdown: [
@@ -184,7 +184,7 @@ const BUNDLES = [
   },
   {
     code: "B11",
-    name: "Postpartum Nutrition Bundle",
+    name: "Complete Maternal Bundle",
     stage: "POSTPARTUM" as const,
     description: "Nutritional support for recovery and breastfeeding in the months after birth.",
     contentsMarkdown: [
@@ -205,7 +205,7 @@ const BUNDLES = [
   },
   {
     code: "B12",
-    name: "Baby Development Bundle",
+    name: "First Month Home Kit",
     stage: "POSTPARTUM" as const,
     description: "Stimulating and developmental toys for babies aged 0–6 months.",
     contentsMarkdown: [
