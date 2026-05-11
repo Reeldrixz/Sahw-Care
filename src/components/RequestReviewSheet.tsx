@@ -46,6 +46,16 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   LIBRARY:          BookOpen,
   PHARMACY:         Pill,
   MALL:             Store,
+  OTHER:            MapPin,
+};
+
+const CATEGORY_PLACEHOLDERS: Record<string, string> = {
+  CAFE:             "e.g. Tim Hortons, Starbucks",
+  GROCERY_STORE:    "e.g. No Frills, FreshCo",
+  COMMUNITY_CENTRE: "e.g. Scarborough Civic Centre",
+  LIBRARY:          "e.g. Agincourt Library",
+  PHARMACY:         "e.g. Shoppers Drug Mart, Rexall",
+  MALL:             "e.g. Scarborough Town Centre, Yorkdale",
 };
 
 export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props) {
@@ -56,6 +66,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
   const [whoFor, setWhoFor]                       = useState<WhoFor | null>(null);
   const [pickup, setPickup]                       = useState<PickupPref | null>(null);
   const [selectedCategory, setSelectedCategory]   = useState<PickupCategoryId | null>(null);
+  const [locationNote, setLocationNote]           = useState("");
   const [categories, setCategories]               = useState<CategoryBucket[]>([]);
   const [locLoading, setLocLoading]               = useState(false);
   const [loading, setLoading]                     = useState(false);
@@ -85,11 +96,13 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
   })();
 
   const noteOk = note.trim().length === 0 || note.trim().length <= 100;
+  const locationNoteOk = selectedCategory !== "OTHER" || locationNote.trim().length > 0;
   const canSubmit =
     !!whoFor &&
     !!pickup &&
     noteOk &&
-    !!selectedCategory;
+    !!selectedCategory &&
+    locationNoteOk;
 
   const handleSubmit = async () => {
     if (!canSubmit || loading) return;
@@ -99,13 +112,14 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        itemId:           item.id,
-        requestNote:      note.trim() || null,
-        whoIsItFor:       whoFor,
-        pickupPreference: pickup,
-        pickupMode:       pickup ?? "PICKUP",
-        pickupCategoryId: selectedCategory ?? null,
-        pickupLocationId: pickup === "PICKUP" ? derivedLocationId : null,
+        itemId:             item.id,
+        requestNote:        note.trim() || null,
+        whoIsItFor:         whoFor,
+        pickupPreference:   pickup,
+        pickupMode:         pickup ?? "PICKUP",
+        pickupCategoryId:   selectedCategory ?? null,
+        pickupLocationId:   pickup === "PICKUP" && selectedCategory !== "OTHER" ? derivedLocationId : null,
+        pickupLocationNote: locationNote.trim() || null,
       }),
     });
     const d = await res.json();
@@ -345,7 +359,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                         return (
                           <div key={cat.id}>
                             <button
-                              onClick={() => setSelectedCategory(cat.id as PickupCategoryId)}
+                              onClick={() => { setSelectedCategory(cat.id as PickupCategoryId); setLocationNote(""); }}
                               style={{
                                 display: "flex", alignItems: "center", gap: 12,
                                 padding: "12px 14px", borderRadius: 12, width: "100%",
@@ -379,7 +393,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                             </button>
 
                             {/* Suggestions — hidden in DELIVERY_SUPPORT mode or when none available */}
-                            {isSelected && pickup === "PICKUP" && suggestions.length > 0 && (
+                            {isSelected && pickup === "PICKUP" && suggestions.length > 0 && cat.id !== "OTHER" && (
                               <div style={{
                                 marginTop: 6, marginLeft: 14,
                                 fontSize: 13, fontWeight: 400,
@@ -387,6 +401,60 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                                 color: "#555555",
                               }}>
                                 {`Examples near you: ${suggestions.map((s) => s.name).join(", ")}`}
+                              </div>
+                            )}
+
+                            {/* Part A: optional specific location for named categories */}
+                            {isSelected && cat.id !== "OTHER" && (
+                              <div style={{ marginTop: 10 }}>
+                                <input
+                                  type="text"
+                                  maxLength={100}
+                                  placeholder={CATEGORY_PLACEHOLDERS[cat.id] ?? "Which one?"}
+                                  value={locationNote}
+                                  onChange={(e) => setLocationNote(e.target.value)}
+                                  style={{
+                                    width: "100%", padding: "9px 12px", borderRadius: 10,
+                                    border: "1.5px solid var(--border)",
+                                    fontSize: 13, fontFamily: "Nunito, sans-serif", outline: "none",
+                                    boxSizing: "border-box", background: "var(--bg)", color: "var(--ink)",
+                                  }}
+                                />
+                                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                                  <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
+                                    Which one? (optional but helpful)
+                                  </span>
+                                  <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
+                                    {locationNote.length}/100
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Part B: required description for Other */}
+                            {isSelected && cat.id === "OTHER" && (
+                              <div style={{ marginTop: 10 }}>
+                                <label style={{ display: "block", fontSize: 12, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)", marginBottom: 5 }}>
+                                  Describe the location <span style={{ color: "var(--terra)" }}>*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  maxLength={150}
+                                  placeholder="e.g. Local park, mosque, community hall"
+                                  value={locationNote}
+                                  onChange={(e) => setLocationNote(e.target.value)}
+                                  style={{
+                                    width: "100%", padding: "9px 12px", borderRadius: 10,
+                                    border: `1.5px solid ${locationNote.trim() ? "var(--border)" : "var(--terra)"}`,
+                                    fontSize: 13, fontFamily: "Nunito, sans-serif", outline: "none",
+                                    boxSizing: "border-box", background: "var(--bg)", color: "var(--ink)",
+                                  }}
+                                />
+                                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+                                  <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
+                                    {locationNote.length}/150
+                                  </span>
+                                </div>
                               </div>
                             )}
                           </div>

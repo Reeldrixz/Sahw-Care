@@ -5,6 +5,7 @@ export const PICKUP_CATEGORIES = [
   { id: "LIBRARY",          label: "Library",           icon: "BookOpen"  },
   { id: "PHARMACY",         label: "Pharmacy",          icon: "Pill"      },
   { id: "MALL",             label: "Mall",              icon: "Store"     },
+  { id: "OTHER",            label: "Other",             icon: "MapPin"    },
 ] as const;
 
 export type PickupCategoryId = typeof PICKUP_CATEGORIES[number]["id"];

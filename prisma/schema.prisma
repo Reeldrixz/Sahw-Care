@@ -236,9 +236,10 @@ model Request {
   requesterId String
   requester   User   @relation(fields: [requesterId], references: [id], onDelete: Cascade)
 
-  requestNote       String?
-  pickupLocationId  String?
-  preferredLocation PublicPickupLocation? @relation("RequestPreferredLocation", fields: [pickupLocationId], references: [id])
+  requestNote        String?
+  pickupLocationId   String?
+  pickupLocationNote String?
+  preferredLocation  PublicPickupLocation? @relation("RequestPreferredLocation", fields: [pickupLocationId], references: [id])
 
   conversation Conversation?
   review       Review?

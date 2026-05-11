@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, MapPin, Calendar, ShieldCheck, Flag, CheckCircle,
-  Navigation, AlertTriangle, X, Clock,
+  Navigation, AlertTriangle, X, Clock, ChevronDown,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +28,7 @@ interface Coordination {
   cancelledById: string | null; cancelReason: string | null;
   request: {
     id: string; requesterId: string; whoIsItFor: string | null; requestNote: string | null;
-    pickupPreference: string | null;
+    pickupPreference: string | null; pickupLocationNote: string | null;
     item: { id: string; title: string; donorId: string };
     requester: { id: string; name: string; verificationLevel: number; trustScore: number };
     preferredLocation: Location | null;
@@ -138,6 +138,14 @@ function timeBlockKey(iso: string | null): string {
   return "EVENING";
 }
 
+function isOnOrAfterDay(iso: string | null): boolean {
+  if (!iso) return false;
+  const meetup = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today >= new Date(meetup.getFullYear(), meetup.getMonth(), meetup.getDate());
+}
+
 // ── Next 7 days ───────────────────────────────────────────────────────────────
 
 function getNext7Days() {
@@ -202,6 +210,9 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   // safety banner dismissed state
   const [safetyDismissed, setSafetyDismissed] = useState(false);
 
+  // quick-action bar collapse state
+  const [actionBarOpen, setActionBarOpen] = useState(false);
+
   const fetchCoord = useCallback(async () => {
     const res = await fetch(`/api/coordination/${requestId}`);
     if (res.ok) {
@@ -238,6 +249,13 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   useEffect(() => {
     if (coord?.status === "SCHEDULED" && !safetyDismissed) setShowSafety(true);
   }, [coord?.status, safetyDismissed]);
+
+  // Auto-expand quick actions on or after meetup day
+  useEffect(() => {
+    if (coord?.status === "SCHEDULED" && isOnOrAfterDay(coord.confirmedTime)) {
+      setActionBarOpen(true);
+    }
+  }, [coord?.status, coord?.confirmedTime]);
 
   if (!user) return null;
 
@@ -318,6 +336,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   const locationLabel = locationRaw ? getCategoryLabel(locationRaw.type) : "TBD";
   const locationSuggestion = locationRaw?.name ?? null;
   const isTerminal   = ["CONFIRMED", "CANCELLED", "REPORTED"].includes(status);
+  const isOnOrAfterMeetupDay = isOnOrAfterDay(coord.confirmedTime);
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
@@ -392,9 +411,11 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                 <MapPin size={18} color="#1a7a5e" strokeWidth={1.75} />
               </div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{locationLabel}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>
+                  {locationLabel}{coord.request.pickupLocationNote ? ` — ${coord.request.pickupLocationNote}` : ""}
+                </div>
                 {locationSuggestion && (
-                  <div style={{ fontSize: 14, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "#555555", marginTop: 2 }}>
+                  <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "#555555", marginTop: 2 }}>
                     Suggested: {locationSuggestion}
                   </div>
                 )}
@@ -520,8 +541,8 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
               </button>
             )}
 
-            {/* Donor: "I'm here" (SCHEDULED) */}
-            {isDonor && status === "SCHEDULED" && (
+            {/* Donor: "I'm here" (SCHEDULED) — only on/after meetup day */}
+            {isDonor && status === "SCHEDULED" && isOnOrAfterMeetupDay && (
               <button
                 onClick={() => { post("ready"); sendQuick("IM_HERE"); }}
                 disabled={acting}
@@ -556,23 +577,44 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
               </button>
             )}
 
-            {/* Quick actions — SCHEDULED or DONOR_READY */}
-            {["SCHEDULED", "DONOR_READY"].includes(status) && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                {[
-                  { key: "ON_MY_WAY",    label: "On my way" },
-                  { key: "RUNNING_LATE", label: "Running late" },
-                  { key: "CANT_MAKE_IT", label: "Can't make it" },
-                  { key: "IM_HERE",      label: "I'm here" },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => sendQuick(key)}
-                    style={{ padding: "10px 0", borderRadius: 12, background: "var(--bg)", border: "1.5px solid #e5e7eb", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "#1a1a1a", cursor: "pointer" }}
-                  >
-                    {label}
-                  </button>
-                ))}
+            {/* Quick actions — only on/after meetup day for SCHEDULED; always for DONOR_READY */}
+            {(status === "DONOR_READY" || (status === "SCHEDULED" && isOnOrAfterMeetupDay)) && (
+              <div style={{ marginBottom: 8 }}>
+                <button
+                  onClick={() => setActionBarOpen((v) => !v)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    width: "100%", padding: "9px 12px", borderRadius: 12,
+                    background: "var(--bg)", border: "1.5px solid #e5e7eb",
+                    fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif",
+                    color: "#555", cursor: "pointer", marginBottom: actionBarOpen ? 8 : 0,
+                  }}
+                >
+                  Quick updates
+                  <ChevronDown
+                    size={15}
+                    color="#9ca3af"
+                    style={{ transition: "transform 0.2s", transform: actionBarOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+                {actionBarOpen && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {[
+                      { key: "ON_MY_WAY",    label: "On my way" },
+                      { key: "RUNNING_LATE", label: "Running late" },
+                      { key: "CANT_MAKE_IT", label: "Can't make it" },
+                      { key: "IM_HERE",      label: "I'm here" },
+                    ].map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => { sendQuick(key); setActionBarOpen(false); }}
+                        style={{ padding: "10px 0", borderRadius: 12, background: "var(--bg)", border: "1.5px solid #e5e7eb", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "#1a1a1a", cursor: "pointer" }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
