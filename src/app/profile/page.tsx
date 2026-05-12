@@ -628,7 +628,7 @@ export default function ProfilePage() {
 
             {/* Your support journey */}
             <div
-              onClick={() => router.push("/profile/requests")}
+              onClick={() => router.push("/journey")}
               style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}
             >
               <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
