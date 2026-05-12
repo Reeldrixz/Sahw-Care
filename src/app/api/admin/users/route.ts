@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true, name: true, email: true, phone: true,
         role: true, status: true, isPremium: true,
-        trustRating: true, trustScore: true, verificationLevel: true,
+        trustScore: true, verificationLevel: true,
         phoneVerified: true, emailVerified: true, docStatus: true,
         urgentOverridesUsed: true, createdAt: true,
         activeRequestLockedUntil: true,

@@ -30,6 +30,18 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser().catch(() => null);
 
   if (currentUser) {
+    // Trust gate: score >= 25 required to apply for bundles
+    const applicant = await prisma.user.findUnique({
+      where: { id: currentUser.userId },
+      select: { trustScore: true },
+    });
+    if ((applicant?.trustScore ?? 0) < 25) {
+      return NextResponse.json({
+        error: "Complete your profile verification to apply for bundles.",
+        code: "TRUST_SCORE_TOO_LOW",
+      }, { status: 403 });
+    }
+
     // 9-bundle lifetime cap
     const lifetimeCount = await prisma.bundleApplication.count({
       where: { userId: currentUser.userId, status: { in: ["APPROVED", "DELIVERED"] } },

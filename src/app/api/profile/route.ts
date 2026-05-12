@@ -33,7 +33,6 @@ export async function PATCH(req: NextRequest) {
       avatar: true,
       location: true,
       isPremium: true,
-      trustRating: true,
     },
   });
 

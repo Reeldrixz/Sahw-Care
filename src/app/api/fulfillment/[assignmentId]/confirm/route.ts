@@ -85,10 +85,9 @@ export async function POST(
     // Record cooldown for mom
     await recordFulfilment(momId, category);
 
-    // Award trust for both parties + impact points for donor
+    // Award trust to donor + impact points; mom's award removed (event no longer scored)
     await Promise.all([
-      awardTrust(momId, "REGISTER_ITEM_FULFILLED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register item confirmed received" }),
-      awardTrust(assignment.donorId, "DONATION_FULFILLED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register donation fulfilled" }),
+      awardTrust(assignment.donorId, "SUPPORT_RECEIVED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register donation fulfilled" }),
       awardImpactPoints(assignment.donorId, "REGISTER_ITEM_DELIVERED", assignmentId),
     ]);
   }

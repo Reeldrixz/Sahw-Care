@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
       prisma.item.findMany({
         where,
         include: {
-          donor: { select: { id: true, name: true, avatar: true, trustRating: true, countryCode: true, verificationLevel: true } },
+          donor: { select: { id: true, name: true, avatar: true, countryCode: true, verificationLevel: true } },
           _count: { select: { requests: true } },
         },
         orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
@@ -149,7 +149,6 @@ export async function GET(req: NextRequest) {
         id:                item.donor.id,
         name:              item.donor.name,
         avatar:            item.donor.avatar,
-        trustRating:       item.donor.trustRating,
         countryFlag:       item.donor.countryCode ? countryCodeToFlag(item.donor.countryCode) : null,
         verificationLevel: item.donor.verificationLevel,
       },
@@ -166,7 +165,7 @@ export async function GET(req: NextRequest) {
       include: {
         donor: {
           select: {
-            id: true, name: true, avatar: true, trustRating: true,
+            id: true, name: true, avatar: true,
             countryCode: true, verificationLevel: true,
             _count: { select: { items: { where: { status: "FULFILLED" } } } },
           },
@@ -193,7 +192,6 @@ export async function GET(req: NextRequest) {
       id:                item.donor.id,
       name:              item.donor.name,
       avatar:            item.donor.avatar,
-      trustRating:       item.donor.trustRating,
       countryFlag:       item.donor.countryCode ? countryCodeToFlag(item.donor.countryCode) : null,
       verificationLevel: item.donor.verificationLevel,
     },

@@ -20,10 +20,6 @@ export async function POST(req: NextRequest) {
   const candidate = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, trustScore: true } });
   if (!candidate) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  if (action === "assign" && candidate.trustScore < 80) {
-    return NextResponse.json({ error: "User must have a trust score of 80 or above to become a Circle Leader" }, { status: 400 });
-  }
-
   const membership = await prisma.circleMember.findUnique({
     where: { userId_circleId: { userId, circleId } },
   });

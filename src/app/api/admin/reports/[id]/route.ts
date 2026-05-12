@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { recalculateTrustScore, syncTrustRating } from "@/lib/trust";
+import { recalculateTrustScore } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         data: { status: statusMap[userAction] as "ACTIVE" | "FLAGGED" | "SUSPENDED" },
       });
     }
-    // Recalculate trust after user action
-    const newScore = await recalculateTrustScore(report.targetUserId);
-    await syncTrustRating(report.targetUserId, newScore);
+    await recalculateTrustScore(report.targetUserId);
   }
 
   return NextResponse.json({ ok: true });

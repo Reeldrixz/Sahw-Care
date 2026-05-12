@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { checkPhoneVerification, isOtpExpired } from "@/lib/otp";
-import { awardTrust, checkFullVerificationBonus } from "@/lib/trust";
+import { awardTrust } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +87,6 @@ export async function POST(req: NextRequest) {
 
   const eventType = type === "PHONE" ? "PHONE_VERIFIED" : "EMAIL_VERIFIED";
   const newScore = await awardTrust(auth.userId, eventType) ?? 0;
-  await checkFullVerificationBonus(auth.userId);
 
   // Log verification event
   logAbuseEvent(auth.userId, "VERIFICATION_SUBMITTED", newScore, { type, verificationLevel }, req).catch(() => {});

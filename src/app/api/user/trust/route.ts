@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const user = await prisma.user.findUnique({
     where:  { id: auth.userId },
     select: {
-      trustScore: true, trustFrozen: true, trustFrozenUntil: true,
+      trustScore: true,
       impactScore: true, donorLevel: true,
       bundleRestrictedUntil: true,
       streakCurrentDays: true, streakWeeksCompleted: true,
@@ -38,8 +38,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     trustScore:        user.trustScore,
-    trustFrozen:       user.trustFrozen,
-    trustFrozenUntil:  user.trustFrozenUntil,
     impactScore:       user.impactScore,
     donorLevel:        user.donorLevel,
     rbwDaysLeft,

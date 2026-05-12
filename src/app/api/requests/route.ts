@@ -69,12 +69,12 @@ export async function POST(req: NextRequest) {
     }, { status: 403 });
   }
 
-  // Trust gate: score must be >= 60 to request items
-  if ((requester.trustScore ?? 0) < 60) {
+  // Trust gate: score must be >= 25 to request items
+  if ((requester.trustScore ?? 0) < 25) {
     return NextResponse.json({
-      error: `You need a trust score of 60 to request items. Your current score is ${requester.trustScore ?? 0}. Keep engaging to unlock this.`,
+      error: "Complete your profile verification to request items.",
       code: "TRUST_SCORE_TOO_LOW",
-      required: 60,
+      required: 25,
       current: requester.trustScore ?? 0,
     }, { status: 403 });
   }

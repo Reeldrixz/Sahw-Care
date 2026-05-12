@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { recalculateTrustScore, syncTrustRating, checkFullVerificationBonus } from "@/lib/trust";
+import { recalculateTrustScore, awardTrust } from "@/lib/trust";
 
 export const dynamic = "force-dynamic";
 
@@ -30,43 +30,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       });
 
-      // Step 2: award trust bonuses idempotently
-      const alreadyLogged = await prisma.trustScoreLog.findMany({
-        where: { userId: id, eventType: { in: ["PHONE_VERIFIED", "EMAIL_VERIFIED", "DOC_VERIFIED"] } },
-        select: { eventType: true },
-      });
-      const logged = new Set(alreadyLogged.map((l) => l.eventType));
-
-      const bonuses: { eventType: string; points: number }[] = [
-        { eventType: "PHONE_VERIFIED", points: 10 },
-        { eventType: "EMAIL_VERIFIED", points: 10 },
-        { eventType: "DOC_VERIFIED",   points: 15 },
-      ];
-
-      for (const { eventType, points } of bonuses) {
-        if (logged.has(eventType)) continue;
-        const current = await prisma.user.findUnique({ where: { id }, select: { trustScore: true } });
-        const newScore = Math.min(100, (current?.trustScore ?? 0) + points);
-        await prisma.$transaction([
-          prisma.trustScoreLog.create({ data: { userId: id, eventType, pointsDelta: points, newScore } }),
-          prisma.user.update({ where: { id }, data: { trustScore: newScore } }),
-        ]);
-      }
-
-      // Step 3: ensure trust score is at least 60 (discover threshold)
-      await checkFullVerificationBonus(id);
-      const afterBonuses = await prisma.user.findUnique({ where: { id }, select: { trustScore: true } });
-      if ((afterBonuses?.trustScore ?? 0) < 60) {
-        const floor = 60;
-        const delta = floor - (afterBonuses?.trustScore ?? 0);
-        await prisma.$transaction([
-          prisma.trustScoreLog.create({ data: { userId: id, eventType: "MANUAL_VERIFY_FLOOR", pointsDelta: delta, newScore: floor } }),
-          prisma.user.update({ where: { id }, data: { trustScore: floor } }),
-        ]);
+      // Step 2: award verification trust events idempotently via new engine
+      for (const eventType of ["EMAIL_VERIFIED", "PHONE_VERIFIED", "DOC_VERIFIED"]) {
+        await awardTrust(id, eventType, { reason: "manual admin verification" });
       }
 
       const finalScore = await recalculateTrustScore(id);
-      await syncTrustRating(id, finalScore);
 
       const updated = await prisma.user.findUnique({
         where: { id },
@@ -93,8 +62,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     });
 
     const newScore = await recalculateTrustScore(id);
-    await syncTrustRating(id, newScore);
-
     return NextResponse.json({ user: { ...updated, trustScore: newScore } });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

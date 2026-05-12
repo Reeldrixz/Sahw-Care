@@ -17,7 +17,6 @@ async function main() {
         password: await bcrypt.hash("password123", 12),
         role: "DONOR",
         location: "Ikeja, Lagos",
-        trustRating: 4.8,
         status: "ACTIVE",
       },
     }),
@@ -30,7 +29,6 @@ async function main() {
         password: await bcrypt.hash("password123", 12),
         role: "DONOR",
         location: "Lekki, Lagos",
-        trustRating: 4.6,
         status: "ACTIVE",
       },
     }),
@@ -43,7 +41,6 @@ async function main() {
         password: await bcrypt.hash("password123", 12),
         role: "DONOR",
         location: "Surulere, Lagos",
-        trustRating: 4.9,
         status: "ACTIVE",
       },
     }),
@@ -56,7 +53,6 @@ async function main() {
         password: await bcrypt.hash("password123", 12),
         role: "DONOR",
         location: "Victoria Island, Lagos",
-        trustRating: 4.4,
         status: "ACTIVE",
       },
     }),
@@ -69,7 +65,6 @@ async function main() {
         password: await bcrypt.hash("password123", 12),
         role: "DONOR",
         location: "Yaba, Lagos",
-        trustRating: 4.7,
         status: "ACTIVE",
       },
     }),
@@ -82,7 +77,6 @@ async function main() {
         password: await bcrypt.hash("password123", 12),
         role: "DONOR",
         location: "Gbagada, Lagos",
-        trustRating: 4.3,
         status: "ACTIVE",
       },
     }),
@@ -225,12 +219,6 @@ async function main() {
             quantityRating: quantity,
             comment,
           },
-        });
-        // Update donor trust rating
-        const avg = (pickup + quality + quantity) / 3;
-        await prisma.user.update({
-          where: { id: donor.id },
-          data: { trustRating: avg },
         });
       }
     }

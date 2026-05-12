@@ -71,7 +71,6 @@ export async function POST(req: NextRequest) {
         avatar:            user.avatar,
         location:          user.location,
         isPremium:         user.isPremium,
-        trustRating:       user.trustRating,
         trustScore:        user.trustScore,
         verificationLevel: user.verificationLevel,
         phoneVerified:     user.phoneVerified,

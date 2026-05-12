@@ -23,11 +23,13 @@ model User {
   locationSetByGPS Boolean @default(false)
   isPremium        Boolean @default(false)
 
-  // legacy 0-5 display rating (kept for donor card UI)
-  trustRating Float @default(5.0)
-
   // anti-abuse system
   trustScore             Int       @default(0)
+  verificationPoints     Int       @default(0)
+  engagementPoints       Int       @default(0)
+  streakPoints           Int       @default(0)
+  agePoints              Int       @default(0)
+  fulfilmentPoints       Int       @default(0)
   verificationLevel      Int       @default(0)
   phoneVerified          Boolean   @default(false)
   emailVerified          Boolean   @default(false)
@@ -70,9 +72,6 @@ model User {
   // ── care bundles ─────────────────────────────────────────────────────────
   lastBundleCompletedAt DateTime?
   activeBundleId        String?
-
-  trustFrozen      Boolean   @default(false)
-  trustFrozenUntil DateTime?
 
   // ── extended trust / impact ──────────────────────────────────────────────
   impactScore              Int       @default(0)

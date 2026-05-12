@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { checkCircleContent } from "@/lib/circleFilter";
 import { uploadImage } from "@/lib/cloudinary";
 import { countryCodeToFlag } from "@/lib/stage";
-import { awardTrust, checkAndFreezeIfAbuse, validateCirclePost, validateIntroPost } from "@/lib/trust";
+import { awardTrust, validateCirclePost, validateIntroPost } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
@@ -262,11 +262,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         await prisma.user.update({ where: { id: auth.userId }, data: { hasPostedIntro: true } });
       }
       const u = await prisma.user.findUnique({ where: { id: auth.userId }, select: { trustScore: true } });
-      await awardTrust(auth.userId, post.isIntroPost ? "INTRO_POST" : "CIRCLE_POST", {
+      await awardTrust(auth.userId, post.isIntroPost ? "HELPFUL_POST" : "CIRCLE_POST", {
         referenceId: post.id, referenceType: "CirclePost",
         reason: post.isIntroPost ? "wrote a circle intro post" : "posted in circle",
       });
-      await checkAndFreezeIfAbuse(auth.userId);
       logAbuseEvent(auth.userId, post.isIntroPost ? "INTRO_POST_CREATED" : "CIRCLE_POST_CREATED", u?.trustScore ?? 0, { postId: post.id, circleId, category: post.category }, req).catch(() => {});
     } catch {}
   })();

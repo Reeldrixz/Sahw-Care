@@ -39,10 +39,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // update donor trust rating
-  const allReviews = await prisma.review.findMany({ where: { donorId: request.item.donorId } });
-  const avg = allReviews.reduce((s, r) => s + (r.pickupRating + r.qualityRating + r.quantityRating) / 3, 0) / allReviews.length;
-  await prisma.user.update({ where: { id: request.item.donorId }, data: { trustRating: Math.round(avg * 10) / 10 } });
-
   return NextResponse.json({ review }, { status: 201 });
 }

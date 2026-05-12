@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       data: { avatar: url },
       select: {
         id: true, name: true, email: true, phone: true, role: true,
-        avatar: true, location: true, isPremium: true, trustRating: true,
+        avatar: true, location: true, isPremium: true,
         trustScore: true, verificationLevel: true, phoneVerified: true,
         emailVerified: true, urgentOverridesUsed: true, urgentOverridesResetAt: true,
         status: true, createdAt: true,

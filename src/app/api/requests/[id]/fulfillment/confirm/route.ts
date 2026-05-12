@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { awardTrust, deductTrustPoints, awardImpactPoints } from "@/lib/trust";
+import { awardTrust, awardImpactPoints } from "@/lib/trust";
 import { createAbuseFlag, logAbuseEvent } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
@@ -82,8 +82,8 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     // Trust + impact awards (fire-and-forget)
     Promise.all([
-      awardTrust(donorId,     "REQUEST_FULFILLMENT_VERIFIED",      { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "recipient confirmed receipt" }),
-      awardTrust(recipientId, "REQUEST_RECEIPT_CONFIRMED",         { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "confirmed item received" }),
+      awardTrust(donorId,     "DELIVERY_CONFIRMED", { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "recipient confirmed receipt" }),
+      awardTrust(recipientId, "DELIVERY_CONFIRMED", { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "confirmed item received" }),
       awardImpactPoints(donorId, "FULFILLED_REQUEST", requestId),
     ]).catch(() => {});
 
@@ -117,12 +117,6 @@ export async function POST(req: NextRequest, { params }: Params) {
       },
     }),
   ]);
-
-  // Deduct trust from donor (fire-and-forget)
-  deductTrustPoints(donorId, "FULFILLMENT_DISPUTED", 10, {
-    referenceId: fulfillId, referenceType: "RequestFulfillment",
-    reason: "fulfillment disputed by recipient",
-  }).catch(() => {});
 
   // Log abuse event + check for high-dispute pattern (fire-and-forget)
   Promise.all([

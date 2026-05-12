@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       data:  { onboardingComplete: true, journeyType, ...(safeGender && { gender: safeGender }), subTags: subTags ?? [] },
       select: {
         id: true, name: true, email: true, phone: true, role: true,
-        avatar: true, location: true, isPremium: true, trustRating: true,
+        avatar: true, location: true, isPremium: true,
         trustScore: true, verificationLevel: true, phoneVerified: true,
         emailVerified: true, urgentOverridesUsed: true, urgentOverridesResetAt: true,
         docStatus: true, documentUrl: true, documentType: true, documentNote: true,
@@ -138,7 +138,6 @@ export async function POST(req: NextRequest) {
       avatar: true,
       location: true,
       isPremium: true,
-      trustRating: true,
       trustScore: true,
       verificationLevel: true,
       phoneVerified: true,

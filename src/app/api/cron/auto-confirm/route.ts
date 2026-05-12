@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { awardTrust } from "@/lib/trust";
+
 import { createAbuseFlag } from "@/lib/abuse";
 
 export const dynamic = "force-dynamic";
@@ -98,12 +98,6 @@ export async function POST(req: NextRequest) {
         data:  { status: "FULFILLED" },
       }),
     ]);
-
-    // Award donor +5 trust (fire-and-forget per item — ok in cron context)
-    await awardTrust(donorId, "REQUEST_FULFILLMENT_AUTO_CONFIRMED", {
-      referenceId: fl.id, referenceType: "RequestFulfillment",
-      reason: "auto-confirmed after 7-day silence",
-    }).catch(() => {});
 
     autoConfirmedCount++;
   }

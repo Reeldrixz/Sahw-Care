@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Award trust to post author (not to liker, not if liking own post)
   if (post.userId !== auth.userId) {
-    awardTrust(post.userId, "CIRCLE_REACTION_RECEIVED", {
+    awardTrust(post.userId, "POSITIVE_INTERACTION", {
       referenceId: postId, referenceType: "CirclePost",
       reason: "received a like on a circle post",
     }).catch(() => {});

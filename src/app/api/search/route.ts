@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         donor: {
           select: {
             id: true, name: true, avatar: true,
-            trustRating: true, verificationLevel: true, countryFlag: true,
+            verificationLevel: true, countryFlag: true,
           },
         },
       },
