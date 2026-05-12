@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
         role: true, status: true, isPremium: true,
         trustScore: true, verificationLevel: true,
         phoneVerified: true, emailVerified: true, docStatus: true,
-        urgentOverridesUsed: true, createdAt: true,
+        createdAt: true,
         activeRequestLockedUntil: true,
-        _count: { select: { items: true, requests: true, urgentOverrides: true } },
+        _count: { select: { items: true, requests: true } },
       },
       orderBy: { createdAt: "desc" },
     });

@@ -13,9 +13,9 @@ interface AdminUser {
   role: string; status: string; isPremium: boolean;
   trustRating: number; trustScore: number;
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
-  docStatus: string | null; urgentOverridesUsed: number; createdAt: string;
+  docStatus: string | null; createdAt: string;
   activeRequestLockedUntil: string | null;
-  _count: { items: number; requests: number; urgentOverrides: number };
+  _count: { items: number; requests: number };
 }
 
 interface AdminItem {
@@ -36,8 +36,7 @@ interface TrustUser {
   id: string; name: string; email: string | null; phone: string | null;
   trustScore: number; trustRating: number;
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
-  status: string; urgentOverridesUsed: number;
-  _count: { categoryCooldowns: number; urgentOverrides: number };
+  status: string;
 }
 
 interface Stats {
@@ -760,7 +759,6 @@ export default function AdminPage() {
                               <div style={{ color: "var(--mid)" }}>L{u.verificationLevel}</div>
                             </div>
                           </td>
-                          <td style={{ fontSize: 12, color: "var(--mid)" }}>{u.urgentOverridesUsed} this month</td>
                           <td><span className={`status-pill status-${u.status}`}>{u.status}</span></td>
                           <td>
                             <button className="action-btn action-approve" onClick={() => recalcTrust(u.id)}>↻ Recalc</button>

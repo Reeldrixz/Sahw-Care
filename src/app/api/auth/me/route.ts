@@ -28,8 +28,6 @@ export async function GET(req: NextRequest) {
       verificationLevel: true,
       phoneVerified: true,
       emailVerified: true,
-      urgentOverridesUsed: true,
-      urgentOverridesResetAt: true,
       docStatus: true,
       documentUrl: true,
       documentType: true,

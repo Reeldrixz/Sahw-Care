@@ -33,8 +33,6 @@ model User {
   verificationLevel      Int       @default(0)
   phoneVerified          Boolean   @default(false)
   emailVerified          Boolean   @default(false)
-  urgentOverridesUsed    Int       @default(0)
-  urgentOverridesResetAt DateTime?
 
   // layer 2 motherhood verification
   docStatus    DocStatus @default(UNVERIFIED)
@@ -114,8 +112,6 @@ model User {
 
   otpVerifications    OtpVerification[]
   passwordResetTokens PasswordResetToken[]
-  categoryCooldowns   CategoryCooldown[]
-  urgentOverrides     UrgentOverride[]
   deviceLogs          DeviceLog[]
 
   circleMembers CircleMember[]
@@ -469,18 +465,6 @@ model OtpVerification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model CategoryCooldown {
-  id              String   @id @default(cuid())
-  userId          String
-  category        String
-  lastFulfilledAt DateTime
-  nextEligibleAt  DateTime
-  updatedAt       DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, category])
-}
 
 model FulfillmentLog {
   id               String    @id @default(cuid())
@@ -496,19 +480,6 @@ model FulfillmentLog {
   assignment ItemAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
 }
 
-model UrgentOverride {
-  id        String   @id @default(cuid())
-  userId    String
-  category  String
-  reason    String
-  month     Int
-  year      Int
-  reviewed  Boolean  @default(false)
-  approved  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
 model DeviceLog {
   id        String   @id @default(cuid())

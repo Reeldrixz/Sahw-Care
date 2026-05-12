@@ -18,8 +18,7 @@ export async function GET(req: NextRequest) {
       id: true, name: true, email: true, phone: true,
       trustScore: true,
       verificationLevel: true, phoneVerified: true, emailVerified: true,
-      status: true, urgentOverridesUsed: true,
-      _count: { select: { categoryCooldowns: true, urgentOverrides: true } },
+      status: true,
     },
     orderBy: { trustScore: "asc" }, // lowest trust first (most at-risk)
     take: 100,

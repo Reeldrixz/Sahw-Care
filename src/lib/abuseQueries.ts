@@ -40,13 +40,6 @@ export async function getEngagementRatio(userId: string): Promise<{
   return { posts, comments, requests, ratio };
 }
 
-// Urgent override count in the last 30 days
-export async function getRecentOverrideCount(userId: string): Promise<number> {
-  return prisma.urgentOverride.count({
-    where: { userId, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } },
-  });
-}
-
 // How many days from signup to reach a trust score threshold (null if not reached)
 export async function getDaysToReachThreshold(userId: string, threshold: number): Promise<number | null> {
   const [user, firstCrossing] = await Promise.all([

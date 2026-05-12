@@ -73,8 +73,6 @@ export async function DELETE(req: NextRequest) {
 
   // Anti-abuse / session data
   await prisma.otpVerification.deleteMany({ where:  { userId: user.id } });
-  await prisma.categoryCooldown.deleteMany({ where: { userId: user.id } });
-  await prisma.urgentOverride.deleteMany({ where:   { userId: user.id } });
 
   // Reviews — keep for donor trust history; reviewer name anonymized via user wipe
 

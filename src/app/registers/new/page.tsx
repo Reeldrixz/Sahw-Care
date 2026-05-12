@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,19 +25,6 @@ interface DraftItem {
   quantity: string;
   note: string;
   sizeNote: string;
-}
-
-interface CooldownInfo {
-  category: string;
-  inCooldown: boolean;
-  daysLeft: number;
-  nextEligibleAt: string | null;
-}
-
-interface OverrideStatus {
-  overridesUsed: number;
-  overrideLimit: number;
-  overridesRemaining: number;
 }
 
 interface SavedAddress {
@@ -66,10 +53,6 @@ export default function NewRegisterPage() {
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [catalogSearch, setCatalogSearch] = useState<Record<number, string>>({});
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [cooldowns, setCooldowns] = useState<CooldownInfo[]>([]);
-  const [overrideStatus, setOverrideStatus] = useState<OverrideStatus | null>(null);
-  const [overridingCategories, setOverridingCategories] = useState<Set<string>>(new Set());
-  const [overrideReasons, setOverrideReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showDocUpload, setShowDocUpload] = useState(false);
@@ -77,36 +60,14 @@ export default function NewRegisterPage() {
   useEffect(() => { if (!user) router.push("/auth?mode=signup"); }, [user, router]);
   useEffect(() => { if (user?.location && !city) setCity(user.location.split(",")[0].trim()); }, [user, city]);
 
-  const fetchCooldowns = useCallback(async () => {
-    if (!user) return;
-    const [cdRes, ovRes] = await Promise.all([
-      fetch("/api/cooldown"),
-      fetch("/api/urgent-override"),
-    ]);
-    if (cdRes.ok) { const d = await cdRes.json(); setCooldowns(d.cooldowns ?? []); }
-    if (ovRes.ok) { const d = await ovRes.json(); setOverrideStatus(d); }
-  }, [user]);
-
-  useEffect(() => { fetchCooldowns(); }, [fetchCooldowns]);
-
   useEffect(() => {
     fetch("/api/catalog").then((r) => r.json()).then((d) => setCatalog(d.items ?? [])).catch(() => {});
   }, []);
-
-  const getCooldown = (cat: string) => cooldowns.find((c) => c.category === cat);
 
   const addItem = () => setItems((p) => [...p, { catalogItemId: "", customName: "", isCustom: false, quantity: "1", note: "", sizeNote: "" }]);
   const removeItem = (i: number) => setItems((p) => p.filter((_, idx) => idx !== i));
   const updateItem = <K extends keyof DraftItem>(i: number, field: K, val: DraftItem[K]) =>
     setItems((p) => p.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
-
-  const toggleOverride = (cat: string) => {
-    setOverridingCategories((prev) => {
-      const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
-      return next;
-    });
-  };
 
   const toggleCategory = (cat: string) => {
     setExpandedCategories((prev) => {
@@ -137,36 +98,8 @@ export default function NewRegisterPage() {
     const validItems = items.filter((i) => i.catalogItemId || (i.isCustom && i.customName.trim()));
     if (validItems.length === 0) { setToast("Add at least one item from the catalog"); return; }
 
-    const blockedItems = validItems.filter((item) => {
-      const cat = item.catalogItemId
-        ? (catalog.find((c) => c.id === item.catalogItemId)?.category ?? "Other")
-        : "Other";
-      const cd = getCooldown(cat);
-      return cd?.inCooldown && !overridingCategories.has(cat);
-    });
-    if (blockedItems.length > 0) {
-      setToast("Some items are in cooldown. Use urgent override or remove them.");
-      return;
-    }
-
-    for (const cat of overridingCategories) {
-      if (!overrideReasons[cat]?.trim()) {
-        setToast(`Please provide a reason for the urgent override for "${cat}"`);
-        return;
-      }
-    }
-
     setLoading(true);
     try {
-      for (const cat of overridingCategories) {
-        const res = await fetch("/api/urgent-override", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ category: cat, reason: overrideReasons[cat] }),
-        });
-        if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Override failed"); }
-      }
-
       const body: Record<string, unknown> = { title, city, dueDate, addressMode };
       if (addressMode === "SAVED_PER_REGISTER") body.savedAddress = savedAddress;
 
@@ -297,12 +230,6 @@ export default function NewRegisterPage() {
         </div>
 
         <div style={{ padding: "20px 16px 120px" }}>
-          {overrideStatus && (
-            <div style={{ background: overrideStatus.overridesRemaining > 0 ? "var(--yellow-light)" : "var(--terra-light)", borderRadius: 12, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: overrideStatus.overridesRemaining > 0 ? "#b8860b" : "var(--terra)", fontWeight: 600 }}>
-              ⚡ Urgent overrides this month: {overrideStatus.overridesUsed}/{overrideStatus.overrideLimit} used · {overrideStatus.overridesRemaining} remaining
-            </div>
-          )}
-
           <div style={{ background: "var(--green-light)", borderRadius: 12, padding: "12px 14px", marginBottom: 20, fontSize: 13, color: "var(--green)", fontWeight: 600 }}>
             💛 Only your first name and city will be shown publicly.
           </div>
@@ -399,11 +326,7 @@ export default function NewRegisterPage() {
 
             {items.map((item, i) => {
               const selectedCatalogEntry = catalog.find((c) => c.id === item.catalogItemId);
-              const cat          = selectedCatalogEntry?.category ?? "Other";
-              const cd           = getCooldown(cat);
-              const isInCooldown = cd?.inCooldown && !item.isCustom;
-              const usingOverride = overridingCategories.has(cat);
-              const search       = catalogSearch[i] ?? "";
+              const search = catalogSearch[i] ?? "";
 
               const filteredByCategory = search
                 ? catalog.filter((c) =>
@@ -417,7 +340,7 @@ export default function NewRegisterPage() {
                 : catalogByCategory;
 
               return (
-                <div key={i} style={{ background: "var(--white)", borderRadius: 12, padding: "14px", marginBottom: 10, boxShadow: "var(--shadow)", border: isInCooldown && !usingOverride ? "1.5px solid var(--terra)" : "1.5px solid transparent" }}>
+                <div key={i} style={{ background: "var(--white)", borderRadius: 12, padding: "14px", marginBottom: 10, boxShadow: "var(--shadow)", border: "1.5px solid transparent" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "var(--mid)" }}>Item {i + 1}</span>
                     {items.length > 1 && <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", color: "var(--terra)", fontSize: 18, cursor: "pointer", padding: 0 }}>×</button>}
@@ -535,40 +458,6 @@ export default function NewRegisterPage() {
                         ← Back to catalog
                       </button>
                     </>
-                  )}
-
-                  {/* Cooldown warning */}
-                  {isInCooldown && (
-                    <div style={{ background: usingOverride ? "var(--yellow-light)" : "var(--terra-light)", borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 12 }}>
-                      {usingOverride ? (
-                        <>
-                          <div style={{ fontWeight: 700, color: "#b8860b", marginBottom: 4 }}>⚡ Using urgent override ({overrideStatus?.overridesRemaining ?? 0} remaining)</div>
-                          <input className="form-input" placeholder="Reason (e.g. ran out early)"
-                            value={overrideReasons[cat] ?? ""}
-                            onChange={(e) => setOverrideReasons((p) => ({ ...p, [cat]: e.target.value }))}
-                            style={{ fontSize: 12, padding: "6px 10px" }} />
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ fontWeight: 700, color: "var(--terra)", marginBottom: 4 }}>⏳ Cooldown: {cd?.daysLeft} days left</div>
-                          <div style={{ color: "var(--terra)", marginBottom: 6 }}>
-                            Next: {cd?.nextEligibleAt ? new Date(cd.nextEligibleAt).toLocaleDateString([], { month: "short", day: "numeric" }) : "—"}
-                          </div>
-                          {(overrideStatus?.overridesRemaining ?? 0) > 0 ? (
-                            <button onClick={() => toggleOverride(cat)} style={{ fontSize: 12, fontWeight: 700, background: "var(--terra)", color: "white", border: "none", padding: "4px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
-                              Use urgent override
-                            </button>
-                          ) : (
-                            <span style={{ color: "var(--terra)", fontSize: 11 }}>No overrides remaining this month.</span>
-                          )}
-                        </>
-                      )}
-                      {usingOverride && (
-                        <button onClick={() => toggleOverride(cat)} style={{ marginTop: 6, fontSize: 11, background: "none", border: "none", color: "#b8860b", cursor: "pointer", fontFamily: "Nunito, sans-serif", textDecoration: "underline", display: "block" }}>
-                          Cancel override
-                        </button>
-                      )}
-                    </div>
                   )}
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

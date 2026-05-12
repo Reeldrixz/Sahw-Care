@@ -15,8 +15,6 @@ export interface User {
   verificationLevel: number;
   phoneVerified: boolean;
   emailVerified: boolean;
-  urgentOverridesUsed: number;
-  urgentOverridesResetAt: string | null;
   docStatus: "UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED";
   documentUrl: string | null;
   documentType: string | null;

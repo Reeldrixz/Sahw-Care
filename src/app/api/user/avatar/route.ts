@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         id: true, name: true, email: true, phone: true, role: true,
         avatar: true, location: true, isPremium: true,
         trustScore: true, verificationLevel: true, phoneVerified: true,
-        emailVerified: true, urgentOverridesUsed: true, urgentOverridesResetAt: true,
+        emailVerified: true,
         status: true, createdAt: true,
       },
     });

@@ -378,8 +378,7 @@ export async function checkRBW(userId: string): Promise<Date | null> {
     return user.bundleRestrictedUntil;
   }
 
-  const [urgentOverrides, recentDeductions, pendingReports] = await Promise.all([
-    prisma.urgentOverride.count({ where: { userId, createdAt: { gte: thirtyDaysAgo } } }),
+  const [recentDeductions, pendingReports] = await Promise.all([
     prisma.trustScoreLog.aggregate({
       where: { userId, pointsDelta: { lt: 0 }, createdAt: { gte: fourteenDaysAgo } },
       _sum:  { pointsDelta: true },
@@ -388,7 +387,7 @@ export async function checkRBW(userId: string): Promise<Date | null> {
   ]);
 
   const deductionSum = recentDeductions._sum.pointsDelta ?? 0;
-  const isRisky = urgentOverrides >= 2 || deductionSum <= -10 || pendingReports > 0;
+  const isRisky = deductionSum <= -10 || pendingReports > 0;
   if (!isRisky) return null;
 
   const restrictedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -511,23 +510,3 @@ export function getTrustLevel(score: number): "high" | "normal" | "low" {
   return "low";
 }
 
-export function urgentOverrideLimit(score: number): number {
-  return score >= TRUST_THRESHOLDS.HIGH ? 2 : 1;
-}
-
-export async function resetOverridesIfNeeded(userId: string): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) return;
-  const now       = new Date();
-  const lastReset = user.urgentOverridesResetAt;
-  const isDifferentMonth =
-    !lastReset ||
-    lastReset.getMonth() !== now.getMonth() ||
-    lastReset.getFullYear() !== now.getFullYear();
-  if (isDifferentMonth) {
-    await prisma.user.update({
-      where: { id: userId },
-      data:  { urgentOverridesUsed: 0, urgentOverridesResetAt: now },
-    });
-  }
-}

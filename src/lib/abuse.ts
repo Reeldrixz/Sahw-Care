@@ -51,7 +51,7 @@ export async function createAbuseFlag(
 
 export async function runAbuseChecks(userId: string): Promise<void> {
   try {
-    const [user, reqs7d, reqs30d, urgentOverrides30d, allAbuseEvents, allRequests] = await Promise.all([
+    const [user, reqs7d, reqs30d, allAbuseEvents, allRequests] = await Promise.all([
       prisma.user.findUnique({
         where:  { id: userId },
         select: { id: true, createdAt: true, trustScore: true, bundleRestrictedUntil: true },
@@ -63,10 +63,6 @@ export async function runAbuseChecks(userId: string): Promise<void> {
       // Discover requests in last 30 days
       prisma.abuseEventLog.count({
         where: { userId, eventType: "DISCOVER_REQUEST_CREATED", timestamp: { gte: new Date(Date.now() - 30 * 86400000) } },
-      }),
-      // Urgent overrides in last 30 days
-      prisma.urgentOverride.count({
-        where: { userId, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } },
       }),
       // All event counts for engagement ratio
       prisma.abuseEventLog.groupBy({
@@ -125,17 +121,6 @@ export async function runAbuseChecks(userId: string): Promise<void> {
       await createAbuseFlag(userId, "HIGH_REQUEST_LOW_ENGAGEMENT", "MEDIUM", {
         totalRequests, totalPosts, totalComments, engagementTotal: engagement,
         ratio: engagement === 0 ? "∞" : (totalRequests / engagement).toFixed(2),
-      });
-    }
-
-    // ── REPEATED_URGENT_OVERRIDE ──────────────────────────────────────────────
-    if (urgentOverrides30d >= 3) {
-      await createAbuseFlag(userId, "REPEATED_URGENT_OVERRIDE", "HIGH", {
-        overridesIn30d: urgentOverrides30d, threshold: 3,
-      });
-    } else if (urgentOverrides30d >= 2) {
-      await createAbuseFlag(userId, "REPEATED_URGENT_OVERRIDE", "MEDIUM", {
-        overridesIn30d: urgentOverrides30d, threshold: 2,
       });
     }
 

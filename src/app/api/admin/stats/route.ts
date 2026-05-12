@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const [
       totalItems, activeItems, totalUsers, activeUsers,
       totalRequests, fulfilledRequests, pendingReports,
-      verifiedUsers, lowTrustUsers, pendingOverrides,
+      verifiedUsers, lowTrustUsers,
       totalRegisters, pendingDocuments, bundlesDelivered, bundlesPending,
     ] = await Promise.all([
       prisma.item.count(),
@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
       prisma.report.count({ where: { status: "PENDING" } }),
       prisma.user.count({ where: { verificationLevel: { gte: 1 } } }),
       prisma.user.count({ where: { trustScore: { lt: 40 } } }),
-      prisma.urgentOverride.count({ where: { reviewed: false } }),
       prisma.register.count(),
       prisma.user.count({ where: { docStatus: "PENDING" } }),
       prisma.bundleInstance.count({ where: { status: "COMPLETED" } }),
@@ -46,7 +45,7 @@ export async function GET(req: NextRequest) {
         totalItems, activeItems, totalUsers, activeUsers,
         totalRequests, fulfilledRequests, fulfilmentRate,
         pendingReports, verifiedUsers, lowTrustUsers,
-        pendingOverrides, totalRegisters, pendingDocuments,
+        totalRegisters, pendingDocuments,
         bundlesDelivered, bundlesPending,
       },
       recentActivity,
