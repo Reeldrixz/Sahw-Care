@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, MapPin, Calendar, ShieldCheck, Flag, CheckCircle,
@@ -204,6 +204,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   const [reportNotes, setReportNotes]       = useState("");
   const [noteText, setNoteText]             = useState("");
   const [noteError, setNoteError]           = useState("");
+  const [sendFailed, setSendFailed]         = useState("");
   const [selectedDate, setSelectedDate]     = useState<Date | null>(null);
   const [selectedBlock, setSelectedBlock]   = useState<string | null>(null);
 
@@ -212,6 +213,21 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
 
   // quick-action bar collapse state
   const [actionBarOpen, setActionBarOpen] = useState(false);
+
+  // messages scroll ref
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isNearBottom = () => {
+    const container = messagesEndRef.current?.parentElement;
+    if (!container) return true;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+  };
+
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
+  };
 
   const fetchCoord = useCallback(async () => {
     const res = await fetch(`/api/coordination/${requestId}`);
@@ -224,17 +240,20 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
 
   useEffect(() => { fetchCoord(); }, [fetchCoord]);
 
-  // Poll every 8s when tab is visible; pause when hidden
+  // Poll messages + status every 2s when tab is visible
   useEffect(() => {
-    const poll = () => {
-      if (document.visibilityState === "visible") {
-        fetch(`/api/coordination/${requestId}`)
-          .then(r => r.json())
-          .then(d => { if (d.coordination) setCoord(d.coordination); })
-          .catch(() => {});
-      }
+    const poll = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch(`/api/coordination/${requestId}/messages`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const near = isNearBottom();
+        setCoord((c) => c ? { ...c, messages: data.messages, status: data.status } : c);
+        if (near) scrollToBottom();
+      } catch {}
     };
-    const interval = setInterval(poll, 8000);
+    const interval = setInterval(poll, 2000);
     const onVisibility = () => { if (document.visibilityState === "visible") poll(); };
     document.addEventListener("visibilitychange", onVisibility);
     // Record visit for badge tracking
@@ -283,12 +302,25 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   };
 
   const sendQuick = async (messageType: string) => {
-    await fetch(`/api/coordination/${requestId}/message`, {
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: CoordMsg = {
+      id: tempId, messageType, content: null,
+      createdAt: new Date().toISOString(),
+      sender: { id: user?.id ?? "", name: user?.name ?? "" },
+    };
+    setCoord((c) => c ? { ...c, messages: [...c.messages, optimistic] } : c);
+    scrollToBottom();
+
+    const res = await fetch(`/api/coordination/${requestId}/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messageType }),
     });
-    fetchCoord();
+    if (res.ok) {
+      fetchCoord();
+    } else {
+      setCoord((c) => c ? { ...c, messages: c.messages.filter((m) => m.id !== tempId) } : c);
+    }
   };
 
   const sendNote = async () => {
@@ -301,15 +333,32 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
       setNoteError("Message too long (max 200 characters).");
       return;
     }
-    await fetch(`/api/coordination/${requestId}/message`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messageType: "CUSTOM", content: noteText.trim() }),
-    });
+    const content = noteText.trim();
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: CoordMsg = {
+      id: tempId, messageType: "CUSTOM", content,
+      createdAt: new Date().toISOString(),
+      sender: { id: user?.id ?? "", name: user?.name ?? "" },
+    };
+    setCoord((c) => c ? { ...c, messages: [...c.messages, optimistic] } : c);
     setNoteText("");
     setNoteError("");
     setShowNoteInput(false);
-    fetchCoord();
+    scrollToBottom();
+
+    const res = await fetch(`/api/coordination/${requestId}/message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageType: "CUSTOM", content }),
+    });
+    if (res.ok) {
+      fetchCoord();
+    } else {
+      setCoord((c) => c ? { ...c, messages: c.messages.filter((m) => m.id !== tempId) } : c);
+      setSendFailed("Message failed to send. Tap to retry.");
+      setNoteText(content);
+      setShowNoteInput(true);
+    }
   };
 
   if (loading) {
@@ -487,8 +536,9 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                 {coord.messages.map((msg) => {
                   const isMe = msg.sender.id === user.id;
                   const msgText = msg.messageType === "CUSTOM" ? msg.content : QUICK_MSG_LABELS[msg.messageType];
+                  const isOptimistic = msg.id.startsWith("temp-");
                   return (
-                    <div key={msg.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, flexDirection: isMe ? "row-reverse" : "row" }}>
+                    <div key={msg.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, flexDirection: isMe ? "row-reverse" : "row", opacity: isOptimistic ? 0.6 : 1 }}>
                       {coordAvatar(msg.sender.id, msg.sender.name, 28)}
                       <div style={{
                         maxWidth: "70%", background: isMe ? "#e8f5f1" : "white",
@@ -505,6 +555,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                     </div>
                   );
                 })}
+                <div ref={messagesEndRef} />
               </div>
             </div>
           )}
@@ -616,6 +667,21 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Send-failed toast */}
+            {sendFailed && (
+              <button
+                onClick={() => { setSendFailed(""); setShowNoteInput(true); }}
+                style={{
+                  width: "100%", padding: "9px 12px", borderRadius: 10, marginBottom: 8,
+                  background: "#fef2f2", border: "1px solid #fca5a5",
+                  color: "#c0392b", fontSize: 12, fontWeight: 700,
+                  fontFamily: "Nunito, sans-serif", cursor: "pointer", textAlign: "left",
+                }}
+              >
+                {sendFailed}
+              </button>
             )}
 
             {/* Persistent safety footer */}
