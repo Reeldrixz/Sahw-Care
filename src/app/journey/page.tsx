@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   ChevronLeft, ChevronRight, Calendar, ShieldCheck,
-  Lock, Heart, Package, Gift, MapPin, CheckCircle,
+  Heart, Package, Gift, MapPin, CheckCircle,
   Circle, ChevronDown, ChevronUp, Phone, ExternalLink,
-  Sparkles, BookOpen, Users,
+  Sparkles, BookOpen, Users, Bell, Settings,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────
@@ -799,12 +799,9 @@ export default function JourneyPage() {
             You&apos;re in control
           </div>
           {[
-            { label: "Manage delivery address",     href: "/profile" },
-            { label: "Profile visibility",           href: "/profile" },
-            { label: "Notification preferences",     href: "/profile/notifications" },
-            { label: "Delete uploaded documents",    href: "/profile" },
-            { label: "Trusted pickup contact",       href: "/profile" },
-          ].map(({ label, href }) => (
+            { label: "Notification preferences", href: "/profile/notifications", Icon: Bell },
+            { label: "Account settings",          href: "/profile",               Icon: Settings },
+          ].map(({ label, href, Icon }) => (
             <button
               key={label}
               onClick={() => router.push(href)}
@@ -813,7 +810,7 @@ export default function JourneyPage() {
                 padding: "13px 0", background: "none", border: "none",
                 borderBottom: "1px solid #f0f0f0", cursor: "pointer", textAlign: "left",
               }}>
-              <Lock size={16} color={GREEN} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+              <Icon size={16} color={GREEN} strokeWidth={1.75} style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
                 {label}
               </span>
