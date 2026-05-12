@@ -772,7 +772,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
             <div style={{ fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{otherName}</div>
             {!isDonor && (
               <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
-                {coord.request.requester.verificationLevel >= 1 ? "✓ Verified member" : "New member"} · Trust score {coord.request.requester.trustScore}
+                {coord.request.requester.verificationLevel >= 1 ? "✓ Verified member" : "New member"}
               </div>
             )}
           </div>
