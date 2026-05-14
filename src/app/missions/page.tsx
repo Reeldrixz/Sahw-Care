@@ -96,14 +96,14 @@ function MissionsContent() {
 
                   {/* Progress bar */}
                   <div style={{ background: "#e8e4de", borderRadius: 6, height: 6, marginBottom: 10, overflow: "hidden" }}>
-                    <div style={{ width: `${progress}%`, height: "100%", background: "#1a7a5e", borderRadius: 6, transition: "width 0.4s ease" }} />
+                    <div style={{ width: `${progress}%`, height: "100%", background: "#6d5acd", borderRadius: 6, transition: "width 0.4s ease" }} />
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
                       {m.totalMembers} donor{m.totalMembers !== 1 ? "s" : ""} active
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e", fontFamily: "Nunito, sans-serif" }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#6d5acd", fontFamily: "Nunito, sans-serif" }}>
                       Join mission →
                     </div>
                   </div>
