@@ -6,16 +6,18 @@ import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
 // ── Colour tokens ──────────────────────────────────────────────────────────────
-const MP  = "#6d5acd"; // mission purple
-const MPL = "#ede9ff"; // mission lavender
-const MPT = "#8b73e0"; // purple tint (lighter)
+const MP  = "#6d5acd";
+const MPL = "#ede9ff";
+const MPT = "#8b73e0";
 
+// Block colours — canonical; never overridden except empty inside purple card
 const BLOCK: Record<string, string> = {
   donation: "#1a7a5e",
   listing:  "#7bc4a4",
   click:    "#d4cfc8",
   empty:    "#e8e4de",
 };
+const BLOCK_EMPTY_ON_PURPLE = "#c4b8e8"; // light purple tint for unfilled blocks on the purple card
 
 // ── Interfaces ─────────────────────────────────────────────────────────────────
 interface MissionMember {
@@ -51,11 +53,12 @@ function buildGrid(goal: number, d: number, l: number, c: number): string[] {
   return grid;
 }
 
-function MiniGrid({ types, cols = 10, h = 8 }: { types: string[]; cols?: number; h?: number }) {
+// MiniGrid — emptyColor lets the purple card use the tinted empty colour
+function MiniGrid({ types, cols = 10, h = 8, emptyColor }: { types: string[]; cols?: number; h?: number; emptyColor?: string }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 3 }}>
       {types.map((t, i) => (
-        <div key={i} style={{ height: h, borderRadius: 2, background: BLOCK[t] ?? BLOCK.empty }} />
+        <div key={i} style={{ height: h, borderRadius: 2, background: t === "empty" && emptyColor ? emptyColor : (BLOCK[t] ?? BLOCK.empty) }} />
       ))}
     </div>
   );
@@ -127,8 +130,7 @@ export default function MyMissionPage() {
 
   // ── Derived values ────────────────────────────────────────────────────────
   const { mission, team } = data;
-  const goal     = mission.goalBlocks;
-  const filled   = Math.min(goal, team.totalBlocks);
+  const goal = mission.goalBlocks;
 
   const clickCount    = team.clickBlocks;
   const listingCount  = Math.floor(team.listingBlocks  / 2);
@@ -143,34 +145,38 @@ export default function MyMissionPage() {
 
   const blocks = buildGrid(goal, team.donationBlocks, team.listingBlocks, team.clickBlocks);
 
-  const monthDate  = new Date(mission.month + "-01");
+  // Fix 1 — parse month string directly to avoid UTC-vs-local timezone offset
+  const [yearStr, monthStr] = mission.month.split("-");
+  const monthNum  = parseInt(monthStr, 10);          // 1-indexed
+  const yearNum   = parseInt(yearStr,  10);
+  const monthDate = new Date(yearNum, monthNum - 1, 1); // local date, no UTC issue
   const monthLabel = monthDate.toLocaleString("en", { month: "long" });
-  const lastDay    = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+  const lastDay    = new Date(yearNum, monthNum, 0).getDate();
   const dateRange  = `${monthLabel} 1 – ${monthLabel} ${lastDay}`;
 
-  const categoryLabel = mission.category === "bundles" ? "Bundle Support"
-    : mission.category === "registers" ? "Register Support"
+  const categoryLabel = mission.category === "bundles"   ? "Bundle Support"
+    : mission.category === "registers"  ? "Register Support"
     : mission.category === "postpartum" ? "Postpartum Support"
     : "Bundle Support";
 
-  const shareUrl = `kradel.com/missions?ref=${team.id}`;
+  const shareUrl     = `kradel.com/missions?ref=${team.id}`;
   const fullShareUrl = `${typeof window !== "undefined" ? window.location.origin : "https://kradel.com"}/missions?ref=${team.id}`;
 
-  // Step demo grids
-  const step1Blocks = [...Array(40)].map((_, i) => i === 0 ? "click" : "empty");
-  const step2Blocks = [...Array(40)].map((_, i) => i === 0 ? "click" : i < 3 ? "listing" : "empty");
-  const step3Blocks = [...Array(40)].map((_, i) => i === 0 ? "click" : i < 3 ? "listing" : i < 7 ? "donation" : "empty");
-  const step4Blocks = Array(40).fill("donation");
+  // Fix 8 — step demo grids are 2 rows × 10 cols = 20 blocks each
+  const step1Blocks = Array(20).fill("empty").map((_, i) => i === 0 ? "click" : "empty");
+  const step2Blocks = Array(20).fill("empty").map((_, i) => i === 0 ? "click" : i < 3 ? "listing" : "empty");
+  const step3Blocks = Array(20).fill("empty").map((_, i) => i === 0 ? "click" : i < 3 ? "listing" : i < 7 ? "donation" : "empty");
+  const step4Blocks = Array(20).fill(null).map((_, i) => i < 8 ? "donation" : i < 14 ? "listing" : "click");
 
   return (
     <div style={{ background: "#f5f3ff", minHeight: "100vh", fontFamily: "Nunito, sans-serif" }}>
       <div className="discover-desktop">
 
-        {/* ── 1. PAGE HEADER ────────────────────────────────────────────────── */}
+        {/* ── 1. PAGE HEADER ─────────────────────────────────────────────── */}
         <div style={{ background: "white", padding: "20px 20px 16px", borderBottom: "1px solid #e5e0f8" }}>
           <button onClick={() => router.back()} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: MP, padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 16 }}>←</span>
-            <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 700 }}>Back</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>Back</span>
           </button>
           <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a1a1a", letterSpacing: 0.5 }}>
             YOUR MONTHLY MISSION <span style={{ color: MP }}>♡</span>
@@ -182,60 +188,66 @@ export default function MyMissionPage() {
 
         <div style={{ padding: "16px 16px 100px" }}>
 
-          {/* ── 2. MISSION PROGRESS CARD ──────────────────────────────────────── */}
+          {/* ── 2. MISSION PROGRESS CARD ──────────────────────────────────── */}
           <div style={{ background: MP, borderRadius: 20, padding: "20px 18px", marginBottom: 16, color: "white" }}>
 
             {/* Top row */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              {/* Avatar */}
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
                 {me ? initial(me.name) : "?"}
               </div>
-              {/* Centre text */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.9 }}>Your Mission Progress</div>
+                {/* Fix 1 — correct date range */}
                 <div style={{ fontSize: 11, opacity: 0.7 }}>{dateRange}</div>
               </div>
-              {/* Badge */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                <span style={{ fontSize: 18 }}>🎁</span>
+                <span style={{ fontSize: 20 }}>🎁</span>
                 <span style={{ fontSize: 9, fontWeight: 800, background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: 20, letterSpacing: 0.5 }}>
                   {categoryLabel.toUpperCase()}
                 </span>
               </div>
             </div>
 
-            {/* Monthly goal */}
+            {/* Fix 3 — Monthly goal with larger gift illustration */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <div>
                 <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Monthly Goal</div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                  <span style={{ fontFamily: "Lora, serif", fontSize: 48, fontWeight: 700, lineHeight: 1 }}>{goal}</span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span style={{ fontFamily: "Lora, serif", fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{goal}</span>
                   <span style={{ fontSize: 13, opacity: 0.85 }}>maternity essentials</span>
                 </div>
               </div>
-              <div style={{ fontSize: 40, opacity: 0.6 }}>🎁</div>
+              {/* Decorative illustration */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, flexShrink: 0 }}>
+                <span style={{ fontSize: 8, opacity: 0.7 }}>🌸 ✨</span>
+                <span style={{ fontSize: 44, lineHeight: 1 }}>🎁</span>
+                <span style={{ fontSize: 8, opacity: 0.7 }}>💜 🌿</span>
+              </div>
             </div>
             <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 16 }}>Help us reach more moms this month.</div>
 
-            {/* Block grid 10 × 4 */}
+            {/* Fix 2 — Block grid 10×4, empty blocks use purple tint, no opacity hack */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4, marginBottom: 16 }}>
               {blocks.map((t, i) => (
-                <div key={i} style={{ height: 24, borderRadius: 4, background: BLOCK[t], opacity: t === "empty" ? 0.45 : 1 }} />
+                <div key={i} style={{
+                  height: 22, borderRadius: 4,
+                  background: t === "empty" ? BLOCK_EMPTY_ON_PURPLE : BLOCK[t],
+                }} />
               ))}
             </div>
 
-            {/* 3 stats */}
+            {/* Fix 4 — Stats row: bigger numbers */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, marginBottom: 16 }}>
               {[
                 { icon: "🔗", value: clickCount,    label: "Clicks"    },
                 { icon: "📋", value: listingCount,  label: "Listings"  },
                 { icon: "✓",  value: donationCount, label: "Donations" },
               ].map(({ icon, value, label }) => (
-                <div key={label} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 12, padding: "10px 6px", textAlign: "center" }}>
-                  <div style={{ fontSize: 16, marginBottom: 2 }}>{icon}</div>
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700 }}>{value}</div>
-                  <div style={{ fontSize: 10, opacity: 0.8 }}>{label}</div>
+                <div key={label} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 12, padding: "12px 6px", textAlign: "center" }}>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 2 }}>{icon}</div>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 32, fontWeight: 700, lineHeight: 1 }}>{value}</div>
+                  <div style={{ fontSize: 10, opacity: 0.8, marginTop: 4 }}>{label}</div>
                 </div>
               ))}
             </div>
@@ -266,29 +278,14 @@ export default function MyMissionPage() {
             </div>
           </div>
 
-          {/* ── 3. HOW YOUR BAR FILLS ─────────────────────────────────────────── */}
+          {/* ── 3. HOW YOUR BAR FILLS ─────────────────────────────────────── */}
           <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: MP, letterSpacing: 1, marginBottom: 14 }}>HOW YOUR BAR FILLS</div>
 
             {[
-              {
-                color: BLOCK.click,    border: "#ccc",
-                title: "Social Clicks",
-                desc:  "When someone clicks your link.",
-                value: "+1 block",
-              },
-              {
-                color: BLOCK.listing,  border: BLOCK.listing,
-                title: "Listing Created",
-                desc:  "When someone creates a listing (register or discover).",
-                value: "+2 blocks",
-              },
-              {
-                color: BLOCK.donation, border: BLOCK.donation,
-                title: "Request Fulfilled / Donation Completed",
-                desc:  "When someone fulfills a request or completes a donation.",
-                value: "+4 blocks",
-              },
+              { color: BLOCK.click,    border: "#ccc",          title: "Social Clicks",                              desc: "When someone clicks your link.",                                               value: "+1 block"  },
+              { color: BLOCK.listing,  border: BLOCK.listing,   title: "Listing Created",                            desc: "When someone creates a listing (register or discover).",                      value: "+2 blocks" },
+              { color: BLOCK.donation, border: BLOCK.donation,  title: "Request Fulfilled / Donation Completed",     desc: "When someone fulfills a request or completes a donation.",                    value: "+4 blocks" },
             ].map(({ color, border, title, desc, value }) => (
               <div key={title} style={{ display: "flex", alignItems: "flex-start", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid #f0ecfa" }}>
                 <div style={{ width: 18, height: 18, borderRadius: 4, background: color, border: `1.5px solid ${border}`, flexShrink: 0, marginTop: 2 }} />
@@ -300,7 +297,6 @@ export default function MyMissionPage() {
               </div>
             ))}
 
-            {/* Total impact */}
             <div style={{ marginTop: 4 }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "#1a1a1a", letterSpacing: 0.5, marginBottom: 12 }}>Total Impact This Month</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
@@ -319,20 +315,20 @@ export default function MyMissionPage() {
             </div>
           </div>
 
-          {/* ── 4. OTHER MISSION PARTNERS ─────────────────────────────────────── */}
+          {/* ── 4. OTHER MISSION PARTNERS ────────────────────────────────── */}
           {partners.length > 0 && (
             <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: MP, letterSpacing: 1, marginBottom: 4 }}>OTHER MISSION PARTNERS</div>
               <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>People supporting the same mission this month.</div>
 
               {partners.map((partner) => {
-                // Estimate partner stats from recentActions (sum their contributions)
-                const pActions = team.recentActions.filter(a => a.userName === partner.name);
+                const pActions   = team.recentActions.filter(a => a.userName === partner.name);
                 const pClicks    = pActions.filter(a => a.actionType === "click").reduce((s, a) => s + a.blocks, 0);
                 const pListings  = Math.floor(pActions.filter(a => a.actionType === "listing").reduce((s, a) => s + a.blocks, 0) / 2);
                 const pDonations = Math.floor(pActions.filter(a => a.actionType === "donation").reduce((s, a) => s + a.blocks, 0) / 4);
                 const pBlocks    = pActions.reduce((s, a) => s + a.blocks, 0);
-                const pGrid      = buildGrid(goal, pDonations * 4, pListings * 2, pClicks);
+                // Fix 5 — partner grid: 2 rows × 20 cols = 40 blocks, shorter height
+                const pGrid = buildGrid(goal, pDonations * 4, pListings * 2, pClicks);
 
                 return (
                   <div key={partner.id} style={{ background: "#faf9ff", borderRadius: 12, padding: "14px", marginBottom: 10, border: "1px solid #ede9ff" }}>
@@ -346,18 +342,20 @@ export default function MyMissionPage() {
                       </div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: MP }}>{pBlocks}/{goal}</div>
                     </div>
+                    {/* Fix 5 — 2 rows × 20 cols, h=8 */}
                     <div style={{ marginBottom: 10 }}>
-                      <MiniGrid types={pGrid} cols={10} h={10} />
+                      <MiniGrid types={pGrid} cols={20} h={8} />
                     </div>
-                    <div style={{ display: "flex", gap: 12 }}>
+                    {/* Fix 6 — stats row spaced evenly */}
+                    <div style={{ display: "flex", justifyContent: "space-evenly" }}>
                       {[
                         { icon: "🔗", val: pClicks,    lbl: "clicks"    },
                         { icon: "📋", val: pListings,  lbl: "listings"  },
                         { icon: "✓",  val: pDonations, lbl: "donations" },
                       ].map(({ icon, val, lbl }) => (
                         <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ fontSize: 12 }}>{icon}</span>
-                          <span style={{ fontSize: 11, color: "#666" }}>{val} {lbl}</span>
+                          <span style={{ fontSize: 13 }}>{icon}</span>
+                          <span style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>{val} {lbl}</span>
                         </div>
                       ))}
                     </div>
@@ -374,61 +372,59 @@ export default function MyMissionPage() {
             </div>
           )}
 
-          {/* ── 5. HOW IT WORKS ───────────────────────────────────────────────── */}
+          {/* ── 5. HOW IT WORKS ──────────────────────────────────────────── */}
           <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", letterSpacing: 1, textAlign: "center", marginBottom: 18 }}>HOW IT WORKS</div>
 
-            {/* Steps — 2×2 grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {[
+              {([
                 {
                   num: "1", numBg: MP,
-                  icon: "✈️",
+                  // Fix 7 — icon in coloured circle
+                  icon: "✈️", iconBg: MPL,
                   title: "Someone clicks your link",
                   desc: "You share on social media. They click.",
                   grid: step1Blocks,
-                  badge: "+1 block",
-                  badgeColor: MP,
+                  badge: "+1 block", badgeColor: MP,
                 },
                 {
                   num: "2", numBg: "#1a7a5e",
-                  icon: "📋",
+                  icon: "📋", iconBg: "#e8f5f1",
                   title: "They create a listing",
                   desc: "They sign up and create a listing.",
                   grid: step2Blocks,
-                  badge: "+2 blocks",
-                  badgeColor: "#1a7a5e",
+                  badge: "+2 blocks", badgeColor: "#1a7a5e",
                 },
                 {
                   num: "3", numBg: "#155e4a",
-                  icon: "💛",
+                  icon: "💛", iconBg: "#1a7a5e",
                   title: "They fulfill a request or donate",
                   desc: "A real item reaches a mom in need.",
                   grid: step3Blocks,
-                  badge: "+4 blocks",
-                  badgeColor: "#155e4a",
+                  badge: "+4 blocks", badgeColor: "#155e4a",
                 },
                 {
                   num: "4", numBg: MP,
-                  icon: "🎉",
+                  icon: "🎉", iconBg: MPL,
                   title: "Mission complete!",
                   desc: "Together, you reached your monthly goal.",
                   grid: step4Blocks,
-                  badge: "Goal Achieved ♥",
-                  badgeColor: MP,
+                  badge: "Goal Achieved ♥", badgeColor: MP,
                 },
-              ].map(({ num, numBg, icon, title, desc, grid, badge, badgeColor }) => (
+              ] as const).map(({ num, numBg, icon, iconBg, title, desc, grid, badge, badgeColor }) => (
                 <div key={num} style={{ background: "#faf9ff", borderRadius: 12, padding: "12px 10px", border: "1px solid #ede9ff" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <div style={{ width: 22, height: 22, borderRadius: "50%", background: numBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", flexShrink: 0 }}>
                       {num}
                     </div>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "white", border: "1.5px solid #e5e0f8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
+                    {/* Fix 7 — icon circle with coloured background */}
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>
                       {icon}
                     </div>
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 800, color: "#1a1a1a", marginBottom: 3, lineHeight: 1.3 }}>{title}</div>
                   <div style={{ fontSize: 10, color: "#888", marginBottom: 8, lineHeight: 1.4 }}>{desc}</div>
+                  {/* Fix 8 — 2 rows × 10 cols mini grid */}
                   <MiniGrid types={grid} cols={10} h={7} />
                   <div style={{ fontSize: 11, fontWeight: 800, color: badgeColor, marginTop: 6 }}>{badge}</div>
                 </div>
@@ -436,20 +432,21 @@ export default function MyMissionPage() {
             </div>
           </div>
 
-          {/* ── 6. BOTTOM TAGLINE ─────────────────────────────────────────────── */}
+          {/* ── 6. BOTTOM TAGLINE ────────────────────────────────────────── */}
+          {/* Fix 9 — flex row, wraps on very small screens */}
           <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 13, color: "#1a1a1a", lineHeight: 1.6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 180, fontSize: 13, color: "#1a1a1a", lineHeight: 1.6 }}>
                 Every click. Every listing. Every act of care.{" "}
                 <strong>It all adds up to change a mom&rsquo;s life.</strong>
               </div>
-              <div style={{ background: MPL, borderRadius: 20, padding: "8px 14px", alignSelf: "flex-start", fontSize: 12, color: MP, fontWeight: 700 }}>
+              <div style={{ background: MPL, borderRadius: 20, padding: "8px 14px", fontSize: 12, color: MP, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
                 Thank you for being part of the change 💜
               </div>
             </div>
           </div>
 
-          {/* ── Leave mission ────────────────────────────────────────────────── */}
+          {/* Leave mission */}
           {leaveErr && (
             <div style={{ background: "#fff5f5", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#dc2626" }}>
               {leaveErr}
