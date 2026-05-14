@@ -236,7 +236,7 @@ async function main() {
 }
 
 async function seedMissions(memberIds: string[]) {
-  const month = "May 2026";
+  const month = new Date().toISOString().slice(0, 7); // "2026-05"
 
   const existingMission = await prisma.mission.findFirst({ where: { month } });
   if (existingMission) {

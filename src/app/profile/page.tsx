@@ -112,40 +112,37 @@ function MissionCard() {
   );
 }
 
-function ImpactScoreSection() {
-  const [data, setData] = useState<{ impactScore: number; donorLevel: string } | null>(null);
+function DonorStatusCard() {
+  const { user } = useAuth();
+  const [level, setLevel] = useState<string>("NEW_DONOR");
 
   useEffect(() => {
     fetch("/api/user/trust")
       .then(r => r.json())
-      .then(d => setData({ impactScore: d.impactScore ?? 0, donorLevel: d.donorLevel ?? "NEW_DONOR" }))
+      .then(d => { if (d.donorLevel) setLevel(d.donorLevel); })
       .catch(() => {});
   }, []);
 
-  const score    = data?.impactScore ?? 0;
-  const level    = data?.donorLevel  ?? "NEW_DONOR";
-  const meta     = DONOR_LEVEL_META[level] ?? DONOR_LEVEL_META.NEW_DONOR;
-  const progress = meta.next ? Math.min(100, (score / meta.next) * 100) : 100;
+  const meta      = DONOR_LEVEL_META[level] ?? DONOR_LEVEL_META.NEW_DONOR;
+  const verified  = (user?.verificationLevel ?? 0) >= 1;
+  const fullyVerified = (user?.verificationLevel ?? 0) >= 2;
 
   return (
     <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span style={{ fontSize: 28 }}>{meta.icon}</span>
-        <div>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: meta.color, lineHeight: 1 }}>{meta.label}</div>
-          <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>Impact score: {score}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 32 }}>{meta.icon}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: meta.color }}>{meta.label}</div>
+          <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
+            {fullyVerified ? "Fully verified donor" : verified ? "Verified donor" : "Unverified — complete verification to unlock more"}
+          </div>
         </div>
+        {verified && (
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 16 }}>✓</span>
+          </div>
+        )}
       </div>
-      <div style={{ background: "#f3f4f6", borderRadius: 8, height: 8, marginBottom: 8, overflow: "hidden" }}>
-        <div style={{ width: `${progress}%`, height: "100%", background: meta.color, borderRadius: 8, transition: "width 0.6s ease" }} />
-      </div>
-      {meta.next ? (
-        <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-          <strong style={{ color: "var(--ink)" }}>{meta.next - score} more points</strong> to next level
-        </div>
-      ) : (
-        <div style={{ fontSize: 12, color: "#7c3aed", fontFamily: "Nunito, sans-serif", fontWeight: 700 }}>Highest level reached!</div>
-      )}
     </div>
   );
 }
@@ -498,7 +495,7 @@ export default function ProfilePage() {
         {/* ════════════ DONOR VIEW ════════════════════════════════════════ */}
         {!isAdmin && isDonor && (
           <>
-            <ImpactScoreSection />
+            <DonorStatusCard />
             <MissionCard />
 
             {(summary?.itemsTotal ?? 0) > 0 && (
