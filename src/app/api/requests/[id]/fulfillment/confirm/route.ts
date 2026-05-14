@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardTrust, awardImpactPoints } from "@/lib/trust";
 import { createAbuseFlag, logAbuseEvent } from "@/lib/abuse";
+import { recordMissionAction } from "@/lib/missions";
 
 export const dynamic = "force-dynamic";
 
@@ -80,11 +81,12 @@ export async function POST(req: NextRequest, { params }: Params) {
       });
     }).catch(() => {});
 
-    // Trust + impact awards (fire-and-forget)
+    // Trust + impact awards + mission action (fire-and-forget)
     Promise.all([
       awardTrust(donorId,     "DELIVERY_CONFIRMED", { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "recipient confirmed receipt" }),
       awardTrust(recipientId, "DELIVERY_CONFIRMED", { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "confirmed item received" }),
       awardImpactPoints(donorId, "FULFILLED_REQUEST", requestId),
+      recordMissionAction(donorId, "donation"),
     ]).catch(() => {});
 
     // Notify donor

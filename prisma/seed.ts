@@ -225,12 +225,66 @@ async function main() {
   }
   console.log("✓ Created sample reviews");
 
+  await seedMissions([amara.id, fatima.id, grace.id]);
+
   await seedCatalog();
 
   console.log("\n✅ Seed complete!");
   console.log("   Test accounts (all use password: password123):");
   console.log("   Donors: amara@carecircle.ng, fatima@carecircle.ng, grace@carecircle.ng");
   console.log("   Recipient: reviewer@carecircle.ng");
+}
+
+async function seedMissions(memberIds: string[]) {
+  const month = "May 2026";
+
+  const existingMission = await prisma.mission.findFirst({ where: { month } });
+  if (existingMission) {
+    console.log("✓ Mission already seeded — skipping");
+    return;
+  }
+
+  const mission = await prisma.mission.create({
+    data: {
+      name:        "Newborn Essentials Drive",
+      description: "Help five families get through their first month with a newborn. Every action your team takes funds diapers, formula, and maternity pads for mothers in your community.",
+      month,
+      category:    "bundles",
+      goalBlocks:  40,
+      isActive:    true,
+    },
+  });
+
+  const team = await prisma.missionTeam.create({
+    data: { missionId: mission.id, totalBlocks: 18 },
+  });
+
+  for (const userId of memberIds.slice(0, 3)) {
+    await prisma.missionMember.create({
+      data: { teamId: team.id, userId, isActive: true },
+    });
+  }
+
+  // Seed some prior actions to make progress visible
+  const actionSeeds = [
+    { userId: memberIds[0], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
+    { userId: memberIds[0], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
+    { userId: memberIds[1], actionType: "listing",  blocks: 2, humanLabel: "A new donor joined and listed their first item. That's one more family ready to help." },
+    { userId: memberIds[1], actionType: "click",    blocks: 1, humanLabel: "Someone discovered Kradel through a shared link. That awareness helps more mothers find support." },
+    { userId: memberIds[2], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
+    { userId: memberIds[2], actionType: "click",    blocks: 1, humanLabel: "Someone discovered Kradel through a shared link. That awareness helps more mothers find support." },
+    { userId: memberIds[0], actionType: "click",    blocks: 1, humanLabel: "Someone discovered Kradel through a shared link. That awareness helps more mothers find support." },
+    { userId: memberIds[1], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
+  ];
+
+  const past = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  for (const a of actionSeeds) {
+    await prisma.missionAction.create({
+      data: { ...a, teamId: team.id, createdAt: past },
+    });
+  }
+
+  console.log(`✓ Seeded mission "${mission.name}" with 3 members, 18 blocks`);
 }
 
 async function seedCatalog() {

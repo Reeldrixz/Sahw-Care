@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardTrust, awardImpactPoints } from "@/lib/trust";
+import { recordMissionAction } from "@/lib/missions";
 export const dynamic = "force-dynamic";
 
 /**
@@ -77,10 +78,11 @@ export async function POST(
 
   // ── Trigger downstream effects when both sides confirmed ──────────────
   if (donorConfirmed && log.momConfirmed && !mismatch) {
-    // Award trust to donor + impact points; mom's award removed (event no longer scored)
+    // Award trust to donor + impact points + mission action
     await Promise.all([
       awardTrust(assignment.donorId, "SUPPORT_RECEIVED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register donation fulfilled" }),
       awardImpactPoints(assignment.donorId, "REGISTER_ITEM_DELIVERED", assignmentId),
+      recordMissionAction(assignment.donorId, "donation"),
     ]);
   }
 

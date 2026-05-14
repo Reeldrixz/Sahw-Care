@@ -37,6 +37,81 @@ const CAT_EMOJI: Record<string, string> = {
   "Clothing": "👗", "Hygiene": "🧴", "Other": "📦",
 };
 
+function MissionCard() {
+  const router = useRouter();
+  const [membership, setMembership] = useState<{
+    mission: { name: string; goalBlocks: number };
+    team: { totalBlocks: number; members: Array<{ name: string; isMe: boolean }> };
+  } | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetch("/api/missions/my")
+      .then(r => r.json())
+      .then(d => setMembership(d.membership ?? null))
+      .catch(() => setMembership(null));
+  }, []);
+
+  if (membership === undefined) return null;
+
+  if (!membership) {
+    return (
+      <div
+        onClick={() => router.push("/missions")}
+        style={{ background: "#e8f5f1", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid #b7dfd1", cursor: "pointer" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 28 }}>🤝</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a7a5e", marginBottom: 2 }}>Join a mission</div>
+            <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", opacity: 0.85 }}>
+              Team up with 5 donors. Fill 40 blocks. Fund real outcomes for mothers.
+            </div>
+          </div>
+          <div style={{ fontSize: 18, color: "#1a7a5e" }}>→</div>
+        </div>
+      </div>
+    );
+  }
+
+  const { mission, team } = membership;
+  const pct = Math.min(100, Math.round((team.totalBlocks / mission.goalBlocks) * 100));
+  const displayMembers = [...team.members.slice(0, 5)];
+  while (displayMembers.length < 5) displayMembers.push(null as unknown as { name: string; isMe: boolean });
+
+  return (
+    <div
+      onClick={() => router.push("/missions/my")}
+      style={{ background: "var(--white)", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)", cursor: "pointer" }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+        <div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>{mission.name}</div>
+          <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+            {team.totalBlocks}/{mission.goalBlocks} blocks · {pct}%
+          </div>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: "#e8f5f1", color: "#1a7a5e" }}>Active</span>
+      </div>
+      <div style={{ background: "#e8e4de", borderRadius: 6, height: 6, marginBottom: 10, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: "#1a7a5e", borderRadius: 6, transition: "width 0.4s ease" }} />
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {displayMembers.map((m, i) => (
+          <div key={i} style={{
+            width: 30, height: 30, borderRadius: "50%",
+            background: m === null ? "#e8e4de" : (m as { name: string; isMe: boolean }).isMe ? "#1a7a5e" : "#7bc4a4",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 11, fontWeight: 800, fontFamily: "Nunito, sans-serif",
+            color: m === null ? "#a0a0a0" : "white",
+          }}>
+            {m === null ? "?" : (m as { name: string; isMe: boolean }).name.charAt(0).toUpperCase()}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ImpactScoreSection() {
   const [data, setData] = useState<{ impactScore: number; donorLevel: string } | null>(null);
 
@@ -424,6 +499,7 @@ export default function ProfilePage() {
         {!isAdmin && isDonor && (
           <>
             <ImpactScoreSection />
+            <MissionCard />
 
             {(summary?.itemsTotal ?? 0) > 0 && (
               <button

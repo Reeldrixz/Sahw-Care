@@ -139,6 +139,9 @@ model User {
 
   notifications Notification[]
   savedRegisters           SavedRegister[]
+
+  missionMemberships MissionMember[]
+  missionActions     MissionAction[]
 }
 
 // ==================== ITEMS ====================
@@ -1372,4 +1375,55 @@ model BundleApplication {
   @@index([bundleId])
   @@index([status])
   @@index([userId])
+}
+
+// ==================== MISSIONS ====================
+
+model Mission {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  month       String   // "2026-05"
+  category    String   // "bundles" | "registers" | "postpartum"
+  goalBlocks  Int      @default(40)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  teams MissionTeam[]
+}
+
+model MissionTeam {
+  id          String   @id @default(cuid())
+  missionId   String
+  mission     Mission  @relation(fields: [missionId], references: [id])
+  totalBlocks Int      @default(0)
+  isComplete  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  members MissionMember[]
+  actions MissionAction[]
+}
+
+model MissionMember {
+  id       String      @id @default(cuid())
+  teamId   String
+  team     MissionTeam @relation(fields: [teamId], references: [id])
+  userId   String
+  user     User        @relation(fields: [userId], references: [id])
+  joinedAt DateTime    @default(now())
+  isActive Boolean     @default(true)
+
+  @@unique([teamId, userId])
+}
+
+model MissionAction {
+  id         String      @id @default(cuid())
+  teamId     String
+  team       MissionTeam @relation(fields: [teamId], references: [id])
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  actionType String      // "click" | "listing" | "donation"
+  blocks     Int
+  humanLabel String
+  createdAt  DateTime    @default(now())
 }

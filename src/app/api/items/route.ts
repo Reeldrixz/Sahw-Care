@@ -4,6 +4,7 @@ import { countryCodeToFlag } from "@/lib/stage";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { TRUST_THRESHOLDS } from "@/lib/trust";
 import { createAbuseFlag } from "@/lib/abuse";
+import { recordMissionAction } from "@/lib/missions";
 
 const PROFANITY_LIST = ["fuck", "shit", "cunt", "nigger", "bitch", "asshole", "bastard", "cock", "pussy", "whore"];
 
@@ -234,6 +235,11 @@ export async function POST(req: NextRequest) {
         donor: { select: { id: true, name: true, avatar: true } },
       },
     });
+
+    // First-listing mission trigger (fire-and-forget)
+    prisma.item.count({ where: { donorId: user.userId, id: { not: item.id } } })
+      .then((prior) => { if (prior === 0) return recordMissionAction(user.userId, "listing"); })
+      .catch(() => {});
 
     // Silent duplicate detection
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600000);
