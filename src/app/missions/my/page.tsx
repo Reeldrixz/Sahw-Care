@@ -5,20 +5,6 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
-// ── Colour tokens ──────────────────────────────────────────────────────────────
-const MP  = "#6d5acd";
-const MPL = "#ede9ff";
-const MPT = "#8b73e0";
-
-// Block colours — canonical; never overridden except empty inside purple card
-const BLOCK: Record<string, string> = {
-  donation: "#1a7a5e",
-  listing:  "#7bc4a4",
-  click:    "#d4cfc8",
-  empty:    "#e8e4de",
-};
-const BLOCK_EMPTY_ON_PURPLE = "#c4b8e8"; // light purple tint for unfilled blocks on the purple card
-
 // ── Interfaces ─────────────────────────────────────────────────────────────────
 interface MissionMember {
   id: string; userId: string; name: string;
@@ -38,30 +24,255 @@ interface MissionData {
   };
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function initial(name: string) { return name.trim().charAt(0).toUpperCase(); }
+// ── Colour constants (match reference exactly) ─────────────────────────────────
+const C = {
+  purple:      "#6d5acd",
+  purpleDark:  "#5a47b8",
+  purpleLight: "#8b73e0",
+  purplePale:  "#ede9ff",
+  purplePaler: "#f5f3ff",
+  purpleSoft:  "#d4cdf0",
+  purpleTinted:"#c4b8e8",
+  blockEmpty:  "#e8e4de",
+  blockClick:  "#d4cfc8",
+  blockListing:"#a8d4bf",
+  blockDonation:"#1a7a5e",
+  green:       "#1a7a5e",
+  greenLight:  "#e8f5f0",
+  cream:       "#faf8f3",
+  white:       "#ffffff",
+  text:        "#2a2a2a",
+  textLight:   "#5a5a5a",
+  muted:       "#8a8a8a",
+  border:      "#ede8df",
+};
 
-function buildGrid(goal: number, d: number, l: number, c: number): string[] {
-  const grid: string[] = [];
-  const dd = Math.min(d, goal);
-  const ll = Math.min(l, goal - dd);
-  const cc = Math.min(c, goal - dd - ll);
-  for (let i = 0; i < dd; i++) grid.push("donation");
-  for (let i = 0; i < ll; i++) grid.push("listing");
-  for (let i = 0; i < cc; i++) grid.push("click");
-  while (grid.length < goal) grid.push("empty");
-  return grid;
+// ── CSS from reference (scoped * reset so it doesn't bleed globally) ───────────
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap');
+
+  .mission-page *, .mission-page *::before, .mission-page *::after { box-sizing: border-box; }
+
+  .mission-page {
+    font-family: 'Nunito', sans-serif;
+    background: ${C.cream};
+    min-height: 100vh;
+    color: ${C.text};
+    padding: 20px 16px 80px;
+  }
+
+  .mp-container { max-width: 1200px; margin: 0 auto; }
+
+  .mp-back { background: none; border: none; cursor: pointer; color: ${C.purple};
+    font-family: inherit; font-size: 13px; font-weight: 700; padding: 0;
+    display: flex; align-items: center; gap: 5px; margin-bottom: 16px; }
+
+  .page-header { margin-bottom: 24px; }
+  .h-title { font-family: 'Lora', serif; font-size: 22px; font-weight: 700;
+    letter-spacing: 1px; color: ${C.text}; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px; }
+  .h-title svg { width: 22px; height: 22px; stroke: ${C.purple}; stroke-width: 2; fill: none; }
+  .h-sub { font-size: 14px; color: ${C.textLight}; margin-top: 6px; }
+  .h-sub b { font-weight: 700; color: ${C.text}; }
+
+  .main-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 900px) {
+    .main-grid { grid-template-columns: 1.1fr 0.85fr 0.95fr; align-items: start; }
+  }
+
+  /* ── Mission card ── */
+  .mission-card { background: ${C.purple}; border-radius: 24px; padding: 24px 22px;
+    color: white; position: relative; overflow: hidden; }
+  .mc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+  .mc-top-left { display: flex; align-items: center; gap: 12px; }
+  .mc-avatar { width: 52px; height: 52px; border-radius: 50%; background: white;
+    color: ${C.purple}; font-weight: 700; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; border: 2px solid rgba(255,255,255,0.3); }
+  .mc-progress-label { font-size: 16px; font-weight: 600; line-height: 1.2; }
+  .mc-progress-date { font-size: 13px; opacity: 0.85; margin-top: 3px; }
+  .mc-badge-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .mc-gift { font-size: 22px; line-height: 1; }
+  .mc-badge { background: rgba(255,255,255,0.18); border-radius: 6px; padding: 4px 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-align: center; line-height: 1.3; }
+  .mc-goal-label { font-size: 13px; opacity: 0.9; margin: 20px 0 4px; }
+  .mc-goal-row { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 6px; }
+  .mc-goal-text { flex: 1; }
+  .mc-goal-bignum { font-family: 'Lora', serif; font-size: 56px; font-weight: 600;
+    line-height: 1; display: inline-block; }
+  .mc-goal-suffix { font-size: 14px; margin-left: 6px; display: inline-block;
+    line-height: 1.3; max-width: 90px; vertical-align: bottom; }
+  .mc-gift-illo { font-size: 64px; line-height: 1; margin-right: -8px; margin-bottom: 4px; transform: rotate(-6deg); }
+  .mc-help-text { font-size: 13px; opacity: 0.92; margin-bottom: 14px; }
+
+  .mc-mosaic { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin-bottom: 22px; }
+  .mc-mosaic .block { height: 14px; border-radius: 3px; }
+
+  .mc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    margin-bottom: 18px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 18px; }
+  .mc-stat { text-align: center; position: relative; }
+  .mc-stat + .mc-stat::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 1px; background: rgba(255,255,255,0.15); }
+  .mc-stat-num { font-family: 'Lora', serif; font-size: 32px; font-weight: 600; line-height: 1; }
+  .mc-stat-label { font-size: 11px; opacity: 0.85; margin-top: 4px; margin-bottom: 8px; }
+  .mc-stat-icon { width: 16px; height: 16px; stroke: white; stroke-width: 2; fill: none;
+    opacity: 0.7; margin: 0 auto; display: block; }
+
+  .mc-aff { background: rgba(255,255,255,0.14); border-radius: 14px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; line-height: 1.4; }
+  .mc-aff-heart { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; }
+
+  .mc-share { font-size: 12px; opacity: 0.9; margin-bottom: 8px; }
+  .mc-share-row { display: flex; gap: 8px; background: rgba(255,255,255,0.14); border-radius: 12px;
+    padding: 4px 4px 4px 14px; align-items: center; }
+  .mc-share-input { flex: 1; background: transparent; border: none; color: white;
+    font-family: inherit; font-size: 12px; outline: none; min-width: 0; }
+  .mc-share-input::placeholder { color: rgba(255,255,255,0.6); }
+  .mc-share-btn { background: white; color: ${C.purple}; border: none; padding: 8px 14px;
+    border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+  /* ── Info cards (centre + right) ── */
+  .info-card { background: white; border-radius: 20px; padding: 22px 20px; border: 1px solid ${C.border}; }
+  .ic-title { font-family: 'Lora', serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+    color: ${C.purple}; text-transform: uppercase; margin-bottom: 18px; }
+
+  .hbf-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0;
+    border-bottom: 1px solid ${C.border}; }
+  .hbf-row:last-of-type { border-bottom: none; }
+  .hbf-swatch { width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0; margin-top: 2px; }
+  .hbf-content { flex: 1; }
+  .hbf-title { font-size: 14px; font-weight: 700; color: ${C.text}; line-height: 1.3; margin-bottom: 3px; }
+  .hbf-desc { font-size: 12px; color: ${C.textLight}; line-height: 1.4; margin-bottom: 4px; }
+  .hbf-blocks { font-size: 12px; color: ${C.green}; font-weight: 700; }
+
+  .total-impact { margin-top: 20px; padding-top: 22px; border-top: 1px solid ${C.border}; text-align: center; }
+  .ti-icon { width: 38px; height: 38px; border-radius: 50%; background: ${C.purplePaler};
+    display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; font-size: 18px; }
+  .ti-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: ${C.text};
+    text-transform: uppercase; margin-bottom: 14px; }
+  .ti-stats { display: grid; grid-template-columns: repeat(3, 1fr); margin: 10px 0 14px; }
+  .ti-stat { text-align: center; }
+  .ti-stat-num { font-family: 'Lora', serif; font-size: 26px; font-weight: 600; color: ${C.purple}; line-height: 1; }
+  .ti-stat-label { font-size: 10px; color: ${C.textLight}; margin-top: 4px; line-height: 1.3; }
+  .ti-tagline { font-family: 'Lora', serif; font-style: italic; font-size: 14px; color: ${C.text}; margin-top: 6px; }
+  .ti-tagline-heart { color: ${C.purple}; }
+
+  /* ── Partners ── */
+  .partners-card .ic-subtitle { font-size: 12px; color: ${C.textLight}; margin-top: -12px; margin-bottom: 18px; line-height: 1.4; }
+  .partner { padding: 14px 0; border-bottom: 1px solid ${C.border}; }
+  .partner:last-of-type { border-bottom: none; }
+  .partner-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .partner-avatar { width: 36px; height: 36px; border-radius: 50%; background: ${C.purplePale};
+    color: ${C.purple}; font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .partner-info { flex: 1; }
+  .partner-name { font-size: 13px; font-weight: 700; color: ${C.text}; line-height: 1.2; }
+  .partner-goal { font-size: 11px; color: ${C.muted}; margin-top: 2px; }
+  .partner-count { font-size: 12px; font-weight: 700; color: ${C.text}; }
+  .partner-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 3px; margin-bottom: 10px; }
+  .partner-grid .pblock { height: 8px; border-radius: 2px; }
+  .partner-stats { display: flex; gap: 12px; font-size: 11px; color: ${C.textLight}; align-items: center; }
+  .pstat { display: flex; align-items: center; gap: 4px; }
+  .pstat svg { width: 11px; height: 11px; stroke: ${C.muted}; stroke-width: 2; fill: none; }
+  .pstat + .pstat::before { content: "|"; color: ${C.border}; margin-right: 8px; }
+  .friends-line { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 14px;
+    background: ${C.purplePaler}; border-radius: 12px; font-size: 12px; color: ${C.text}; line-height: 1.4; }
+  .friends-icon { width: 26px; height: 26px; border-radius: 50%; background: white;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: ${C.purple}; }
+
+  /* ── How it works ── */
+  .how-it-works { margin-top: 32px; }
+  .hiw-title { font-family: 'Lora', serif; font-size: 15px; font-weight: 700; letter-spacing: 2.5px;
+    color: ${C.text}; text-transform: uppercase; text-align: center; margin-bottom: 24px; }
+  .hiw-steps { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: stretch; }
+  @media (min-width: 768px) {
+    .hiw-steps { grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; }
+  }
+  .hiw-step { background: white; border: 1px solid ${C.border}; border-radius: 18px;
+    padding: 18px 16px; display: flex; flex-direction: column; }
+  .hiw-step-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+  .hiw-num { width: 26px; height: 26px; border-radius: 50%; background: ${C.purple}; color: white;
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .hiw-num-green { background: ${C.green}; }
+  .hiw-step-name { font-size: 14px; font-weight: 700; color: ${C.text}; line-height: 1.3; flex: 1; }
+  .hiw-icon-wrap { width: 100%; height: 80px; border-radius: 14px; background: ${C.purplePaler};
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px; font-size: 32px; }
+  .hiw-icon-green { background: ${C.greenLight}; }
+  .hiw-desc { font-size: 12px; color: ${C.textLight}; line-height: 1.45; margin-bottom: 14px; flex: 1; }
+  .hiw-mini-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; margin-bottom: 10px; }
+  .hiw-mini-grid .miniblock { height: 10px; border-radius: 2px; }
+  .hiw-blocks-label { font-size: 12px; font-weight: 700; color: ${C.purple}; text-align: left; }
+  .hiw-blocks-label-green { color: ${C.green}; }
+  .hiw-arrow { display: none; align-items: center; justify-content: center; color: ${C.muted}; font-size: 18px; }
+  @media (min-width: 768px) { .hiw-arrow { display: flex; } }
+
+  /* ── Bottom tagline ── */
+  .bottom-tag { margin-top: 28px; background: white; border: 1px solid ${C.border}; border-radius: 16px;
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; }
+  .bt-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px; }
+  .bt-avatar { width: 36px; height: 36px; border-radius: 50%; background: ${C.purplePale};
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 18px; }
+  .bt-text { font-size: 13px; color: ${C.textLight}; line-height: 1.5; }
+  .bt-text b { color: ${C.text}; font-weight: 700; }
+  .bt-pill { background: ${C.purplePale}; color: ${C.purple}; padding: 10px 18px; border-radius: 24px;
+    font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+
+  /* ── Leave button ── */
+  .leave-btn { background: none; border: none; font-family: inherit; font-size: 12px;
+    color: #9ca3af; cursor: pointer; text-decoration: underline; display: block;
+    margin: 12px auto 0; }
+  .leave-btn:disabled { color: #d1d5db; cursor: default; text-decoration: none; }
+  .leave-err { background: #fff5f5; border: 1px solid #fecaca; border-radius: 12px;
+    padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #dc2626; }
+`;
+
+// ── Helper components (from reference, unchanged) ──────────────────────────────
+function MissionMosaic({ donations = 0, listings = 0, clicks = 0, total = 40 }: { donations: number; listings: number; clicks: number; total: number }) {
+  const blocks = [];
+  for (let i = 0; i < total; i++) {
+    let bg: string;
+    if (i < donations) bg = C.blockDonation;
+    else if (i < donations + listings) bg = C.blockListing;
+    else if (i < donations + listings + clicks) bg = C.blockClick;
+    else bg = C.purpleTinted;
+    blocks.push(<div key={i} className="block" style={{ background: bg }} />);
+  }
+  return <div className="mc-mosaic">{blocks}</div>;
 }
 
-// MiniGrid — emptyColor lets the purple card use the tinted empty colour
-function MiniGrid({ types, cols = 10, h = 8, emptyColor }: { types: string[]; cols?: number; h?: number; emptyColor?: string }) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 3 }}>
-      {types.map((t, i) => (
-        <div key={i} style={{ height: h, borderRadius: 2, background: t === "empty" && emptyColor ? emptyColor : (BLOCK[t] ?? BLOCK.empty) }} />
-      ))}
-    </div>
-  );
+function PartnerGrid({ donations = 0, listings = 0, clicks = 0 }: { donations: number; listings: number; clicks: number }) {
+  const total = 26;
+  const ratio = 26 / 40;
+  const d = Math.round(donations * ratio);
+  const l = Math.round(listings  * ratio);
+  const c = Math.round(clicks    * ratio);
+  const blocks = [];
+  for (let i = 0; i < total; i++) {
+    let bg: string;
+    if (i < d) bg = C.blockDonation;
+    else if (i < d + l) bg = C.blockListing;
+    else if (i < d + l + c) bg = C.blockClick;
+    else bg = C.blockEmpty;
+    blocks.push(<div key={i} className="pblock" style={{ background: bg }} />);
+  }
+  return <div className="partner-grid">{blocks}</div>;
+}
+
+function StepMiniGrid({ donations = 0, listings = 0, clicks = 0 }: { donations: number; listings: number; clicks: number }) {
+  const total = 26;
+  const blocks = [];
+  for (let i = 0; i < total; i++) {
+    let bg: string;
+    if (i < donations) bg = C.blockDonation;
+    else if (i < donations + listings) bg = C.blockListing;
+    else if (i < donations + listings + clicks) bg = C.blockClick;
+    else bg = C.blockEmpty;
+    blocks.push(<div key={i} className="miniblock" style={{ background: bg }} />);
+  }
+  return <div className="hiw-mini-grid">{blocks}</div>;
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -103,368 +314,387 @@ export default function MyMissionPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // ── Loading / empty states ────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (
-    <div style={{ background: "#f5f3ff", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ background: C.cream, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div className="spinner" />
     </div>
   );
 
+  // ── Empty state ──────────────────────────────────────────────────────────
   if (!data) return (
-    <div style={{ background: "#f5f3ff", minHeight: "100vh" }}>
-      <div className="discover-desktop">
-        <div style={{ padding: "32px 20px", textAlign: "center" }}>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: MP, marginBottom: 8 }}>No active mission</div>
-          <div style={{ fontSize: 14, color: "#666", fontFamily: "Nunito, sans-serif", marginBottom: 24 }}>
-            Join a collective challenge and help fund maternal essentials.
-          </div>
-          <button onClick={() => router.push("/missions")}
-            style={{ background: MP, color: "white", border: "none", borderRadius: 14, padding: "14px 28px", fontFamily: "Nunito, sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
-            Browse missions
-          </button>
+    <div style={{ background: C.cream, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: C.purple, marginBottom: 8 }}>No active mission</div>
+        <div style={{ fontSize: 14, color: C.textLight, fontFamily: "Nunito, sans-serif", marginBottom: 24 }}>
+          Join a collective challenge and help fund maternal essentials.
         </div>
+        <button onClick={() => router.push("/missions")}
+          style={{ background: C.purple, color: "white", border: "none", borderRadius: 14, padding: "14px 28px", fontFamily: "Nunito, sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>
+          Browse missions
+        </button>
       </div>
       <BottomNav />
     </div>
   );
 
-  // ── Derived values ────────────────────────────────────────────────────────
+  // ── Data mapping ─────────────────────────────────────────────────────────
   const { mission, team } = data;
   const goal = mission.goalBlocks;
 
-  const clickCount    = team.clickBlocks;
-  const listingCount  = Math.floor(team.listingBlocks  / 2);
-  const donationCount = Math.floor(team.donationBlocks / 4);
-
-  const momsSupported       = Math.max(donationCount * 2 + listingCount, team.totalBlocks > 0 ? 1 : 0);
-  const essentialsDelivered = team.totalBlocks;
-  const citiesReached       = Math.max(1, Math.min(3, team.members.length));
-
-  const partners = team.members.filter(m => !m.isMe);
-  const me       = team.members.find(m => m.isMe);
-
-  const blocks = buildGrid(goal, team.donationBlocks, team.listingBlocks, team.clickBlocks);
-
-  // Fix 1 — parse month string directly to avoid UTC-vs-local timezone offset
+  // Date range — parse without UTC to avoid off-by-one in timezone
   const [yearStr, monthStr] = mission.month.split("-");
-  const monthNum  = parseInt(monthStr, 10);          // 1-indexed
+  const monthNum  = parseInt(monthStr, 10);
   const yearNum   = parseInt(yearStr,  10);
-  const monthDate = new Date(yearNum, monthNum - 1, 1); // local date, no UTC issue
+  const monthDate = new Date(yearNum, monthNum - 1, 1);
   const monthLabel = monthDate.toLocaleString("en", { month: "long" });
   const lastDay    = new Date(yearNum, monthNum, 0).getDate();
   const dateRange  = `${monthLabel} 1 – ${monthLabel} ${lastDay}`;
 
-  const categoryLabel = mission.category === "bundles"   ? "Bundle Support"
-    : mission.category === "registers"  ? "Register Support"
+  // Category label
+  const categoryLabel = mission.category === "registers"  ? "Register Support"
     : mission.category === "postpartum" ? "Postpartum Support"
     : "Bundle Support";
 
+  // Me
+  const me = team.members.find(m => m.isMe);
+  const meInitial = me ? me.name.trim().charAt(0).toUpperCase() : "?";
+
+  // My personal stats (from recentActions filtered to isMe)
+  const myActions = team.recentActions.filter(a => a.isMe);
+  const myStats = {
+    clicks:    myActions.filter(a => a.actionType === "click").length,
+    listings:  myActions.filter(a => a.actionType === "listing").length,
+    donations: myActions.filter(a => a.actionType === "donation").length,
+  };
+
+  // Mission mosaic — uses TEAM totals (block counts, not action counts)
+  const mosaicDonations = team.donationBlocks;
+  const mosaicListings  = team.listingBlocks;
+  const mosaicClicks    = team.clickBlocks;
+
+  // Partners — derive per-person stats from recentActions
+  const partners = team.members
+    .filter(m => !m.isMe)
+    .map(partner => {
+      const pa = team.recentActions.filter(a => a.userName === partner.name);
+      const pDonBlocks = pa.filter(a => a.actionType === "donation").reduce((s, a) => s + a.blocks, 0);
+      const pLstBlocks = pa.filter(a => a.actionType === "listing").reduce((s, a) => s + a.blocks, 0);
+      const pClkBlocks = pa.filter(a => a.actionType === "click").reduce((s, a) => s + a.blocks, 0);
+      const pBlocks    = pa.reduce((s, a) => s + a.blocks, 0);
+      return {
+        initial:   partner.name.trim().charAt(0).toUpperCase(),
+        name:      partner.name.split(" ")[0],
+        goal:      goal,
+        blocks:    pBlocks,
+        donations: pDonBlocks,
+        listings:  pLstBlocks,
+        clicks:    pClkBlocks,
+      };
+    });
+
+  // Impact
+  const donationCount = Math.floor(team.donationBlocks / 4);
+  const impact = {
+    moms:   Math.max(donationCount, team.totalBlocks > 0 ? 1 : 0),
+    items:  team.totalBlocks,
+    cities: 12,
+  };
+
+  // Share URL
   const shareUrl     = `kradel.com/missions?ref=${team.id}`;
   const fullShareUrl = `${typeof window !== "undefined" ? window.location.origin : "https://kradel.com"}/missions?ref=${team.id}`;
 
-  // Fix 8 — step demo grids are 2 rows × 10 cols = 20 blocks each
-  const step1Blocks = Array(20).fill("empty").map((_, i) => i === 0 ? "click" : "empty");
-  const step2Blocks = Array(20).fill("empty").map((_, i) => i === 0 ? "click" : i < 3 ? "listing" : "empty");
-  const step3Blocks = Array(20).fill("empty").map((_, i) => i === 0 ? "click" : i < 3 ? "listing" : i < 7 ? "donation" : "empty");
-  const step4Blocks = Array(20).fill(null).map((_, i) => i < 8 ? "donation" : i < 14 ? "listing" : "click");
-
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: "#f5f3ff", minHeight: "100vh", fontFamily: "Nunito, sans-serif" }}>
-      <div className="discover-desktop">
+    <>
+      <style>{styles}</style>
+      <div className="mission-page">
+        <div className="mp-container">
 
-        {/* ── 1. PAGE HEADER ─────────────────────────────────────────────── */}
-        <div style={{ background: "white", padding: "20px 20px 16px", borderBottom: "1px solid #e5e0f8" }}>
-          <button onClick={() => router.back()} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: MP, padding: 0, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 16 }}>←</span>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>Back</span>
-          </button>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a1a1a", letterSpacing: 0.5 }}>
-            YOUR MONTHLY MISSION <span style={{ color: MP }}>♡</span>
+          {/* Back */}
+          <button className="mp-back" onClick={() => router.back()}>← Back</button>
+
+          {/* Header */}
+          <div className="page-header">
+            <h1 className="h-title">
+              YOUR MONTHLY MISSION
+              <svg viewBox="0 0 24 24">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+            </h1>
+            <div className="h-sub">You chose to support: <b>{categoryLabel}</b></div>
           </div>
-          <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-            You chose to support: <strong style={{ color: MP }}>{categoryLabel}</strong>
-          </div>
-        </div>
 
-        <div style={{ padding: "16px 16px 100px" }}>
+          {/* 3-column grid */}
+          <div className="main-grid">
 
-          {/* ── 2. MISSION PROGRESS CARD ──────────────────────────────────── */}
-          <div style={{ background: MP, borderRadius: 20, padding: "20px 18px", marginBottom: 16, color: "white" }}>
-
-            {/* Top row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-                {me ? initial(me.name) : "?"}
+            {/* === Col 1: Mission Card === */}
+            <div className="mission-card">
+              <div className="mc-top">
+                <div className="mc-top-left">
+                  <div className="mc-avatar">{meInitial}</div>
+                  <div>
+                    <div className="mc-progress-label">Your Mission Progress</div>
+                    <div className="mc-progress-date">{dateRange}</div>
+                  </div>
+                </div>
+                <div className="mc-badge-stack">
+                  <div className="mc-gift">🎁</div>
+                  <div className="mc-badge">{categoryLabel.toUpperCase()}</div>
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.9 }}>Your Mission Progress</div>
-                {/* Fix 1 — correct date range */}
-                <div style={{ fontSize: 11, opacity: 0.7 }}>{dateRange}</div>
+
+              <div className="mc-goal-label">Monthly Goal</div>
+              <div className="mc-goal-row">
+                <div className="mc-goal-text">
+                  <span className="mc-goal-bignum">{goal}</span>
+                  <span className="mc-goal-suffix">maternity<br/>essentials</span>
+                </div>
+                <div className="mc-gift-illo">🎁</div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-                <span style={{ fontSize: 20 }}>🎁</span>
-                <span style={{ fontSize: 9, fontWeight: 800, background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: 20, letterSpacing: 0.5 }}>
-                  {categoryLabel.toUpperCase()}
+
+              <div className="mc-help-text">Help us reach more moms this month.</div>
+
+              <MissionMosaic donations={mosaicDonations} listings={mosaicListings} clicks={mosaicClicks} total={goal} />
+
+              {/* Stats row */}
+              <div className="mc-stats">
+                <div className="mc-stat">
+                  <div className="mc-stat-num">{myStats.clicks}</div>
+                  <div className="mc-stat-label">Social Clicks</div>
+                  <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                  </svg>
+                </div>
+                <div className="mc-stat">
+                  <div className="mc-stat-num">{myStats.listings}</div>
+                  <div className="mc-stat-label">Listings Created</div>
+                  <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="8" y="4" width="8" height="4" rx="1"/>
+                    <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+                  </svg>
+                </div>
+                <div className="mc-stat">
+                  <div className="mc-stat-num">{myStats.donations}</div>
+                  <div className="mc-stat-label">Requests Fulfilled</div>
+                  <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M8 12l3 3 5-6"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Affirmation */}
+              <div className="mc-aff">
+                <div className="mc-aff-heart">💜</div>
+                <div>Every action brings us closer to supporting more moms.</div>
+              </div>
+
+              {/* Share link */}
+              <div className="mc-share">Share your link. Invite others to join your mission!</div>
+              <div className="mc-share-row">
+                <span style={{ color: "rgba(255,255,255,0.7)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                  </svg>
                 </span>
-              </div>
-            </div>
-
-            {/* Fix 3 — Monthly goal with larger gift illustration */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <div>
-                <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 2 }}>Monthly Goal</div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontFamily: "Lora, serif", fontSize: 52, fontWeight: 700, lineHeight: 1 }}>{goal}</span>
-                  <span style={{ fontSize: 13, opacity: 0.85 }}>maternity essentials</span>
-                </div>
-              </div>
-              {/* Decorative illustration */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, flexShrink: 0 }}>
-                <span style={{ fontSize: 8, opacity: 0.7 }}>🌸 ✨</span>
-                <span style={{ fontSize: 44, lineHeight: 1 }}>🎁</span>
-                <span style={{ fontSize: 8, opacity: 0.7 }}>💜 🌿</span>
-              </div>
-            </div>
-            <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 16 }}>Help us reach more moms this month.</div>
-
-            {/* Fix 2 — Block grid 10×4, empty blocks use purple tint, no opacity hack */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 4, marginBottom: 16 }}>
-              {blocks.map((t, i) => (
-                <div key={i} style={{
-                  height: 22, borderRadius: 4,
-                  background: t === "empty" ? BLOCK_EMPTY_ON_PURPLE : BLOCK[t],
-                }} />
-              ))}
-            </div>
-
-            {/* Fix 4 — Stats row: bigger numbers */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 4, marginBottom: 16 }}>
-              {[
-                { icon: "🔗", value: clickCount,    label: "Clicks"    },
-                { icon: "📋", value: listingCount,  label: "Listings"  },
-                { icon: "✓",  value: donationCount, label: "Donations" },
-              ].map(({ icon, value, label }) => (
-                <div key={label} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 12, padding: "12px 6px", textAlign: "center" }}>
-                  <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 2 }}>{icon}</div>
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 32, fontWeight: 700, lineHeight: 1 }}>{value}</div>
-                  <div style={{ fontSize: 10, opacity: 0.8, marginTop: 4 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Lavender affirmation */}
-            <div style={{ background: MPL, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <span style={{ fontSize: 18, flexShrink: 0 }}>💜</span>
-              <span style={{ fontSize: 12, color: MP, fontWeight: 600, lineHeight: 1.5 }}>
-                Every action brings us closer to supporting more moms.
-              </span>
-            </div>
-
-            {/* Share link */}
-            <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: 14, padding: "14px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>Share your link.</div>
-              <div style={{ fontSize: 11, opacity: 0.8, marginBottom: 10 }}>Invite others to join your mission!</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <div style={{ flex: 1, background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "8px 10px", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", opacity: 0.9 }}>
-                  {shareUrl}
-                </div>
-                <button
-                  onClick={() => handleCopy(fullShareUrl)}
-                  style={{ background: MPL, color: MP, border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-                >
-                  {copied ? "Copied ✓" : "Share ↑"}
+                <input className="mc-share-input" readOnly value={shareUrl} />
+                <button className="mc-share-btn" onClick={() => handleCopy(fullShareUrl)}>
+                  {copied ? "Copied ✓" : <>Share <span style={{ fontSize: 14 }}>↑</span></>}
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* ── 3. HOW YOUR BAR FILLS ─────────────────────────────────────── */}
-          <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: MP, letterSpacing: 1, marginBottom: 14 }}>HOW YOUR BAR FILLS</div>
+            {/* === Col 2: How Bar Fills + Total Impact === */}
+            <div className="info-card">
+              <div className="ic-title">HOW YOUR BAR FILLS</div>
 
-            {[
-              { color: BLOCK.click,    border: "#ccc",          title: "Social Clicks",                              desc: "When someone clicks your link.",                                               value: "+1 block"  },
-              { color: BLOCK.listing,  border: BLOCK.listing,   title: "Listing Created",                            desc: "When someone creates a listing (register or discover).",                      value: "+2 blocks" },
-              { color: BLOCK.donation, border: BLOCK.donation,  title: "Request Fulfilled / Donation Completed",     desc: "When someone fulfills a request or completes a donation.",                    value: "+4 blocks" },
-            ].map(({ color, border, title, desc, value }) => (
-              <div key={title} style={{ display: "flex", alignItems: "flex-start", gap: 12, paddingBottom: 12, marginBottom: 12, borderBottom: "1px solid #f0ecfa" }}>
-                <div style={{ width: 18, height: 18, borderRadius: 4, background: color, border: `1.5px solid ${border}`, flexShrink: 0, marginTop: 2 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>{title}</div>
-                  <div style={{ fontSize: 11, color: "#777", lineHeight: 1.5 }}>{desc}</div>
+              <div className="hbf-row">
+                <div className="hbf-swatch" style={{ background: C.blockClick }} />
+                <div className="hbf-content">
+                  <div className="hbf-title">Social Clicks</div>
+                  <div className="hbf-desc">When someone clicks your link.</div>
+                  <div className="hbf-blocks">+1 block</div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: MP, flexShrink: 0 }}>{value}</div>
               </div>
-            ))}
-
-            <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#1a1a1a", letterSpacing: 0.5, marginBottom: 12 }}>Total Impact This Month</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-                {[
-                  { val: momsSupported,       label: "Moms Supported"       },
-                  { val: essentialsDelivered, label: "Essentials Delivered" },
-                  { val: citiesReached,       label: "Cities Reached"       },
-                ].map(({ val, label }) => (
-                  <div key={label} style={{ background: MPL, borderRadius: 12, padding: "12px 6px", textAlign: "center" }}>
-                    <div style={{ fontFamily: "Lora, serif", fontSize: 24, fontWeight: 700, color: MP }}>{val}</div>
-                    <div style={{ fontSize: 9, color: MPT, marginTop: 2, lineHeight: 1.4 }}>{label}</div>
-                  </div>
-                ))}
+              <div className="hbf-row">
+                <div className="hbf-swatch" style={{ background: C.blockListing }} />
+                <div className="hbf-content">
+                  <div className="hbf-title">Listing Created</div>
+                  <div className="hbf-desc">When someone creates a listing (register or discover).</div>
+                  <div className="hbf-blocks">+2 blocks</div>
+                </div>
               </div>
-              <div style={{ textAlign: "center", fontSize: 13, color: "#888", fontStyle: "italic" }}>Together, we care. 💜</div>
-            </div>
-          </div>
+              <div className="hbf-row">
+                <div className="hbf-swatch" style={{ background: C.blockDonation }} />
+                <div className="hbf-content">
+                  <div className="hbf-title">Request Fulfilled / Donation Completed</div>
+                  <div className="hbf-desc">When someone fulfills a request or completes a donation.</div>
+                  <div className="hbf-blocks">+4 blocks</div>
+                </div>
+              </div>
 
-          {/* ── 4. OTHER MISSION PARTNERS ────────────────────────────────── */}
-          {partners.length > 0 && (
-            <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: MP, letterSpacing: 1, marginBottom: 4 }}>OTHER MISSION PARTNERS</div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>People supporting the same mission this month.</div>
-
-              {partners.map((partner) => {
-                const pActions   = team.recentActions.filter(a => a.userName === partner.name);
-                const pClicks    = pActions.filter(a => a.actionType === "click").reduce((s, a) => s + a.blocks, 0);
-                const pListings  = Math.floor(pActions.filter(a => a.actionType === "listing").reduce((s, a) => s + a.blocks, 0) / 2);
-                const pDonations = Math.floor(pActions.filter(a => a.actionType === "donation").reduce((s, a) => s + a.blocks, 0) / 4);
-                const pBlocks    = pActions.reduce((s, a) => s + a.blocks, 0);
-                // Fix 5 — partner grid: 2 rows × 20 cols = 40 blocks, shorter height
-                const pGrid = buildGrid(goal, pDonations * 4, pListings * 2, pClicks);
-
-                return (
-                  <div key={partner.id} style={{ background: "#faf9ff", borderRadius: 12, padding: "14px", marginBottom: 10, border: "1px solid #ede9ff" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 38, height: 38, borderRadius: "50%", background: MPT, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, color: "white", flexShrink: 0 }}>
-                        {initial(partner.name)}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{partner.name.split(" ")[0]}</div>
-                        <div style={{ fontSize: 11, color: "#888" }}>Goal: {goal} essentials</div>
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: MP }}>{pBlocks}/{goal}</div>
-                    </div>
-                    {/* Fix 5 — 2 rows × 20 cols, h=8 */}
-                    <div style={{ marginBottom: 10 }}>
-                      <MiniGrid types={pGrid} cols={20} h={8} />
-                    </div>
-                    {/* Fix 6 — stats row spaced evenly */}
-                    <div style={{ display: "flex", justifyContent: "space-evenly" }}>
-                      {[
-                        { icon: "🔗", val: pClicks,    lbl: "clicks"    },
-                        { icon: "📋", val: pListings,  lbl: "listings"  },
-                        { icon: "✓",  val: pDonations, lbl: "donations" },
-                      ].map(({ icon, val, lbl }) => (
-                        <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ fontSize: 13 }}>{icon}</span>
-                          <span style={{ fontSize: 11, color: "#555", fontWeight: 600 }}>{val} {lbl}</span>
-                        </div>
-                      ))}
-                    </div>
+              <div className="total-impact">
+                <div className="ti-icon">👥</div>
+                <div className="ti-label">TOTAL IMPACT THIS MONTH</div>
+                <div className="ti-stats">
+                  <div className="ti-stat">
+                    <div className="ti-stat-num">{impact.moms}</div>
+                    <div className="ti-stat-label">Moms<br/>Supported</div>
                   </div>
-                );
-              })}
-
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
-                <span style={{ fontSize: 16 }}>👥</span>
-                <span style={{ fontSize: 12, color: "#888" }}>
-                  <strong style={{ color: MP }}>{team.members.length}</strong> friends. 1 mission. More love. More impact.
-                </span>
+                  <div className="ti-stat">
+                    <div className="ti-stat-num">{impact.items}</div>
+                    <div className="ti-stat-label">Essentials<br/>Delivered</div>
+                  </div>
+                  <div className="ti-stat">
+                    <div className="ti-stat-num">{impact.cities}</div>
+                    <div className="ti-stat-label">Cities<br/>Reached</div>
+                  </div>
+                </div>
+                <div className="ti-tagline">Together, we care. <span className="ti-tagline-heart">💜</span></div>
               </div>
             </div>
-          )}
 
-          {/* ── 5. HOW IT WORKS ──────────────────────────────────────────── */}
-          <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", letterSpacing: 1, textAlign: "center", marginBottom: 18 }}>HOW IT WORKS</div>
+            {/* === Col 3: Mission Partners === */}
+            <div className="info-card partners-card">
+              <div className="ic-title">OTHER MISSION PARTNERS</div>
+              <div className="ic-subtitle">People supporting the same mission this month.</div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {([
-                {
-                  num: "1", numBg: MP,
-                  // Fix 7 — icon in coloured circle
-                  icon: "✈️", iconBg: MPL,
-                  title: "Someone clicks your link",
-                  desc: "You share on social media. They click.",
-                  grid: step1Blocks,
-                  badge: "+1 block", badgeColor: MP,
-                },
-                {
-                  num: "2", numBg: "#1a7a5e",
-                  icon: "📋", iconBg: "#e8f5f1",
-                  title: "They create a listing",
-                  desc: "They sign up and create a listing.",
-                  grid: step2Blocks,
-                  badge: "+2 blocks", badgeColor: "#1a7a5e",
-                },
-                {
-                  num: "3", numBg: "#155e4a",
-                  icon: "💛", iconBg: "#1a7a5e",
-                  title: "They fulfill a request or donate",
-                  desc: "A real item reaches a mom in need.",
-                  grid: step3Blocks,
-                  badge: "+4 blocks", badgeColor: "#155e4a",
-                },
-                {
-                  num: "4", numBg: MP,
-                  icon: "🎉", iconBg: MPL,
-                  title: "Mission complete!",
-                  desc: "Together, you reached your monthly goal.",
-                  grid: step4Blocks,
-                  badge: "Goal Achieved ♥", badgeColor: MP,
-                },
-              ] as const).map(({ num, numBg, icon, iconBg, title, desc, grid, badge, badgeColor }) => (
-                <div key={num} style={{ background: "#faf9ff", borderRadius: 12, padding: "12px 10px", border: "1px solid #ede9ff" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: numBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", flexShrink: 0 }}>
-                      {num}
+              {partners.length === 0 ? (
+                <div style={{ fontSize: 13, color: C.muted, padding: "12px 0" }}>
+                  No other members yet. Share your link to grow the team!
+                </div>
+              ) : partners.map((p, i) => (
+                <div key={i} className="partner">
+                  <div className="partner-top">
+                    <div className="partner-avatar">{p.initial}</div>
+                    <div className="partner-info">
+                      <div className="partner-name">{p.name}</div>
+                      <div className="partner-goal">Goal: {p.goal} essentials</div>
                     </div>
-                    {/* Fix 7 — icon circle with coloured background */}
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>
-                      {icon}
+                    <div className="partner-count">{p.blocks} / {p.goal}</div>
+                  </div>
+                  <PartnerGrid donations={p.donations} listings={p.listings} clicks={p.clicks} />
+                  <div className="partner-stats">
+                    <div className="pstat">
+                      <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                      </svg>
+                      {p.clicks}
+                    </div>
+                    <div className="pstat">
+                      <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="8" y="4" width="8" height="4" rx="1"/>
+                        <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+                      </svg>
+                      {p.listings}
+                    </div>
+                    <div className="pstat">
+                      <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="9"/>
+                        <path d="M8 12l3 3 5-6"/>
+                      </svg>
+                      {p.donations}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#1a1a1a", marginBottom: 3, lineHeight: 1.3 }}>{title}</div>
-                  <div style={{ fontSize: 10, color: "#888", marginBottom: 8, lineHeight: 1.4 }}>{desc}</div>
-                  {/* Fix 8 — 2 rows × 10 cols mini grid */}
-                  <MiniGrid types={grid} cols={10} h={7} />
-                  <div style={{ fontSize: 11, fontWeight: 800, color: badgeColor, marginTop: 6 }}>{badge}</div>
                 </div>
               ))}
+
+              <div className="friends-line">
+                <div className="friends-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 010 7.75"/>
+                  </svg>
+                </div>
+                <div>{partners.length} friends. 1 mission.<br/>More love. More impact.</div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* How It Works */}
+          <div className="how-it-works">
+            <h2 className="hiw-title">HOW IT WORKS</h2>
+            <div className="hiw-steps">
+              <div className="hiw-step">
+                <div className="hiw-step-head">
+                  <div className="hiw-num">1</div>
+                  <div className="hiw-step-name">Someone clicks your link</div>
+                </div>
+                <div className="hiw-icon-wrap">✈️</div>
+                <div className="hiw-desc">You share on social media. They click.</div>
+                <StepMiniGrid donations={0} listings={0} clicks={1} />
+                <div className="hiw-blocks-label">+1 block</div>
+              </div>
+
+              <div className="hiw-arrow">→</div>
+
+              <div className="hiw-step">
+                <div className="hiw-step-head">
+                  <div className="hiw-num">2</div>
+                  <div className="hiw-step-name">They create a listing</div>
+                </div>
+                <div className="hiw-icon-wrap hiw-icon-green">📋</div>
+                <div className="hiw-desc">They sign up and create a listing (register or discover).</div>
+                <StepMiniGrid donations={0} listings={2} clicks={1} />
+                <div className="hiw-blocks-label hiw-blocks-label-green">+2 blocks</div>
+              </div>
+
+              <div className="hiw-arrow">→</div>
+
+              <div className="hiw-step">
+                <div className="hiw-step-head">
+                  <div className="hiw-num hiw-num-green">3</div>
+                  <div className="hiw-step-name">They fulfill a request or donate</div>
+                </div>
+                <div className="hiw-icon-wrap hiw-icon-green">💚</div>
+                <div className="hiw-desc">They fulfill a request or complete a donation on Kradel.</div>
+                <StepMiniGrid donations={4} listings={2} clicks={1} />
+                <div className="hiw-blocks-label hiw-blocks-label-green">+4 blocks</div>
+              </div>
+
+              <div className="hiw-arrow">→</div>
+
+              <div className="hiw-step">
+                <div className="hiw-step-head">
+                  <div className="hiw-num">4</div>
+                  <div className="hiw-step-name">Mission complete!</div>
+                </div>
+                <div className="hiw-icon-wrap">🎉</div>
+                <div className="hiw-desc">Together, you reached your monthly goal.</div>
+                <StepMiniGrid donations={13} listings={8} clicks={5} />
+                <div className="hiw-blocks-label">Goal Achieved 💜</div>
+              </div>
             </div>
           </div>
 
-          {/* ── 6. BOTTOM TAGLINE ────────────────────────────────────────── */}
-          {/* Fix 9 — flex row, wraps on very small screens */}
-          <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 16, border: "1px solid #e5e0f8" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 180, fontSize: 13, color: "#1a1a1a", lineHeight: 1.6 }}>
-                Every click. Every listing. Every act of care.{" "}
-                <strong>It all adds up to change a mom&rsquo;s life.</strong>
-              </div>
-              <div style={{ background: MPL, borderRadius: 20, padding: "8px 14px", fontSize: 12, color: MP, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>
-                Thank you for being part of the change 💜
+          {/* Bottom tagline */}
+          <div className="bottom-tag">
+            <div className="bt-left">
+              <div className="bt-avatar">🤱🏽</div>
+              <div className="bt-text">
+                Every click. Every listing. Every act of care. <b>It all adds up to change a mom&rsquo;s life.</b>
               </div>
             </div>
+            <div className="bt-pill">Thank you for being part of the change 💜</div>
           </div>
 
           {/* Leave mission */}
-          {leaveErr && (
-            <div style={{ background: "#fff5f5", border: "1px solid #fecaca", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#dc2626" }}>
-              {leaveErr}
-            </div>
-          )}
-          <div style={{ textAlign: "center", paddingTop: 4 }}>
-            <button
-              onClick={handleLeave}
-              disabled={!canLeave || leaving}
-              style={{ background: "none", border: "none", fontSize: 12, color: canLeave ? "#9ca3af" : "#d1d5db", cursor: canLeave ? "pointer" : "default", textDecoration: canLeave ? "underline" : "none" }}
-            >
-              {leaving ? "Leaving…" : canLeave ? "Leave this mission" : "Leaving closes after the 1st of the month"}
-            </button>
-          </div>
+          {leaveErr && <div className="leave-err">{leaveErr}</div>}
+          <button className="leave-btn" onClick={handleLeave} disabled={!canLeave || leaving}>
+            {leaving ? "Leaving…" : canLeave ? "Leave this mission" : "Leaving closes after the 1st of the month"}
+          </button>
+
         </div>
       </div>
-
       <BottomNav />
-    </div>
+    </>
   );
 }
