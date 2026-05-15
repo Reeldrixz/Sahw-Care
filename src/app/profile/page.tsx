@@ -501,6 +501,19 @@ export default function ProfilePage() {
             <DonorStatusCard />
             <MissionCard />
 
+            {/* Monthly Impact card */}
+            <div
+              onClick={() => router.push("/profile/impact")}
+              style={{ background: "linear-gradient(135deg, #faf8f3 0%, #e8f5f1 100%)", borderRadius: 16, padding: "14px 16px", marginBottom: 12, border: "1px solid #b7dfd1", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+            >
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(26,122,94,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🛡️</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Your monthly impact</div>
+                <div style={{ fontSize: 12, color: "#5a9a72", fontFamily: "Nunito, sans-serif" }}>See how Kradel turned care into action this month</div>
+              </div>
+              <ChevronRight size={20} color="#9ca3af" />
+            </div>
+
             {(summary?.itemsTotal ?? 0) > 0 && (
               <button
                 onClick={() => setShowShareImpact(true)}
