@@ -67,7 +67,7 @@ function MissionCard() {
               Team up with 5 donors. Fill 40 blocks. Fund real outcomes for mothers.
             </div>
           </div>
-          <div style={{ fontSize: 18, color: "#1a7a5e" }}>→</div>
+          <ChevronRight size={20} color="#9ca3af" />
         </div>
       </div>
     );
@@ -90,7 +90,10 @@ function MissionCard() {
             {team.totalBlocks}/{mission.goalBlocks} blocks · {pct}%
           </div>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: "#e8f5f1", color: "#1a7a5e" }}>Active</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: "#e8f5f1", color: "#1a7a5e" }}>Active</span>
+          <ChevronRight size={20} color="#9ca3af" />
+        </div>
       </div>
       <div style={{ background: "#e8e4de", borderRadius: 6, height: 6, marginBottom: 10, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: "#1a7a5e", borderRadius: 6, transition: "width 0.4s ease" }} />
