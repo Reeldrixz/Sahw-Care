@@ -82,7 +82,7 @@ export async function POST(
     await Promise.all([
       awardTrust(assignment.donorId, "SUPPORT_RECEIVED", { referenceId: assignmentId, referenceType: "ItemAssignment", reason: "register donation fulfilled" }),
       awardImpactPoints(assignment.donorId, "REGISTER_ITEM_DELIVERED", assignmentId),
-      recordMissionAction(assignment.donorId, "donation"),
+      recordMissionAction(assignment.donorId, "bundle_delivered"),
     ]);
   }
 

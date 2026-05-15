@@ -14,10 +14,14 @@ interface MissionDetail {
 }
 
 const BLOCK_COLORS = {
-  donation: "#1a7a5e",
-  listing:  "#7bc4a4",
-  click:    "#d4cfc8",
-  empty:    "#e8e4de",
+  completed: "#1a7a5e",
+  activity:  "#a8d4bf",
+  signup:    "#c8d8c8",
+  click:     "#d4cfc8",
+  empty:     "#e8e4de",
+  // legacy aliases kept for demoBlocks
+  donation:  "#1a7a5e",
+  listing:   "#a8d4bf",
 };
 
 export default function HowItWorksPage() {
@@ -58,8 +62,9 @@ export default function HowItWorksPage() {
 
   // Example 40-block grid for the visual — pre-filled demo layout
   const demoBlocks = Array.from({ length: 40 }, (_, i) => {
-    if (i < 8)  return "donation";
-    if (i < 18) return "listing";
+    if (i < 8)  return "completed";
+    if (i < 16) return "activity";
+    if (i < 20) return "signup";
     if (i < 24) return "click";
     return "empty";
   });
@@ -154,16 +159,18 @@ export default function HowItWorksPage() {
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>How blocks stack</div>
               <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", background: "#e8e4de" }}>
-                <div style={{ width: "30%", background: BLOCK_COLORS.donation, borderRadius: "7px 0 0 7px" }} />
-                <div style={{ width: "25%", background: BLOCK_COLORS.listing  }} />
-                <div style={{ width: "15%", background: BLOCK_COLORS.click    }} />
+                <div style={{ width: "20%", background: BLOCK_COLORS.completed, borderRadius: "7px 0 0 7px" }} />
+                <div style={{ width: "20%", background: BLOCK_COLORS.activity  }} />
+                <div style={{ width: "10%", background: BLOCK_COLORS.signup    }} />
+                <div style={{ width: "10%", background: BLOCK_COLORS.click     }} />
               </div>
-              <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
                 {([
-                  { color: BLOCK_COLORS.donation, label: "Donation (+4)" },
-                  { color: BLOCK_COLORS.listing,  label: "New listing (+2)" },
-                  { color: BLOCK_COLORS.click,    label: "Link visit (+1)" },
-                  { color: BLOCK_COLORS.empty,    label: "Unfilled" },
+                  { color: BLOCK_COLORS.completed, label: "Fulfilled (+4)" },
+                  { color: BLOCK_COLORS.activity,  label: "Activity (+2)" },
+                  { color: BLOCK_COLORS.signup,    label: "Sign-up (+2)" },
+                  { color: BLOCK_COLORS.click,     label: "Click (+1)" },
+                  { color: BLOCK_COLORS.empty,     label: "Unfilled" },
                 ] as const).map(({ color, label }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <div style={{ width: 12, height: 12, borderRadius: 3, background: color, border: color === BLOCK_COLORS.empty ? "1px solid #ccc" : "none" }} />
@@ -177,15 +184,14 @@ export default function HowItWorksPage() {
           {/* How the bar fills */}
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>What fills the bar</div>
+
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6 }}>AWARENESS</div>
             {[
-              { icon: "🔗", title: "Account created",      action: "Someone joins Kradel through your shared link.",          blocks: "+1 block",  color: BLOCK_COLORS.click    },
-              { icon: "📦", title: "First listing posted",  action: "A new member lists their first item for mothers.",        blocks: "+2 blocks", color: BLOCK_COLORS.listing  },
-              { icon: "💛", title: "Essential delivered",   action: "A request is fulfilled or a donation is completed.",      blocks: "+4 blocks", color: BLOCK_COLORS.donation },
+              { icon: "🔗", title: "Link clicked",    action: "Someone clicks your shared Kradel link.",  blocks: "+1 block",  color: BLOCK_COLORS.click   },
+              { icon: "👤", title: "Account created", action: "They sign up through your link.",           blocks: "+2 blocks", color: BLOCK_COLORS.signup  },
             ].map(({ icon, title, action, blocks, color }) => (
-              <div key={action} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
-                  {icon}
-                </div>
+              <div key={title} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>{title}</div>
                   <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>{action}</div>
@@ -193,6 +199,26 @@ export default function HowItWorksPage() {
                 <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color, flexShrink: 0 }}>{blocks}</div>
               </div>
             ))}
+
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6, marginTop: 14 }}>ACTIVITY</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📦</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Item listed or register committed</div>
+                <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>They list an item to donate or commit to a register.</div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: BLOCK_COLORS.activity, flexShrink: 0 }}>+2 blocks</div>
+            </div>
+
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6, marginTop: 14 }}>OUTCOME</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>💚</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Mom received essentials</div>
+                <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>A request is fulfilled, listing completed, or bundle delivered.</div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: BLOCK_COLORS.completed, flexShrink: 0 }}>+4 blocks</div>
+            </div>
           </div>
 
           {/* Mission flow */}

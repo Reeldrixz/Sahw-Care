@@ -115,6 +115,43 @@ function MissionCard() {
   );
 }
 
+function ContributorCard() {
+  const router = useRouter();
+  const [hasActions, setHasActions] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    fetch("/api/profile/contributor")
+      .then(r => r.json())
+      .then(d => setHasActions(d.hasActions ?? false))
+      .catch(() => setHasActions(false));
+  }, []);
+
+  if (hasActions === undefined) return null;
+
+  return (
+    <div
+      onClick={hasActions ? () => router.push("/profile/contributor") : undefined}
+      style={{
+        background: "linear-gradient(to right, #f5f3ff, #ede9ff)",
+        borderRadius: 16, padding: "14px 16px", marginBottom: 12,
+        border: "1px solid #d4cdf0",
+        cursor: hasActions ? "pointer" : "default",
+        display: "flex", alignItems: "center", gap: 12,
+        opacity: hasActions ? 1 : 0.55,
+      }}
+    >
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(109,90,205,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🤝</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#5a47b8", marginBottom: 2 }}>Care Contributor Profile</div>
+        <div style={{ fontSize: 12, color: "#6d5acd", fontFamily: "Nunito, sans-serif", opacity: 0.85 }}>
+          {hasActions ? "See your mission history & impact" : "Join a mission to unlock your contributor profile"}
+        </div>
+      </div>
+      {hasActions && <ChevronRight size={20} color="#9ca3af" />}
+    </div>
+  );
+}
+
 function DonorStatusCard() {
   const { user } = useAuth();
   const [level, setLevel] = useState<string>("NEW_DONOR");
@@ -500,6 +537,7 @@ export default function ProfilePage() {
           <>
             <DonorStatusCard />
             <MissionCard />
+            <ContributorCard />
 
             {/* Monthly Impact card */}
             <div

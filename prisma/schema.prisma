@@ -1417,13 +1417,14 @@ model MissionMember {
 }
 
 model MissionAction {
-  id         String      @id @default(cuid())
-  teamId     String
-  team       MissionTeam @relation(fields: [teamId], references: [id])
-  userId     String
-  user       User        @relation(fields: [userId], references: [id])
-  actionType String      // "click" | "listing" | "donation"
-  blocks     Int
-  humanLabel String
-  createdAt  DateTime    @default(now())
+  id          String      @id @default(cuid())
+  teamId      String
+  team        MissionTeam @relation(fields: [teamId], references: [id])
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  actionType  String      // "click"|"signup"|"listing_posted"|"register_committed"|"listing_completed"|"register_fulfilled"|"bundle_delivered"
+  blocks      Int
+  humanLabel  String
+  referenceId String?     // item/register/bundle ID — used for upgrade-in-place matching
+  createdAt   DateTime    @default(now())
 }

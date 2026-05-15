@@ -238,7 +238,7 @@ export async function POST(req: NextRequest) {
 
     // First-listing mission trigger (fire-and-forget)
     prisma.item.count({ where: { donorId: user.userId, id: { not: item.id } } })
-      .then((prior) => { if (prior === 0) return recordMissionAction(user.userId, "listing"); })
+      .then((prior) => { if (prior === 0) return recordMissionAction(user.userId, "listing_posted"); })
       .catch(() => {});
 
     // Silent duplicate detection

@@ -19,7 +19,8 @@ interface MissionData {
   mission: { id: string; name: string; description: string; month: string; goalBlocks: number; category: string; };
   team: {
     id: string; totalBlocks: number; isComplete: boolean;
-    clickBlocks: number; listingBlocks: number; donationBlocks: number;
+    completedBlocks: number; activityBlocks: number; signupBlocks: number; clickBlocks: number;
+    listingBlocks: number; donationBlocks: number; // legacy aliases
     members: MissionMember[]; recentActions: RecentAction[];
   };
 }
@@ -229,47 +230,52 @@ const styles = `
     padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #dc2626; }
 `;
 
-// ── Helper components (from reference, unchanged) ──────────────────────────────
-function MissionMosaic({ donations = 0, listings = 0, clicks = 0, total = 40 }: { donations: number; listings: number; clicks: number; total: number }) {
+const BLOCK_SIGNUP = "#c8d8c8"; // light grey-green
+
+// ── Helper components ──────────────────────────────────────────────────────────
+function MissionMosaic({ completed = 0, activity = 0, signups = 0, clicks = 0, total = 40 }: {
+  completed: number; activity: number; signups: number; clicks: number; total: number;
+}) {
   const blocks = [];
   for (let i = 0; i < total; i++) {
     let bg: string;
-    if (i < donations) bg = C.blockDonation;
-    else if (i < donations + listings) bg = C.blockListing;
-    else if (i < donations + listings + clicks) bg = C.blockClick;
-    else bg = C.purpleTinted;
+    if      (i < completed)                          bg = C.blockDonation;
+    else if (i < completed + activity)               bg = C.blockListing;
+    else if (i < completed + activity + signups)     bg = BLOCK_SIGNUP;
+    else if (i < completed + activity + signups + clicks) bg = C.blockClick;
+    else                                             bg = C.purpleTinted;
     blocks.push(<div key={i} className="block" style={{ background: bg }} />);
   }
   return <div className="mc-mosaic">{blocks}</div>;
 }
 
-function PartnerGrid({ donations = 0, listings = 0, clicks = 0 }: { donations: number; listings: number; clicks: number }) {
+function PartnerGrid({ completed = 0, activity = 0, clicks = 0 }: { completed: number; activity: number; clicks: number }) {
   const total = 26;
   const ratio = 26 / 40;
-  const d = Math.round(donations * ratio);
-  const l = Math.round(listings  * ratio);
+  const d = Math.round(completed * ratio);
+  const l = Math.round(activity  * ratio);
   const c = Math.round(clicks    * ratio);
   const blocks = [];
   for (let i = 0; i < total; i++) {
     let bg: string;
-    if (i < d) bg = C.blockDonation;
-    else if (i < d + l) bg = C.blockListing;
+    if      (i < d)         bg = C.blockDonation;
+    else if (i < d + l)     bg = C.blockListing;
     else if (i < d + l + c) bg = C.blockClick;
-    else bg = C.blockEmpty;
+    else                    bg = C.blockEmpty;
     blocks.push(<div key={i} className="pblock" style={{ background: bg }} />);
   }
   return <div className="partner-grid">{blocks}</div>;
 }
 
-function StepMiniGrid({ donations = 0, listings = 0, clicks = 0 }: { donations: number; listings: number; clicks: number }) {
+function StepMiniGrid({ completed = 0, activity = 0, clicks = 0 }: { completed: number; activity: number; clicks: number }) {
   const total = 26;
   const blocks = [];
   for (let i = 0; i < total; i++) {
     let bg: string;
-    if (i < donations) bg = C.blockDonation;
-    else if (i < donations + listings) bg = C.blockListing;
-    else if (i < donations + listings + clicks) bg = C.blockClick;
-    else bg = C.blockEmpty;
+    if      (i < completed)              bg = C.blockDonation;
+    else if (i < completed + activity)   bg = C.blockListing;
+    else if (i < completed + activity + clicks) bg = C.blockClick;
+    else                                 bg = C.blockEmpty;
     blocks.push(<div key={i} className="miniblock" style={{ background: bg }} />);
   }
   return <div className="hiw-mini-grid">{blocks}</div>;
@@ -309,13 +315,18 @@ export default function MyMissionPage() {
     if (res.ok) { router.push("/missions"); } else { setLeaveErr(d.error ?? "Could not leave"); setLeaving(false); }
   };
 
-  const triggerAction = async (actionType: "click" | "listing" | "donation") => {
+  const triggerAction = async (actionType: "click" | "signup" | "listing_posted" | "listing_completed" | "bundle_delivered") => {
     if (!data || triggering) return;
     setTriggering(true);
     await fetch("/api/missions/action", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamId: data.teamId, actionType }),
+      body: JSON.stringify({
+        teamId: data.teamId, actionType,
+        meta: actionType === "listing_completed" ? { category: "Postpartum" }
+            : actionType === "bundle_delivered"  ? { itemName: "Care Bundle", stage: "Postpartum" }
+            : undefined,
+      }),
     }).catch(() => {});
     await load();
     setTriggering(false);
@@ -376,14 +387,15 @@ export default function MyMissionPage() {
   // My personal stats (from recentActions filtered to isMe)
   const myActions = team.recentActions.filter(a => a.isMe);
   const myStats = {
-    clicks:    myActions.filter(a => a.actionType === "click").length,
-    listings:  myActions.filter(a => a.actionType === "listing").length,
-    donations: myActions.filter(a => a.actionType === "donation").length,
+    clicks:   myActions.filter(a => a.actionType === "click").length,
+    activity: myActions.filter(a => ["listing_posted", "register_committed"].includes(a.actionType)).length,
+    outcomes: myActions.filter(a => ["listing_completed", "register_fulfilled", "bundle_delivered"].includes(a.actionType)).length,
   };
 
   // Mission mosaic — uses TEAM totals (block counts, not action counts)
-  const mosaicDonations = team.donationBlocks;
-  const mosaicListings  = team.listingBlocks;
+  const mosaicCompleted = team.completedBlocks;
+  const mosaicActivity  = team.activityBlocks;
+  const mosaicSignups   = team.signupBlocks;
   const mosaicClicks    = team.clickBlocks;
 
   // Partners — derive per-person stats from recentActions
@@ -391,8 +403,8 @@ export default function MyMissionPage() {
     .filter(m => !m.isMe)
     .map(partner => {
       const pa = team.recentActions.filter(a => a.userName === partner.name);
-      const pDonBlocks = pa.filter(a => a.actionType === "donation").reduce((s, a) => s + a.blocks, 0);
-      const pLstBlocks = pa.filter(a => a.actionType === "listing").reduce((s, a) => s + a.blocks, 0);
+      const pCompleted = pa.filter(a => ["listing_completed","register_fulfilled","bundle_delivered"].includes(a.actionType)).reduce((s, a) => s + a.blocks, 0);
+      const pActivity  = pa.filter(a => ["listing_posted","register_committed"].includes(a.actionType)).reduce((s, a) => s + a.blocks, 0);
       const pClkBlocks = pa.filter(a => a.actionType === "click").reduce((s, a) => s + a.blocks, 0);
       const pBlocks    = pa.reduce((s, a) => s + a.blocks, 0);
       return {
@@ -400,14 +412,14 @@ export default function MyMissionPage() {
         name:      partner.name.split(" ")[0],
         goal:      goal,
         blocks:    pBlocks,
-        donations: pDonBlocks,
-        listings:  pLstBlocks,
+        completed: pCompleted,
+        activity:  pActivity,
         clicks:    pClkBlocks,
       };
     });
 
   // Impact
-  const donationCount = Math.floor(team.donationBlocks / 4);
+  const donationCount = Math.floor(team.completedBlocks / 4);
   const impact = {
     moms:   Math.max(donationCount, team.totalBlocks > 0 ? 1 : 0),
     items:  team.totalBlocks,
@@ -432,7 +444,7 @@ export default function MyMissionPage() {
           <div className="page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
             <div>
               <h1 className="h-title">
-                YOUR MONTHLY MISSION
+                YOUR MISSION
                 <svg viewBox="0 0 24 24">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
@@ -477,29 +489,29 @@ export default function MyMissionPage() {
 
               <div className="mc-help-text">40 maternal essentials. Real items. Real mothers. This month.</div>
 
-              <MissionMosaic donations={mosaicDonations} listings={mosaicListings} clicks={mosaicClicks} total={goal} />
+              <MissionMosaic completed={mosaicCompleted} activity={mosaicActivity} signups={mosaicSignups} clicks={mosaicClicks} total={goal} />
 
               {/* Stats row */}
               <div className="mc-stats">
                 <div className="mc-stat">
                   <div className="mc-stat-num">{myStats.clicks}</div>
-                  <div className="mc-stat-label">Social Clicks</div>
+                  <div className="mc-stat-label">Clicks</div>
                   <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
                     <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
                   </svg>
                 </div>
                 <div className="mc-stat">
-                  <div className="mc-stat-num">{myStats.listings}</div>
-                  <div className="mc-stat-label">Listings Created</div>
+                  <div className="mc-stat-num">{myStats.activity}</div>
+                  <div className="mc-stat-label">Activities</div>
                   <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="8" y="4" width="8" height="4" rx="1"/>
                     <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
                   </svg>
                 </div>
                 <div className="mc-stat">
-                  <div className="mc-stat-num">{myStats.donations}</div>
-                  <div className="mc-stat-label">Requests Fulfilled</div>
+                  <div className="mc-stat-num">{myStats.outcomes}</div>
+                  <div className="mc-stat-label">Fulfilled</div>
                   <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9"/>
                     <path d="M8 12l3 3 5-6"/>
@@ -533,27 +545,40 @@ export default function MyMissionPage() {
             <div className="info-card">
               <div className="ic-title">HOW YOUR BAR FILLS</div>
 
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: C.muted, textTransform: "uppercase", marginBottom: 6 }}>AWARENESS</div>
               <div className="hbf-row">
                 <div className="hbf-swatch" style={{ background: C.blockClick }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Account created</div>
-                  <div className="hbf-desc">Someone joins Kradel through your shared link.</div>
+                  <div className="hbf-title">Link clicked</div>
+                  <div className="hbf-desc">Someone clicks your shared Kradel link.</div>
                   <div className="hbf-blocks">+1 block</div>
                 </div>
               </div>
               <div className="hbf-row">
-                <div className="hbf-swatch" style={{ background: C.blockListing }} />
+                <div className="hbf-swatch" style={{ background: BLOCK_SIGNUP }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">First listing posted</div>
-                  <div className="hbf-desc">A new member lists their first item for mothers.</div>
+                  <div className="hbf-title">Account created</div>
+                  <div className="hbf-desc">They sign up through your link.</div>
                   <div className="hbf-blocks">+2 blocks</div>
                 </div>
               </div>
+
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: C.muted, textTransform: "uppercase", marginBottom: 6, marginTop: 14 }}>ACTIVITY</div>
               <div className="hbf-row">
+                <div className="hbf-swatch" style={{ background: C.blockListing }} />
+                <div className="hbf-content">
+                  <div className="hbf-title">Item listed or register committed</div>
+                  <div className="hbf-desc">They list an item to donate or commit to a register.</div>
+                  <div className="hbf-blocks">+2 blocks</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: C.muted, textTransform: "uppercase", marginBottom: 6, marginTop: 14 }}>OUTCOME</div>
+              <div className="hbf-row" style={{ borderBottom: "none" }}>
                 <div className="hbf-swatch" style={{ background: C.blockDonation }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Essential delivered</div>
-                  <div className="hbf-desc">A request is fulfilled or a donation is completed.</div>
+                  <div className="hbf-title">Mom received essentials</div>
+                  <div className="hbf-desc">A request is fulfilled, listing completed, or bundle delivered.</div>
                   <div className="hbf-blocks">+4 blocks</div>
                 </div>
               </div>
@@ -598,7 +623,7 @@ export default function MyMissionPage() {
                     </div>
                     <div className="partner-count">{p.blocks} / {p.goal}</div>
                   </div>
-                  <PartnerGrid donations={p.donations} listings={p.listings} clicks={p.clicks} />
+                  <PartnerGrid completed={p.completed} activity={p.activity} clicks={p.clicks} />
                   <div className="partner-stats">
                     <div className="pstat">
                       <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
@@ -612,14 +637,14 @@ export default function MyMissionPage() {
                         <rect x="8" y="4" width="8" height="4" rx="1"/>
                         <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
                       </svg>
-                      {p.listings}
+                      {p.activity}
                     </div>
                     <div className="pstat">
                       <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="9"/>
                         <path d="M8 12l3 3 5-6"/>
                       </svg>
-                      {p.donations}
+                      {p.completed}
                     </div>
                   </div>
                 </div>
@@ -651,7 +676,7 @@ export default function MyMissionPage() {
                 </div>
                 <div className="hiw-icon-wrap">✈️</div>
                 <div className="hiw-desc">You share on social media. They click.</div>
-                <StepMiniGrid donations={0} listings={0} clicks={1} />
+                <StepMiniGrid completed={0} activity={0} clicks={1} />
                 <div className="hiw-blocks-label">+1 block</div>
               </div>
 
@@ -664,7 +689,7 @@ export default function MyMissionPage() {
                 </div>
                 <div className="hiw-icon-wrap hiw-icon-green">📋</div>
                 <div className="hiw-desc">They sign up and create a listing (register or discover).</div>
-                <StepMiniGrid donations={0} listings={2} clicks={1} />
+                <StepMiniGrid completed={0} activity={2} clicks={1} />
                 <div className="hiw-blocks-label hiw-blocks-label-green">+2 blocks</div>
               </div>
 
@@ -677,7 +702,7 @@ export default function MyMissionPage() {
                 </div>
                 <div className="hiw-icon-wrap hiw-icon-green">💚</div>
                 <div className="hiw-desc">They fulfill a request or complete a donation on Kradel.</div>
-                <StepMiniGrid donations={4} listings={2} clicks={1} />
+                <StepMiniGrid completed={4} activity={2} clicks={1} />
                 <div className="hiw-blocks-label hiw-blocks-label-green">+4 blocks</div>
               </div>
 
@@ -690,7 +715,7 @@ export default function MyMissionPage() {
                 </div>
                 <div className="hiw-icon-wrap">🎉</div>
                 <div className="hiw-desc">Together, you reached your monthly goal.</div>
-                <StepMiniGrid donations={13} listings={8} clicks={5} />
+                <StepMiniGrid completed={13} activity={8} clicks={5} />
                 <div className="hiw-blocks-label">Goal Achieved 💜</div>
               </div>
             </div>
@@ -721,9 +746,10 @@ export default function MyMissionPage() {
               </summary>
               <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {([
-                  { label: "Trigger click action (+1)",    actionType: "click"    as const },
-                  { label: "Trigger listing action (+2)",  actionType: "listing"  as const },
-                  { label: "Trigger donation action (+4)", actionType: "donation" as const },
+                  { label: "click (+1)",              actionType: "click"             as const },
+                  { label: "listing_posted (+2)",      actionType: "listing_posted"    as const },
+                  { label: "listing_completed (+4)",   actionType: "listing_completed" as const },
+                  { label: "bundle_delivered (+4)",    actionType: "bundle_delivered"  as const },
                 ] as const).map(({ label, actionType }) => (
                   <button
                     key={actionType}

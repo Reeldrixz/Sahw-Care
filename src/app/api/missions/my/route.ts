@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/missions/my — donor's current active mission + team + progress
+const COMPLETED_TYPES = ["donation", "listing_completed", "register_fulfilled", "bundle_delivered"];
+const ACTIVITY_TYPES  = ["listing",  "listing_posted",    "register_committed"];
+
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const auth  = token ? await verifyToken(token) : null;
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
           },
           actions: {
             orderBy: { createdAt: "desc" },
-            take:    20,
+            take:    40,
             include: { user: { select: { id: true, name: true } } },
           },
         },
@@ -36,31 +38,36 @@ export async function GET(req: NextRequest) {
   const team    = membership.team;
   const mission = team.mission;
 
-  // Block breakdown by type
-  const clickBlocks    = team.actions.reduce((s, a) => a.actionType === "click"    ? s + a.blocks : s, 0);
-  const listingBlocks  = team.actions.reduce((s, a) => a.actionType === "listing"  ? s + a.blocks : s, 0);
-  const donationBlocks = team.actions.reduce((s, a) => a.actionType === "donation" ? s + a.blocks : s, 0);
+  // Block breakdown — handles both old (click/listing/donation) and new action types
+  const completedBlocks = team.actions.reduce((s, a) => COMPLETED_TYPES.includes(a.actionType) ? s + a.blocks : s, 0);
+  const activityBlocks  = team.actions.reduce((s, a) => ACTIVITY_TYPES.includes(a.actionType)  ? s + a.blocks : s, 0);
+  const signupBlocks    = team.actions.reduce((s, a) => a.actionType === "signup"               ? s + a.blocks : s, 0);
+  const clickBlocks     = team.actions.reduce((s, a) => a.actionType === "click"                ? s + a.blocks : s, 0);
 
   return NextResponse.json({
     membership: {
       id:      membership.id,
       teamId:  team.id,
       mission: {
-        id:         mission.id,
-        name:       mission.name,
-        description:mission.description,
-        month:      mission.month,
-        category:   mission.category,
-        goalBlocks: mission.goalBlocks,
+        id:          mission.id,
+        name:        mission.name,
+        description: mission.description,
+        month:       mission.month,
+        category:    mission.category,
+        goalBlocks:  mission.goalBlocks,
       },
       team: {
-        id:            team.id,
-        totalBlocks:   team.totalBlocks,
-        isComplete:    team.isComplete,
+        id:             team.id,
+        totalBlocks:    team.totalBlocks,
+        isComplete:     team.isComplete,
+        completedBlocks,
+        activityBlocks,
+        signupBlocks,
         clickBlocks,
-        listingBlocks,
-        donationBlocks,
-        members:       team.members.map((m) => ({
+        // Legacy field aliases for backwards compat
+        donationBlocks: completedBlocks,
+        listingBlocks:  activityBlocks,
+        members:        team.members.map((m) => ({
           id:       m.id,
           userId:   m.user.id,
           name:     m.user.name,

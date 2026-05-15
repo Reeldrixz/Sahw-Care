@@ -86,7 +86,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       awardTrust(donorId,     "DELIVERY_CONFIRMED", { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "recipient confirmed receipt" }),
       awardTrust(recipientId, "DELIVERY_CONFIRMED", { referenceId: fulfillId, referenceType: "RequestFulfillment", reason: "confirmed item received" }),
       awardImpactPoints(donorId, "FULFILLED_REQUEST", requestId),
-      recordMissionAction(donorId, "donation"),
+      recordMissionAction(donorId, "listing_completed"),
     ]).catch(() => {});
 
     // Notify donor
