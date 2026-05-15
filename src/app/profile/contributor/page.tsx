@@ -5,19 +5,25 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface ActiveMission {
+  name: string; teamId: string; totalBlocks: number; goalBlocks: number; isComplete: boolean;
+}
+
 interface ContributorData {
   hasActions: boolean;
-  stats: {
+  hasMembership: boolean;
+  activeMission: ActiveMission | null;
+  stats?: {
     clicks: number; signups: number; activity: number; outcomes: number; totalBlocks: number;
   };
-  missionHistory: Array<{
+  missionHistory?: Array<{
     id: string; missionName: string; month: string;
     teamBlocks: number; goalBlocks: number; myBlocks: number; isComplete: boolean; joinedAt: string;
   }>;
-  recentActions: Array<{
+  recentActions?: Array<{
     id: string; actionType: string; blocks: number; humanLabel: string; createdAt: string;
   }>;
-  highlightMoments: Array<{
+  highlightMoments?: Array<{
     id: string; actionType: string; blocks: number; humanLabel: string; createdAt: string;
   }>;
 }
@@ -151,9 +157,11 @@ function MiniBar({ myBlocks, goalBlocks }: { myBlocks: number; goalBlocks: numbe
   );
 }
 
+type ActionItem = NonNullable<ContributorData["recentActions"]>[number];
+
 // Group actions by week for display — collapses <48h entries into a digest
-function groupActions(actions: ContributorData["recentActions"]) {
-  const groups: Array<{ label: string; isDigest: boolean; actions: typeof actions }> = [];
+function groupActions(actions: ActionItem[]) {
+  const groups: Array<{ label: string; isDigest: boolean; actions: ActionItem[] }> = [];
   let currentLabel = "";
   let currentGroup: typeof actions = [];
   const now = Date.now();
@@ -184,6 +192,7 @@ export default function ContributorPage() {
   const router   = useRouter();
   const [data,    setData]    = useState<ContributorData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (!user) { router.push("/auth"); return; }
@@ -202,7 +211,8 @@ export default function ContributorPage() {
     </div>
   );
 
-  if (!data || !data.hasActions) return (
+  // Never joined any mission — hard gate
+  if (!data || !data.hasMembership) return (
     <>
       <style>{styles}</style>
       <div className="cp-page">
@@ -226,7 +236,120 @@ export default function ContributorPage() {
     </>
   );
 
-  const { stats, missionHistory, recentActions, highlightMoments } = data;
+  // Joined a mission but no actions yet — zero-data state
+  if (!data.hasActions) {
+    const am = data.activeMission;
+    const amPct = am ? Math.min(100, Math.round((am.totalBlocks / am.goalBlocks) * 100)) : 0;
+    const shareUrl = am
+      ? `${typeof window !== "undefined" ? window.location.origin : "https://kradel.com"}/missions?ref=${am.teamId}`
+      : "";
+    const copyLink = () => {
+      if (!shareUrl) return;
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    };
+
+    return (
+      <>
+        <style>{styles}</style>
+        <div className="cp-page">
+          {/* Header */}
+          <div style={{ background: "white", borderBottom: "1px solid #ede8df", padding: "14px 16px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "#faf8f3", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>←</button>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "inline-block", background: "#f5f3ff", color: C.purple, fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", padding: "3px 10px", borderRadius: 20, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                CARE CONTRIBUTOR
+              </div>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>
+                {user.name}&rsquo;s contribution
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, fontFamily: "Nunito, sans-serif", marginTop: 3 }}>
+                Every action you&rsquo;ve taken to reach a mother.
+              </div>
+            </div>
+          </div>
+
+          <div className="cp-inner">
+            {/* Lifetime stats — all 0s, honest */}
+            <div className="cp-card">
+              <div className="cp-section-label">Your lifetime impact</div>
+              <div className="stat-grid">
+                {[
+                  { num: 0, label: "Link\nClicks" },
+                  { num: 0, label: "New Members\nBrought In" },
+                  { num: 0, label: "Activity\nSparked" },
+                  { num: 0, label: "Mothers\nReached" },
+                ].map(({ num, label }) => (
+                  <div key={label} className="stat-box">
+                    <div className="stat-num" style={{ color: C.muted }}>{num}</div>
+                    <div className="stat-label">{label.split("\n").map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ""}</span>)}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 14, padding: "12px 16px", background: "#f5f3ff", borderRadius: 12, textAlign: "center", fontFamily: "Nunito, sans-serif" }}>
+                <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>0 blocks contributed so far — your first action fills this</span>
+              </div>
+            </div>
+
+            {/* Current mission */}
+            {am && (
+              <div className="cp-card">
+                <div className="cp-section-label">Missions you&rsquo;ve been part of</div>
+                <div className="mission-row" style={{ borderBottom: "none" }}>
+                  <div className="mission-dot" style={{ background: C.purple }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 2 }}>{am.name}</div>
+                    <div style={{ fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Active mission</div>
+                    <MiniBar myBlocks={am.totalBlocks} goalBlocks={am.goalBlocks} />
+                    <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontFamily: "Nunito, sans-serif" }}>
+                      Team: {am.totalBlocks}/{am.goalBlocks} blocks ({amPct}%)
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: C.muted }}>0</div>
+                    <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif" }}>your blocks</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action history — empty with CTA */}
+            <div className="cp-card">
+              <div className="cp-section-label">Your mission history</div>
+              <div style={{ textAlign: "center", padding: "20px 0 8px" }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>✨</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 6 }}>Your actions will appear here.</div>
+                <div style={{ fontSize: 13, color: C.mid, fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 18 }}>
+                  Share your link to start. Every click, sign-up, and listing you spark gets recorded.
+                </div>
+                {shareUrl && (
+                  <button
+                    onClick={copyLink}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12, border: `1.5px solid ${C.purple}`, background: linkCopied ? C.purple : "#f5f3ff", color: linkCopied ? "white" : C.purple, fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
+                  >
+                    {linkCopied ? "Copied ✓" : "🔗 Copy your referral link"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ textAlign: "center", padding: "8px 20px 20px", fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 14, color: C.muted, lineHeight: 1.8 }}>
+              <span style={{ marginRight: 6 }}>💜</span>
+              Care moves everything. Thank you for showing up.
+            </div>
+          </div>
+        </div>
+        <BottomNav />
+      </>
+    );
+  }
+
+  const stats          = data.stats!;
+  const missionHistory = data.missionHistory!;
+  const recentActions  = data.recentActions!;
+  const highlightMoments = data.highlightMoments!;
   const groups = groupActions(recentActions);
 
   const now = Date.now();

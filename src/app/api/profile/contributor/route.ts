@@ -12,6 +12,29 @@ export async function GET(req: NextRequest) {
   const auth  = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Check for any mission membership (active or past) — drives unlock condition
+  const anyMembership = await prisma.missionMember.findFirst({
+    where:   { userId: auth.userId },
+    include: {
+      team: {
+        select: {
+          id: true, totalBlocks: true, isComplete: true,
+          mission: { select: { name: true, goalBlocks: true, month: true } },
+        },
+      },
+    },
+    orderBy: { joinedAt: "desc" },
+  });
+
+  const hasMembership = !!anyMembership;
+  const activeMission = anyMembership ? {
+    name:        anyMembership.team.mission.name,
+    teamId:      anyMembership.team.id,
+    totalBlocks: anyMembership.team.totalBlocks,
+    goalBlocks:  anyMembership.team.mission.goalBlocks,
+    isComplete:  anyMembership.team.isComplete,
+  } : null;
+
   // All actions ever recorded for this user
   const allActions = await prisma.missionAction.findMany({
     where:   { userId: auth.userId },
@@ -20,7 +43,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (allActions.length === 0) {
-    return NextResponse.json({ hasActions: false });
+    return NextResponse.json({ hasActions: false, hasMembership, activeMission });
   }
 
   // Lifetime stat breakdown
@@ -83,6 +106,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     hasActions: true,
+    hasMembership: true,
+    activeMission,
     stats,
     missionHistory,
     recentActions,
