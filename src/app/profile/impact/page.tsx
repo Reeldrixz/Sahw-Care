@@ -7,10 +7,10 @@ import BottomNav from "@/components/BottomNav";
 interface ImpactData {
   month: string;
   totalMothersInNeed: number;
-  bundles:      { helped: number; percent: number };
-  registers:    { helped: number; percent: number };
-  discover:     { helped: number; percent: number };
-  allThreeAreas:{ helped: number; percent: number };
+  bundles:       { helped: number; percent: number };
+  registers:     { helped: number; percent: number };
+  discover:      { helped: number; percent: number };
+  allThreeAreas: { helped: number; percent: number };
   overallPercent: number;
   tagline: string;
 }
@@ -28,13 +28,11 @@ const styles = `
   }
   .ip-inner { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
 
-  /* top grid */
   .ip-top { display: grid; grid-template-columns: 1fr; gap: 20px; }
   @media (min-width: 860px) {
     .ip-top { grid-template-columns: 1.35fr 1fr; align-items: start; }
   }
 
-  /* bottom channel cards */
   .ip-channels { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 20px; }
   @media (min-width: 600px) {
     .ip-channels { grid-template-columns: repeat(3, 1fr); }
@@ -50,45 +48,8 @@ const styles = `
     color: #1a7a5e;
   }
 
-  /* Venn diagram */
-  .venn-wrap {
-    position: relative; width: 300px; height: 285px; margin: 0 auto;
-  }
-  .venn-circle {
-    position: absolute; width: 168px; height: 168px; border-radius: 50%;
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 5px;
-  }
-  .venn-center {
-    position: absolute; width: 80px; height: 80px; border-radius: 50%;
-    background: rgba(26,122,94,0.12); border: 1px solid rgba(26,122,94,0.25);
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; z-index: 20; gap: 1px;
-  }
-  .venn-label {
-    position: absolute; font-size: 10px; font-weight: 700;
-    text-align: center; line-height: 1.3;
-    font-family: 'Nunito', sans-serif;
-  }
-
-  /* mini square grid inside venn circles */
-  .sq-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 1.5px; }
-  .sq { width: 6px; height: 6px; border-radius: 1px; }
-
-  /* channel card square grid */
   .ch-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; margin: 10px 0; }
   .ch-sq { width: 8px; height: 8px; border-radius: 2px; }
-
-  /* share buttons */
-  .share-btn {
-    width: 100%; padding: 10px 14px; border-radius: 10px;
-    border: 1px solid #ede8df; background: #faf8f3;
-    font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
-    color: #2a2a2a; cursor: pointer; display: flex; align-items: center;
-    gap: 8px; margin-bottom: 8px; text-align: left;
-  }
-  .share-btn:hover { background: #f0ede6; }
-  .share-btn:last-of-type { margin-bottom: 0; }
 
   .highlight-bar {
     background: linear-gradient(135deg, #1a7a5e 0%, #22a37c 100%);
@@ -104,18 +65,110 @@ const styles = `
   }
 `;
 
-function SquareGrid({ total, filled, filledColor, emptyColor = "#d4cfc8", cols = 10 }: {
-  total: number; filled: number; filledColor: string; emptyColor?: string; cols?: number;
+// ── SVG grid of 10×5 coloured rects ──────────────────────────────────────────
+function GridRects({ x, y, filled, filledColor }: {
+  x: number; y: number; filled: number; filledColor: string;
 }) {
+  const rects = [];
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 10; col++) {
+      const idx = row * 10 + col;
+      rects.push(
+        <rect
+          key={idx}
+          x={x + col * 14}
+          y={y + row * 14}
+          width={12}
+          height={12}
+          rx={2}
+          fill={idx < filled ? filledColor : "#d4cfc8"}
+        />,
+      );
+    }
+  }
+  return <>{rects}</>;
+}
+
+// ── Full SVG Venn diagram ─────────────────────────────────────────────────────
+function VennDiagram({ d }: { d: ImpactData }) {
+  const total   = Math.max(d.totalMothersInNeed, 1);
+  const bFilled = Math.round((d.bundles.helped   / total) * 50);
+  const rFilled = Math.round((d.registers.helped / total) * 50);
+  const dFilled = Math.round((d.discover.helped  / total) * 50);
+
+  const pLabel = (pct: number, helped: number) =>
+    d.totalMothersInNeed < 5 && helped > 0
+      ? `${helped} of ${d.totalMothersInNeed}`
+      : `${pct}%`;
+
   return (
-    <div className="sq-grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-      {Array.from({ length: total }, (_, i) => (
-        <div key={i} className="sq" style={{ background: i < filled ? filledColor : emptyColor }} />
-      ))}
-    </div>
+    <svg
+      viewBox="0 0 600 540"
+      width="100%"
+      style={{ display: "block" }}
+      aria-label="Venn diagram showing platform impact across three channels"
+    >
+      {/* ── Decorative sparkles ──────────────────────────────────────── */}
+      <text x={530} y={38}  fontSize={20} opacity={0.22} textAnchor="middle">✨</text>
+      <text x={568} y={74}  fontSize={13} opacity={0.18} textAnchor="middle">🌿</text>
+      <text x={498} y={96}  fontSize={15} opacity={0.20} textAnchor="middle">✨</text>
+      <text x={28}  y={52}  fontSize={14} opacity={0.16} textAnchor="middle">🌿</text>
+      <text x={56}  y={470} fontSize={12} opacity={0.14} textAnchor="middle">✨</text>
+      <text x={548} y={460} fontSize={13} opacity={0.15} textAnchor="middle">🌿</text>
+
+      {/* ── Three overlapping circles ────────────────────────────────── */}
+      <circle cx={300} cy={180} r={170} fill="rgba(155,135,212,0.15)" stroke="#9b87d4" strokeWidth={2} />
+      <circle cx={200} cy={340} r={170} fill="rgba(232,168,124,0.15)" stroke="#e8a87c" strokeWidth={2} />
+      <circle cx={400} cy={340} r={170} fill="rgba(141,181,128,0.15)" stroke="#8db580" strokeWidth={2} />
+
+      {/* ── Channel labels ───────────────────────────────────────────── */}
+      <text x={300} y={70}  textAnchor="middle" fill="#7c5fc2" fontWeight={700} fontSize={14} letterSpacing={2}>🎁 BUNDLES</text>
+      <text x={140} y={490} textAnchor="middle" fill="#c87a44" fontWeight={700} fontSize={13}>📦 REGISTERS</text>
+      <text x={460} y={490} textAnchor="middle" fill="#5a8b4a" fontWeight={700} fontSize={13}>🛍️ DISCOVER</text>
+
+      {/* ── Bundles circle content ───────────────────────────────────── */}
+      <text x={300} y={115} textAnchor="middle" fill="#7c5fc2" fontWeight={700} fontSize={24} fontFamily="Lora, serif">
+        {pLabel(d.bundles.percent, d.bundles.helped)}
+      </text>
+      <GridRects x={230} y={124} filled={bFilled} filledColor="#c4b8e8" />
+      <text x={300} y={208} textAnchor="middle" fill="#8a8a8a" fontSize={11}>
+        {d.bundles.percent}% of moms supported
+      </text>
+
+      {/* ── Registers circle content ─────────────────────────────────── */}
+      <text x={200} y={282} textAnchor="middle" fill="#c87a44" fontWeight={700} fontSize={24} fontFamily="Lora, serif">
+        {pLabel(d.registers.percent, d.registers.helped)}
+      </text>
+      <GridRects x={130} y={290} filled={rFilled} filledColor="#e8a87c" />
+      <text x={200} y={374} textAnchor="middle" fill="#8a8a8a" fontSize={11}>
+        {d.registers.percent}% of moms supported
+      </text>
+
+      {/* ── Discover circle content ──────────────────────────────────── */}
+      <text x={400} y={282} textAnchor="middle" fill="#5a8b4a" fontWeight={700} fontSize={24} fontFamily="Lora, serif">
+        {pLabel(d.discover.percent, d.discover.helped)}
+      </text>
+      <GridRects x={330} y={290} filled={dFilled} filledColor="#8db580" />
+      <text x={400} y={374} textAnchor="middle" fill="#8a8a8a" fontSize={11}>
+        {d.discover.percent}% of moms supported
+      </text>
+
+      {/* ── Centre overlap — All 3 Areas ─────────────────────────────── */}
+      <text x={300} y={255} textAnchor="middle" fill="#1a7a5e" fontWeight={700} fontSize={10} letterSpacing={1.5}>
+        ALL 3 AREAS
+      </text>
+      <text x={300} y={274} textAnchor="middle" fontSize={18}>💚</text>
+      <text x={300} y={300} textAnchor="middle" fill="#1a7a5e" fontWeight={700} fontSize={28} fontFamily="Lora, serif">
+        {pLabel(d.allThreeAreas.percent, d.allThreeAreas.helped)}
+      </text>
+      <text x={300} y={318} textAnchor="middle" fill="#6b7280" fontSize={10}>
+        of moms
+      </text>
+    </svg>
   );
 }
 
+// ── Channel square grid (HTML, for channel cards) ─────────────────────────────
 function ChannelGrid({ percent, filledColor }: { percent: number; filledColor: string }) {
   const filled = Math.round((percent / 100) * 50);
   return (
@@ -132,6 +185,15 @@ function pctLabel(helped: number, total: number, pct: number): string {
   return `${pct}%`;
 }
 
+// ── Share buttons ─────────────────────────────────────────────────────────────
+const SHARE_BTNS = [
+  { icon: "📷", label: "Instagram\nStory",   bg: "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" },
+  { icon: "💬", label: "WhatsApp\nStatus",   bg: "#25d366" },
+  { icon: "📘", label: "Facebook\nStory",    bg: "#1877f2" },
+  { icon: "🔗", label: "Copy\nLink",         bg: "#f3f0ea" },
+  { icon: "⬇️", label: "Download\nImage",   bg: "#f3f0ea" },
+];
+
 export default function ImpactPage() {
   const router = useRouter();
   const [data,    setData]    = useState<ImpactData | null>(null);
@@ -146,21 +208,22 @@ export default function ImpactPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleCopy = () => {
-    const url = typeof window !== "undefined" ? window.location.origin : "https://kradel.com";
-    navigator.clipboard.writeText(`${url}/profile/impact`).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleShare = (label: string) => {
+    if (label.startsWith("Copy")) {
+      const url = typeof window !== "undefined" ? window.location.origin : "https://kradel.com";
+      navigator.clipboard.writeText(`${url}/profile/impact`).catch(() => {});
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  // Zero-state defaults while loading or no data
   const d: ImpactData = data ?? {
     month: new Date().toISOString().slice(0, 7),
     totalMothersInNeed: 0,
-    bundles:      { helped: 0, percent: 0 },
-    registers:    { helped: 0, percent: 0 },
-    discover:     { helped: 0, percent: 0 },
-    allThreeAreas:{ helped: 0, percent: 0 },
+    bundles:       { helped: 0, percent: 0 },
+    registers:     { helped: 0, percent: 0 },
+    discover:      { helped: 0, percent: 0 },
+    allThreeAreas: { helped: 0, percent: 0 },
     overallPercent: 0,
     tagline: "You show up. They feel it. We all rise together.",
   };
@@ -187,7 +250,6 @@ export default function ImpactPage() {
         </div>
 
         <div className="ip-inner">
-
           {loading ? (
             <div style={{ textAlign: "center", padding: "60px 0", color: "#8a8a8a" }}>
               <div className="spinner" style={{ margin: "0 auto 12px" }} />
@@ -215,62 +277,10 @@ export default function ImpactPage() {
 
               <div className="ip-top">
 
-                {/* ── LEFT: Venn + highlight ── */}
+                {/* ── LEFT: SVG Venn + highlight ── */}
                 <div>
-                  <div className="ip-card" style={{ padding: "24px 16px" }}>
-
-                    {/* Venn diagram */}
-                    <div className="venn-wrap">
-
-                      {/* Bundles — top center */}
-                      <div className="venn-circle" style={{ top: 0, left: 66, background: "rgba(235,229,255,0.75)", border: "2px solid #9b87d4", zIndex: 3 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#7c68c8", letterSpacing: "0.5px" }}>BUNDLES</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#6d5acd" }}>
-                          {pctLabel(d.bundles.helped, d.totalMothersInNeed, d.bundles.percent)}
-                        </div>
-                        <SquareGrid total={50} filled={Math.round((d.bundles.percent / 100) * 50)} filledColor="#c4b8e8" emptyColor="rgba(255,255,255,0.6)" />
-                      </div>
-
-                      {/* Registers — bottom left */}
-                      <div className="venn-circle" style={{ top: 107, left: 0, background: "rgba(255,237,220,0.75)", border: "2px solid #e8a87c", zIndex: 2 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#c4784a", letterSpacing: "0.5px" }}>REGISTERS</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#c4784a" }}>
-                          {pctLabel(d.registers.helped, d.totalMothersInNeed, d.registers.percent)}
-                        </div>
-                        <SquareGrid total={50} filled={Math.round((d.registers.percent / 100) * 50)} filledColor="#e8a87c" emptyColor="rgba(255,255,255,0.6)" />
-                      </div>
-
-                      {/* Discover — bottom right */}
-                      <div className="venn-circle" style={{ top: 107, left: 132, background: "rgba(220,242,232,0.75)", border: "2px solid #8db580", zIndex: 2 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#4e8a42", letterSpacing: "0.5px" }}>DISCOVER</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#3d7a32" }}>
-                          {pctLabel(d.discover.helped, d.totalMothersInNeed, d.discover.percent)}
-                        </div>
-                        <SquareGrid total={50} filled={Math.round((d.discover.percent / 100) * 50)} filledColor="#8db580" emptyColor="rgba(255,255,255,0.6)" />
-                      </div>
-
-                      {/* Center overlap — All 3 Areas */}
-                      <div className="venn-center" style={{ top: 130, left: 110 }}>
-                        <div style={{ fontSize: 16 }}>💚</div>
-                        <div style={{ fontSize: 8, fontWeight: 800, color: "#1a7a5e", letterSpacing: "0.5px" }}>ALL 3 AREAS</div>
-                        <div style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e" }}>
-                          {pctLabel(d.allThreeAreas.helped, d.totalMothersInNeed, d.allThreeAreas.percent)}
-                        </div>
-                        <div style={{ fontSize: 7, color: "#5a9a72" }}>of moms</div>
-                      </div>
-
-                      {/* Circle labels below */}
-                      <div className="venn-label" style={{ top: 274, left: 66, width: 168, color: "#9b87d4" }}>
-                        Bundles · {pctLabel(d.bundles.helped, d.totalMothersInNeed, d.bundles.percent)} supported
-                      </div>
-                    </div>
-
-                    {/* Channel name labels under diagram */}
-                    <div style={{ display: "flex", justifyContent: "space-between", padding: "0 8px", marginTop: 8, fontSize: 10, fontWeight: 700, fontFamily: "Nunito, sans-serif" }}>
-                      <span style={{ color: "#c4784a" }}>Registers · {pctLabel(d.registers.helped, d.totalMothersInNeed, d.registers.percent)}</span>
-                      <span style={{ color: "#9b87d4" }}>Bundles · {pctLabel(d.bundles.helped, d.totalMothersInNeed, d.bundles.percent)}</span>
-                      <span style={{ color: "#4e8a42" }}>Discover · {pctLabel(d.discover.helped, d.totalMothersInNeed, d.discover.percent)}</span>
-                    </div>
+                  <div className="ip-card" style={{ padding: "24px 16px", position: "relative", overflow: "hidden" }}>
+                    <VennDiagram d={d} />
                   </div>
 
                   {/* Highlight bar */}
@@ -295,24 +305,16 @@ export default function ImpactPage() {
                   {/* How it works */}
                   <div className="ip-card">
                     <div className="ip-card-label">How it works</div>
-                    <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 14, height: 14, borderRadius: 2, background: "#e8e4de", flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                        <b style={{ color: "#2a2a2a" }}>Grey squares</b> = a mom who needed support this month
+                    {[
+                      { color: "#e8e4de", border: "none",             text: <><b style={{ color: "#2a2a2a" }}>Grey squares</b> = a mom who needed support this month</> },
+                      { color: "#7bc4a4", border: "none",             text: <><b style={{ color: "#2a2a2a" }}>Green squares</b> = a mom who received support through that channel</> },
+                      { color: "rgba(26,122,94,0.2)", border: "1px solid #1a7a5e", text: <><b style={{ color: "#2a2a2a" }}>The overlapping centre</b> = moms supported through all 3 channels</> },
+                    ].map(({ color, border, text }, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
+                        <div style={{ width: 14, height: 14, borderRadius: 2, background: color, border, flexShrink: 0, marginTop: 2 }} />
+                        <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>{text}</div>
                       </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 14, height: 14, borderRadius: 2, background: "#7bc4a4", flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                        <b style={{ color: "#2a2a2a" }}>Green squares</b> = a mom who received support through that channel
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <div style={{ width: 14, height: 14, borderRadius: 2, background: "rgba(26,122,94,0.2)", border: "1px solid #1a7a5e", flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                        <b style={{ color: "#2a2a2a" }}>The overlapping centre</b> = moms supported through all 3 channels
-                      </div>
-                    </div>
+                    ))}
                   </div>
 
                   {/* Why it matters */}
@@ -331,23 +333,29 @@ export default function ImpactPage() {
                     ))}
                   </div>
 
-                  {/* Share */}
+                  {/* Share — horizontal circle buttons */}
                   <div className="ip-card">
                     <div className="ip-card-label">Share your impact</div>
-                    {[
-                      { icon: "📸", label: "Instagram Story" },
-                      { icon: "💬", label: "WhatsApp Status" },
-                      { icon: "📘", label: "Facebook Story" },
-                    ].map(({ icon, label }) => (
-                      <button key={label} className="share-btn" onClick={() => {}}>
-                        <span style={{ fontSize: 16 }}>{icon}</span>
-                        <span>{label}</span>
-                      </button>
-                    ))}
-                    <button className="share-btn" onClick={handleCopy}>
-                      <span style={{ fontSize: 16 }}>🔗</span>
-                      <span>{copied ? "Copied ✓" : "Copy Link"}</span>
-                    </button>
+                    <div style={{ display: "flex", gap: 12, justifyContent: "space-between" }}>
+                      {SHARE_BTNS.map(btn => (
+                        <button
+                          key={btn.label}
+                          onClick={() => handleShare(btn.label)}
+                          style={{ flex: 1, maxWidth: 64, background: "transparent", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer", padding: 0 }}
+                        >
+                          <div style={{ width: 52, height: 52, borderRadius: "50%", background: btn.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                            {btn.icon === "📘"
+                              ? <span style={{ color: "white", fontWeight: 800, fontSize: 20 }}>f</span>
+                              : btn.label.startsWith("Copy") && copied
+                              ? "✓"
+                              : btn.icon}
+                          </div>
+                          <span style={{ fontSize: 10, textAlign: "center", lineHeight: 1.3, fontFamily: "Nunito, sans-serif", color: "#5a5a5a", whiteSpace: "pre-line" }}>
+                            {btn.label.startsWith("Copy") && copied ? "Copied!" : btn.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                 </div>
@@ -355,8 +363,6 @@ export default function ImpactPage() {
 
               {/* ── Channel cards ── */}
               <div className="ip-channels">
-
-                {/* Bundles */}
                 <div style={{ background: "#f5f2ff", borderRadius: 20, padding: "20px 18px", border: "1px solid #d4cdf0" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#ede9ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎁</div>
@@ -366,12 +372,9 @@ export default function ImpactPage() {
                     </div>
                   </div>
                   <ChannelGrid percent={d.bundles.percent} filledColor="#c4b8e8" />
-                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 6 }}>
-                    Because of you, moms are healing, recovering and feeling supported.
-                  </div>
+                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 6 }}>Because of you, moms are healing, recovering and feeling supported.</div>
                 </div>
 
-                {/* Registers */}
                 <div style={{ background: "#fff6f0", borderRadius: 20, padding: "20px 18px", border: "1px solid #f0c8a8" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#fff0e6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📦</div>
@@ -381,12 +384,9 @@ export default function ImpactPage() {
                     </div>
                   </div>
                   <ChannelGrid percent={d.registers.percent} filledColor="#e8a87c" />
-                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 6 }}>
-                    Because of you, everyday needs are met with dignity and care.
-                  </div>
+                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 6 }}>Because of you, everyday needs are met with dignity and care.</div>
                 </div>
 
-                {/* Discover */}
                 <div style={{ background: "#f0faf5", borderRadius: 20, padding: "20px 18px", border: "1px solid #a8d4bf" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: "50%", background: "#e0f4ec", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🛍️</div>
@@ -396,11 +396,8 @@ export default function ImpactPage() {
                     </div>
                   </div>
                   <ChannelGrid percent={d.discover.percent} filledColor="#8db580" />
-                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 6 }}>
-                    Because of you, items are shared, reused and loved by another mom.
-                  </div>
+                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 6 }}>Because of you, items are shared, reused and loved by another mom.</div>
                 </div>
-
               </div>
 
               {/* Footer */}
@@ -408,7 +405,6 @@ export default function ImpactPage() {
                 <div style={{ marginBottom: 4 }}>🛡️ We protect every mom&rsquo;s privacy. No personal details are ever shared.</div>
                 <div style={{ fontWeight: 700, color: "#2a2a2a" }}>Kradel · Care moves everything. 💚</div>
               </div>
-
             </>
           )}
         </div>
