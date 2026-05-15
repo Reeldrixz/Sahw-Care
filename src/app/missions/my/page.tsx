@@ -282,9 +282,10 @@ export default function MyMissionPage() {
 
   const [data,     setData]     = useState<MissionData | null>(null);
   const [loading,  setLoading]  = useState(true);
-  const [leaving,  setLeaving]  = useState(false);
-  const [leaveErr, setLeaveErr] = useState<string | null>(null);
-  const [copied,   setCopied]   = useState(false);
+  const [leaving,    setLeaving]    = useState(false);
+  const [leaveErr,   setLeaveErr]   = useState<string | null>(null);
+  const [copied,     setCopied]     = useState(false);
+  const [triggering, setTriggering] = useState(false);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/missions/my");
@@ -306,6 +307,18 @@ export default function MyMissionPage() {
     const res = await fetch(`/api/missions/${data.mission.id}/leave`, { method: "POST" });
     const d   = await res.json();
     if (res.ok) { router.push("/missions"); } else { setLeaveErr(d.error ?? "Could not leave"); setLeaving(false); }
+  };
+
+  const triggerAction = async (actionType: "click" | "listing" | "donation") => {
+    if (!data || triggering) return;
+    setTriggering(true);
+    await fetch("/api/missions/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId: data.teamId, actionType }),
+    }).catch(() => {});
+    await load();
+    setTriggering(false);
   };
 
   const handleCopy = (url: string) => {
@@ -691,6 +704,36 @@ export default function MyMissionPage() {
           <button className="leave-btn" onClick={handleLeave} disabled={!canLeave || leaving}>
             {leaving ? "Leaving…" : canLeave ? "Leave this mission" : "Leaving closes after the 1st of the month"}
           </button>
+
+          {/* Admin debug panel */}
+          {user?.role === "ADMIN" && (
+            <details style={{ marginTop: 20, background: "#fff8ed", border: "1px solid #f5d98b", borderRadius: 12, padding: "12px 16px", fontFamily: "Nunito, sans-serif" }}>
+              <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#92400e", userSelect: "none" }}>
+                🔧 Debug — Trigger mission actions
+              </summary>
+              <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {([
+                  { label: "Trigger click action (+1)",    actionType: "click"    as const },
+                  { label: "Trigger listing action (+2)",  actionType: "listing"  as const },
+                  { label: "Trigger donation action (+4)", actionType: "donation" as const },
+                ] as const).map(({ label, actionType }) => (
+                  <button
+                    key={actionType}
+                    onClick={() => triggerAction(actionType)}
+                    disabled={triggering}
+                    style={{
+                      padding: "8px 14px", borderRadius: 8, border: "1px solid #f5d98b",
+                      background: triggering ? "#fef3c7" : "#fffbeb", color: "#92400e",
+                      fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700,
+                      cursor: triggering ? "default" : "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
 
         </div>
       </div>
