@@ -475,7 +475,7 @@ export default function MyMissionPage() {
                 <div className="mc-gift-illo">🎁</div>
               </div>
 
-              <div className="mc-help-text">Help us reach more moms this month.</div>
+              <div className="mc-help-text">40 maternal essentials. Real items. Real mothers. This month.</div>
 
               <MissionMosaic donations={mosaicDonations} listings={mosaicListings} clicks={mosaicClicks} total={goal} />
 
@@ -514,7 +514,7 @@ export default function MyMissionPage() {
               </div>
 
               {/* Share link */}
-              <div className="mc-share">Share your link. Invite others to join your mission!</div>
+              <div className="mc-share">Share your link. Every new member helps Kradel reach one more mother.</div>
               <div className="mc-share-row">
                 <span style={{ color: "rgba(255,255,255,0.7)" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -536,24 +536,24 @@ export default function MyMissionPage() {
               <div className="hbf-row">
                 <div className="hbf-swatch" style={{ background: C.blockClick }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Social Clicks</div>
-                  <div className="hbf-desc">When someone clicks your link.</div>
+                  <div className="hbf-title">Account created</div>
+                  <div className="hbf-desc">Someone joins Kradel through your shared link.</div>
                   <div className="hbf-blocks">+1 block</div>
                 </div>
               </div>
               <div className="hbf-row">
                 <div className="hbf-swatch" style={{ background: C.blockListing }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Listing Created</div>
-                  <div className="hbf-desc">When someone creates a listing (register or discover).</div>
+                  <div className="hbf-title">First listing posted</div>
+                  <div className="hbf-desc">A new member lists their first item for mothers.</div>
                   <div className="hbf-blocks">+2 blocks</div>
                 </div>
               </div>
               <div className="hbf-row">
                 <div className="hbf-swatch" style={{ background: C.blockDonation }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Request Fulfilled / Donation Completed</div>
-                  <div className="hbf-desc">When someone fulfills a request or completes a donation.</div>
+                  <div className="hbf-title">Essential delivered</div>
+                  <div className="hbf-desc">A request is fulfilled or a donation is completed.</div>
                   <div className="hbf-blocks">+4 blocks</div>
                 </div>
               </div>

@@ -133,9 +133,9 @@ export default function HowItWorksPage() {
 
           {/* Block grid */}
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>The 40-block goal</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>40 essentials for mothers this month</div>
             <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 14 }}>
-              Each block your team fills represents a real contribution to the mission.
+              Each block your team fills represents real maternal care delivered.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 5, marginBottom: 16 }}>
               {demoBlocks.map((type, i) => (
@@ -178,16 +178,17 @@ export default function HowItWorksPage() {
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>What fills the bar</div>
             {[
-              { icon: "🔗", action: "Someone visits a link you shared",        blocks: "+1 block", color: BLOCK_COLORS.click    },
-              { icon: "📦", action: "A new donor joins and lists their first item", blocks: "+2 blocks", color: BLOCK_COLORS.listing  },
-              { icon: "💛", action: "A donation is completed",                  blocks: "+4 blocks", color: BLOCK_COLORS.donation },
-            ].map(({ icon, action, blocks, color }) => (
+              { icon: "🔗", title: "Account created",      action: "Someone joins Kradel through your shared link.",          blocks: "+1 block",  color: BLOCK_COLORS.click    },
+              { icon: "📦", title: "First listing posted",  action: "A new member lists their first item for mothers.",        blocks: "+2 blocks", color: BLOCK_COLORS.listing  },
+              { icon: "💛", title: "Essential delivered",   action: "A request is fulfilled or a donation is completed.",      blocks: "+4 blocks", color: BLOCK_COLORS.donation },
+            ].map(({ icon, title, action, blocks, color }) => (
               <div key={action} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
                   {icon}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>{action}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>{title}</div>
+                  <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>{action}</div>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color, flexShrink: 0 }}>{blocks}</div>
               </div>
@@ -199,7 +200,7 @@ export default function HowItWorksPage() {
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Mission flow</div>
             {[
               { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
-              { step: "2", label: "Share, list, donate",     desc: "Every action your team takes fills blocks." },
+              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes fills blocks — which Kradel translates into real maternal support." },
               { step: "3", label: "Mission completes",       desc: "When 40 blocks are filled, the mission is done." },
               { step: "4", label: "See the real outcome",    desc: "The platform shows what your team's work funded." },
             ].map(({ step, label, desc }) => (
@@ -223,11 +224,12 @@ export default function HowItWorksPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {[
-                { val: "8", label: "Mothers reached" },
-                { val: "24", label: "Items fulfilled" },
-                { val: "3", label: "Kits delivered" },
-              ].map(({ val, label }) => (
+                { val: "8",  label: "Mothers reached", icon: "🤱🏽" },
+                { val: "24", label: "Items fulfilled",  icon: "🎁"  },
+                { val: "3",  label: "Kits delivered",   icon: "📦"  },
+              ].map(({ val, label, icon }) => (
                 <div key={label} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 12, padding: "12px 8px", textAlign: "center" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, margin: "0 auto 8px" }}>{icon}</div>
                   <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "white" }}>{val}</div>
                   <div style={{ fontSize: 10, fontFamily: "Nunito, sans-serif", color: "rgba(255,255,255,0.8)", marginTop: 2 }}>{label}</div>
                 </div>

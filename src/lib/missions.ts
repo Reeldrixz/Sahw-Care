@@ -7,9 +7,9 @@ const BLOCKS: Record<string, number> = {
 };
 
 const LABELS: Record<string, string> = {
-  click:    "Someone discovered Kradel through a shared link. That awareness helps more mothers find support.",
-  listing:  "A new donor joined and listed their first item. That's one more family ready to help.",
-  donation: "A donation was completed through your mission. That directly helped fund maternal essentials.",
+  click:    "Someone joined the Kradel community through your link. That's the first step toward more support for mothers.",
+  listing:  "A new member posted their first listing. That's one more family ready to help mothers in need.",
+  donation: "An essential was delivered to a mother in need — funded by this team's collective effort.",
 };
 
 export async function recordMissionAction(
