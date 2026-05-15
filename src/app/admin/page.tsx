@@ -563,7 +563,7 @@ export default function AdminPage() {
                     [stats.pendingReports.toString(), "Reports Pending"],
                     [stats.verifiedUsers.toString(), "Verified Users"],
                     [stats.lowTrustUsers.toString(), "Low Trust Users"],
-                    [stats.pendingOverrides.toString(), "Override Reviews"],
+                    [(stats.pendingOverrides ?? 0).toString(), "Override Reviews"],
                     [stats.totalRegisters.toString(), "Registers"],
                     [stats.pendingDocuments.toString(), "Docs Pending Review"],
                     [(stats.bundlesDelivered ?? 0).toString(), "Bundles Delivered"],
