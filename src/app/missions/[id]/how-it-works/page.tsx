@@ -29,14 +29,17 @@ export default function HowItWorksPage() {
   const [joining,  setJoining]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [loading,  setLoading]  = useState(true);
+  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/missions/${id}`)
-      .then(r => r.json())
-      .then(d => { if (d.mission) setMission(d.mission); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch(`/api/missions/${id}`).then(r => r.json()),
+      fetch("/api/missions/my").then(r => r.json()).catch(() => ({})),
+    ]).then(([missionData, myData]) => {
+      if (missionData.mission) setMission(missionData.mission);
+      if (myData.membership?.mission?.id === id) setIsMember(true);
+    }).finally(() => setLoading(false));
   }, [id]);
 
   const handleJoin = async () => {
@@ -85,7 +88,7 @@ export default function HowItWorksPage() {
           <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--bg)", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700 }}>How It Works</div>
-            <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>Before you join</div>
+            <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>{isMember ? "You're already a member" : "Before you join"}</div>
           </div>
         </div>
 
@@ -250,13 +253,22 @@ export default function HowItWorksPage() {
 
       {/* Sticky CTA */}
       <div style={{ position: "fixed", bottom: 60, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, padding: "0 16px", zIndex: 50 }}>
-        <button
-          onClick={handleJoin}
-          disabled={joining}
-          style={{ width: "100%", padding: "16px", background: joining ? "#7bc4a4" : "#1a7a5e", color: "white", border: "none", borderRadius: 16, fontFamily: "Nunito, sans-serif", fontSize: 15, fontWeight: 800, cursor: joining ? "default" : "pointer", boxShadow: "0 4px 20px rgba(26,122,94,0.35)" }}
-        >
-          {joining ? "Joining…" : "Accept Mission"}
-        </button>
+        {isMember ? (
+          <button
+            onClick={() => router.push("/missions/my")}
+            style={{ width: "100%", padding: "16px", background: "#6d5acd", color: "white", border: "none", borderRadius: 16, fontFamily: "Nunito, sans-serif", fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 20px rgba(109,90,205,0.35)" }}
+          >
+            ← Back to my mission
+          </button>
+        ) : (
+          <button
+            onClick={handleJoin}
+            disabled={joining}
+            style={{ width: "100%", padding: "16px", background: joining ? "#7bc4a4" : "#1a7a5e", color: "white", border: "none", borderRadius: 16, fontFamily: "Nunito, sans-serif", fontSize: 15, fontWeight: 800, cursor: joining ? "default" : "pointer", boxShadow: "0 4px 20px rgba(26,122,94,0.35)" }}
+          >
+            {joining ? "Joining…" : "Accept Mission"}
+          </button>
+        )}
       </div>
 
       <BottomNav />

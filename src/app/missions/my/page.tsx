@@ -429,14 +429,22 @@ export default function MyMissionPage() {
           <button className="mp-back" onClick={() => router.back()}>← Back</button>
 
           {/* Header */}
-          <div className="page-header">
-            <h1 className="h-title">
-              YOUR MONTHLY MISSION
-              <svg viewBox="0 0 24 24">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-              </svg>
-            </h1>
-            <div className="h-sub">You chose to support: <b>{categoryLabel}</b></div>
+          <div className="page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <h1 className="h-title">
+                YOUR MONTHLY MISSION
+                <svg viewBox="0 0 24 24">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </h1>
+              <div className="h-sub">You chose to support: <b>{categoryLabel}</b></div>
+            </div>
+            <button
+              onClick={() => router.push(`/missions/${mission.id}/how-it-works`)}
+              style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, background: "none", border: `1px solid ${C.purplePale}`, borderRadius: 20, padding: "6px 12px", cursor: "pointer", color: C.purple, fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, marginTop: 4, whiteSpace: "nowrap" }}
+            >
+              <span style={{ fontSize: 13 }}>ℹ️</span> How it works
+            </button>
           </div>
 
           {/* 3-column grid */}
