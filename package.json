@@ -32,6 +32,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.10.0",
+    "simple-icons": "^16.19.0",
     "stripe": "^22.1.0",
     "twilio": "^5.13.1"
   },

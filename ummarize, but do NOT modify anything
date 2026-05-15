@@ -1,0 +1,48 @@
+[33mcommit e62c77837d42f230a2a1a67247cb142a1b168d0a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: CareCircle <user@carecircle.ng>
+Date:   Wed Apr 29 12:12:21 2026 -0400
+
+    Build: Safe Public Coordination System (Parts 1–11)
+    
+    - Schema: PickupCoordination, PublicPickupLocation, CoordinationMessage,
+      CoordinationReport + enums (CoordinationStatus, CoordMessageType,
+      CoordReportReason); add requestNote + pickupLocationId to Request;
+      add OFF_PLATFORM_CONTACT to AbuseFlagType
+    - DB: pushed schema, seeded 11 pickup locations (Toronto + Lagos)
+    - API: 11 coordination routes (confirm-location, propose-time, confirm-time,
+      ready, delivered, confirm-received, cancel, message, report, GET state,
+      GET admin); pickup-locations route; admin/coordination route
+    - Request form: redesigned — brief optional note, location selector with
+      Lucide icons, DELIVERY_SUPPORT option, MY_HOUSEHOLD_FAMILY label
+    - Accept flow: creates PickupCoordination instead of Conversation;
+      redirects donor to /coordination/[requestId]
+    - Coordination page: status bar, progress track, location/time cards,
+      quick-action 2×2 grid, send-a-note with contact-info detection,
+      time proposal sheet, cancel/report bottom sheets, safety reminder
+    - Admin: new Coordination tab with status filter, report flag, expandable
+      message history
+    
+    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+
+ .claude/settings.local.json                        |   3 [32m+[m[31m-[m
+ prisma/schema.prisma                               | 105 [32m+++[m
+ scripts/seed-pickup-locations.ts                   |  37 [32m+[m
+ src/app/admin/page.tsx                             | 177 [32m++++[m[31m-[m
+ src/app/api/admin/coordination/route.ts            |  43 [32m++[m
+ .../api/coordination/[requestId]/cancel/route.ts   |  75 [32m++[m
+ .../[requestId]/confirm-location/route.ts          |  66 [32m++[m
+ .../[requestId]/confirm-received/route.ts          |  74 [32m++[m
+ .../coordination/[requestId]/confirm-time/route.ts |  69 [32m++[m
+ .../coordination/[requestId]/delivered/route.ts    |  54 [32m++[m
+ .../api/coordination/[requestId]/message/route.ts  |  91 [32m+++[m
+ .../coordination/[requestId]/propose-time/route.ts |  74 [32m++[m
+ .../api/coordination/[requestId]/ready/route.ts    |  54 [32m++[m
+ .../api/coordination/[requestId]/report/route.ts   |  55 [32m++[m
+ src/app/api/coordination/[requestId]/route.ts      |  50 [32m++[m
+ src/app/api/pickup-locations/route.ts              |  18 [32m+[m
+ src/app/api/requests/[id]/route.ts                 |  38 [32m+[m[31m-[m
+ src/app/api/requests/route.ts                      |   4 [32m+[m[31m-[m
+ src/app/coordination/[requestId]/page.tsx          | 797 [32m+++++++++++++++++++++[m
+ src/app/page.tsx                                   |   4 [32m+[m[31m-[m
+ src/components/RequestReviewSheet.tsx              | 269 [32m+++++[m[31m--[m
+ 21 files changed, 2060 insertions(+), 97 deletions(-)
