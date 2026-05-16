@@ -7,9 +7,13 @@ import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
 // ── Interfaces ─────────────────────────────────────────────────────────────────
+interface ActionBreakdown {
+  completedBlocks: number; activityBlocks: number; signupBlocks: number; clickBlocks: number;
+}
 interface MissionMember {
   id: string; userId: string; name: string;
   avatar: string | null; isMe: boolean;
+  actionBreakdown: ActionBreakdown;
 }
 interface RecentAction {
   id: string; actionType: string; blocks: number;
@@ -277,18 +281,22 @@ function MissionMosaic({ completed = 0, activity = 0, signups = 0, clicks = 0, t
   return <div className="mc-mosaic">{blocks}</div>;
 }
 
-function PartnerGrid({ completed = 0, activity = 0, clicks = 0 }: { completed: number; activity: number; clicks: number }) {
-  const total = 26, ratio = 26 / 40;
-  const d = Math.round(completed * ratio);
-  const l = Math.round(activity  * ratio);
-  const c = Math.round(clicks    * ratio);
+function PartnerGrid({ completed = 0, activity = 0, signups = 0, clicks = 0 }: {
+  completed: number; activity: number; signups: number; clicks: number;
+}) {
+  const CELLS = 26, ratio = CELLS / 40;
+  const d = Math.min(CELLS,             Math.round(completed * ratio));
+  const l = Math.min(CELLS - d,         Math.round(activity  * ratio));
+  const s = Math.min(CELLS - d - l,     Math.round(signups   * ratio));
+  const c = Math.min(CELLS - d - l - s, Math.round(clicks    * ratio));
   const blocks = [];
-  for (let i = 0; i < total; i++) {
+  for (let i = 0; i < CELLS; i++) {
     let bg: string;
-    if      (i < d)         bg = C.blockDonation;
-    else if (i < d + l)     bg = C.blockListing;
-    else if (i < d + l + c) bg = C.blockClick;
-    else                    bg = C.blockEmpty;
+    if      (i < d)             bg = C.blockDonation;
+    else if (i < d + l)         bg = C.blockListing;
+    else if (i < d + l + s)     bg = BLOCK_SIGNUP;
+    else if (i < d + l + s + c) bg = C.blockClick;
+    else                        bg = C.blockEmpty;
     blocks.push(<div key={i} className="pblock" style={{ background: bg }} />);
   }
   return <div className="partner-grid">{blocks}</div>;
@@ -465,15 +473,16 @@ export default function MyMissionPage() {
   const partners = team.members
     .filter(m => !m.isMe)
     .map(partner => {
-      const pa = team.recentActions.filter(a => a.userName === partner.name);
-      const pCompleted = pa.filter(a => ["listing_completed","register_fulfilled","bundle_delivered"].includes(a.actionType)).reduce((s, a) => s + a.blocks, 0);
-      const pActivity  = pa.filter(a => ["listing_posted","register_committed"].includes(a.actionType)).reduce((s, a) => s + a.blocks, 0);
-      const pClkBlocks = pa.filter(a => a.actionType === "click").reduce((s, a) => s + a.blocks, 0);
-      const pBlocks    = pa.reduce((s, a) => s + a.blocks, 0);
+      const ab = partner.actionBreakdown ?? { completedBlocks: 0, activityBlocks: 0, signupBlocks: 0, clickBlocks: 0 };
       return {
-        initial: partner.name.trim().charAt(0).toUpperCase(),
-        name: partner.name.split(" ")[0],
-        goal, blocks: pBlocks, completed: pCompleted, activity: pActivity, clicks: pClkBlocks,
+        initial:   partner.name.trim().charAt(0).toUpperCase(),
+        name:      partner.name.split(" ")[0],
+        goal,
+        blocks:    ab.completedBlocks + ab.activityBlocks + ab.signupBlocks + ab.clickBlocks,
+        completed: ab.completedBlocks,
+        activity:  ab.activityBlocks,
+        signups:   ab.signupBlocks,
+        clicks:    ab.clickBlocks,
       };
     });
 
@@ -799,7 +808,7 @@ export default function MyMissionPage() {
                     </div>
                     <div className="partner-count">{p.blocks} / {p.goal}</div>
                   </div>
-                  <PartnerGrid completed={p.completed} activity={p.activity} clicks={p.clicks} />
+                  <PartnerGrid completed={p.completed} activity={p.activity} signups={p.signups} clicks={p.clicks} />
                   <div className="partner-stats">
                     <div className="pstat">
                       <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">

@@ -237,54 +237,75 @@ async function main() {
 
 async function seedMissions(memberIds: string[]) {
   const month = new Date().toISOString().slice(0, 7); // "2026-05"
+  const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000);
 
-  const existingMission = await prisma.mission.findFirst({ where: { month } });
-  if (existingMission) {
-    console.log("✓ Mission already seeded — skipping");
-    return;
-  }
-
-  const mission = await prisma.mission.create({
-    data: {
-      name:        "Newborn Essentials Drive",
-      description: "Help five families get through their first month with a newborn. Every action your team takes funds diapers, formula, and maternity pads for mothers in your community.",
-      month,
-      category:    "bundles",
-      goalBlocks:  40,
-      isActive:    true,
-    },
-  });
-
-  const team = await prisma.missionTeam.create({
-    data: { missionId: mission.id, totalBlocks: 18 },
-  });
-
-  for (const userId of memberIds.slice(0, 3)) {
-    await prisma.missionMember.create({
-      data: { teamId: team.id, userId, isActive: true },
+  let mission = await prisma.mission.findFirst({ where: { month } });
+  if (!mission) {
+    mission = await prisma.mission.create({
+      data: {
+        name:        "Newborn Essentials Drive",
+        description: "Help five families get through their first month with a newborn. Every action your team takes funds diapers, formula, and maternity pads for mothers in your community.",
+        month,
+        category:    "bundles",
+        goalBlocks:  40,
+        isActive:    true,
+      },
     });
   }
 
-  // Seed some prior actions to make progress visible
+  let team = await prisma.missionTeam.findFirst({ where: { missionId: mission.id } });
+  if (!team) {
+    team = await prisma.missionTeam.create({
+      data: { missionId: mission.id, totalBlocks: 0 },
+    });
+  }
+
+  // Ensure seed members are joined
+  for (const userId of memberIds.slice(0, 3)) {
+    await prisma.missionMember.upsert({
+      where:  { teamId_userId: { teamId: team.id, userId } },
+      update: {},
+      create: { teamId: team.id, userId, isActive: true },
+    });
+  }
+
+  // Replace seed members' actions with correct 7-type action rows
+  await prisma.missionAction.deleteMany({
+    where: { teamId: team.id, userId: { in: memberIds.slice(0, 3) } },
+  });
+
+  // memberIds[0] = Amara  → 12 blocks: 2 clicks + 1 signup + 2 listing_posted + 1 register_fulfilled
+  // memberIds[1] = Fatima → 6 blocks:  2 clicks + 1 register_fulfilled
+  // memberIds[2] = Grace  → 3 blocks:  1 click  + 1 signup
   const actionSeeds = [
-    { userId: memberIds[0], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
-    { userId: memberIds[0], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
-    { userId: memberIds[1], actionType: "listing",  blocks: 2, humanLabel: "A new donor joined and listed their first item. That's one more family ready to help." },
-    { userId: memberIds[1], actionType: "click",    blocks: 1, humanLabel: "Someone discovered Kradel through a shared link. That awareness helps more mothers find support." },
-    { userId: memberIds[2], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
-    { userId: memberIds[2], actionType: "click",    blocks: 1, humanLabel: "Someone discovered Kradel through a shared link. That awareness helps more mothers find support." },
-    { userId: memberIds[0], actionType: "click",    blocks: 1, humanLabel: "Someone discovered Kradel through a shared link. That awareness helps more mothers find support." },
-    { userId: memberIds[1], actionType: "donation", blocks: 4, humanLabel: "A donation was completed through your mission. That directly helped fund maternal essentials." },
+    { userId: memberIds[0], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Amara's shared link.",            createdAt: daysAgo(12) },
+    { userId: memberIds[0], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Amara's shared link.",            createdAt: daysAgo(10) },
+    { userId: memberIds[0], actionType: "signup",             blocks: 2, humanLabel: "A new supporter created an account through Amara's mission link.",  createdAt: daysAgo(9)  },
+    { userId: memberIds[0], actionType: "listing_posted",     blocks: 2, humanLabel: "A new donor listed their first item on Kradel.",                    createdAt: daysAgo(7)  },
+    { userId: memberIds[0], actionType: "listing_posted",     blocks: 2, humanLabel: "A new donor listed another item — more essentials on the way.",     createdAt: daysAgo(5)  },
+    { userId: memberIds[0], actionType: "register_fulfilled", blocks: 4, humanLabel: "A register item was delivered to a mother in need.",                createdAt: daysAgo(3)  },
+
+    { userId: memberIds[1], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Fatima's shared link.",           createdAt: daysAgo(13) },
+    { userId: memberIds[1], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Fatima's shared link.",           createdAt: daysAgo(11) },
+    { userId: memberIds[1], actionType: "register_fulfilled", blocks: 4, humanLabel: "A register item was fulfilled — a mother received what she needed.", createdAt: daysAgo(6)  },
+
+    { userId: memberIds[2], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Grace's shared link.",            createdAt: daysAgo(14) },
+    { userId: memberIds[2], actionType: "signup",             blocks: 2, humanLabel: "A new supporter joined through Grace's mission link.",              createdAt: daysAgo(8)  },
   ];
 
-  const past = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
   for (const a of actionSeeds) {
-    await prisma.missionAction.create({
-      data: { ...a, teamId: team.id, createdAt: past },
-    });
+    await prisma.missionAction.create({ data: { ...a, teamId: team.id } });
   }
 
-  console.log(`✓ Seeded mission "${mission.name}" with 3 members, 18 blocks`);
+  // Recompute totalBlocks from all actions in the team (includes any admin debug actions)
+  const allActions = await prisma.missionAction.findMany({
+    where:  { teamId: team.id },
+    select: { blocks: true },
+  });
+  const totalBlocks = allActions.reduce((s, a) => s + a.blocks, 0);
+  await prisma.missionTeam.update({ where: { id: team.id }, data: { totalBlocks } });
+
+  console.log(`✓ Mission seed: "${mission.name}" — ${totalBlocks} total blocks (seed members: Amara 12, Fatima 6, Grace 3)`);
 }
 
 async function seedCatalog() {

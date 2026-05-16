@@ -38,11 +38,34 @@ export async function GET(req: NextRequest) {
   const team    = membership.team;
   const mission = team.mission;
 
-  // Block breakdown — handles both old (click/listing/donation) and new action types
+  // Team-level block breakdown
   const completedBlocks = team.actions.reduce((s, a) => COMPLETED_TYPES.includes(a.actionType) ? s + a.blocks : s, 0);
   const activityBlocks  = team.actions.reduce((s, a) => ACTIVITY_TYPES.includes(a.actionType)  ? s + a.blocks : s, 0);
   const signupBlocks    = team.actions.reduce((s, a) => a.actionType === "signup"               ? s + a.blocks : s, 0);
   const clickBlocks     = team.actions.reduce((s, a) => a.actionType === "click"                ? s + a.blocks : s, 0);
+
+  // Per-member action breakdown — one groupBy covers all members accurately
+  const memberActionGroups = await prisma.missionAction.groupBy({
+    by:    ["userId", "actionType"],
+    where: { teamId: team.id },
+    _sum:  { blocks: true },
+  });
+
+  const breakdownByUser: Record<string, {
+    completedBlocks: number; activityBlocks: number; signupBlocks: number; clickBlocks: number;
+  }> = {};
+  for (const row of memberActionGroups) {
+    if (!breakdownByUser[row.userId]) {
+      breakdownByUser[row.userId] = { completedBlocks: 0, activityBlocks: 0, signupBlocks: 0, clickBlocks: 0 };
+    }
+    const b = row._sum.blocks ?? 0;
+    if      (COMPLETED_TYPES.includes(row.actionType)) breakdownByUser[row.userId].completedBlocks += b;
+    else if (ACTIVITY_TYPES.includes(row.actionType))  breakdownByUser[row.userId].activityBlocks  += b;
+    else if (row.actionType === "signup")               breakdownByUser[row.userId].signupBlocks    += b;
+    else if (row.actionType === "click")                breakdownByUser[row.userId].clickBlocks     += b;
+  }
+
+  const emptyBreakdown = { completedBlocks: 0, activityBlocks: 0, signupBlocks: 0, clickBlocks: 0 };
 
   return NextResponse.json({
     membership: {
@@ -64,16 +87,16 @@ export async function GET(req: NextRequest) {
         activityBlocks,
         signupBlocks,
         clickBlocks,
-        // Legacy field aliases for backwards compat
         donationBlocks: completedBlocks,
         listingBlocks:  activityBlocks,
-        members:        team.members.map((m) => ({
-          id:       m.id,
-          userId:   m.user.id,
-          name:     m.user.name,
-          avatar:   m.user.avatar,
-          isMe:     m.userId === auth.userId,
-          joinedAt: m.joinedAt,
+        members: team.members.map((m) => ({
+          id:              m.id,
+          userId:          m.user.id,
+          name:            m.user.name,
+          avatar:          m.user.avatar,
+          isMe:            m.userId === auth.userId,
+          joinedAt:        m.joinedAt,
+          actionBreakdown: breakdownByUser[m.user.id] ?? emptyBreakdown,
         })),
         recentActions: team.actions.map((a) => ({
           id:         a.id,
