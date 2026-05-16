@@ -246,8 +246,8 @@ const styles = `
 
 const BLOCK_SIGNUP = "#c8d8c8";
 
-// Never renders in production even if accidentally left in
-const SHOW_DEBUG_PANEL = process.env.NODE_ENV !== "production";
+// Admin-only — role check is the gate, no env restriction
+const SHOW_DEBUG_PANEL = true;
 
 // Nominal blocks per action type (used for toast display)
 const ACTION_BLOCKS: Record<string, number> = {
