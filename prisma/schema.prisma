@@ -84,6 +84,7 @@ model User {
   streakLastActiveDate     DateTime?
   streakWeeksCompleted     Int       @default(0)
   hasPostedIntro           Boolean   @default(false)
+  bio                      String?   // care contributor statement, max 250 chars
 
   trustEvents       TrustEvent[]
   trustScoreLogs    TrustScoreLog[]
@@ -142,6 +143,7 @@ model User {
 
   missionMemberships MissionMember[]
   missionActions     MissionAction[]
+  profileSnapshots   ProfileSnapshot[]
 }
 
 // ==================== ITEMS ====================
@@ -1374,6 +1376,19 @@ model BundleApplication {
 
   @@index([bundleId])
   @@index([status])
+  @@index([userId])
+}
+
+// ==================== PROFILE SNAPSHOTS ====================
+
+model ProfileSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  snapshotData Json
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
   @@index([userId])
 }
 

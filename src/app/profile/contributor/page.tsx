@@ -1,233 +1,379 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface ActiveMission {
-  name: string; teamId: string; totalBlocks: number; goalBlocks: number; isComplete: boolean;
+// ── types ──────────────────────────────────────────────────────────────────
+
+interface Identity {
+  name: string;
+  avatar: string | null;
+  location: string | null;
+  bio: string | null;
+  careContributorSince: string | null;
+  isVerified: boolean;
+}
+
+interface Stats {
+  mothersSupported: number;
+  essentialsDelivered: number;
+  bundlesSupported: number;
+  discoverPickups: number;
+  peopleReached: number;
+}
+
+interface CurrentMission {
+  name: string;
+  month: string;
+  teamId: string;
+  totalBlocks: number;
+  goalBlocks: number;
+  myBlocks: number;
+  memberCount: number;
+  isComplete: boolean;
+}
+
+interface PastMission {
+  id: string;
+  missionName: string;
+  month: string;
+  teamBlocks: number;
+  goalBlocks: number;
+  myBlocks: number;
+  isComplete: boolean;
+  joinedAt: string;
 }
 
 interface ContributorData {
-  hasActions: boolean;
   hasMembership: boolean;
-  activeMission: ActiveMission | null;
-  stats?: {
-    clicks: number; signups: number; activity: number; outcomes: number; totalBlocks: number;
-  };
-  missionHistory?: Array<{
-    id: string; missionName: string; month: string;
-    teamBlocks: number; goalBlocks: number; myBlocks: number; isComplete: boolean; joinedAt: string;
-  }>;
-  recentActions?: Array<{
-    id: string; actionType: string; blocks: number; humanLabel: string; createdAt: string;
-  }>;
-  highlightMoments?: Array<{
-    id: string; actionType: string; blocks: number; humanLabel: string; createdAt: string;
-  }>;
+  hasActions: boolean;
+  identity?: Identity;
+  stats?: Stats;
+  currentMission?: CurrentMission | null;
+  pastMissions?: PastMission[];
 }
 
+// ── design tokens ──────────────────────────────────────────────────────────
+
 const C = {
-  green:      "#1a7a5e",
-  greenLight: "#e8f5f0",
-  purple:     "#6d5acd",
-  purplePale: "#f5f3ff",
-  cream:      "#faf8f3",
-  white:      "#ffffff",
-  text:       "#2a2a2a",
-  mid:        "#5a5a5a",
-  muted:      "#8a8a8a",
-  border:     "#ede8df",
-  completed:  "#1a7a5e",
-  activity:   "#a8d4bf",
-  signup:     "#c8d8c8",
-  click:      "#d4cfc8",
+  green:       "#1a7a5e",
+  greenLight:  "#e8f5f0",
+  greenMid:    "#a8d4bf",
+  purple:      "#6d5acd",
+  purplePale:  "#f5f3ff",
+  cream:       "#faf8f3",
+  white:       "#ffffff",
+  text:        "#2a2a2a",
+  mid:         "#5a5a5a",
+  muted:       "#8a8a8a",
+  border:      "#ede8df",
 };
 
-const COMPLETED_TYPES = ["donation","listing_completed","register_fulfilled","bundle_delivered"];
+// ── global styles ──────────────────────────────────────────────────────────
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Nunito:wght@400;600;700;800&display=swap');
-  .cp-page *, .cp-page *::before, .cp-page *::after { box-sizing: border-box; }
-  .cp-page {
+  .cp2 *, .cp2 *::before, .cp2 *::after { box-sizing: border-box; }
+  .cp2 {
     font-family: 'Nunito', sans-serif;
     background: #faf8f3;
     min-height: 100vh;
     color: #2a2a2a;
     padding: 0 0 100px;
   }
-  .cp-inner { max-width: 860px; margin: 0 auto; padding: 20px 16px; }
-  @media (min-width: 640px) { .cp-inner { padding: 24px 24px; } }
-
-  .cp-card {
-    background: white; border-radius: 24px; border: 1px solid #ede8df;
-    padding: 24px; margin-bottom: 20px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  .cp2-inner { max-width: 640px; margin: 0 auto; padding: 20px 16px; }
+  .cp2-card {
+    background: white; border-radius: 22px; border: 1px solid #ede8df;
+    padding: 22px 20px; margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
   }
-  .cp-section-label {
-    font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800;
-    letter-spacing: 1.4px; text-transform: uppercase; color: #6d5acd; margin-bottom: 16px;
+  .cp2-label {
+    font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 800;
+    letter-spacing: 1.6px; text-transform: uppercase; color: #6d5acd; margin-bottom: 14px;
   }
-  .cp-section-label-green { color: #1a7a5e; }
+  .cp2-label-green { color: #1a7a5e; }
 
-  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  @media (min-width: 500px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
-  .stat-box {
-    background: #faf8f3; border-radius: 16px; padding: 14px 12px; text-align: center;
-    border: 1px solid #ede8df;
+  .stat-grid-5 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
-  .stat-num { font-family: 'Lora', serif; font-size: 32px; font-weight: 700; color: #1a7a5e; line-height: 1; }
-  .stat-label { font-size: 11px; color: #5a5a5a; margin-top: 5px; line-height: 1.4; }
-
-  .mission-row {
-    display: flex; align-items: center; gap: 12px; padding: 14px 0;
-    border-bottom: 1px solid #ede8df;
-  }
-  .mission-row:last-child { border-bottom: none; }
-  .mission-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-
-  .action-row {
-    display: flex; align-items: flex-start; gap: 10px; padding: 10px 0;
-    border-bottom: 1px solid #f5f0ea;
-  }
-  .action-row:last-child { border-bottom: none; }
-  .action-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; margin-top: 4px; }
-
-  .week-divider {
-    font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
-    color: #8a8a8a; padding: 14px 0 6px; border-bottom: 1px solid #ede8df; margin-bottom: 4px;
+  .stat-grid-5 > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 
-  .moment-card {
-    background: #e8f5f0; border-radius: 18px; padding: 18px; margin-bottom: 12px;
-    border: 1px solid #b7dfd1; display: flex; gap: 12px; align-items: flex-start;
+  .mission-history-scroll {
+    display: flex; gap: 12px; overflow-x: auto; padding-bottom: 6px;
+    scrollbar-width: none; -ms-overflow-style: none;
   }
-  .moment-icon {
-    width: 40px; height: 40px; border-radius: 50%; background: #1a7a5e; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  .mission-history-scroll::-webkit-scrollbar { display: none; }
+
+  .cp2-textarea {
+    width: 100%; border: 1.5px solid #ede8df; border-radius: 14px;
+    padding: 12px 14px; font-family: 'Nunito', sans-serif; font-size: 14px;
+    color: #2a2a2a; background: #faf8f3; resize: none; outline: none;
+    transition: border-color 0.2s;
   }
+  .cp2-textarea:focus { border-color: #6d5acd; background: white; }
+  .cp2-input {
+    width: 100%; border: 1.5px solid #ede8df; border-radius: 14px;
+    padding: 12px 14px; font-family: 'Nunito', sans-serif; font-size: 14px;
+    color: #2a2a2a; background: #faf8f3; outline: none;
+    transition: border-color 0.2s;
+  }
+  .cp2-input:focus { border-color: #6d5acd; background: white; }
 `;
 
-function actionSwatch(actionType: string): string {
-  if (COMPLETED_TYPES.includes(actionType)) return C.completed;
-  if (["listing","listing_posted","register_committed"].includes(actionType)) return C.activity;
-  if (actionType === "signup") return C.signup;
-  return C.click;
-}
-
-function relativeTime(date: string): string {
-  const now  = Date.now();
-  const then = new Date(date).getTime();
-  const diff = now - then;
-  const mins  = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days  = Math.floor(diff / 86400000);
-  if (mins < 60)  return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return "Yesterday";
-  if (days < 7)   return `${days} days ago`;
-  if (days < 14)  return "Last week";
-  return new Date(date).toLocaleDateString("en", { month: "short", day: "numeric" });
-}
-
-function weekLabel(date: string): string {
-  const now  = Date.now();
-  const diff = now - new Date(date).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days < 1)   return "Today";
-  if (days < 2)   return "Yesterday";
-  if (days < 7)   return "This week";
-  if (days < 14)  return "Last week";
-  if (days < 30)  return "Earlier this month";
-  return new Date(date).toLocaleDateString("en", { month: "long", year: "numeric" });
-}
+// ── helpers ────────────────────────────────────────────────────────────────
 
 function formatMonth(month: string): string {
   const [y, m] = month.split("-");
-  return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleString("en", { month: "long", year: "numeric" });
+  return new Date(parseInt(y), parseInt(m) - 1, 1)
+    .toLocaleString("en", { month: "long", year: "numeric" });
 }
 
-function MiniBar({ myBlocks, goalBlocks }: { myBlocks: number; goalBlocks: number }) {
-  const pct = Math.min(100, Math.round((myBlocks / goalBlocks) * 100));
+function formatShortMonth(month: string): string {
+  const [y, m] = month.split("-");
+  return new Date(parseInt(y), parseInt(m) - 1, 1)
+    .toLocaleString("en", { month: "short", year: "2-digit" });
+}
+
+function formatSince(date: string | null): string {
+  if (!date) return "";
+  return new Date(date).toLocaleString("en", { month: "long", year: "numeric" });
+}
+
+// ── sub-components ─────────────────────────────────────────────────────────
+
+function BlockGrid({ myBlocks, totalBlocks, goalBlocks }: {
+  myBlocks: number; totalBlocks: number; goalBlocks: number;
+}) {
+  const CELLS = 26;
+  const cap   = Math.max(1, goalBlocks);
+  const teamN = Math.min(CELLS, Math.round((totalBlocks / cap) * CELLS));
+  const myN   = Math.min(teamN, Math.round((myBlocks / cap) * CELLS));
+  const cells = [
+    ...Array(myN).fill(C.green),
+    ...Array(teamN - myN).fill(C.greenMid),
+    ...Array(CELLS - teamN).fill(C.border),
+  ];
   return (
-    <div style={{ height: 4, background: "#ede8df", borderRadius: 4, overflow: "hidden", marginTop: 4, width: "100%" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(13, 1fr)", gap: 5, margin: "14px 0" }}>
+      {cells.map((bg, i) => (
+        <div key={i} style={{ aspectRatio: "1", borderRadius: 5, background: bg }} />
+      ))}
+    </div>
+  );
+}
+
+function MiniBar({ value, total }: { value: number; total: number }) {
+  const pct = Math.min(100, Math.round((value / Math.max(1, total)) * 100));
+  return (
+    <div style={{ height: 4, background: C.border, borderRadius: 4, overflow: "hidden", marginTop: 6 }}>
       <div style={{ height: "100%", width: `${pct}%`, background: C.green, borderRadius: 4 }} />
     </div>
   );
 }
 
-type ActionItem = NonNullable<ContributorData["recentActions"]>[number];
+function StatCard({ emoji, count, label, bg, color, fullWidth }: {
+  emoji: string; count: number; label: string; bg: string; color: string; fullWidth?: boolean;
+}) {
+  return (
+    <div style={{
+      background: "white", borderRadius: 18, padding: "18px 14px", textAlign: "center",
+      border: `1px solid ${C.border}`, gridColumn: fullWidth ? "1 / -1" : undefined,
+    }}>
+      <div style={{
+        width: 46, height: 46, borderRadius: "50%", background: bg,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 22, margin: "0 auto 10px",
+      }}>
+        {emoji}
+      </div>
+      <div style={{ fontFamily: "Lora, serif", fontSize: 30, fontWeight: 700, color, lineHeight: 1 }}>
+        {count}
+      </div>
+      <div style={{ fontSize: 11, color: C.mid, marginTop: 6, lineHeight: 1.4, fontFamily: "Nunito, sans-serif" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
 
-// Group actions by week for display — collapses <48h entries into a digest
-function groupActions(actions: ActionItem[]) {
-  const groups: Array<{ label: string; isDigest: boolean; actions: ActionItem[] }> = [];
-  let currentLabel = "";
-  let currentGroup: typeof actions = [];
-  const now = Date.now();
+function PastMissionCard({ m }: { m: PastMission }) {
+  return (
+    <div style={{
+      minWidth: 168, background: "white", border: `1px solid ${C.border}`,
+      borderRadius: 18, padding: "16px 14px", flexShrink: 0,
+    }}>
+      <div style={{
+        display: "inline-block", background: m.isComplete ? C.greenLight : C.purplePale,
+        color: m.isComplete ? C.green : C.purple,
+        fontSize: 10, fontWeight: 800, letterSpacing: "1px",
+        padding: "3px 9px", borderRadius: 20, fontFamily: "Nunito, sans-serif", marginBottom: 8,
+      }}>
+        {formatShortMonth(m.month)}{m.isComplete ? " ✓" : ""}
+      </div>
+      <div style={{ fontFamily: "Lora, serif", fontSize: 13, fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 10 }}>
+        {m.missionName}
+      </div>
+      <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: C.purple, lineHeight: 1 }}>
+        {m.myBlocks}
+      </div>
+      <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+        your blocks
+      </div>
+      <MiniBar value={m.teamBlocks} total={m.goalBlocks} />
+      <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif", marginTop: 4 }}>
+        {m.teamBlocks}/{m.goalBlocks} team
+      </div>
+    </div>
+  );
+}
 
-  for (const action of actions) {
-    const diff = now - new Date(action.createdAt).getTime();
-    const label = weekLabel(action.createdAt);
+// ── edit modal ─────────────────────────────────────────────────────────────
 
-    if (label !== currentLabel) {
-      if (currentGroup.length) groups.push({ label: currentLabel, isDigest: false, actions: currentGroup });
-      currentLabel = label;
-      currentGroup = [];
-    }
+function EditModal({ identity, onClose, onSaved }: {
+  identity: Identity;
+  onClose: () => void;
+  onSaved: (bio: string | null, location: string | null) => void;
+}) {
+  const [bio,      setBio]      = useState(identity.bio ?? "");
+  const [location, setLocation] = useState(identity.location ?? "");
+  const [saving,   setSaving]   = useState(false);
 
-    // Collapse recent <48h into a digest row
-    if (diff < 48 * 3600000 && label !== "Earlier this month") {
-      currentGroup.push(action);
-    } else {
-      currentGroup.push(action);
+  async function save() {
+    setSaving(true);
+    try {
+      await fetch("/api/profile", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ bio: bio || null, location: location || null }),
+      });
+      onSaved(bio || null, location || null);
+    } finally {
+      setSaving(false);
     }
   }
-  if (currentGroup.length) groups.push({ label: currentLabel, isDigest: false, actions: currentGroup });
-  return groups;
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1000,
+      display: "flex", alignItems: "flex-end",
+    }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{
+        width: "100%", background: "white", borderRadius: "24px 24px 0 0",
+        padding: "24px 20px 44px", maxHeight: "85vh", overflowY: "auto",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Edit Profile</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.muted, lineHeight: 1 }}>✕</button>
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", color: C.purple, marginBottom: 8 }}>
+            Why I Support
+          </div>
+          <textarea
+            className="cp2-textarea"
+            rows={4}
+            maxLength={250}
+            placeholder="Share why you care about supporting mothers…"
+            value={bio}
+            onChange={e => setBio(e.target.value)}
+          />
+          <div style={{ fontSize: 11, color: C.muted, textAlign: "right", marginTop: 4 }}>
+            {bio.length}/250
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", color: C.purple, marginBottom: 8 }}>
+            Location
+          </div>
+          <input
+            className="cp2-input"
+            type="text"
+            placeholder="City, Country"
+            value={location}
+            onChange={e => setLocation(e.target.value)}
+          />
+        </div>
+
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            width: "100%", background: C.purple, color: "white", border: "none",
+            borderRadius: 16, padding: "15px 0", fontFamily: "Nunito, sans-serif",
+            fontSize: 15, fontWeight: 800, cursor: saving ? "default" : "pointer",
+            opacity: saving ? 0.7 : 1,
+          }}
+        >
+          {saving ? "Saving…" : "Save Changes"}
+        </button>
+      </div>
+    </div>
+  );
 }
+
+// ── main page ──────────────────────────────────────────────────────────────
 
 export default function ContributorPage() {
   const { user } = useAuth();
   const router   = useRouter();
-  const [data,    setData]    = useState<ContributorData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [linkCopied, setLinkCopied] = useState(false);
 
-  useEffect(() => {
-    if (!user) { router.push("/auth"); return; }
+  const [data,       setData]       = useState<ContributorData | null>(null);
+  const [loading,    setLoading]    = useState(true);
+  const [editing,    setEditing]    = useState(false);
+  const [sharing,    setSharing]    = useState(false);
+  const [shareDone,  setShareDone]  = useState(false);
+
+  const fetchData = useCallback(() => {
     fetch("/api/profile/contributor")
       .then(r => r.json())
       .then(d => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user, router]);
+  }, []);
+
+  useEffect(() => {
+    if (!user) { router.push("/auth"); return; }
+    fetchData();
+  }, [user, router, fetchData]);
 
   if (!user) return null;
 
   if (loading) return (
-    <div className="cp-page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+    <div className="cp2" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+      <style>{styles}</style>
       <div className="spinner" />
     </div>
   );
 
-  // Never joined any mission — hard gate
+  // ── never joined any mission ───────────────────────────────────────────
   if (!data || !data.hasMembership) return (
     <>
       <style>{styles}</style>
-      <div className="cp-page">
-        <div style={{ background: "white", borderBottom: "1px solid #ede8df", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "#faf8f3", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+      <div className="cp2">
+        <div style={{ background: "white", borderBottom: `1px solid ${C.border}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: C.cream, border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
           <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700 }}>Care Contributor</div>
         </div>
-        <div className="cp-inner" style={{ textAlign: "center", paddingTop: 60 }}>
+        <div className="cp2-inner" style={{ textAlign: "center", paddingTop: 64 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🌱</div>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: C.purple, marginBottom: 8 }}>Your contributor profile is waiting</div>
-          <div style={{ fontSize: 14, color: C.mid, fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 28 }}>
-            Join a mission and take your first action — every click, listing, and outcome you create will be recorded here.
+          <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: C.purple, marginBottom: 8 }}>
+            Your contributor profile is waiting
           </div>
-          <button onClick={() => router.push("/missions")}
-            style={{ background: C.purple, color: "white", border: "none", borderRadius: 14, padding: "14px 28px", fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 800, cursor: "pointer" }}>
+          <div style={{ fontSize: 14, color: C.mid, lineHeight: 1.7, marginBottom: 28 }}>
+            Join a mission to unlock your Care Contributor profile and start tracking your real-world impact.
+          </div>
+          <button onClick={() => router.push("/missions")} style={{
+            background: C.purple, color: "white", border: "none", borderRadius: 14,
+            padding: "14px 28px", fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 800, cursor: "pointer",
+          }}>
             Browse missions
           </button>
         </div>
@@ -236,306 +382,254 @@ export default function ContributorPage() {
     </>
   );
 
-  // Joined a mission but no actions yet — zero-data state
-  if (!data.hasActions) {
-    const am = data.activeMission;
-    const amPct = am ? Math.min(100, Math.round((am.totalBlocks / am.goalBlocks) * 100)) : 0;
-    const shareUrl = am
-      ? `${typeof window !== "undefined" ? window.location.origin : "https://kradel.com"}/missions?ref=${am.teamId}`
-      : "";
-    const copyLink = () => {
-      if (!shareUrl) return;
-      navigator.clipboard.writeText(shareUrl).catch(() => {});
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    };
+  // ── full v2 profile (hasActions true or false) ─────────────────────────
 
-    return (
-      <>
-        <style>{styles}</style>
-        <div className="cp-page">
-          {/* Header */}
-          <div style={{ background: "white", borderBottom: "1px solid #ede8df", padding: "14px 16px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "#faf8f3", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>←</button>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "inline-block", background: "#f5f3ff", color: C.purple, fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", padding: "3px 10px", borderRadius: 20, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
-                CARE CONTRIBUTOR
-              </div>
-              <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>
-                {user.name}&rsquo;s contribution
-              </div>
-              <div style={{ fontSize: 12, color: C.muted, fontFamily: "Nunito, sans-serif", marginTop: 3 }}>
-                Every action you&rsquo;ve taken to reach a mother.
-              </div>
-            </div>
-          </div>
+  const identity       = data.identity!;
+  const stats          = data.stats   ?? { mothersSupported: 0, essentialsDelivered: 0, bundlesSupported: 0, discoverPickups: 0, peopleReached: 0 };
+  const currentMission = data.currentMission ?? null;
+  const pastMissions   = data.pastMissions   ?? [];
 
-          <div className="cp-inner">
-            {/* Lifetime stats — all 0s, honest */}
-            <div className="cp-card">
-              <div className="cp-section-label">Your lifetime impact</div>
-              <div className="stat-grid">
-                {[
-                  { num: 0, label: "Link\nClicks" },
-                  { num: 0, label: "New Members\nBrought In" },
-                  { num: 0, label: "Activity\nSparked" },
-                  { num: 0, label: "Mothers\nReached" },
-                ].map(({ num, label }) => (
-                  <div key={label} className="stat-box">
-                    <div className="stat-num" style={{ color: C.muted }}>{num}</div>
-                    <div className="stat-label">{label.split("\n").map((l, i) => <span key={i}>{l}{i === 0 ? <br /> : ""}</span>)}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 14, padding: "12px 16px", background: "#f5f3ff", borderRadius: 12, textAlign: "center", fontFamily: "Nunito, sans-serif" }}>
-                <span style={{ fontSize: 13, color: C.muted, fontWeight: 600 }}>0 blocks contributed so far — your first action fills this</span>
-              </div>
-            </div>
+  const avatarInitial = identity.name?.charAt(0).toUpperCase() ?? "?";
 
-            {/* Current mission */}
-            {am && (
-              <div className="cp-card">
-                <div className="cp-section-label">Missions you&rsquo;ve been part of</div>
-                <div className="mission-row" style={{ borderBottom: "none" }}>
-                  <div className="mission-dot" style={{ background: C.purple }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 2 }}>{am.name}</div>
-                    <div style={{ fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Active mission</div>
-                    <MiniBar myBlocks={am.totalBlocks} goalBlocks={am.goalBlocks} />
-                    <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontFamily: "Nunito, sans-serif" }}>
-                      Team: {am.totalBlocks}/{am.goalBlocks} blocks ({amPct}%)
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: C.muted }}>0</div>
-                    <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif" }}>your blocks</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Action history — empty with CTA */}
-            <div className="cp-card">
-              <div className="cp-section-label">Your mission history</div>
-              <div style={{ textAlign: "center", padding: "20px 0 8px" }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>✨</div>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 6 }}>Your actions will appear here.</div>
-                <div style={{ fontSize: 13, color: C.mid, fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 18 }}>
-                  Share your link to start. Every click, sign-up, and listing you spark gets recorded.
-                </div>
-                {shareUrl && (
-                  <button
-                    onClick={copyLink}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12, border: `1.5px solid ${C.purple}`, background: linkCopied ? C.purple : "#f5f3ff", color: linkCopied ? "white" : C.purple, fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
-                  >
-                    {linkCopied ? "Copied ✓" : "🔗 Copy your referral link"}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div style={{ textAlign: "center", padding: "8px 20px 20px", fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 14, color: C.muted, lineHeight: 1.8 }}>
-              <span style={{ marginRight: 6 }}>💜</span>
-              Care moves everything. Thank you for showing up.
-            </div>
-          </div>
-        </div>
-        <BottomNav />
-      </>
-    );
+  async function handleShare() {
+    setSharing(true);
+    try {
+      const res = await fetch("/api/profile/contributor/share", { method: "POST" });
+      const { url } = await res.json();
+      const fullUrl = `${window.location.origin}${url}`;
+      if (navigator.share) {
+        await navigator.share({ title: `${identity.name}'s Care Contributor Profile`, url: fullUrl });
+      } else {
+        await navigator.clipboard.writeText(fullUrl);
+        setShareDone(true);
+        setTimeout(() => setShareDone(false), 2500);
+      }
+    } catch { /* dismissed */ } finally {
+      setSharing(false);
+    }
   }
 
-  const stats          = data.stats!;
-  const missionHistory = data.missionHistory!;
-  const recentActions  = data.recentActions!;
-  const highlightMoments = data.highlightMoments!;
-  const groups = groupActions(recentActions);
-
-  const now = Date.now();
-  const recentGroups = groups.filter(g => {
-    if (!g.actions.length) return false;
-    const oldest = new Date(g.actions[g.actions.length - 1].createdAt).getTime();
-    return now - oldest < 48 * 3600000;
-  });
-  const olderGroups = groups.filter(g => {
-    if (!g.actions.length) return false;
-    const oldest = new Date(g.actions[g.actions.length - 1].createdAt).getTime();
-    return now - oldest >= 48 * 3600000;
-  });
+  function handleSaved(bio: string | null, location: string | null) {
+    setEditing(false);
+    setData(prev => prev && prev.identity ? {
+      ...prev,
+      identity: { ...prev.identity, bio, location },
+    } : prev);
+  }
 
   return (
     <>
       <style>{styles}</style>
-      <div className="cp-page">
+      <div className="cp2">
 
-        {/* ── Header ── */}
-        <div style={{ background: "white", borderBottom: "1px solid #ede8df", padding: "14px 16px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-          <button onClick={() => router.back()} style={{ width: 36, height: 36, borderRadius: "50%", background: "#faf8f3", border: "none", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>←</button>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "inline-block", background: "#f5f3ff", color: C.purple, fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", padding: "3px 10px", borderRadius: 20, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
-              CARE CONTRIBUTOR
-            </div>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>
-              {user.name}&rsquo;s contribution
-            </div>
-            <div style={{ fontSize: 12, color: C.muted, fontFamily: "Nunito, sans-serif", marginTop: 3 }}>
-              Every action you&rsquo;ve taken to reach a mother.
-            </div>
+        {/* ── top nav ── */}
+        <div style={{
+          background: "white", borderBottom: `1px solid ${C.border}`,
+          padding: "13px 16px", display: "flex", alignItems: "center", gap: 12,
+        }}>
+          <button onClick={() => router.back()} style={{
+            width: 36, height: 36, borderRadius: "50%", background: C.cream,
+            border: "none", fontSize: 18, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}>←</button>
+          <div style={{ flex: 1, fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700 }}>
+            Care Contributor
           </div>
+          <button onClick={() => setEditing(true)} style={{
+            background: C.purplePale, color: C.purple, border: "none",
+            borderRadius: 20, padding: "7px 16px", fontFamily: "Nunito, sans-serif",
+            fontSize: 12, fontWeight: 800, cursor: "pointer", letterSpacing: "0.3px",
+          }}>
+            Edit Profile
+          </button>
         </div>
 
-        <div className="cp-inner">
+        <div className="cp2-inner">
 
-          {/* ── Lifetime stats ── */}
-          <div className="cp-card">
-            <div className="cp-section-label">Your lifetime impact</div>
-            <div className="stat-grid">
-              <div className="stat-box">
-                <div className="stat-num">{stats.clicks}</div>
-                <div className="stat-label">Link<br/>Clicks</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-num">{stats.signups}</div>
-                <div className="stat-label">New Members<br/>Brought In</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-num">{stats.activity}</div>
-                <div className="stat-label">Activity<br/>Sparked</div>
-              </div>
-              <div className="stat-box">
-                <div className="stat-num" style={{ color: C.green }}>{stats.outcomes}</div>
-                <div className="stat-label">Mothers<br/>Reached</div>
-              </div>
+          {/* ── identity card ── */}
+          <div className="cp2-card" style={{ textAlign: "center", paddingTop: 28, paddingBottom: 24 }}>
+            {/* avatar */}
+            <div style={{
+              width: 96, height: 96, borderRadius: "50%", margin: "0 auto 14px",
+              background: identity.avatar ? "transparent" : `linear-gradient(135deg, ${C.purple}, #9b7fe8)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              overflow: "hidden", border: `3px solid ${C.purplePale}`,
+            }}>
+              {identity.avatar
+                ? <img src={identity.avatar} alt={identity.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontFamily: "Lora, serif", fontSize: 36, fontWeight: 700, color: "white" }}>{avatarInitial}</span>
+              }
             </div>
-            <div style={{ marginTop: 14, padding: "12px 16px", background: "#f5f3ff", borderRadius: 12, textAlign: "center", fontFamily: "Nunito, sans-serif" }}>
-              <span style={{ fontSize: 13, color: C.purple, fontWeight: 700 }}>{stats.totalBlocks} blocks</span>
-              <span style={{ fontSize: 12, color: C.mid }}> contributed across all missions</span>
+
+            {/* name */}
+            <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 6 }}>
+              {identity.name}
+            </div>
+
+            {/* active contributor badge */}
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              background: C.greenLight, color: C.green, border: `1px solid #b7dfd1`,
+              borderRadius: 20, padding: "5px 12px",
+              fontFamily: "Nunito, sans-serif", fontSize: 11, fontWeight: 800,
+              letterSpacing: "0.5px", marginBottom: 14,
+            }}>
+              <span style={{ fontSize: 8 }}>●</span> Active Contributor
+            </div>
+
+            {/* since + location */}
+            <div style={{ fontSize: 12, color: C.muted, fontFamily: "Nunito, sans-serif", lineHeight: 1.8 }}>
+              {identity.careContributorSince && (
+                <div>Care Contributor since {formatSince(identity.careContributorSince)}</div>
+              )}
+              {identity.location && (
+                <div>📍 {identity.location}</div>
+              )}
+            </div>
+
+            {/* bio */}
+            {identity.bio && (
+              <div style={{
+                marginTop: 14, fontSize: 13, color: C.mid, fontFamily: "Nunito, sans-serif",
+                lineHeight: 1.7, maxWidth: 340, margin: "14px auto 0",
+              }}>
+                {identity.bio}
+              </div>
+            )}
+          </div>
+
+          {/* ── impact stats ── */}
+          <div className="cp2-card">
+            <div className="cp2-label">Your Impact</div>
+            <div className="stat-grid-5">
+              <StatCard emoji="👥" count={stats.mothersSupported}    label="Mothers Supported"            bg="#e8f5f0" color={C.green} />
+              <StatCard emoji="🎁" count={stats.essentialsDelivered} label="Essentials Delivered"         bg="#eaf5f2" color="#2a8c6e" />
+              <StatCard emoji="💝" count={stats.bundlesSupported}    label="Bundles Supported"            bg="#fce8e8" color="#c4585a" />
+              <StatCard emoji="🛍️" count={stats.discoverPickups}    label="Discover Pickups Facilitated" bg="#fef4e4" color="#c87c15" />
+              <StatCard emoji="📣" count={stats.peopleReached}       label="People Reached Through Sharing" bg={C.purplePale} color={C.purple} fullWidth />
             </div>
           </div>
 
-          {/* ── Mission history ── */}
-          {missionHistory.length > 0 && (
-            <div className="cp-card">
-              <div className="cp-section-label">Missions you&rsquo;ve been part of</div>
-              {missionHistory.map(m => {
-                const pct = Math.min(100, Math.round((m.teamBlocks / m.goalBlocks) * 100));
-                return (
-                  <div key={m.id} className="mission-row">
-                    <div className="mission-dot" style={{ background: m.isComplete ? C.green : C.purple }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 2 }}>
-                        {m.missionName}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
-                        {formatMonth(m.month)}
-                        {m.isComplete && <span style={{ marginLeft: 6, color: C.green, fontWeight: 700 }}>✓ Complete</span>}
-                      </div>
-                      <MiniBar myBlocks={m.teamBlocks} goalBlocks={m.goalBlocks} />
-                      <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontFamily: "Nunito, sans-serif" }}>
-                        Team: {m.teamBlocks}/{m.goalBlocks} blocks ({pct}%)
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: C.purple }}>{m.myBlocks}</div>
-                      <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif" }}>your blocks</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ── Impact highlights ── */}
-          {highlightMoments.length > 0 && (
-            <div className="cp-card">
-              <div className="cp-section-label cp-section-label-green">Moments that mattered</div>
-              <div style={{ fontSize: 12, color: C.mid, fontFamily: "Nunito, sans-serif", marginBottom: 14, lineHeight: 1.5 }}>
-                The moments below are when a mom received something real because of your effort.
-              </div>
-              {highlightMoments.map(m => (
-                <div key={m.id} className="moment-card">
-                  <div className="moment-icon">💚</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.4, marginBottom: 4 }}>
-                      {m.humanLabel}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif" }}>
-                      {relativeTime(m.createdAt)} · +{m.blocks} blocks
-                    </div>
-                  </div>
+          {/* ── current mission ── */}
+          {currentMission && (
+            <div className="cp2-card">
+              <div className="cp2-label cp2-label-green">Your Mission</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: C.text, flex: 1, marginRight: 12 }}>
+                  {currentMission.name}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── Action history feed ── */}
-          {recentActions.length > 0 && (
-            <div className="cp-card">
-              <div className="cp-section-label">Your mission history</div>
-              <div style={{ fontSize: 12, color: C.mid, fontFamily: "Nunito, sans-serif", marginBottom: 14, lineHeight: 1.5 }}>
-                Each action below is something you helped happen.
+                <div style={{
+                  flexShrink: 0, background: C.purplePale, color: C.purple,
+                  fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 20,
+                  fontFamily: "Nunito, sans-serif", letterSpacing: "0.5px",
+                }}>
+                  {formatShortMonth(currentMission.month)}
+                </div>
               </div>
 
-              {/* Recent <48h — daily digest */}
-              {recentGroups.length > 0 && recentGroups.flatMap(g => g.actions).length > 0 && (() => {
-                const recent = recentGroups.flatMap(g => g.actions);
-                const clicks  = recent.filter(a => a.actionType === "click").length;
-                const signups = recent.filter(a => a.actionType === "signup").length;
-                const acts    = recent.filter(a => ["listing","listing_posted","register_committed"].includes(a.actionType)).length;
-                const outs    = recent.filter(a => COMPLETED_TYPES.includes(a.actionType)).length;
-                const parts: string[] = [];
-                if (clicks)  parts.push(`${clicks} click${clicks > 1 ? "s" : ""}`);
-                if (signups) parts.push(`${signups} new member${signups > 1 ? "s" : ""}`);
-                if (acts)    parts.push(`${acts} listing${acts > 1 ? "s" : ""}`);
-                if (outs)    parts.push(`${outs} mom${outs > 1 ? "s" : ""} reached`);
-                return (
-                  <div style={{ background: "#f5f3ff", borderRadius: 14, padding: "12px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.purple, flexShrink: 0, marginTop: 5 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, color: C.purple, marginBottom: 2 }}>Recent activity (last 48h)</div>
-                      <div style={{ fontSize: 12, color: C.mid, fontFamily: "Nunito, sans-serif" }}>{parts.join(" · ")}</div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <BlockGrid
+                myBlocks={currentMission.myBlocks}
+                totalBlocks={currentMission.totalBlocks}
+                goalBlocks={currentMission.goalBlocks}
+              />
 
-              {/* Older actions broken out individually */}
-              {olderGroups.map((group, gi) => (
-                <div key={gi}>
-                  <div className="week-divider">{group.label}</div>
-                  {group.actions.map(action => (
-                    <div key={action.id} className="action-row">
-                      <div className="action-swatch" style={{ background: actionSwatch(action.actionType) }} />
-                      <div style={{ flex: 1, fontSize: 12, color: C.text, fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                        {action.humanLabel}
-                      </div>
-                      <div style={{ fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif", flexShrink: 0, marginLeft: 8, textAlign: "right" }}>
-                        <div>{relativeTime(action.createdAt)}</div>
-                        <div style={{ fontWeight: 700, color: C.green }}>+{action.blocks}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif" }}>
+                <span>
+                  <span style={{ color: C.green, fontWeight: 800 }}>{currentMission.myBlocks}</span> my blocks
+                </span>
+                <span>
+                  Team: {currentMission.totalBlocks}/{currentMission.goalBlocks}
+                  {currentMission.isComplete && <span style={{ color: C.green, fontWeight: 800, marginLeft: 4 }}>✓ Complete</span>}
+                </span>
+              </div>
 
-              {recentActions.length === 0 && (
-                <div style={{ textAlign: "center", padding: "24px 0", color: C.muted, fontSize: 13 }}>
-                  No actions recorded yet.
-                </div>
-              )}
+              <div style={{ marginTop: 10, fontSize: 11, color: C.muted, fontFamily: "Nunito, sans-serif" }}>
+                {currentMission.memberCount} member{currentMission.memberCount !== 1 ? "s" : ""} in your team
+              </div>
             </div>
           )}
 
-          {/* ── Footer ── */}
-          <div style={{ textAlign: "center", padding: "8px 20px 20px", fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 14, color: C.muted, lineHeight: 1.8 }}>
+          {/* ── mission history ── */}
+          {pastMissions.length > 0 && (
+            <div className="cp2-card">
+              <div className="cp2-label">Mission History</div>
+              <div className="mission-history-scroll">
+                {pastMissions.map(m => <PastMissionCard key={m.id} m={m} />)}
+              </div>
+            </div>
+          )}
+
+          {/* ── why I support ── */}
+          <div className="cp2-card" style={{ background: C.purplePale, border: `1px solid #d8d0f5` }}>
+            <div className="cp2-label">Why I Support</div>
+            {identity.bio ? (
+              <div style={{
+                fontFamily: "Lora, serif", fontStyle: "italic",
+                fontSize: 15, color: C.purple, lineHeight: 1.8,
+              }}>
+                &ldquo;{identity.bio}&rdquo;
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: C.muted, fontFamily: "Nunito, sans-serif", lineHeight: 1.7 }}>
+                Share why you care about supporting mothers — it inspires everyone who sees your profile.{" "}
+                <button
+                  onClick={() => setEditing(true)}
+                  style={{ background: "none", border: "none", color: C.purple, fontWeight: 800, cursor: "pointer", fontSize: 13, fontFamily: "Nunito, sans-serif", padding: 0 }}
+                >
+                  Add it here →
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── share button ── */}
+          <button
+            onClick={handleShare}
+            disabled={sharing}
+            style={{
+              width: "100%", background: "white",
+              border: `2px solid ${C.purple}`, borderRadius: 18,
+              padding: "16px 0", fontFamily: "Nunito, sans-serif",
+              fontSize: 15, fontWeight: 800, color: C.purple,
+              cursor: sharing ? "default" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+              transition: "all 0.2s", opacity: sharing ? 0.6 : 1,
+              marginBottom: 8,
+            }}
+          >
+            <span style={{ fontSize: 18 }}>↗</span>
+            {shareDone ? "Link Copied!" : sharing ? "Creating link…" : "Share My Profile"}
+          </button>
+
+          <div style={{
+            textAlign: "center", fontSize: 11, color: C.muted,
+            fontFamily: "Nunito, sans-serif", marginBottom: 20, lineHeight: 1.6,
+          }}>
+            Generates a private link · expires in 30 days
+          </div>
+
+          {/* ── footer ── */}
+          <div style={{
+            textAlign: "center", fontFamily: "Lora, serif", fontStyle: "italic",
+            fontSize: 14, color: C.muted, lineHeight: 1.8, padding: "4px 0 8px",
+          }}>
             <span style={{ marginRight: 6 }}>💜</span>
             Care moves everything. Thank you for showing up.
           </div>
 
         </div>
       </div>
+
       <BottomNav />
+
+      {/* ── edit modal ── */}
+      {editing && (
+        <EditModal
+          identity={identity}
+          onClose={() => setEditing(false)}
+          onSaved={handleSaved}
+        />
+      )}
     </>
   );
 }

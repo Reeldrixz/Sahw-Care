@@ -4,75 +4,100 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const COMPLETED_TYPES = ["donation", "listing_completed", "register_fulfilled", "bundle_delivered"];
-const ACTIVITY_TYPES  = ["listing",  "listing_posted",    "register_committed"];
+const DISCOVER_TYPES = ["listing_completed", "donation"];
+const REGISTER_TYPES = ["register_fulfilled"];
+const BUNDLE_TYPES   = ["bundle_delivered"];
+const OUTCOME_TYPES  = [...DISCOVER_TYPES, ...REGISTER_TYPES, ...BUNDLE_TYPES];
 
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const auth  = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Check for any mission membership (active or past) — drives unlock condition
-  const anyMembership = await prisma.missionMember.findFirst({
-    where:   { userId: auth.userId },
-    include: {
-      team: {
-        select: {
-          id: true, totalBlocks: true, isComplete: true,
-          mission: { select: { name: true, goalBlocks: true, month: true } },
-        },
+  const [user, firstMembership] = await Promise.all([
+    prisma.user.findUnique({
+      where:  { id: auth.userId },
+      select: { name: true, avatar: true, location: true, bio: true, phoneVerified: true, emailVerified: true },
+    }),
+    prisma.missionMember.findFirst({
+      where:   { userId: auth.userId },
+      orderBy: { joinedAt: "desc" },
+    }),
+  ]);
+
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const hasMembership = !!firstMembership;
+
+  if (!hasMembership) {
+    return NextResponse.json({
+      hasMembership: false,
+      hasActions:    false,
+      identity: {
+        name: user.name, avatar: user.avatar, location: user.location, bio: user.bio,
+        careContributorSince: null, isVerified: user.phoneVerified || user.emailVerified,
       },
-    },
-    orderBy: { joinedAt: "desc" },
-  });
-
-  const hasMembership = !!anyMembership;
-  const activeMission = anyMembership ? {
-    name:        anyMembership.team.mission.name,
-    teamId:      anyMembership.team.id,
-    totalBlocks: anyMembership.team.totalBlocks,
-    goalBlocks:  anyMembership.team.mission.goalBlocks,
-    isComplete:  anyMembership.team.isComplete,
-  } : null;
-
-  // All actions ever recorded for this user
-  const allActions = await prisma.missionAction.findMany({
-    where:   { userId: auth.userId },
-    orderBy: { createdAt: "desc" },
-    select:  { id: true, actionType: true, blocks: true, humanLabel: true, createdAt: true, teamId: true },
-  });
-
-  if (allActions.length === 0) {
-    return NextResponse.json({ hasActions: false, hasMembership, activeMission });
+    });
   }
 
-  // Lifetime stat breakdown
-  const stats = {
-    clicks:      allActions.filter(a => a.actionType === "click").length,
-    signups:     allActions.filter(a => a.actionType === "signup").length,
-    activity:    allActions.filter(a => ACTIVITY_TYPES.includes(a.actionType)).length,
-    outcomes:    allActions.filter(a => COMPLETED_TYPES.includes(a.actionType)).length,
-    totalBlocks: allActions.reduce((s, a) => s + a.blocks, 0),
-  };
-
-  // All mission memberships — most recent first
-  const memberships = await prisma.missionMember.findMany({
-    where:   { userId: auth.userId },
-    include: {
-      team: {
-        include: {
-          mission: true,
-          actions: {
-            where:  { userId: auth.userId },
-            select: { blocks: true },
+  const [allActions, memberships] = await Promise.all([
+    prisma.missionAction.findMany({
+      where:   { userId: auth.userId },
+      orderBy: { createdAt: "desc" },
+      select:  { id: true, actionType: true, blocks: true, humanLabel: true, createdAt: true, teamId: true },
+    }),
+    prisma.missionMember.findMany({
+      where:   { userId: auth.userId },
+      include: {
+        team: {
+          include: {
+            mission: true,
+            _count:  { select: { members: true } },
+            actions: { where: { userId: auth.userId }, select: { blocks: true } },
           },
         },
       },
-    },
-    orderBy: { joinedAt: "desc" },
-  });
+      orderBy: { joinedAt: "desc" },
+    }),
+  ]);
 
-  const missionHistory = memberships.map(m => ({
+  const hasActions = allActions.length > 0;
+
+  // oldest membership = when they first became a contributor
+  const careContributorSince = memberships.length > 0
+    ? memberships[memberships.length - 1].joinedAt
+    : null;
+
+  const identity = {
+    name:   user.name,
+    avatar: user.avatar,
+    location: user.location,
+    bio:    user.bio,
+    careContributorSince,
+    isVerified: user.phoneVerified || user.emailVerified,
+  };
+
+  const stats = {
+    mothersSupported:    allActions.filter(a => OUTCOME_TYPES.includes(a.actionType)).length,
+    essentialsDelivered: allActions.filter(a => REGISTER_TYPES.includes(a.actionType)).length,
+    bundlesSupported:    allActions.filter(a => BUNDLE_TYPES.includes(a.actionType)).length,
+    discoverPickups:     allActions.filter(a => DISCOVER_TYPES.includes(a.actionType)).length,
+    peopleReached:       allActions.filter(a => ["click", "signup"].includes(a.actionType)).length,
+  };
+
+  const currentMem    = memberships[0];
+  const currentMission = currentMem ? {
+    name:        currentMem.team.mission.name,
+    month:       currentMem.team.mission.month,
+    teamId:      currentMem.team.id,
+    totalBlocks: currentMem.team.totalBlocks,
+    goalBlocks:  currentMem.team.mission.goalBlocks,
+    myBlocks:    currentMem.team.actions.reduce((s, a) => s + a.blocks, 0),
+    memberCount: currentMem.team._count.members,
+    isComplete:  currentMem.team.isComplete,
+  } : null;
+
+  const pastMissions = memberships.slice(1).map(m => ({
     id:          m.id,
     missionName: m.team.mission.name,
     month:       m.team.mission.month,
@@ -83,34 +108,22 @@ export async function GET(req: NextRequest) {
     joinedAt:    m.joinedAt,
   }));
 
-  // Recent action feed (last 60 entries, deduplicated by content)
-  const recentActions = allActions.slice(0, 60).map(a => ({
-    id:         a.id,
-    actionType: a.actionType,
-    blocks:     a.blocks,
-    humanLabel: a.humanLabel,
-    createdAt:  a.createdAt,
-  }));
-
-  // Highlight moments — 3 most recent +4 outcome actions
-  const highlightMoments = allActions
-    .filter(a => COMPLETED_TYPES.includes(a.actionType))
-    .slice(0, 3)
-    .map(a => ({
-      id:         a.id,
-      actionType: a.actionType,
-      blocks:     a.blocks,
-      humanLabel: a.humanLabel,
-      createdAt:  a.createdAt,
-    }));
+  // backward compat for profile page ContributorCard
+  const activeMission = currentMem ? {
+    name:        currentMem.team.mission.name,
+    teamId:      currentMem.team.id,
+    totalBlocks: currentMem.team.totalBlocks,
+    goalBlocks:  currentMem.team.mission.goalBlocks,
+    isComplete:  currentMem.team.isComplete,
+  } : null;
 
   return NextResponse.json({
-    hasActions: true,
     hasMembership: true,
-    activeMission,
+    hasActions,
+    identity,
     stats,
-    missionHistory,
-    recentActions,
-    highlightMoments,
+    currentMission,
+    pastMissions,
+    activeMission,
   });
 }

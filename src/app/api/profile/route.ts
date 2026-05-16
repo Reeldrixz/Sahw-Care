@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest) {
   const user = token ? await verifyToken(token) : null;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { location, name, role, countryCode } = await req.json();
+  const { location, name, role, countryCode, bio } = await req.json();
 
   const updated = await prisma.user.update({
     where: { id: user.userId },
@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest) {
         countryCode,
         countryFlag: countryCodeToFlag(countryCode),
       }),
+      ...(bio !== undefined && { bio: typeof bio === "string" ? bio.slice(0, 250) : null }),
     },
     select: {
       id: true,
