@@ -1,3 +1,4 @@
+// TODO: Remove debug panel before production launch
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -25,7 +26,7 @@ interface MissionData {
   };
 }
 
-// ── Colour constants (match reference exactly) ─────────────────────────────────
+// ── Colour constants ───────────────────────────────────────────────────────────
 const C = {
   purple:      "#6d5acd",
   purpleDark:  "#5a47b8",
@@ -48,7 +49,7 @@ const C = {
   border:      "#ede8df",
 };
 
-// ── CSS from reference (scoped * reset so it doesn't bleed globally) ───────────
+// ── CSS ────────────────────────────────────────────────────────────────────────
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap');
 
@@ -134,7 +135,7 @@ const styles = `
     border-radius: 9px; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
     display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 
-  /* ── Info cards (centre + right) ── */
+  /* ── Info cards ── */
   .info-card { background: white; border-radius: 20px; padding: 22px 20px; border: 1px solid ${C.border}; }
   .ic-title { font-family: 'Lora', serif; font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
     color: ${C.purple}; text-transform: uppercase; margin-bottom: 18px; }
@@ -228,9 +229,36 @@ const styles = `
   .leave-btn:disabled { color: #d1d5db; cursor: default; text-decoration: none; }
   .leave-err { background: #fff5f5; border: 1px solid #fecaca; border-radius: 12px;
     padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #dc2626; }
+
+  /* ── Debug panel ── */
+  .debug-panel { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 14px;
+    padding: 12px 16px; margin-bottom: 20px; font-family: 'Nunito', sans-serif; }
+  .debug-summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #92400e;
+    user-select: none; display: flex; align-items: center; gap: 8px; list-style: none; }
+  .debug-summary::-webkit-details-marker { display: none; }
+  .debug-group-label { font-size: 10px; font-weight: 800; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 6px; }
+  .debug-btn { padding: 7px 13px; border-radius: 8px; border: 1px solid;
+    font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s; }
+  .debug-btn:disabled { opacity: 0.45; cursor: default; }
 `;
 
-const BLOCK_SIGNUP = "#c8d8c8"; // light grey-green
+const BLOCK_SIGNUP = "#c8d8c8";
+
+// Never renders in production even if accidentally left in
+const SHOW_DEBUG_PANEL = process.env.NODE_ENV !== "production";
+
+// Nominal blocks per action type (used for toast display)
+const ACTION_BLOCKS: Record<string, number> = {
+  click: 1, signup: 2, listing_posted: 2, register_committed: 2,
+  listing_completed: 4, register_fulfilled: 4, bundle_delivered: 4,
+};
+// Net delta for upgrade-in-place types (prior intent was +2, upgrade adds +2 more)
+const UPGRADE_DELTA: Record<string, number> = {
+  listing_completed: 2,
+  register_fulfilled: 2,
+};
 
 // ── Helper components ──────────────────────────────────────────────────────────
 function MissionMosaic({ completed = 0, activity = 0, signups = 0, clicks = 0, total = 40 }: {
@@ -239,19 +267,18 @@ function MissionMosaic({ completed = 0, activity = 0, signups = 0, clicks = 0, t
   const blocks = [];
   for (let i = 0; i < total; i++) {
     let bg: string;
-    if      (i < completed)                          bg = C.blockDonation;
-    else if (i < completed + activity)               bg = C.blockListing;
-    else if (i < completed + activity + signups)     bg = BLOCK_SIGNUP;
+    if      (i < completed)                               bg = C.blockDonation;
+    else if (i < completed + activity)                    bg = C.blockListing;
+    else if (i < completed + activity + signups)          bg = BLOCK_SIGNUP;
     else if (i < completed + activity + signups + clicks) bg = C.blockClick;
-    else                                             bg = C.purpleTinted;
+    else                                                  bg = C.purpleTinted;
     blocks.push(<div key={i} className="block" style={{ background: bg }} />);
   }
   return <div className="mc-mosaic">{blocks}</div>;
 }
 
 function PartnerGrid({ completed = 0, activity = 0, clicks = 0 }: { completed: number; activity: number; clicks: number }) {
-  const total = 26;
-  const ratio = 26 / 40;
+  const total = 26, ratio = 26 / 40;
   const d = Math.round(completed * ratio);
   const l = Math.round(activity  * ratio);
   const c = Math.round(clicks    * ratio);
@@ -272,10 +299,10 @@ function StepMiniGrid({ completed = 0, activity = 0, clicks = 0 }: { completed: 
   const blocks = [];
   for (let i = 0; i < total; i++) {
     let bg: string;
-    if      (i < completed)              bg = C.blockDonation;
-    else if (i < completed + activity)   bg = C.blockListing;
+    if      (i < completed)                    bg = C.blockDonation;
+    else if (i < completed + activity)         bg = C.blockListing;
     else if (i < completed + activity + clicks) bg = C.blockClick;
-    else                                 bg = C.blockEmpty;
+    else                                       bg = C.blockEmpty;
     blocks.push(<div key={i} className="miniblock" style={{ background: bg }} />);
   }
   return <div className="hiw-mini-grid">{blocks}</div>;
@@ -283,15 +310,20 @@ function StepMiniGrid({ completed = 0, activity = 0, clicks = 0 }: { completed: 
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function MyMissionPage() {
-  const { user }  = useAuth();
-  const router    = useRouter();
+  const { user } = useAuth();
+  const router   = useRouter();
 
   const [data,     setData]     = useState<MissionData | null>(null);
   const [loading,  setLoading]  = useState(true);
-  const [leaving,    setLeaving]    = useState(false);
-  const [leaveErr,   setLeaveErr]   = useState<string | null>(null);
-  const [copied,     setCopied]     = useState(false);
-  const [triggering, setTriggering] = useState(false);
+  const [leaving,  setLeaving]  = useState(false);
+  const [leaveErr, setLeaveErr] = useState<string | null>(null);
+  const [copied,   setCopied]   = useState(false);
+
+  // ── Debug panel state ──────────────────────────────────────────────────────
+  const [lastListingRefId,  setLastListingRefId]  = useState<string | null>(null);
+  const [lastRegisterRefId, setLastRegisterRefId] = useState<string | null>(null);
+  const [debugCooldown,     setDebugCooldown]     = useState(false);
+  const [debugToast, setDebugToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/missions/my");
@@ -304,7 +336,59 @@ export default function MyMissionPage() {
     load();
   }, [user, load, router]);
 
-  const canLeave = new Date() < new Date(new Date().getFullYear(), new Date().getMonth(), 2);
+  // ── Debug action trigger ───────────────────────────────────────────────────
+  const fireDebugAction = useCallback(async (actionType: string) => {
+    if (!data || debugCooldown) return;
+    setDebugCooldown(true);
+    setDebugToast(null);
+
+    // Compute referenceId — upgrade types reuse the prior intent's id
+    let refId: string;
+    const ts = Date.now();
+    if (actionType === "listing_posted") {
+      refId = `debug-listing-${ts}`;
+      setLastListingRefId(refId);
+    } else if (actionType === "register_committed") {
+      refId = `debug-register-${ts}`;
+      setLastRegisterRefId(refId);
+    } else if (actionType === "listing_completed") {
+      refId = lastListingRefId ?? `debug-listing-${ts}`;
+    } else if (actionType === "register_fulfilled") {
+      refId = lastRegisterRefId ?? `debug-register-${ts}`;
+    } else if (actionType === "bundle_delivered") {
+      refId = `debug-bundle-${ts}`;
+    } else {
+      refId = `debug-${actionType.replace(/_/g, "-")}-${ts}`;
+    }
+
+    try {
+      const res = await fetch("/api/missions/action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: data.teamId,
+          actionType,
+          meta: { referenceId: refId },
+        }),
+      });
+
+      if (res.ok) {
+        const isUpgrade = actionType in UPGRADE_DELTA;
+        const delta = isUpgrade ? UPGRADE_DELTA[actionType] : ACTION_BLOCKS[actionType] ?? "?";
+        const suffix = isUpgrade ? " (upgraded prior)" : "";
+        setDebugToast({ msg: `Action recorded: ${actionType} (+${delta} blocks${suffix})`, ok: true });
+        await load();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setDebugToast({ msg: body.error ?? "Request failed", ok: false });
+      }
+    } catch {
+      setDebugToast({ msg: "Network error", ok: false });
+    }
+
+    setTimeout(() => setDebugCooldown(false), 500);
+    setTimeout(() => setDebugToast(null), 4000);
+  }, [data, debugCooldown, lastListingRefId, lastRegisterRefId, load]);
 
   const handleLeave = async () => {
     if (!data || !canLeave) return;
@@ -315,28 +399,13 @@ export default function MyMissionPage() {
     if (res.ok) { router.push("/missions"); } else { setLeaveErr(d.error ?? "Could not leave"); setLeaving(false); }
   };
 
-  const triggerAction = async (actionType: "click" | "signup" | "listing_posted" | "listing_completed" | "bundle_delivered") => {
-    if (!data || triggering) return;
-    setTriggering(true);
-    await fetch("/api/missions/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        teamId: data.teamId, actionType,
-        meta: actionType === "listing_completed" ? { category: "Postpartum" }
-            : actionType === "bundle_delivered"  ? { itemName: "Care Bundle", stage: "Postpartum" }
-            : undefined,
-      }),
-    }).catch(() => {});
-    await load();
-    setTriggering(false);
-  };
-
   const handleCopy = (url: string) => {
     navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const canLeave = new Date() < new Date(new Date().getFullYear(), new Date().getMonth(), 2);
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) return (
@@ -366,7 +435,6 @@ export default function MyMissionPage() {
   const { mission, team } = data;
   const goal = mission.goalBlocks;
 
-  // Date range — parse without UTC to avoid off-by-one in timezone
   const [yearStr, monthStr] = mission.month.split("-");
   const monthNum  = parseInt(monthStr, 10);
   const yearNum   = parseInt(yearStr,  10);
@@ -375,16 +443,13 @@ export default function MyMissionPage() {
   const lastDay    = new Date(yearNum, monthNum, 0).getDate();
   const dateRange  = `${monthLabel} 1 – ${monthLabel} ${lastDay}`;
 
-  // Category label
   const categoryLabel = mission.category === "registers"  ? "Register Support"
     : mission.category === "postpartum" ? "Postpartum Support"
     : "Bundle Support";
 
-  // Me
-  const me = team.members.find(m => m.isMe);
+  const me        = team.members.find(m => m.isMe);
   const meInitial = me ? me.name.trim().charAt(0).toUpperCase() : "?";
 
-  // My personal stats (from recentActions filtered to isMe)
   const myActions = team.recentActions.filter(a => a.isMe);
   const myStats = {
     clicks:   myActions.filter(a => a.actionType === "click").length,
@@ -392,13 +457,11 @@ export default function MyMissionPage() {
     outcomes: myActions.filter(a => ["listing_completed", "register_fulfilled", "bundle_delivered"].includes(a.actionType)).length,
   };
 
-  // Mission mosaic — uses TEAM totals (block counts, not action counts)
   const mosaicCompleted = team.completedBlocks;
   const mosaicActivity  = team.activityBlocks;
   const mosaicSignups   = team.signupBlocks;
   const mosaicClicks    = team.clickBlocks;
 
-  // Partners — derive per-person stats from recentActions
   const partners = team.members
     .filter(m => !m.isMe)
     .map(partner => {
@@ -408,17 +471,12 @@ export default function MyMissionPage() {
       const pClkBlocks = pa.filter(a => a.actionType === "click").reduce((s, a) => s + a.blocks, 0);
       const pBlocks    = pa.reduce((s, a) => s + a.blocks, 0);
       return {
-        initial:   partner.name.trim().charAt(0).toUpperCase(),
-        name:      partner.name.split(" ")[0],
-        goal:      goal,
-        blocks:    pBlocks,
-        completed: pCompleted,
-        activity:  pActivity,
-        clicks:    pClkBlocks,
+        initial: partner.name.trim().charAt(0).toUpperCase(),
+        name: partner.name.split(" ")[0],
+        goal, blocks: pBlocks, completed: pCompleted, activity: pActivity, clicks: pClkBlocks,
       };
     });
 
-  // Impact
   const donationCount = Math.floor(team.completedBlocks / 4);
   const impact = {
     moms:   Math.max(donationCount, team.totalBlocks > 0 ? 1 : 0),
@@ -426,7 +484,6 @@ export default function MyMissionPage() {
     cities: 12,
   };
 
-  // Share URL
   const shareUrl     = `kradel.com/missions?ref=${team.id}`;
   const fullShareUrl = `${typeof window !== "undefined" ? window.location.origin : "https://kradel.com"}/missions?ref=${team.id}`;
 
@@ -436,6 +493,128 @@ export default function MyMissionPage() {
       <style>{styles}</style>
       <div className="mission-page">
         <div className="mp-container">
+
+          {/* ── Admin debug panel — top of page, above everything ── */}
+          {SHOW_DEBUG_PANEL && user?.role === "ADMIN" && (
+            <details className="debug-panel">
+              <summary className="debug-summary">
+                🔧 Debug — Trigger mission actions
+                <span style={{ fontWeight: 400, color: "#b45309", fontSize: 11, marginLeft: "auto" }}>
+                  Admin only · Remove before launch
+                </span>
+              </summary>
+
+              {/* Toast */}
+              {debugToast && (
+                <div style={{
+                  margin: "10px 0 4px", padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  background: debugToast.ok ? "#f0fdf4" : "#fef2f2",
+                  color:      debugToast.ok ? "#166534" : "#dc2626",
+                  border:     `1px solid ${debugToast.ok ? "#bbf7d0" : "#fecaca"}`,
+                }}>
+                  {debugToast.msg}
+                </div>
+              )}
+
+              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+
+                {/* ── AWARENESS group ── */}
+                <div>
+                  <div className="debug-group-label" style={{ color: "#6b7280" }}>
+                    Awareness
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("click")}
+                      disabled={debugCooldown}
+                      style={{ background: "#f9fafb", borderColor: "#d1d5db", color: "#374151" }}
+                    >
+                      +1 Click
+                    </button>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("signup")}
+                      disabled={debugCooldown}
+                      style={{ background: "#f9fafb", borderColor: "#d1d5db", color: "#374151" }}
+                    >
+                      +2 Signup
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── ACTIVITY group ── */}
+                <div>
+                  <div className="debug-group-label" style={{ color: "#166534" }}>
+                    Activity — intent actions
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("listing_posted")}
+                      disabled={debugCooldown}
+                      style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#166534" }}
+                      title="Stores refId for upgrade-in-place test"
+                    >
+                      +2 Listing Posted (Discover)
+                    </button>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("register_committed")}
+                      disabled={debugCooldown}
+                      style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#166534" }}
+                      title="Stores refId for upgrade-in-place test"
+                    >
+                      +2 Register Committed
+                    </button>
+                  </div>
+                  {(lastListingRefId || lastRegisterRefId) && (
+                    <div style={{ marginTop: 5, fontSize: 10, color: "#6b7280" }}>
+                      {lastListingRefId  && <span>listing ref: <code style={{ fontSize: 10 }}>{lastListingRefId}</code></span>}
+                      {lastListingRefId && lastRegisterRefId && " · "}
+                      {lastRegisterRefId && <span>register ref: <code style={{ fontSize: 10 }}>{lastRegisterRefId}</code></span>}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── OUTCOME group ── */}
+                <div>
+                  <div className="debug-group-label" style={{ color: C.green }}>
+                    Outcome — completion / upgrade-in-place
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("listing_completed")}
+                      disabled={debugCooldown}
+                      style={{ background: "#dcfce7", borderColor: "#4ade80", color: "#14532d" }}
+                      title={lastListingRefId ? `Will upgrade row: ${lastListingRefId}` : "No prior listing_posted — fires as fresh"}
+                    >
+                      +2 Listing Completed {lastListingRefId ? "↑ upgrades prior" : "(no prior)"}
+                    </button>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("register_fulfilled")}
+                      disabled={debugCooldown}
+                      style={{ background: "#dcfce7", borderColor: "#4ade80", color: "#14532d" }}
+                      title={lastRegisterRefId ? `Will upgrade row: ${lastRegisterRefId}` : "No prior register_committed — fires as fresh"}
+                    >
+                      +2 Register Fulfilled {lastRegisterRefId ? "↑ upgrades prior" : "(no prior)"}
+                    </button>
+                    <button
+                      className="debug-btn"
+                      onClick={() => fireDebugAction("bundle_delivered")}
+                      disabled={debugCooldown}
+                      style={{ background: "#bbf7d0", borderColor: "#22c55e", color: "#14532d", fontWeight: 800 }}
+                    >
+                      +4 Bundle Delivered (fresh)
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </details>
+          )}
 
           {/* Back */}
           <button className="mp-back" onClick={() => router.back()}>← Back</button>
@@ -491,7 +670,6 @@ export default function MyMissionPage() {
 
               <MissionMosaic completed={mosaicCompleted} activity={mosaicActivity} signups={mosaicSignups} clicks={mosaicClicks} total={goal} />
 
-              {/* Stats row */}
               <div className="mc-stats">
                 <div className="mc-stat">
                   <div className="mc-stat-num">{myStats.clicks}</div>
@@ -519,13 +697,11 @@ export default function MyMissionPage() {
                 </div>
               </div>
 
-              {/* Affirmation */}
               <div className="mc-aff">
                 <div className="mc-aff-heart">💜</div>
                 <div>Every action brings us closer to supporting more moms.</div>
               </div>
 
-              {/* Share link */}
               <div className="mc-share">Share your link. Every new member helps Kradel reach one more mother.</div>
               <div className="mc-share-row">
                 <span style={{ color: "rgba(255,255,255,0.7)" }}>
@@ -737,37 +913,6 @@ export default function MyMissionPage() {
           <button className="leave-btn" onClick={handleLeave} disabled={!canLeave || leaving}>
             {leaving ? "Leaving…" : canLeave ? "Leave this mission" : "Leaving closes after the 1st of the month"}
           </button>
-
-          {/* Admin debug panel */}
-          {user?.role === "ADMIN" && (
-            <details style={{ marginTop: 20, background: "#fff8ed", border: "1px solid #f5d98b", borderRadius: 12, padding: "12px 16px", fontFamily: "Nunito, sans-serif" }}>
-              <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#92400e", userSelect: "none" }}>
-                🔧 Debug — Trigger mission actions
-              </summary>
-              <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {([
-                  { label: "click (+1)",              actionType: "click"             as const },
-                  { label: "listing_posted (+2)",      actionType: "listing_posted"    as const },
-                  { label: "listing_completed (+4)",   actionType: "listing_completed" as const },
-                  { label: "bundle_delivered (+4)",    actionType: "bundle_delivered"  as const },
-                ] as const).map(({ label, actionType }) => (
-                  <button
-                    key={actionType}
-                    onClick={() => triggerAction(actionType)}
-                    disabled={triggering}
-                    style={{
-                      padding: "8px 14px", borderRadius: 8, border: "1px solid #f5d98b",
-                      background: triggering ? "#fef3c7" : "#fffbeb", color: "#92400e",
-                      fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700,
-                      cursor: triggering ? "default" : "pointer",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </details>
-          )}
 
         </div>
       </div>
