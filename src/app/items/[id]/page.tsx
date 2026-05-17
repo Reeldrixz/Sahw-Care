@@ -95,6 +95,12 @@ export default function ItemDetailPage() {
   const isOwnItem = !!user && item?.donorId === user.id;
   const isAdmin = user?.role === "ADMIN";
 
+  function normCity(s: string | null | undefined) {
+    return (s ?? "").toLowerCase().replace(/\s*,.*$/, "").trim();
+  }
+  const cityMismatch = !!user && !!item && !!user.preferredCity &&
+    normCity(item.location) !== normCity(user.preferredCity);
+
   useEffect(() => {
     fetch(`/api/items/${id}`)
       .then((r) => r.json())
@@ -275,6 +281,14 @@ export default function ItemDetailPage() {
     }
     return (
       <div className="reserve-bar">
+        {cityMismatch && !requested && (
+          <div style={{ background: "#fffbeb", border: "1px solid #f59e0b", borderRadius: 10, padding: "9px 12px", marginBottom: 10, display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 13, flexShrink: 0 }}>⚠️</span>
+            <div style={{ fontSize: 12, fontFamily: "Nunito, sans-serif", color: "#92400e", lineHeight: 1.5 }}>
+              This item is in <strong>{item.location}</strong>, outside your area (<strong>{user!.preferredCity}</strong>). Pickup may require travel.
+            </div>
+          </div>
+        )}
         <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
           {requested ? "✓ Request Sent — Awaiting donor" : "Request"}
         </button>

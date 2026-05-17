@@ -13,8 +13,23 @@ interface MyRequest {
   status: string;
   createdAt: string;
   notes: string | null;
+  reviewNote: string | null;
   coordinationId: string | null;
   item: { id: string; title: string; images: string[]; donor?: { name: string } | null } | null;
+}
+
+function declineMessage(reviewNote: string | null, city?: string | null): string {
+  if (!reviewNote) return "Your request was declined.";
+  const n = reviewNote.toLowerCase();
+  if (n.includes("too far") || n.includes("travel") || n.includes("location"))
+    return `This donor wasn't able to meet up${city ? ` — try items closer to ${city}` : ""}.`;
+  if (n.includes("promised") || n.includes("someone else"))
+    return "This item was promised to another mother first.";
+  if (n.includes("no longer available") || n.includes("not available") || n.includes("unavailable"))
+    return "This item is no longer available.";
+  if (n.includes("not a good match") || n.includes("match"))
+    return "The donor felt this wasn't the right match, but keep looking — the right one is out there.";
+  return reviewNote;
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -107,34 +122,42 @@ export default function RequestsPage() {
         ) : visible.map(req => {
           const sc = STATUS_COLORS[req.status] ?? STATUS_COLORS.PENDING;
           const isAccepted = req.status === "ACCEPTED" && !!req.coordinationId;
+          const isDeclined = req.status === "DECLINED";
+          const declineMsg = isDeclined ? declineMessage(req.reviewNote, user?.preferredCity) : null;
           return (
             <div
               key={req.id}
               onClick={() => isAccepted && router.push(`/coordination/${req.id}`)}
               style={{
-                display: "flex", alignItems: "center", gap: 12,
                 padding: "14px", borderRadius: 14, marginBottom: 8,
                 background: "white", border: "1px solid var(--border)",
                 cursor: isAccepted ? "pointer" : "default",
               }}
             >
-              <div style={{ width: 44, height: 44, background: "var(--bg)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>
-                📦
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {req.item?.title ?? "Item removed"}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 44, height: 44, background: "var(--bg)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 20 }}>
+                  📦
                 </div>
-                <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
-                  {req.status === "PENDING"
-                    ? "Waiting for donor to respond"
-                    : new Date(req.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })
-                      + (req.item?.donor ? ` · from ${req.item.donor.name}` : "")}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {req.item?.title ?? "Item removed"}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
+                    {req.status === "PENDING"
+                      ? "Waiting for donor to respond"
+                      : new Date(req.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })
+                        + (req.item?.donor ? ` · from ${req.item.donor.name}` : "")}
+                  </div>
                 </div>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: sc.bg, color: sc.color, flexShrink: 0, fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap" }}>
+                  {isAccepted ? "Coordinate →" : req.status.charAt(0) + req.status.slice(1).toLowerCase()}
+                </span>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: sc.bg, color: sc.color, flexShrink: 0, fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap" }}>
-                {isAccepted ? "Coordinate →" : req.status.charAt(0) + req.status.slice(1).toLowerCase()}
-              </span>
+              {isDeclined && declineMsg && (
+                <div style={{ marginTop: 8, padding: "8px 12px", background: "#fef9f0", borderRadius: 8, fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, fontStyle: "italic" }}>
+                  {declineMsg}
+                </div>
+              )}
             </div>
           );
         })}

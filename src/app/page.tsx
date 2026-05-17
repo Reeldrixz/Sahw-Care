@@ -93,6 +93,9 @@ export default function DiscoverPage() {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [reviewItem,      setReviewItem]      = useState<ItemData | null>(null);
   const [reviewLoading,   setReviewLoading]   = useState<Record<string, boolean>>({});
+  const [declineTarget,   setDeclineTarget]   = useState<string | null>(null);
+  const [declineReason,   setDeclineReason]   = useState("");
+  const [declineOther,    setDeclineOther]    = useState("");
   const [loadingItems,     setLoadingItems]     = useState(true);
   const [noLocalItems,     setNoLocalItems]     = useState(false);
   const [showLocationSheet,setShowLocationSheet]= useState(false);
@@ -252,21 +255,31 @@ export default function DiscoverPage() {
     setReviewLoading((p) => ({ ...p, [requestId]: false }));
   };
 
-  const handleDeclineRequest = async (requestId: string) => {
+  const handleDeclineRequest = (requestId: string) => {
     if (reviewLoading[requestId]) return;
-    setReviewLoading((p) => ({ ...p, [requestId]: true }));
-    const res = await fetch(`/api/requests/${requestId}`, {
+    setDeclineReason("");
+    setDeclineOther("");
+    setDeclineTarget(requestId);
+  };
+
+  const submitDecline = async () => {
+    if (!declineTarget) return;
+    const note = declineReason === "Other" ? declineOther.trim() : declineReason;
+    if (!note) return;
+    setReviewLoading((p) => ({ ...p, [declineTarget]: true }));
+    setDeclineTarget(null);
+    const res = await fetch(`/api/requests/${declineTarget}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "decline" }),
+      body: JSON.stringify({ action: "decline", note }),
     });
     if (res.ok) {
-      setPendingRequests((p) => p.filter((r) => r.requestId !== requestId));
+      setPendingRequests((p) => p.filter((r) => r.requestId !== declineTarget));
       showToast("Request declined");
     } else {
       showToast("Something went wrong");
     }
-    setReviewLoading((p) => ({ ...p, [requestId]: false }));
+    setReviewLoading((p) => ({ ...p, [declineTarget!]: false }));
   };
 
   const handleDonate = async (formData: FormData) => {
@@ -753,6 +766,47 @@ export default function DiscoverPage() {
           onClose={() => setShowLocationSheet(false)}
         />
       )}
+      {/* ── Decline reason modal ────────────────────────────────────────────── */}
+      {declineTarget && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setDeclineTarget(null)}>
+          <div style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 430, padding: "20px 20px 44px", animation: "sheetUp 0.25s ease" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: 36, height: 4, background: "#e5e7eb", borderRadius: 4, margin: "0 auto 20px" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 15, color: "#1a1a1a" }}>Why are you declining?</div>
+              <button onClick={() => setDeclineTarget(null)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex" }}><X size={18} color="#9ca3af" /></button>
+            </div>
+            <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 16, fontFamily: "Nunito, sans-serif" }}>This helps us improve matches for everyone.</div>
+            {[
+              "Too far — I can't travel to your area",
+              "Already promised to someone else",
+              "Item is no longer available",
+              "I'm not a good match for this request",
+              "Other",
+            ].map((reason) => (
+              <label key={reason} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #f5f5f5", cursor: "pointer" }}>
+                <input type="radio" name="decline-reason" value={reason} checked={declineReason === reason} onChange={() => setDeclineReason(reason)} style={{ accentColor: "#1a7a5e", width: 16, height: 16, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{reason}</span>
+              </label>
+            ))}
+            {declineReason === "Other" && (
+              <textarea
+                placeholder="Briefly describe why…"
+                value={declineOther}
+                onChange={(e) => setDeclineOther(e.target.value)}
+                style={{ width: "100%", marginTop: 12, padding: "10px 12px", borderRadius: 10, border: "1.5px solid #e5e7eb", fontSize: 13, fontFamily: "Nunito, sans-serif", resize: "none", minHeight: 72, outline: "none", boxSizing: "border-box" }}
+              />
+            )}
+            <button
+              disabled={!declineReason || (declineReason === "Other" && !declineOther.trim())}
+              onClick={submitDecline}
+              style={{ marginTop: 18, width: "100%", padding: "12px", borderRadius: 12, border: "1.5px solid #e5e7eb", background: "white", color: (declineReason && (declineReason !== "Other" || declineOther.trim())) ? "#c0392b" : "#9ca3af", fontSize: 13, fontWeight: 700, cursor: (declineReason && (declineReason !== "Other" || declineOther.trim())) ? "pointer" : "default", fontFamily: "Nunito, sans-serif" }}
+            >
+              Decline request
+            </button>
+          </div>
+        </div>
+      )}
+
       <Toast message={toast} onClose={() => setToast(null)} />
     </div>
   );

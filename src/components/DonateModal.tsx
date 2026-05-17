@@ -9,6 +9,13 @@ interface DonateModalProps {
 }
 
 const CATEGORIES = ["Feeding", "Hygiene", "Clothing", "Recovery", "Travel", "Maternity", "Diapering"];
+const CITIES = [
+  "Toronto", "Mississauga", "Brampton", "Markham", "Scarborough",
+  "North York", "Etobicoke", "Vaughan", "Richmond Hill", "Pickering",
+  "Ajax", "Whitby", "Oshawa", "Hamilton", "Burlington", "Oakville",
+  "Milton", "Kitchener", "Waterloo", "Cambridge", "Guelph",
+  "London (Ontario)", "Ottawa", "Other",
+];
 const CONDITIONS = [
   { value: "NEW",          label: "New"             },
   { value: "SEALED",       label: "Sealed"          },
@@ -44,6 +51,9 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [cityQuery, setCityQuery] = useState("");
+  const [cityOpen, setCityOpen] = useState(false);
+  const [otherCity, setOtherCity] = useState(false);
   const [form, setForm] = useState({
     title: "",
     category: "Feeding",
@@ -182,16 +192,65 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
                   onBlur={() => setFocused(null)}
                 />
               </div>
-              <div>
+              <div style={{ position: "relative" }}>
                 <label style={label}>City / Area *</label>
-                <input
-                  style={focusBorder("location")}
-                  placeholder="e.g. Ikeja, Lagos"
-                  value={form.location}
-                  onChange={(e) => set("location", e.target.value)}
-                  onFocus={() => setFocused("location")}
-                  onBlur={() => setFocused(null)}
-                />
+                {!otherCity ? (
+                  <>
+                    <input
+                      style={focusBorder("location")}
+                      placeholder="Search city…"
+                      value={cityQuery}
+                      autoComplete="off"
+                      onChange={(e) => {
+                        setCityQuery(e.target.value);
+                        set("location", "");
+                        setCityOpen(true);
+                      }}
+                      onFocus={() => { setFocused("location"); setCityOpen(true); }}
+                      onBlur={() => { setFocused(null); setTimeout(() => setCityOpen(false), 150); }}
+                    />
+                    {cityOpen && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 999, background: "white", borderRadius: 10, border: "1.5px solid #e5e7eb", boxShadow: "0 4px 16px rgba(0,0,0,0.10)", maxHeight: 180, overflowY: "auto", marginTop: 2 }}>
+                        {CITIES.filter(c => c.toLowerCase().includes(cityQuery.toLowerCase())).map(city => (
+                          <div
+                            key={city}
+                            onMouseDown={() => {
+                              if (city === "Other") {
+                                setOtherCity(true);
+                                set("location", "");
+                                setCityQuery("");
+                              } else {
+                                set("location", city);
+                                setCityQuery(city);
+                              }
+                              setCityOpen(false);
+                            }}
+                            style={{ padding: "10px 14px", fontSize: 13, fontFamily: "Nunito, sans-serif", cursor: "pointer", color: city === "Other" ? "#6366f1" : "#1a1a1a", borderBottom: "1px solid #f5f5f5" }}
+                          >
+                            {city}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      style={{ ...focusBorder("location"), flex: 1 }}
+                      placeholder="Your city or area"
+                      value={form.location}
+                      onChange={(e) => set("location", e.target.value)}
+                      onFocus={() => setFocused("location")}
+                      onBlur={() => setFocused(null)}
+                    />
+                    <button
+                      onClick={() => { setOtherCity(false); setCityQuery(""); set("location", ""); }}
+                      style={{ background: "#f5f5f5", border: "none", borderRadius: 10, padding: "0 10px", cursor: "pointer", fontSize: 18, color: "#555", flexShrink: 0 }}
+                    >
+                      ↩
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
