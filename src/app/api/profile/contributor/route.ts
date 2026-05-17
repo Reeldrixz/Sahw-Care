@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const COMPLETION_TYPES = ["listing_completed", "register_fulfilled", "bundle_delivered"];
+const CARE_TYPES       = ["register_fulfilled", "listing_completed", "bundle_delivered"];
 
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
@@ -87,7 +88,22 @@ export async function GET(req: NextRequest) {
     peopleReached:       myDirectActions.filter(a => a.actionType === "click").length,
   };
 
-  const currentMem    = memberships[0];
+  const currentMem = memberships[0];
+
+  let essentialsDeliveredThisMonth = 0;
+  if (currentMem) {
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const careActions = await prisma.missionAction.findMany({
+      where: {
+        teamId:     currentMem.teamId,
+        actionType: { in: CARE_TYPES },
+        createdAt:  { gte: monthStart },
+      },
+      select: { itemCount: true },
+    });
+    essentialsDeliveredThisMonth = careActions.reduce((s, a) => s + (a.itemCount ?? 1), 0);
+  }
+
   const currentMission = currentMem ? {
     name:        currentMem.team.mission.name,
     month:       currentMem.team.mission.month,
@@ -127,5 +143,6 @@ export async function GET(req: NextRequest) {
     currentMission,
     pastMissions,
     activeMission,
+    essentialsDeliveredThisMonth,
   });
 }

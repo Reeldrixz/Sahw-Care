@@ -52,6 +52,7 @@ interface ContributorData {
   stats?: Stats;
   currentMission?: CurrentMission | null;
   pastMissions?: PastMission[];
+  essentialsDeliveredThisMonth?: number;
 }
 
 // ── design tokens ──────────────────────────────────────────────────────────
@@ -165,43 +166,34 @@ function formatSince(date: string | null): string {
 
 // ── shared sub-components ──────────────────────────────────────────────────
 
-function BlockGrid({ myBlocks, totalBlocks, goalBlocks }: {
-  myBlocks: number; totalBlocks: number; goalBlocks: number;
-}) {
-  const CELLS = 26;
-  const cap   = Math.max(1, goalBlocks);
-  const teamN = Math.min(CELLS, Math.round((totalBlocks / cap) * CELLS));
-  const myN   = Math.min(teamN, Math.round((myBlocks / cap) * CELLS));
-  const cells = [
-    ...Array(myN).fill(C.green),
-    ...Array(teamN - myN).fill(C.greenMid),
-    ...Array(CELLS - teamN).fill(C.border),
-  ];
+const CARE_GOAL = 40;
+
+function CareGrid({ essentials }: { essentials: number }) {
+  const filled   = Math.min(essentials, CARE_GOAL);
+  const overflow = Math.max(0, essentials - CARE_GOAL);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(13, 1fr)", gap: 4, margin: "10px 0" }}>
-      {cells.map((bg, i) => (
-        <div key={i} style={{ aspectRatio: "1", borderRadius: 4, background: bg }} />
-      ))}
-    </div>
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 4, margin: "10px 0" }}>
+        {Array.from({ length: CARE_GOAL }, (_, i) => (
+          <div key={i} style={{ aspectRatio: "1", borderRadius: 4, background: i < filled ? C.green : "#f0ebe3" }} />
+        ))}
+      </div>
+      {overflow > 0 && (
+        <div style={{ fontSize: 11, color: C.green, fontFamily: "Nunito, sans-serif", fontWeight: 700, marginTop: 2 }}>
+          + {overflow} more essential{overflow !== 1 ? "s" : ""} delivered this month
+        </div>
+      )}
+    </>
   );
 }
 
-function PreviewBlockRow({ myBlocks, totalBlocks, goalBlocks }: {
-  myBlocks: number; totalBlocks: number; goalBlocks: number;
-}) {
-  const CELLS = 13;
-  const cap   = Math.max(1, goalBlocks);
-  const teamN = Math.min(CELLS, Math.round((totalBlocks / cap) * CELLS));
-  const myN   = Math.min(teamN, Math.round((myBlocks / cap) * CELLS));
-  const cells = [
-    ...Array(myN).fill(C.green),
-    ...Array(teamN - myN).fill(C.greenMid),
-    ...Array(CELLS - teamN).fill(C.border),
-  ];
+function PreviewCareRow({ essentials }: { essentials: number }) {
+  const CELLS  = 13;
+  const filled = Math.min(CELLS, Math.round((Math.min(essentials, CARE_GOAL) / CARE_GOAL) * CELLS));
   return (
     <div style={{ display: "flex", gap: 3 }}>
-      {cells.map((bg, i) => (
-        <div key={i} style={{ height: 6, borderRadius: 2, background: bg, flex: 1 }} />
+      {Array.from({ length: CELLS }, (_, i) => (
+        <div key={i} style={{ height: 6, borderRadius: 2, background: i < filled ? C.green : C.border, flex: 1 }} />
       ))}
     </div>
   );
@@ -309,10 +301,11 @@ function WhyThisProfileMatters() {
   );
 }
 
-function ShareablePreview({ identity, stats, currentMission, onShare }: {
+function ShareablePreview({ identity, stats, currentMission, essentials, onShare }: {
   identity: Identity;
   stats: Stats;
   currentMission: CurrentMission | null;
+  essentials: number;
   onShare: () => void;
 }) {
   const avatarInitial = identity.name?.charAt(0).toUpperCase() ?? "?";
@@ -388,17 +381,14 @@ function ShareablePreview({ identity, stats, currentMission, onShare }: {
           ))}
         </div>
 
-        {/* active mission mini */}
+        {/* care delivered mini */}
         {currentMission && (
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif", marginBottom: 5 }}>
               Active in <span style={{ color: C.purple, fontWeight: 700 }}>{currentMission.name}</span>
+              {essentials > 0 && <span style={{ color: C.green, fontWeight: 700, marginLeft: 6 }}>· {essentials} essential{essentials !== 1 ? "s" : ""} delivered</span>}
             </div>
-            <PreviewBlockRow
-              myBlocks={currentMission.myBlocks}
-              totalBlocks={currentMission.totalBlocks}
-              goalBlocks={currentMission.goalBlocks}
-            />
+            <PreviewCareRow essentials={essentials} />
           </div>
         )}
 
@@ -644,6 +634,7 @@ export default function ContributorPage() {
   const stats          = data.stats ?? { mothersSupported: 0, essentialsDelivered: 0, bundlesSupported: 0, peopleReached: 0 };
   const currentMission = data.currentMission ?? null;
   const pastMissions   = data.pastMissions   ?? [];
+  const essentials     = data.essentialsDeliveredThisMonth ?? 0;
   const avatarInitial  = identity.name?.charAt(0).toUpperCase() ?? "?";
   const teammates      = Math.max(0, (currentMission?.memberCount ?? 1) - 1);
 
@@ -838,23 +829,18 @@ export default function ContributorPage() {
                   </div>
 
                   <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", textTransform: "uppercase", color: C.muted, fontFamily: "Nunito, sans-serif" }}>
-                        Mission Progress
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", textTransform: "uppercase", color: C.green, fontFamily: "Nunito, sans-serif" }}>
+                        Care Delivered This Month
                       </div>
                       <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: C.green }}>
-                        {currentMission.myBlocks}<span style={{ fontSize: 11, color: C.muted, fontWeight: 400, fontFamily: "Nunito, sans-serif" }}>/{currentMission.goalBlocks} blocks</span>
+                        {Math.min(essentials, CARE_GOAL)}<span style={{ fontSize: 11, color: C.muted, fontWeight: 400, fontFamily: "Nunito, sans-serif" }}>/{CARE_GOAL} essentials</span>
                       </div>
                     </div>
-                    <BlockGrid
-                      myBlocks={currentMission.myBlocks}
-                      totalBlocks={currentMission.totalBlocks}
-                      goalBlocks={currentMission.goalBlocks}
-                    />
-                    <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif", display: "flex", gap: 12 }}>
-                      <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: C.green, marginRight: 4, verticalAlign: "middle" }}/>My blocks</span>
-                      <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: C.greenMid, marginRight: 4, verticalAlign: "middle" }}/>Team blocks</span>
+                    <div style={{ fontSize: 11, color: C.mid, fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginBottom: 6 }}>
+                      Each block is one essential delivered to a mom — through requests, registers, or bundles. Your team&rsquo;s collective effort this month.
                     </div>
+                    <CareGrid essentials={essentials} />
                   </div>
                 </div>
               )}
@@ -936,6 +922,7 @@ export default function ContributorPage() {
                 identity={identity}
                 stats={stats}
                 currentMission={currentMission}
+                essentials={essentials}
                 onShare={handleShare}
               />
               <ClosingCard />
