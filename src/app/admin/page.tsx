@@ -98,7 +98,13 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "register-suggestions";
+
+interface SuggestionGroup {
+  id: string; itemName: string; category: string; notes: string | null;
+  status: string; createdAt: string; suggestedByCount: number;
+  similarSuggestions: { id: string; notes: string | null; createdAt: string }[];
+}
 
 interface BundleCatalogueAdmin {
   id: string; code: string; name: string; stage: string; description: string;
@@ -263,6 +269,15 @@ export default function AdminPage() {
   const [fulfillments,      setFulfillments]      = useState<AdminFulfillment[]>([]);
   const [fulfillFilter,     setFulfillFilter]     = useState<"DISPUTED" | "AUTO_CONFIRMED" | "PENDING">("DISPUTED");
 
+  // Register suggestions state
+  const [suggestions,       setSuggestions]       = useState<SuggestionGroup[]>([]);
+  const [suggestionFilter,  setSuggestionFilter]  = useState<"pending" | "promoted" | "declined" | "all">("pending");
+  const [suggestLoading,    setSuggestLoading]    = useState(false);
+  const [promotingId,       setPromotingId]       = useState<string | null>(null);
+  const [promoteForm,       setPromoteForm]       = useState({ sku: "", name: "", category: "", standardPriceCents: "", description: "" });
+  const [promoteError,      setPromoteError]      = useState<string | null>(null);
+  const [expandedSuggest,   setExpandedSuggest]   = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "ADMIN")) router.push("/");
   }, [user, authLoading, router]);
@@ -309,6 +324,16 @@ export default function AdminPage() {
   useEffect(() => {
     if (section === "fulfillments") fetchFulfillments(fulfillFilter);
   }, [section, fulfillFilter, fetchFulfillments]);
+
+  const fetchSuggestions = useCallback(async (status: string) => {
+    setSuggestLoading(true);
+    const r = await fetch(`/api/admin/register/suggestions?status=${status}`);
+    if (r.ok) { const d = await r.json(); setSuggestions(d.suggestions ?? []); }
+    setSuggestLoading(false);
+  }, []);
+  useEffect(() => {
+    if (section === "register-suggestions") fetchSuggestions(suggestionFilter);
+  }, [section, suggestionFilter, fetchSuggestions]);
 
   const fetchRegQueue = useCallback(async (status: string) => {
     setRegQueueLoading(true);
@@ -530,6 +555,7 @@ export default function AdminPage() {
     ["coordination",   "📍 Coordination"],
     ["refunds",        "💳 Refunds"],
     ["bundle-apps",    `📬 Bundle Apps${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0) > 0 ? ` (${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0)})` : ""}`],
+    ["register-suggestions", `💡 Suggestions${suggestions.filter(s => s.status === "pending").length > 0 ? ` (${suggestions.filter(s => s.status === "pending").length})` : ""}`],
   ];
 
   return (
@@ -2192,6 +2218,170 @@ export default function AdminPage() {
               </div>
             )}
 
+            {/* ── REGISTER SUGGESTIONS ─────────────────────────────────── */}
+            {section === "register-suggestions" && (
+              <div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 6, color: "var(--ink)" }}>
+                  Register Suggestions
+                </div>
+                <div style={{ fontSize: 13, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 20 }}>
+                  Items mothers would like added to the catalogue. Grouped by name.
+                </div>
+
+                {/* Filter tabs */}
+                <div style={{ display: "flex", gap: 0, borderBottom: "1px solid var(--border)", marginBottom: 20 }}>
+                  {(["pending", "promoted", "declined", "all"] as const).map((tab) => (
+                    <button key={tab} onClick={() => setSuggestionFilter(tab)} style={{
+                      padding: "8px 16px", background: "none", border: "none",
+                      borderBottom: `2px solid ${suggestionFilter === tab ? "var(--green)" : "transparent"}`,
+                      fontSize: 13, fontWeight: 700,
+                      color: suggestionFilter === tab ? "var(--green)" : "var(--mid)",
+                      cursor: "pointer", fontFamily: "Nunito, sans-serif", textTransform: "capitalize",
+                    }}>
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                {suggestLoading ? (
+                  <div className="loading"><div className="spinner" /></div>
+                ) : suggestions.length === 0 ? (
+                  <div style={{ padding: "40px 0", textAlign: "center", fontSize: 14, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                    No {suggestionFilter} suggestions.
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {suggestions.map((s) => {
+                      const isExpanded = expandedSuggest === s.id;
+                      const isPromoting = promotingId === s.id;
+                      const CAT_COLORS: Record<string, string> = {
+                        postpartum: "#9d174d", newborn: "#1e50a2",
+                        pregnancy:  "#1a7a5e", labour:   "#b45309",
+                      };
+                      const catColor = CAT_COLORS[s.category] ?? "var(--mid)";
+
+                      return (
+                        <div key={s.id} style={{ background: "white", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
+                          <div
+                            style={{ padding: "14px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+                            onClick={() => setExpandedSuggest(isExpanded ? null : s.id)}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 800, color: "var(--ink)", marginBottom: 3 }}>
+                                {s.itemName}
+                                {s.suggestedByCount > 1 && (
+                                  <span style={{ marginLeft: 8, fontSize: 11, background: "#e8f5f1", color: "var(--green)", fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>
+                                    {s.suggestedByCount} mothers
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: catColor, textTransform: "capitalize" }}>{s.category}</span>
+                                {s.notes && <span style={{ fontSize: 11, color: "var(--mid)" }}>· {s.notes.slice(0, 60)}{s.notes.length > 60 ? "…" : ""}</span>}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                              {s.status === "pending" && (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setPromotingId(s.id); setPromoteError(null); setPromoteForm({ sku: "", name: s.itemName, category: s.category, standardPriceCents: "", description: "" }); }}
+                                    style={{ background: "#e8f5f1", color: "var(--green)", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                                  >
+                                    Promote to SKU
+                                  </button>
+                                  <button
+                                    onClick={async (e) => { e.stopPropagation(); await fetch(`/api/admin/register/suggestions/${s.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "decline" }) }); fetchSuggestions(suggestionFilter); }}
+                                    style={{ background: "#fef2f2", color: "#c0392b", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                                  >
+                                    Decline
+                                  </button>
+                                  <button
+                                    onClick={async (e) => { e.stopPropagation(); await fetch(`/api/admin/register/suggestions/${s.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "duplicate" }) }); fetchSuggestions(suggestionFilter); }}
+                                    style={{ background: "#f3f4f6", color: "var(--mid)", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                                  >
+                                    Duplicate
+                                  </button>
+                                </>
+                              )}
+                              {s.status !== "pending" && (
+                                <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: s.status === "promoted" ? "#e8f5f1" : "#f3f4f6", color: s.status === "promoted" ? "var(--green)" : "var(--mid)", textTransform: "capitalize" }}>
+                                  {s.status}
+                                </span>
+                              )}
+                              <span style={{ fontSize: 13, color: "var(--mid)" }}>{isExpanded ? "▲" : "▼"}</span>
+                            </div>
+                          </div>
+
+                          {/* Promote form */}
+                          {isPromoting && s.status === "pending" && (
+                            <div style={{ borderTop: "1px solid var(--border)", padding: "16px", background: "#f8faf9" }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>Promote to SKU</div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 4, fontFamily: "Nunito, sans-serif" }}>SKU *</label>
+                                  <input style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontFamily: "Nunito, sans-serif" }} placeholder="e.g. F11" value={promoteForm.sku} onChange={(e) => setPromoteForm(p => ({ ...p, sku: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 4, fontFamily: "Nunito, sans-serif" }}>Category *</label>
+                                  <input style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontFamily: "Nunito, sans-serif" }} value={promoteForm.category} onChange={(e) => setPromoteForm(p => ({ ...p, category: e.target.value }))} />
+                                </div>
+                              </div>
+                              <div style={{ marginBottom: 10 }}>
+                                <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 4, fontFamily: "Nunito, sans-serif" }}>Item name *</label>
+                                <input style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontFamily: "Nunito, sans-serif" }} value={promoteForm.name} onChange={(e) => setPromoteForm(p => ({ ...p, name: e.target.value }))} />
+                              </div>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 4, fontFamily: "Nunito, sans-serif" }}>Price (cents) *</label>
+                                  <input type="number" style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontFamily: "Nunito, sans-serif" }} placeholder="e.g. 1650" value={promoteForm.standardPriceCents} onChange={(e) => setPromoteForm(p => ({ ...p, standardPriceCents: e.target.value }))} />
+                                </div>
+                                <div>
+                                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--mid)", marginBottom: 4, fontFamily: "Nunito, sans-serif" }}>Description (optional)</label>
+                                  <input style={{ width: "100%", padding: "8px 10px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 13, fontFamily: "Nunito, sans-serif" }} value={promoteForm.description} onChange={(e) => setPromoteForm(p => ({ ...p, description: e.target.value }))} />
+                                </div>
+                              </div>
+                              {promoteError && <div style={{ fontSize: 12, color: "#c0392b", marginBottom: 8 }}>{promoteError}</div>}
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                  onClick={async () => {
+                                    const r = await fetch(`/api/admin/register/suggestions/${s.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "promote", skuData: promoteForm }) });
+                                    const d = await r.json().catch(() => ({}));
+                                    if (!r.ok) { setPromoteError(d.error ?? "Failed"); return; }
+                                    setPromotingId(null); fetchSuggestions(suggestionFilter);
+                                  }}
+                                  style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                                >
+                                  Create SKU
+                                </button>
+                                <button onClick={() => setPromotingId(null)} style={{ background: "var(--bg)", color: "var(--mid)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Expanded individual submissions */}
+                          {isExpanded && s.similarSuggestions.length > 0 && (
+                            <div style={{ borderTop: "1px solid var(--border)", padding: "12px 16px", background: "var(--bg)" }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                All submissions ({s.similarSuggestions.length})
+                              </div>
+                              {s.similarSuggestions.map((sub, i) => (
+                                <div key={sub.id} style={{ padding: "8px 0", borderBottom: i < s.similarSuggestions.length - 1 ? "1px solid var(--border)" : "none", fontSize: 12, fontFamily: "Nunito, sans-serif", color: "var(--mid)" }}>
+                                  <span style={{ color: "var(--ink)" }}>{sub.notes ?? <em>No notes</em>}</span>
+                                  <span style={{ marginLeft: 8, fontSize: 11 }}>· {new Date(sub.createdAt).toLocaleDateString()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </div>
@@ -2366,6 +2556,7 @@ function CoordinationAdmin() {
           })}
         </div>
       )}
+
     </div>
   );
 }

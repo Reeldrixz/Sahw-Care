@@ -144,6 +144,9 @@ model User {
   missionMemberships MissionMember[]
   missionActions     MissionAction[]
   profileSnapshots   ProfileSnapshot[]
+  suggestions        RegisterSuggestion[]
+
+  suggestionSubmissionDisabled Boolean @default(false)
 }
 
 // ==================== ITEMS ====================
@@ -1429,6 +1432,23 @@ model MissionMember {
   isActive Boolean     @default(true)
 
   @@unique([teamId, userId])
+}
+
+model RegisterSuggestion {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  itemName      String
+  category      String    // "postpartum" | "newborn" | "pregnancy" | "labour"
+  notes         String?   @db.Text
+  status        String    @default("pending") // "pending" | "promoted" | "declined" | "duplicate"
+  reviewedAt    DateTime?
+  reviewedBy    String?
+  promotedSkuId String?   // ItemCatalog.id if promoted
+  createdAt     DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
 }
 
 model MissionAction {

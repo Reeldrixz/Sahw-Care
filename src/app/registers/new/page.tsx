@@ -57,6 +57,15 @@ export default function NewRegisterPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showDocUpload, setShowDocUpload] = useState(false);
 
+  // Suggestion modal
+  const [showSuggest,      setShowSuggest]      = useState(false);
+  const [suggestName,      setSuggestName]      = useState("");
+  const [suggestCategory,  setSuggestCategory]  = useState("");
+  const [suggestNotes,     setSuggestNotes]     = useState("");
+  const [suggestBusy,      setSuggestBusy]      = useState(false);
+  const [suggestDone,      setSuggestDone]      = useState(false);
+  const [suggestError,     setSuggestError]     = useState<string | null>(null);
+
   useEffect(() => { if (!user) router.push("/auth?mode=signup"); }, [user, router]);
   useEffect(() => { if (user?.location && !city) setCity(user.location.split(",")[0].trim()); }, [user, city]);
 
@@ -473,6 +482,24 @@ export default function NewRegisterPage() {
             </button>
           </div>
 
+          {/* Suggestion card — RECIPIENT only */}
+          {user.role === "RECIPIENT" && (
+            <div style={{ background: "#f5f3ff", border: "1px solid #d8d0f5", borderRadius: 14, padding: "16px", marginBottom: 20 }}>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#6d5acd", marginBottom: 4 }}>
+                Can&apos;t find what you need?
+              </div>
+              <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.55, marginBottom: 12 }}>
+                Suggest an item to add to our catalogue.
+              </div>
+              <button
+                onClick={() => { setShowSuggest(true); setSuggestDone(false); setSuggestError(null); setSuggestName(""); setSuggestCategory(""); setSuggestNotes(""); }}
+                style={{ background: "#6d5acd", color: "white", border: "none", borderRadius: 10, padding: "10px 18px", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
+              >
+                Suggest an item →
+              </button>
+            </div>
+          )}
+
           <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
             {loading ? "Creating..." : "Publish Register 📋"}
           </button>
@@ -481,6 +508,110 @@ export default function NewRegisterPage() {
 
       <BottomNav />
       <Toast message={toast} onClose={() => setToast(null)} />
+
+      {/* Suggestion modal */}
+      {showSuggest && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSuggest(false); }}
+        >
+          <div style={{ width: "100%", maxWidth: 540, background: "white", borderRadius: "20px 20px 0 0", maxHeight: "85vh", overflowY: "auto", padding: "20px 20px 40px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Suggest a catalogue item</div>
+              <button onClick={() => setShowSuggest(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }}>✕</button>
+            </div>
+
+            {suggestDone ? (
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
+                <div style={{ fontSize: 40, marginBottom: 14 }}>💜</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>
+                  Thank you for the suggestion.
+                </div>
+                <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 24, maxWidth: 320, margin: "0 auto 24px" }}>
+                  Your suggestion helps us understand what mothers need. We review suggestions regularly and add the most-requested items to the catalogue.
+                </div>
+                <button
+                  onClick={() => setShowSuggest(false)}
+                  style={{ background: "#1a7a5e", color: "white", border: "none", borderRadius: 12, padding: "12px 28px", fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: "Nunito, sans-serif", fontStyle: "italic", fontSize: 12, color: "#6d5acd", lineHeight: 1.6, marginBottom: 18, background: "#f5f3ff", borderRadius: 10, padding: "10px 14px" }}>
+                  Suggestions should be maternal or infant essentials. Examples: feeding supplies, diapers, postpartum care, baby clothing.
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#1a1a1a", marginBottom: 5, fontFamily: "Nunito, sans-serif" }}>Item name *</label>
+                  <input
+                    style={{ display: "block", width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 10, fontSize: 14, fontFamily: "Nunito, sans-serif", outline: "none", boxSizing: "border-box" }}
+                    placeholder="e.g. Lansinoh nipple cream"
+                    maxLength={80}
+                    value={suggestName}
+                    onChange={(e) => setSuggestName(e.target.value)}
+                  />
+                  <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 2 }}>{suggestName.length}/80</div>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#1a1a1a", marginBottom: 5, fontFamily: "Nunito, sans-serif" }}>Category *</label>
+                  <select
+                    style={{ display: "block", width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 10, fontSize: 14, fontFamily: "Nunito, sans-serif", outline: "none", background: "white" }}
+                    value={suggestCategory}
+                    onChange={(e) => setSuggestCategory(e.target.value)}
+                  >
+                    <option value="">Select a category…</option>
+                    <option value="postpartum">Postpartum</option>
+                    <option value="newborn">Newborn</option>
+                    <option value="pregnancy">Pregnancy</option>
+                    <option value="labour">Labour &amp; Delivery</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#1a1a1a", marginBottom: 5, fontFamily: "Nunito, sans-serif" }}>Notes (optional)</label>
+                  <textarea
+                    style={{ display: "block", width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 10, fontSize: 13, fontFamily: "Nunito, sans-serif", outline: "none", resize: "vertical", minHeight: 72, boxSizing: "border-box" }}
+                    placeholder="Anything we should know? (size, brand preference, etc.)"
+                    maxLength={300}
+                    value={suggestNotes}
+                    onChange={(e) => setSuggestNotes(e.target.value)}
+                  />
+                  <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 2 }}>{suggestNotes.length}/300</div>
+                </div>
+
+                {suggestError && (
+                  <div style={{ background: "#fdecea", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#c0392b", fontFamily: "Nunito, sans-serif", marginBottom: 14 }}>
+                    {suggestError}
+                  </div>
+                )}
+
+                <button
+                  disabled={suggestBusy}
+                  onClick={async () => {
+                    setSuggestBusy(true); setSuggestError(null);
+                    try {
+                      const r = await fetch("/api/register/suggestions", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ itemName: suggestName, category: suggestCategory, notes: suggestNotes || null }),
+                      });
+                      const d = await r.json().catch(() => ({}));
+                      if (!r.ok) { setSuggestError(d.error ?? "Something went wrong."); }
+                      else       { setSuggestDone(true); }
+                    } catch { setSuggestError("Network error. Please try again."); }
+                    setSuggestBusy(false);
+                  }}
+                  style={{ width: "100%", padding: "14px", background: suggestBusy ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, color: "white", cursor: suggestBusy ? "default" : "pointer", fontFamily: "Nunito, sans-serif" }}
+                >
+                  {suggestBusy ? "Submitting…" : "Submit suggestion"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
