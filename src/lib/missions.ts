@@ -10,10 +10,13 @@ export type ActionType =
   | "bundle_delivered";
 
 export interface MissionActionMeta {
-  category?:    string; // "Postpartum", "Newborn", "Pregnancy", "Labour"
-  itemName?:    string; // bundle name or item title
-  stage?:       string; // bundle stage label
-  referenceId?: string; // item/register/bundle ID for upgrade-in-place matching
+  category?:         string; // "Postpartum", "Newborn", "Pregnancy", "Labour"
+  itemName?:         string; // bundle name or item title
+  stage?:            string; // bundle stage label
+  referenceId?:      string; // item/register/bundle ID for upgrade-in-place matching
+  referredByUserId?: string; // contributor whose link brought in the acting user
+  recipientUserId?:  string; // mother/recipient who benefited
+  itemCount?:        number; // number of items delivered (default 1)
 }
 
 const BLOCKS: Record<ActionType, number> = {
@@ -51,6 +54,7 @@ export async function recordMissionAction(
   try {
     const blocks = BLOCKS[actionType];
     let humanLabel = LABELS[actionType];
+    const itemCount = meta?.itemCount ?? 1;
 
     if (meta?.category) humanLabel = humanLabel.replace("[category]", meta.category);
     if (meta?.itemName) humanLabel = humanLabel.replace("[itemName]",  meta.itemName);
@@ -86,7 +90,11 @@ export async function recordMissionAction(
         await prisma.$transaction([
           prisma.missionAction.update({
             where: { id: prior.id },
-            data:  { actionType, blocks, humanLabel },
+            data:  {
+              actionType, blocks, humanLabel,
+              ...(meta?.recipientUserId  ? { recipientUserId:  meta.recipientUserId  } : {}),
+              itemCount,
+            },
           }),
           prisma.missionTeam.update({
             where: { id: teamId },
@@ -98,8 +106,10 @@ export async function recordMissionAction(
         await prisma.$transaction([
           prisma.missionAction.create({
             data: {
-              teamId, userId, actionType, blocks, humanLabel,
-              ...(meta?.referenceId ? { referenceId: meta.referenceId } : {}),
+              teamId, userId, actionType, blocks, humanLabel, itemCount,
+              ...(meta?.referenceId      ? { referenceId:      meta.referenceId      } : {}),
+              ...(meta?.referredByUserId ? { referredByUserId: meta.referredByUserId } : {}),
+              ...(meta?.recipientUserId  ? { recipientUserId:  meta.recipientUserId  } : {}),
             },
           }),
           prisma.missionTeam.update({
@@ -112,8 +122,10 @@ export async function recordMissionAction(
       await prisma.$transaction([
         prisma.missionAction.create({
           data: {
-            teamId, userId, actionType, blocks, humanLabel,
-            ...(meta?.referenceId ? { referenceId: meta.referenceId } : {}),
+            teamId, userId, actionType, blocks, humanLabel, itemCount,
+            ...(meta?.referenceId      ? { referenceId:      meta.referenceId      } : {}),
+            ...(meta?.referredByUserId ? { referredByUserId: meta.referredByUserId } : {}),
+            ...(meta?.recipientUserId  ? { recipientUserId:  meta.recipientUserId  } : {}),
           },
         }),
         prisma.missionTeam.update({

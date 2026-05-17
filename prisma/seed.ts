@@ -85,6 +85,27 @@ async function main() {
   const [amara, fatima, grace, kemi, sandra, titi] = donors;
   console.log(`✓ Created ${donors.length} donor accounts`);
 
+  // Seed mother/recipient users for attribution
+  const ngozi = await prisma.user.upsert({
+    where:  { email: "ngozi@carecircle.ng" },
+    update: {},
+    create: {
+      name: "Ngozi Eze", email: "ngozi@carecircle.ng",
+      password: await bcrypt.hash("password123", 12),
+      role: "RECIPIENT", location: "Agege, Lagos", status: "ACTIVE",
+    },
+  });
+  const chioma = await prisma.user.upsert({
+    where:  { email: "chioma@carecircle.ng" },
+    update: {},
+    create: {
+      name: "Chioma Obi", email: "chioma@carecircle.ng",
+      password: await bcrypt.hash("password123", 12),
+      role: "RECIPIENT", location: "Mushin, Lagos", status: "ACTIVE",
+    },
+  });
+  console.log("✓ Created 2 recipient accounts (Ngozi, Chioma)");
+
   // Create items
   const items = [
     {
@@ -225,7 +246,7 @@ async function main() {
   }
   console.log("✓ Created sample reviews");
 
-  await seedMissions([amara.id, fatima.id, grace.id]);
+  await seedMissions([amara.id, fatima.id, grace.id], ngozi, chioma);
 
   await seedCatalog();
 
@@ -235,7 +256,7 @@ async function main() {
   console.log("   Recipient: reviewer@carecircle.ng");
 }
 
-async function seedMissions(memberIds: string[]) {
+async function seedMissions(memberIds: string[], ngozi: { id: string }, chioma: { id: string }) {
   const month = new Date().toISOString().slice(0, 7); // "2026-05"
   const daysAgo = (d: number) => new Date(Date.now() - d * 24 * 60 * 60 * 1000);
 
@@ -278,19 +299,19 @@ async function seedMissions(memberIds: string[]) {
   // memberIds[1] = Fatima → 6 blocks:  2 clicks + 1 register_fulfilled
   // memberIds[2] = Grace  → 3 blocks:  1 click  + 1 signup
   const actionSeeds = [
-    { userId: memberIds[0], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Amara's shared link.",            createdAt: daysAgo(12) },
-    { userId: memberIds[0], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Amara's shared link.",            createdAt: daysAgo(10) },
-    { userId: memberIds[0], actionType: "signup",             blocks: 2, humanLabel: "A new supporter created an account through Amara's mission link.",  createdAt: daysAgo(9)  },
-    { userId: memberIds[0], actionType: "listing_posted",     blocks: 2, humanLabel: "A new donor listed their first item on Kradel.",                    createdAt: daysAgo(7)  },
-    { userId: memberIds[0], actionType: "listing_posted",     blocks: 2, humanLabel: "A new donor listed another item — more essentials on the way.",     createdAt: daysAgo(5)  },
-    { userId: memberIds[0], actionType: "register_fulfilled", blocks: 4, humanLabel: "A register item was delivered to a mother in need.",                createdAt: daysAgo(3)  },
+    { userId: memberIds[0], actionType: "click",              blocks: 1, itemCount: 1, humanLabel: "Someone discovered Kradel through Amara's shared link.",            createdAt: daysAgo(12) },
+    { userId: memberIds[0], actionType: "click",              blocks: 1, itemCount: 1, humanLabel: "Someone discovered Kradel through Amara's shared link.",            createdAt: daysAgo(10) },
+    { userId: memberIds[0], actionType: "signup",             blocks: 2, itemCount: 1, humanLabel: "A new supporter created an account through Amara's mission link.",  createdAt: daysAgo(9)  },
+    { userId: memberIds[0], actionType: "listing_posted",     blocks: 2, itemCount: 1, humanLabel: "A new donor listed their first item on Kradel.",                    createdAt: daysAgo(7)  },
+    { userId: memberIds[0], actionType: "listing_posted",     blocks: 2, itemCount: 1, humanLabel: "A new donor listed another item — more essentials on the way.",     createdAt: daysAgo(5)  },
+    { userId: memberIds[0], actionType: "register_fulfilled", blocks: 4, itemCount: 3, humanLabel: "A register item was delivered to a mother in need.",                createdAt: daysAgo(3), recipientUserId: ngozi.id  },
 
-    { userId: memberIds[1], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Fatima's shared link.",           createdAt: daysAgo(13) },
-    { userId: memberIds[1], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Fatima's shared link.",           createdAt: daysAgo(11) },
-    { userId: memberIds[1], actionType: "register_fulfilled", blocks: 4, humanLabel: "A register item was fulfilled — a mother received what she needed.", createdAt: daysAgo(6)  },
+    { userId: memberIds[1], actionType: "click",              blocks: 1, itemCount: 1, humanLabel: "Someone discovered Kradel through Fatima's shared link.",           createdAt: daysAgo(13) },
+    { userId: memberIds[1], actionType: "click",              blocks: 1, itemCount: 1, humanLabel: "Someone discovered Kradel through Fatima's shared link.",           createdAt: daysAgo(11) },
+    { userId: memberIds[1], actionType: "register_fulfilled", blocks: 4, itemCount: 2, humanLabel: "A register item was fulfilled — a mother received what she needed.", createdAt: daysAgo(6), recipientUserId: chioma.id },
 
-    { userId: memberIds[2], actionType: "click",              blocks: 1, humanLabel: "Someone discovered Kradel through Grace's shared link.",            createdAt: daysAgo(14) },
-    { userId: memberIds[2], actionType: "signup",             blocks: 2, humanLabel: "A new supporter joined through Grace's mission link.",              createdAt: daysAgo(8)  },
+    { userId: memberIds[2], actionType: "click",              blocks: 1, itemCount: 1, humanLabel: "Someone discovered Kradel through Grace's shared link.",            createdAt: daysAgo(14) },
+    { userId: memberIds[2], actionType: "signup",             blocks: 2, itemCount: 1, humanLabel: "A new supporter joined through Grace's mission link.",              createdAt: daysAgo(8)  },
   ];
 
   for (const a of actionSeeds) {

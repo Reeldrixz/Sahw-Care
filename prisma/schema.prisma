@@ -1440,6 +1440,9 @@ model MissionAction {
   actionType  String      // "click"|"signup"|"listing_posted"|"register_committed"|"listing_completed"|"register_fulfilled"|"bundle_delivered"
   blocks      Int
   humanLabel  String
-  referenceId String?     // item/register/bundle ID — used for upgrade-in-place matching
-  createdAt   DateTime    @default(now())
+  referenceId      String?     // item/register/bundle ID — used for upgrade-in-place matching
+  referredByUserId String?     // contributor whose link brought in the acting user
+  recipientUserId  String?     // mother/recipient who benefited from the action
+  itemCount        Int         @default(1)
+  createdAt        DateTime    @default(now())
 }

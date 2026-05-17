@@ -20,7 +20,6 @@ interface Stats {
   mothersSupported: number;
   essentialsDelivered: number;
   bundlesSupported: number;
-  discoverPickups: number;
   peopleReached: number;
 }
 
@@ -319,11 +318,10 @@ function ShareablePreview({ identity, stats, currentMission, onShare }: {
   const avatarInitial = identity.name?.charAt(0).toUpperCase() ?? "?";
 
   const PREVIEW_STATS = [
-    { emoji: "👥", count: stats.mothersSupported,    bg: "#e8f5f0", color: C.green    },
-    { emoji: "🎁", count: stats.essentialsDelivered, bg: "#eaf5f2", color: "#2a8c6e"  },
-    { emoji: "💝", count: stats.bundlesSupported,    bg: "#fce8e8", color: "#c4585a"  },
-    { emoji: "🛍️", count: stats.discoverPickups,    bg: "#fef4e4", color: "#c87c15"  },
-    { emoji: "📣", count: stats.peopleReached,       bg: C.purplePale, color: C.purple },
+    { emoji: "👥", count: stats.mothersSupported,    bg: "#e8f5f0",    color: C.green   },
+    { emoji: "🎁", count: stats.essentialsDelivered, bg: "#eaf5f2",    color: "#2a8c6e" },
+    { emoji: "💝", count: stats.bundlesSupported,    bg: "#fce8e8",    color: "#c4585a" },
+    { emoji: "📣", count: stats.peopleReached,       bg: C.purplePale, color: C.purple  },
   ];
 
   const SOCIAL = [
@@ -369,7 +367,7 @@ function ShareablePreview({ identity, stats, currentMission, onShare }: {
           </div>
         </div>
 
-        {/* 5-stat mini row */}
+        {/* 4-stat mini row */}
         <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
           {PREVIEW_STATS.map((s, i) => (
             <div key={i} style={{
@@ -643,7 +641,7 @@ export default function ContributorPage() {
   // ── full profile ───────────────────────────────────────────────────────
 
   const identity       = data.identity!;
-  const stats          = data.stats ?? { mothersSupported: 0, essentialsDelivered: 0, bundlesSupported: 0, discoverPickups: 0, peopleReached: 0 };
+  const stats          = data.stats ?? { mothersSupported: 0, essentialsDelivered: 0, bundlesSupported: 0, peopleReached: 0 };
   const currentMission = data.currentMission ?? null;
   const pastMissions   = data.pastMissions   ?? [];
   const avatarInitial  = identity.name?.charAt(0).toUpperCase() ?? "?";
@@ -792,11 +790,10 @@ export default function ContributorPage() {
                 }}>🌿</div>
                 <div className="cp2-label" style={{ position: "relative", zIndex: 1 }}>Your Overall Impact</div>
                 <div className="cp2-stats-scroll" style={{ position: "relative", zIndex: 1 }}>
-                  <StatTile emoji="👥" count={stats.mothersSupported}    label="Mothers Supported"  bg="#e8f5f0"      color={C.green}   />
+                  <StatTile emoji="👥" count={stats.mothersSupported}    label="Mothers Supported"    bg="#e8f5f0"      color={C.green}   />
                   <StatTile emoji="🎁" count={stats.essentialsDelivered} label="Essentials Delivered" bg="#eaf5f2"    color="#2a8c6e"   />
-                  <StatTile emoji="💝" count={stats.bundlesSupported}    label="Bundles Supported"  bg="#fce8e8"      color="#c4585a"   />
-                  <StatTile emoji="🛍️" count={stats.discoverPickups}    label="Discover Pickups"   bg="#fef4e4"      color="#c87c15"   />
-                  <StatTile emoji="📣" count={stats.peopleReached}       label="People Reached"     bg={C.purplePale} color={C.purple}  />
+                  <StatTile emoji="💝" count={stats.bundlesSupported}    label="Bundles Supported"    bg="#fce8e8"      color="#c4585a"   />
+                  <StatTile emoji="📣" count={stats.peopleReached}       label="People Reached"       bg={C.purplePale} color={C.purple}  />
                 </div>
               </div>
 
@@ -864,7 +861,7 @@ export default function ContributorPage() {
 
               {/* mission history */}
               <div className="cp2-card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <div className="cp2-label" style={{ marginBottom: 0 }}>Mission History</div>
                   {pastMissions.length > 0 && (
                     <button onClick={() => router.push("/missions/my")} style={{
@@ -874,6 +871,9 @@ export default function ContributorPage() {
                       View All →
                     </button>
                   )}
+                </div>
+                <div style={{ fontSize: 11, color: C.mid, fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginBottom: 14 }}>
+                  Each entry below is something you helped happen.
                 </div>
                 {pastMissions.length > 0 ? (
                   <div className="cp2-hist-scroll">

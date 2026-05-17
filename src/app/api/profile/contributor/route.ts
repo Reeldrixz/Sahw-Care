@@ -4,10 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const DISCOVER_TYPES = ["listing_completed", "donation"];
-const REGISTER_TYPES = ["register_fulfilled"];
-const BUNDLE_TYPES   = ["bundle_delivered"];
-const OUTCOME_TYPES  = [...DISCOVER_TYPES, ...REGISTER_TYPES, ...BUNDLE_TYPES];
+const COMPLETION_TYPES = ["listing_completed", "register_fulfilled", "bundle_delivered"];
 
 export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
@@ -40,11 +37,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const [allActions, memberships] = await Promise.all([
+  const [myDirectActions, referredActions, memberships] = await Promise.all([
     prisma.missionAction.findMany({
       where:   { userId: auth.userId },
       orderBy: { createdAt: "desc" },
-      select:  { id: true, actionType: true, blocks: true, humanLabel: true, createdAt: true, teamId: true },
+      select:  { id: true, actionType: true, blocks: true, humanLabel: true, createdAt: true, teamId: true, recipientUserId: true, itemCount: true },
+    }),
+    prisma.missionAction.findMany({
+      where:   { referredByUserId: auth.userId },
+      select:  { actionType: true, recipientUserId: true, itemCount: true },
     }),
     prisma.missionMember.findMany({
       where:   { userId: auth.userId },
@@ -61,28 +62,29 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const hasActions = allActions.length > 0;
+  const hasActions = myDirectActions.length > 0;
 
-  // oldest membership = when they first became a contributor
   const careContributorSince = memberships.length > 0
     ? memberships[memberships.length - 1].joinedAt
     : null;
 
   const identity = {
-    name:   user.name,
-    avatar: user.avatar,
+    name:     user.name,
+    avatar:   user.avatar,
     location: user.location,
-    bio:    user.bio,
+    bio:      user.bio,
     careContributorSince,
     isVerified: user.phoneVerified || user.emailVerified,
   };
 
+  const attributionSet = [...myDirectActions, ...referredActions];
+  const completionSet  = attributionSet.filter(a => COMPLETION_TYPES.includes(a.actionType));
+
   const stats = {
-    mothersSupported:    allActions.filter(a => OUTCOME_TYPES.includes(a.actionType)).length,
-    essentialsDelivered: allActions.filter(a => REGISTER_TYPES.includes(a.actionType)).length,
-    bundlesSupported:    allActions.filter(a => BUNDLE_TYPES.includes(a.actionType)).length,
-    discoverPickups:     allActions.filter(a => DISCOVER_TYPES.includes(a.actionType)).length,
-    peopleReached:       allActions.filter(a => ["click", "signup"].includes(a.actionType)).length,
+    mothersSupported:    new Set(completionSet.map(a => a.recipientUserId).filter(Boolean)).size,
+    essentialsDelivered: completionSet.reduce((s, a) => s + (a.itemCount ?? 1), 0),
+    bundlesSupported:    attributionSet.filter(a => a.actionType === "bundle_delivered").length,
+    peopleReached:       myDirectActions.filter(a => a.actionType === "click").length,
   };
 
   const currentMem    = memberships[0];
