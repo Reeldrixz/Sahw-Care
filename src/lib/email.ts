@@ -151,6 +151,59 @@ export async function sendBundleShipped(opts: {
   });
 }
 
+// ── Bug report admin notification ────────────────────────────────────────────
+
+export async function sendBugReportNotification(opts: {
+  reportId:    string;
+  description: string;
+  pageUrl:     string | null;
+  userAgent:   string | null;
+  screenshotUrl: string | null;
+  submittedBy: string;        // "Name <email>" or "Anonymous <email>"
+  submittedAt: Date;
+  baseUrl:     string;
+}) {
+  const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    console.warn("[BugReport] ADMIN_NOTIFY_EMAIL not set — skipping email notification for report", opts.reportId);
+    return;
+  }
+
+  const ts = opts.submittedAt.toLocaleString("en-GB", {
+    timeZone: "UTC", dateStyle: "medium", timeStyle: "short",
+  }) + " UTC";
+
+  await getResend().emails.send({
+    from:    FROM,
+    to:      adminEmail,
+    subject: `[Kradel Bug] New report from ${opts.submittedBy}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+        <h2 style="margin:0 0 16px;color:#1a1a1a">New Bug Report 🐛</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">User</td><td style="padding:8px 0;font-weight:600">${opts.submittedBy}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td><td style="padding:8px 0">${opts.pageUrl ? `<a href="${opts.pageUrl}" style="color:#1a7a5e">${opts.pageUrl}</a>` : "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Time</td><td style="padding:8px 0">${ts}</td></tr>
+        </table>
+        <div style="margin-bottom:20px">
+          <div style="font-weight:700;color:#1a1a1a;margin-bottom:8px">Description</div>
+          <div style="background:#f5f5f5;border-radius:8px;padding:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#333">${opts.description.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">Browser</td><td style="padding:8px 0;font-size:12px;color:#555">${opts.userAgent ?? "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Screenshot</td><td style="padding:8px 0">${opts.screenshotUrl ? `<a href="${opts.screenshotUrl}" style="color:#1a7a5e">View screenshot</a>` : "none"}</td></tr>
+        </table>
+        <div style="text-align:center;margin-top:24px">
+          <a href="${opts.baseUrl}/admin/bug-reports" style="background:#1a7a5e;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px">
+            View in Admin Queue
+          </a>
+        </div>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care 🌱</p>
+      </div>
+    `,
+  });
+}
+
 // ── Signup notification ──────────────────────────────────────────────────────
 
 export async function sendNewSignupNotification(opts: {

@@ -145,6 +145,7 @@ model User {
   missionActions     MissionAction[]
   profileSnapshots   ProfileSnapshot[]
   suggestions        RegisterSuggestion[]
+  bugReports         BugReport[]
 
   suggestionSubmissionDisabled Boolean @default(false)
 }
@@ -1465,4 +1466,26 @@ model MissionAction {
   recipientUserId  String?     // mother/recipient who benefited from the action
   itemCount        Int         @default(1)
   createdAt        DateTime    @default(now())
+}
+
+// ==================== BUG REPORTS ====================
+
+model BugReport {
+  id            String    @id @default(cuid())
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id])
+  email         String?
+  description   String    @db.Text
+  pageUrl       String?
+  userAgent     String?
+  screenshotUrl String?
+  status        String    @default("new")      // "new" | "investigating" | "resolved" | "wontfix" | "duplicate"
+  priority      String    @default("normal")   // "low" | "normal" | "high" | "critical"
+  adminNotes    String?   @db.Text
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
 }

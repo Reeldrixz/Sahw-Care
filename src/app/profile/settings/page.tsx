@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, User, Bell, Compass, Shield, HelpCircle, Info, LogOut, Trash2, ChevronRight } from "lucide-react";
+import { ArrowLeft, User, Bell, Compass, Shield, HelpCircle, Info, LogOut, Trash2, ChevronRight, Bug } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -49,6 +49,7 @@ export default function SettingsPage() {
       items: [
         { icon: Shield,      label: "Privacy",         sub: "Data and privacy settings",    path: null },
         { icon: HelpCircle,  label: "Help & Support",  sub: "Get help or contact us",       path: null },
+        { icon: Bug,         label: "Report a bug",    sub: "Something broken? Let us know", path: `/report-bug?from=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "/profile/settings")}` },
         { icon: Info,        label: "About Kradəl",    sub: "Version, terms & policies",    path: null },
       ],
     },
