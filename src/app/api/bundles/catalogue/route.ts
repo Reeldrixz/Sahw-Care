@@ -66,7 +66,6 @@ export async function GET(_req: NextRequest) {
     stage:            b.stage,
     description:      b.description,
     contentsMarkdown: b.contentsMarkdown,
-    estimatedValue:   b.estimatedValue,
     slotsPerMonth:    b.slotsPerMonth,
     slotsUsed:        b._count.applications,
     slotsRemaining:   Math.max(0, b.slotsPerMonth - b._count.applications),

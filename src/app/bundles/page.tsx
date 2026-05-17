@@ -13,7 +13,7 @@ type BundleStage = "PREGNANCY" | "LABOUR" | "NEWBORN" | "POSTPARTUM";
 interface BundleItem {
   id: string; code: string; name: string; stage: BundleStage;
   description: string; contentsMarkdown: string;
-  estimatedValue: number; slotsPerMonth: number; slotsUsed: number; slotsRemaining: number;
+  slotsPerMonth: number; slotsUsed: number; slotsRemaining: number;
   itemCount: number;
 }
 
@@ -69,8 +69,6 @@ const TRUST_PRINCIPLES = [
   { Icon: Lock,        label: "Privacy Protected",         desc: "Personal information is never shared, published, or visible to other users." },
 ];
 
-const fmt = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
 function getPreviewItems(md: string, n: number): string[] {
   return md.split("\n")
@@ -431,16 +429,6 @@ export default function BundlesPage() {
                         </div>
                       )}
 
-                      {/* Value chip */}
-                      <div style={{
-                        position: "absolute", top: 12, right: 12,
-                        background: "rgba(255,255,255,0.85)", backdropFilter: "blur(4px)",
-                        padding: "4px 10px", borderRadius: 20,
-                        fontSize: 12, fontWeight: 800, color: th.text,
-                        fontFamily: "Nunito, sans-serif",
-                      }}>
-                        {fmt(b.estimatedValue)} value
-                      </div>
                     </div>
 
                     {/* Card body */}
