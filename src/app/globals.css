@@ -541,3 +541,14 @@ tr:last-child td { border-bottom: none; }
   .items-grid { display: block; }
   .browse-main-grid { display: block; }
 }
+
+/* ── SiteFooter: clear the fixed bottom nav on mobile ───────────────────── */
+.site-footer {
+  /* Mobile: push footer content above the 64px fixed bottom nav */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  /* Desktop: bottom nav is hidden, normal padding */
+  .site-footer { padding-bottom: 16px; }
+}
+
