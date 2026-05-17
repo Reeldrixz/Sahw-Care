@@ -90,18 +90,33 @@ export async function GET(req: NextRequest) {
 
   const currentMem = memberships[0];
 
-  let essentialsDeliveredThisMonth = 0;
+  let lifetimeEssentials = 0;
+  let tier = 1, blockValue = 5, filledBlocks = 0;
+
   if (currentMem) {
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const careActions = await prisma.missionAction.findMany({
       where: {
         teamId:     currentMem.teamId,
         actionType: { in: CARE_TYPES },
-        createdAt:  { gte: monthStart },
       },
       select: { itemCount: true },
     });
-    essentialsDeliveredThisMonth = careActions.reduce((s, a) => s + (a.itemCount ?? 1), 0);
+    lifetimeEssentials = careActions.reduce((s, a) => s + (a.itemCount ?? 1), 0);
+
+    // Tier scaling: each tier doubles the block value; full grid (40 blocks) = tier threshold
+    let remaining  = lifetimeEssentials;
+    let bv         = 5;
+    let threshold  = 200; // tier 1: 40 blocks × 5
+    let t          = 1;
+    while (remaining >= threshold) {
+      remaining  -= threshold;
+      t          += 1;
+      bv         *= 2;
+      threshold   = bv * 40;
+    }
+    tier         = t;
+    blockValue   = bv;
+    filledBlocks = Math.floor(remaining / bv);
   }
 
   const currentMission = currentMem ? {
@@ -143,6 +158,9 @@ export async function GET(req: NextRequest) {
     currentMission,
     pastMissions,
     activeMission,
-    essentialsDeliveredThisMonth,
+    lifetimeEssentials,
+    tier,
+    blockValue,
+    filledBlocks,
   });
 }

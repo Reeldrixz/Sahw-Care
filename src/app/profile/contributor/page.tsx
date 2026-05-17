@@ -52,7 +52,10 @@ interface ContributorData {
   stats?: Stats;
   currentMission?: CurrentMission | null;
   pastMissions?: PastMission[];
-  essentialsDeliveredThisMonth?: number;
+  lifetimeEssentials?: number;
+  tier?: number;
+  blockValue?: number;
+  filledBlocks?: number;
 }
 
 // ── design tokens ──────────────────────────────────────────────────────────
@@ -168,28 +171,19 @@ function formatSince(date: string | null): string {
 
 const CARE_GOAL = 40;
 
-function CareGrid({ essentials }: { essentials: number }) {
-  const filled   = Math.min(essentials, CARE_GOAL);
-  const overflow = Math.max(0, essentials - CARE_GOAL);
+function CareGrid({ filledBlocks }: { filledBlocks: number }) {
   return (
-    <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 4, margin: "10px 0" }}>
-        {Array.from({ length: CARE_GOAL }, (_, i) => (
-          <div key={i} style={{ aspectRatio: "1", borderRadius: 4, background: i < filled ? C.green : "#f0ebe3" }} />
-        ))}
-      </div>
-      {overflow > 0 && (
-        <div style={{ fontSize: 11, color: C.green, fontFamily: "Nunito, sans-serif", fontWeight: 700, marginTop: 2 }}>
-          + {overflow} more essential{overflow !== 1 ? "s" : ""} delivered this month
-        </div>
-      )}
-    </>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 4, margin: "10px 0" }}>
+      {Array.from({ length: CARE_GOAL }, (_, i) => (
+        <div key={i} style={{ aspectRatio: "1", borderRadius: 4, background: i < filledBlocks ? C.green : "#f0ebe3" }} />
+      ))}
+    </div>
   );
 }
 
-function PreviewCareRow({ essentials }: { essentials: number }) {
+function PreviewCareRow({ filledBlocks }: { filledBlocks: number }) {
   const CELLS  = 13;
-  const filled = Math.min(CELLS, Math.round((Math.min(essentials, CARE_GOAL) / CARE_GOAL) * CELLS));
+  const filled = Math.min(CELLS, Math.round((filledBlocks / CARE_GOAL) * CELLS));
   return (
     <div style={{ display: "flex", gap: 3 }}>
       {Array.from({ length: CELLS }, (_, i) => (
@@ -301,11 +295,12 @@ function WhyThisProfileMatters() {
   );
 }
 
-function ShareablePreview({ identity, stats, currentMission, essentials, onShare }: {
+function ShareablePreview({ identity, stats, currentMission, lifetimeEssentials, filledBlocks, onShare }: {
   identity: Identity;
   stats: Stats;
   currentMission: CurrentMission | null;
-  essentials: number;
+  lifetimeEssentials: number;
+  filledBlocks: number;
   onShare: () => void;
 }) {
   const avatarInitial = identity.name?.charAt(0).toUpperCase() ?? "?";
@@ -381,14 +376,14 @@ function ShareablePreview({ identity, stats, currentMission, essentials, onShare
           ))}
         </div>
 
-        {/* care delivered mini */}
+        {/* lifetime team impact mini */}
         {currentMission && (
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 10, color: C.muted, fontFamily: "Nunito, sans-serif", marginBottom: 5 }}>
               Active in <span style={{ color: C.purple, fontWeight: 700 }}>{currentMission.name}</span>
-              {essentials > 0 && <span style={{ color: C.green, fontWeight: 700, marginLeft: 6 }}>· {essentials} essential{essentials !== 1 ? "s" : ""} delivered</span>}
+              {lifetimeEssentials > 0 && <span style={{ color: C.green, fontWeight: 700, marginLeft: 6 }}>· {lifetimeEssentials.toLocaleString()} delivered</span>}
             </div>
-            <PreviewCareRow essentials={essentials} />
+            <PreviewCareRow filledBlocks={filledBlocks} />
           </div>
         )}
 
@@ -559,16 +554,26 @@ export default function ContributorPage() {
   const { user } = useAuth();
   const router   = useRouter();
 
-  const [data,      setData]      = useState<ContributorData | null>(null);
-  const [loading,   setLoading]   = useState(true);
-  const [editing,   setEditing]   = useState(false);
-  const [sharing,   setSharing]   = useState(false);
-  const [shareDone, setShareDone] = useState(false);
+  const [data,        setData]        = useState<ContributorData | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [editing,     setEditing]     = useState(false);
+  const [sharing,     setSharing]     = useState(false);
+  const [shareDone,   setShareDone]   = useState(false);
+  const [tierBanner,  setTierBanner]  = useState<{ tier: number; blockValue: number } | null>(null);
 
   const fetchData = useCallback(() => {
     fetch("/api/profile/contributor")
       .then(r => r.json())
-      .then(d => setData(d))
+      .then(d => {
+        setData(d);
+        // Detect tier graduation using localStorage as a one-time trigger
+        if (d.tier && d.lifetimeEssentials > 0 && d.currentMission?.teamId) {
+          const key      = `cp_lastTier_${d.currentMission.teamId}`;
+          const lastTier = parseInt(localStorage.getItem(key) ?? "1", 10);
+          if (d.tier > lastTier) setTierBanner({ tier: d.tier, blockValue: d.blockValue });
+          localStorage.setItem(key, String(d.tier));
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -630,13 +635,16 @@ export default function ContributorPage() {
 
   // ── full profile ───────────────────────────────────────────────────────
 
-  const identity       = data.identity!;
-  const stats          = data.stats ?? { mothersSupported: 0, essentialsDelivered: 0, bundlesSupported: 0, peopleReached: 0 };
-  const currentMission = data.currentMission ?? null;
-  const pastMissions   = data.pastMissions   ?? [];
-  const essentials     = data.essentialsDeliveredThisMonth ?? 0;
-  const avatarInitial  = identity.name?.charAt(0).toUpperCase() ?? "?";
-  const teammates      = Math.max(0, (currentMission?.memberCount ?? 1) - 1);
+  const identity           = data.identity!;
+  const stats              = data.stats ?? { mothersSupported: 0, essentialsDelivered: 0, bundlesSupported: 0, peopleReached: 0 };
+  const currentMission     = data.currentMission ?? null;
+  const pastMissions       = data.pastMissions   ?? [];
+  const lifetimeEssentials = data.lifetimeEssentials ?? 0;
+  const tier               = data.tier           ?? 1;
+  const blockValue         = data.blockValue      ?? 5;
+  const filledBlocks       = data.filledBlocks    ?? 0;
+  const avatarInitial      = identity.name?.charAt(0).toUpperCase() ?? "?";
+  const teammates          = Math.max(0, (currentMission?.memberCount ?? 1) - 1);
 
   async function handleShare() {
     setSharing(true);
@@ -689,6 +697,24 @@ export default function ContributorPage() {
 
         {/* ── outer: two-column layout on desktop ── */}
         <div className="cp2-outer">
+
+          {/* Tier graduation banner — one-time, dismissible */}
+          {tierBanner && (
+            <div style={{
+              background: C.greenLight, border: `1px solid ${C.greenMid}`,
+              borderRadius: 16, padding: "13px 16px", marginBottom: 16,
+              display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10,
+            }}>
+              <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: C.green, lineHeight: 1.55 }}>
+                🎉 Your team just reached <strong>Tier {tierBanner.tier}</strong>! Each block now represents <strong>{tierBanner.blockValue} essentials</strong>. Keep going.
+              </div>
+              <button
+                onClick={() => setTierBanner(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 16, padding: 0, lineHeight: 1, flexShrink: 0 }}
+              >✕</button>
+            </div>
+          )}
+
           <div className="cp2-layout">
 
             {/* ════ LEFT COLUMN ════ */}
@@ -829,18 +855,27 @@ export default function ContributorPage() {
                   </div>
 
                   <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", textTransform: "uppercase", color: C.green, fontFamily: "Nunito, sans-serif" }}>
-                        Care Delivered This Month
-                      </div>
-                      <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: C.green }}>
-                        {Math.min(essentials, CARE_GOAL)}<span style={{ fontSize: 11, color: C.muted, fontWeight: 400, fontFamily: "Nunito, sans-serif" }}>/{CARE_GOAL} essentials</span>
-                      </div>
+                    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "1.2px", textTransform: "uppercase", color: C.green, fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>
+                      Lifetime Team Impact
+                    </div>
+                    <div style={{ fontFamily: "Lora, serif", fontSize: 26, fontWeight: 700, color: C.green, lineHeight: 1.1, marginBottom: 3 }}>
+                      {lifetimeEssentials.toLocaleString()}
+                      <span style={{ fontSize: 13, fontWeight: 400, color: C.mid, fontFamily: "Nunito, sans-serif", marginLeft: 7 }}>
+                        essential{lifetimeEssentials !== 1 ? "s" : ""} delivered
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 11, color: C.muted, marginBottom: 10 }}>
+                      Tier {tier} · Each block represents {blockValue} essential{blockValue !== 1 ? "s" : ""}
                     </div>
                     <div style={{ fontSize: 11, color: C.mid, fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginBottom: 6 }}>
-                      Each block is one essential delivered to a mom — through requests, registers, or bundles. Your team&rsquo;s collective effort this month.
+                      Every block your team fills brings care to mothers across requests, registers, and bundles. As you grow, each block represents more.
                     </div>
-                    <CareGrid essentials={essentials} />
+                    <CareGrid filledBlocks={filledBlocks} />
+                    {filledBlocks >= 37 && filledBlocks < CARE_GOAL && (
+                      <div style={{ fontSize: 11, color: C.green, fontFamily: "Nunito, sans-serif", fontStyle: "italic", marginTop: 6 }}>
+                        {(CARE_GOAL - filledBlocks) * blockValue} more essential{(CARE_GOAL - filledBlocks) * blockValue !== 1 ? "s" : ""} to reach Tier {tier + 1} — where each block grows to {blockValue * 2} essentials.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -922,7 +957,8 @@ export default function ContributorPage() {
                 identity={identity}
                 stats={stats}
                 currentMission={currentMission}
-                essentials={essentials}
+                lifetimeEssentials={lifetimeEssentials}
+                filledBlocks={filledBlocks}
                 onShare={handleShare}
               />
               <ClosingCard />
