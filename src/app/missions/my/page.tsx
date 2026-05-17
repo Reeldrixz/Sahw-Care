@@ -846,6 +846,15 @@ export default function MyMissionPage() {
                 </div>
                 <div>{partners.length} friends. 1 mission.<br/>More love. More impact.</div>
               </div>
+              <div style={{ marginTop: 10, fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 12, color: "#6d5acd", lineHeight: 1.6, opacity: 0.85 }}>
+                See how your team&rsquo;s care adds up in your{" "}
+                <button
+                  onClick={() => router.push("/profile/contributor")}
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 12, color: "#6d5acd", textDecoration: "underline", fontWeight: 600 }}
+                >
+                  Contributor Profile →
+                </button>
+              </div>
             </div>
 
           </div>
