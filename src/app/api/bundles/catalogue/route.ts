@@ -31,9 +31,10 @@ export async function GET(_req: NextRequest) {
 
   let myActiveApplicationBundleId: string | null = null;
   let myLifetimeApproved = 0;
+  let isRecipient = false;
 
   if (currentUser) {
-    const [existing, lifetimeCount] = await Promise.all([
+    const [existing, lifetimeCount, userRecord] = await Promise.all([
       prisma.bundleApplication.findFirst({
         where: {
           userId: currentUser.userId,
@@ -48,9 +49,14 @@ export async function GET(_req: NextRequest) {
           status: { in: ["APPROVED", "DELIVERED"] },
         },
       }),
+      prisma.user.findUnique({
+        where:  { id: currentUser.userId },
+        select: { role: true },
+      }),
     ]);
     myActiveApplicationBundleId = existing?.bundleId ?? null;
     myLifetimeApproved = lifetimeCount;
+    isRecipient = userRecord?.role === "RECIPIENT";
   }
 
   const data = bundles.map((b) => ({
@@ -67,5 +73,5 @@ export async function GET(_req: NextRequest) {
     itemCount:        b.contentsMarkdown.split("\n").filter((l) => l.startsWith("- ")).length,
   }));
 
-  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved });
+  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved, isRecipient });
 }

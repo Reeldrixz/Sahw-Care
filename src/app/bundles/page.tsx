@@ -105,6 +105,7 @@ export default function BundlesPage() {
   const [bundles,                    setBundles]                    = useState<BundleItem[]>([]);
   const [myActiveApplicationBundleId, setMyActiveApplicationBundleId] = useState<string | null>(null);
   const [myLifetimeApproved,         setMyLifetimeApproved]         = useState(0);
+  const [isRecipient,                setIsRecipient]                = useState(false);
   const [loading,                    setLoading]                    = useState(true);
   const [stageFilter,                setStageFilter]                = useState<StageFilter>("ALL");
   const [expanded,                   setExpanded]                   = useState<string | null>(null);
@@ -123,6 +124,7 @@ export default function BundlesPage() {
       setBundles(d.bundles ?? []);
       setMyActiveApplicationBundleId(d.myActiveApplicationBundleId ?? null);
       setMyLifetimeApproved(d.myLifetimeApproved ?? 0);
+      setIsRecipient(d.isRecipient ?? false);
     }
     setLoading(false);
   }, []);
@@ -346,24 +348,29 @@ export default function BundlesPage() {
                 const popular = b.code === MOST_POPULAR;
                 const isOpen  = expanded === b.id;
 
-                const isMyApplication = b.id === myActiveApplicationBundleId;
-                const isDisabled      = !!myActiveApplicationBundleId && !isMyApplication;
-                const preview         = getPreviewItems(b.contentsMarkdown, 3);
+                const isMyApplication  = b.id === myActiveApplicationBundleId;
+                const hasOtherActive   = !!myActiveApplicationBundleId && !isMyApplication;
+                const isDisabled       = !isRecipient || hasOtherActive;
+                const preview          = getPreviewItems(b.contentsMarkdown, 3);
 
-                const btnLabel = isMyApplication
+                const btnLabel = !isRecipient
+                  ? "Available for mothers in need"
+                  : isMyApplication
                   ? "Application submitted ✓"
-                  : isDisabled
+                  : hasOtherActive
                   ? "Another application active"
                   : full
                   ? "Intake closed"
                   : "Apply for support →";
+
+                const btnClickable = isRecipient && !isMyApplication && !hasOtherActive && !full;
 
                 const btnStyle: React.CSSProperties = {
                   flex: 1, padding: "10px 0",
                   border: "none", borderRadius: 10,
                   fontSize: 12, fontWeight: 800,
                   fontFamily: "Nunito, sans-serif",
-                  cursor: (isMyApplication || isDisabled || full) ? "default" : "pointer",
+                  cursor: btnClickable ? "pointer" : "default",
                   background: isMyApplication ? "#e8f5f1"
                     : (isDisabled || full) ? "#f0f0f0"
                     : th.text,
@@ -522,12 +529,20 @@ export default function BundlesPage() {
                           <ChevronRight size={16} color={th.text} strokeWidth={2}
                             style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "0.2s" }} />
                         </button>
-                        <button
-                          onClick={() => !isMyApplication && !isDisabled && !full && openApply(b)}
-                          style={btnStyle}
-                        >
-                          {btnLabel}
-                        </button>
+                        <div style={{ flex: 1 }}>
+                          <button
+                            disabled={!btnClickable}
+                            onClick={() => btnClickable && openApply(b)}
+                            style={btnStyle}
+                          >
+                            {btnLabel}
+                          </button>
+                          {!isRecipient && (
+                            <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
+                              For mothers who need this support
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
