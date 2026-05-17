@@ -604,6 +604,12 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+                <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+                  <a href="/admin/register-suggestions" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "white", border: "1px solid var(--border)", borderRadius: 12, textDecoration: "none", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
+                    💡 Register Suggestions
+                    <ExternalLink size={12} color="var(--mid)" />
+                  </a>
+                </div>
                 <div className="admin-table">
                   <div className="admin-table-header"><div className="admin-table-title">Recent Listings</div></div>
                   <table><thead><tr><th>Item</th><th>Donor</th><th>Status</th><th>Date</th></tr></thead>
