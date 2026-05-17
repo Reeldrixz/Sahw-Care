@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Avatar from "@/components/Avatar";
+import NotificationBell from "@/components/NotificationBell";
 import { Compass, ClipboardList, Users, Gift, PackageCheck, Search } from "lucide-react";
 
 const ALL_NAV_LINKS = [
@@ -51,6 +52,7 @@ export default function DesktopNav() {
                 <Avatar src={user.avatar} name={user.name} size={28} />
                 {user.name.split(" ")[0]}
               </span>
+              <NotificationBell />
               {user.role === "ADMIN" && (
                 <button className="dnav-btn-outline" onClick={() => router.push("/admin")}>
                   Admin
