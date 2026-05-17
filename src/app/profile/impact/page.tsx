@@ -138,10 +138,7 @@ function VennDiagram({ d }: { d: ImpactData }) {
   const rFilled = Math.round((d.registers.helped / total) * 50);
   const dFilled = Math.round((d.discover.helped  / total) * 50);
 
-  const pLabel = (pct: number, helped: number) =>
-    d.totalMothersInNeed < 5 && helped > 0
-      ? `${helped} of ${d.totalMothersInNeed}`
-      : `${pct}%`;
+  const pLabel = (helped: number) => `${helped} of ${total}`;
 
   return (
     <svg
@@ -170,29 +167,29 @@ function VennDiagram({ d }: { d: ImpactData }) {
 
       {/* ── Bundles circle content ── */}
       <text x={300} y={115} textAnchor="middle" fill="#7c5fc2" fontWeight={700} fontSize={24} fontFamily="Lora, serif">
-        {pLabel(d.bundles.percent, d.bundles.helped)}
+        {pLabel(d.bundles.helped)}
       </text>
       <GridRects x={230} y={124} filled={bFilled} filledColor="#c4b8e8" />
       <text x={300} y={208} textAnchor="middle" fill="#8a8a8a" fontSize={10}>
-        {d.bundles.percent}% of moms supported
+        of moms supported
       </text>
 
       {/* ── Registers circle content ── */}
       <text x={200} y={282} textAnchor="middle" fill="#b07840" fontWeight={700} fontSize={24} fontFamily="Lora, serif">
-        {pLabel(d.registers.percent, d.registers.helped)}
+        {pLabel(d.registers.helped)}
       </text>
       <GridRects x={130} y={290} filled={rFilled} filledColor="#e8b87c" />
       <text x={200} y={374} textAnchor="middle" fill="#8a8a8a" fontSize={10}>
-        {d.registers.percent}% of moms supported
+        of moms supported
       </text>
 
       {/* ── Discover circle content ── */}
       <text x={400} y={282} textAnchor="middle" fill="#4a7a3a" fontWeight={700} fontSize={24} fontFamily="Lora, serif">
-        {pLabel(d.discover.percent, d.discover.helped)}
+        {pLabel(d.discover.helped)}
       </text>
       <GridRects x={330} y={290} filled={dFilled} filledColor="#8db580" />
       <text x={400} y={374} textAnchor="middle" fill="#8a8a8a" fontSize={10}>
-        {d.discover.percent}% of moms supported
+        of moms supported
       </text>
 
       {/* ── Centre overlap — All 3 Areas ── */}
@@ -201,7 +198,7 @@ function VennDiagram({ d }: { d: ImpactData }) {
       </text>
       <text x={300} y={274} textAnchor="middle" fontSize={16}>💚</text>
       <text x={300} y={300} textAnchor="middle" fill="#1a7a5e" fontWeight={700} fontSize={28} fontFamily="Lora, serif">
-        {pLabel(d.allThreeAreas.percent, d.allThreeAreas.helped)}
+        {pLabel(d.allThreeAreas.helped)}
       </text>
       <text x={300} y={318} textAnchor="middle" fill="#6b7280" fontSize={10}>
         of moms
@@ -220,11 +217,6 @@ function ChannelGrid({ percent, filledColor }: { percent: number; filledColor: s
       ))}
     </div>
   );
-}
-
-function pctLabel(helped: number, total: number, pct: number): string {
-  if (total < 5 && helped > 0) return `${helped} of ${total} moms`;
-  return `${pct}%`;
 }
 
 // ── Social platform SVG paths (simple-icons) ─────────────────────────────────
@@ -526,11 +518,12 @@ export default function ImpactPage() {
                     <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#ede9ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🎁</div>
                     <div>
                       <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#2a2a2a" }}>Bundles</div>
-                      <div style={{ fontSize: 11, color: "#7c5fc2", fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>{pctLabel(d.bundles.helped, d.totalMothersInNeed, d.bundles.percent)} of moms supported</div>
+                      <div style={{ fontSize: 11, color: "#7c5fc2", fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>{d.bundles.helped} of {d.totalMothersInNeed} moms supported</div>
                     </div>
                   </div>
                   <ChannelGrid percent={d.bundles.percent} filledColor="#c4b8e8" />
-                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 8 }}>Because of you, moms are healing, recovering and feeling supported.</div>
+                  <div style={{ fontSize: 10, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginTop: 4, marginBottom: 6 }}>Each square represents 2% of moms in need this month.</div>
+                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 2 }}>Because of you, moms are healing, recovering and feeling supported.</div>
                 </div>
 
                 <div style={{ background: "#fff6f0", borderRadius: 20, padding: "20px", border: "1px solid #f0c8a8" }}>
@@ -538,11 +531,12 @@ export default function ImpactPage() {
                     <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#fff0e6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📦</div>
                     <div>
                       <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#2a2a2a" }}>Registers</div>
-                      <div style={{ fontSize: 11, color: "#c4784a", fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>{pctLabel(d.registers.helped, d.totalMothersInNeed, d.registers.percent)} of moms supported</div>
+                      <div style={{ fontSize: 11, color: "#c4784a", fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>{d.registers.helped} of {d.totalMothersInNeed} moms supported</div>
                     </div>
                   </div>
                   <ChannelGrid percent={d.registers.percent} filledColor="#e8a87c" />
-                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 8 }}>Because of you, everyday needs are met with dignity and care.</div>
+                  <div style={{ fontSize: 10, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginTop: 4, marginBottom: 6 }}>Each square represents 2% of moms in need this month.</div>
+                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 2 }}>Because of you, everyday needs are met with dignity and care.</div>
                 </div>
 
                 <div style={{ background: "#f0faf5", borderRadius: 20, padding: "20px", border: "1px solid #a8d4bf" }}>
@@ -550,11 +544,12 @@ export default function ImpactPage() {
                     <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#e0f4ec", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛍️</div>
                     <div>
                       <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#2a2a2a" }}>Discover</div>
-                      <div style={{ fontSize: 11, color: "#3d7a32", fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>{pctLabel(d.discover.helped, d.totalMothersInNeed, d.discover.percent)} of moms supported</div>
+                      <div style={{ fontSize: 11, color: "#3d7a32", fontWeight: 800, fontFamily: "Nunito, sans-serif" }}>{d.discover.helped} of {d.totalMothersInNeed} moms supported</div>
                     </div>
                   </div>
                   <ChannelGrid percent={d.discover.percent} filledColor="#8db580" />
-                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 8 }}>Because of you, items are shared, reused and loved by another mom.</div>
+                  <div style={{ fontSize: 10, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginTop: 4, marginBottom: 6 }}>Each square represents 2% of moms in need this month.</div>
+                  <div style={{ fontSize: 12, color: "#5a5a5a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: 2 }}>Because of you, items are shared, reused and loved by another mom.</div>
                 </div>
 
               </div>
