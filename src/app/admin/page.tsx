@@ -98,7 +98,30 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "register-suggestions";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "register-suggestions" | "impact";
+
+interface LifetimeImpact {
+  firstActionDate: string | null;
+  venn: {
+    totalMothersInNeed: number;
+    bundles:      { helped: number; percent: number };
+    registers:    { helped: number; percent: number };
+    discover:     { helped: number; percent: number };
+    allThreeAreas:{ helped: number; percent: number };
+  };
+  channels: {
+    bundles:   { delivered: number; momsReached: number; total: number };
+    registers: { delivered: number; momsReached: number; total: number };
+    discover:  { fulfilled: number; momsReached: number; total: number };
+  };
+  trend: Array<{ month: string; bundles: number; registers: number; discover: number; total: number }>;
+  topTeams: Array<{ id: string; missionName: string; month: string; memberCount: number; lifetimeEssentials: number; tier: number }>;
+  fulfillmentRates: {
+    bundles: number; registers: number; discover: number;
+    bundlesTotal: number; registersTotal: number; discoverTotal: number;
+  };
+  totals: { momsServed: number; contributors: number; essentials: number; missions: number };
+}
 
 interface SuggestionGroup {
   id: string; itemName: string; category: string; notes: string | null;
@@ -269,6 +292,10 @@ export default function AdminPage() {
   const [fulfillments,      setFulfillments]      = useState<AdminFulfillment[]>([]);
   const [fulfillFilter,     setFulfillFilter]     = useState<"DISPUTED" | "AUTO_CONFIRMED" | "PENDING">("DISPUTED");
 
+  // Impact state
+  const [impactData,        setImpactData]        = useState<LifetimeImpact | null>(null);
+  const [impactLoading,     setImpactLoading]     = useState(false);
+
   // Register suggestions state
   const [suggestions,       setSuggestions]       = useState<SuggestionGroup[]>([]);
   const [suggestionFilter,  setSuggestionFilter]  = useState<"pending" | "promoted" | "declined" | "all">("pending");
@@ -385,6 +412,16 @@ export default function AdminPage() {
     if (section === "approvals") fetchPendingApprovals();
   }, [section, fetchCatalogAdmin, fetchPendingApprovals]);
   useEffect(() => { if (section === "refunds") fetchRefunds(); }, [section, fetchRefunds]);
+  useEffect(() => {
+    if (section !== "impact" || impactData || impactLoading) return;
+    setImpactLoading(true);
+    fetch("/api/admin/impact/lifetime")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setImpactData(d); })
+      .catch(() => {})
+      .finally(() => setImpactLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
 
   const fetchBundleAppCatalogue = useCallback(async () => {
     setBundleAppCatalogueLoading(true);
@@ -556,6 +593,7 @@ export default function AdminPage() {
     ["refunds",        "💳 Refunds"],
     ["bundle-apps",    `📬 Bundle Apps${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0) > 0 ? ` (${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0)})` : ""}`],
     ["register-suggestions", `💡 Suggestions${suggestions.filter(s => s.status === "pending").length > 0 ? ` (${suggestions.filter(s => s.status === "pending").length})` : ""}`],
+    ["impact",               "📈 Impact"],
   ];
 
   return (
@@ -2389,6 +2427,188 @@ export default function AdminPage() {
                     })}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── IMPACT ───────────────────────────────────────────────── */}
+            {section === "impact" && (
+              <div style={{ fontFamily: "Nunito, sans-serif" }}>
+
+                {/* Header */}
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 24, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>Platform Impact</div>
+                  <div style={{ fontSize: 13, color: "#555", marginBottom: 4 }}>Lifetime data across all channels</div>
+                  {impactData?.firstActionDate && (
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                      From {new Date(impactData.firstActionDate).toLocaleDateString("en", { month: "long", day: "numeric", year: "numeric" })} to today
+                    </div>
+                  )}
+                </div>
+
+                {impactLoading && <div style={{ display: "flex", justifyContent: "center", padding: 60 }}><div className="spinner" /></div>}
+
+                {impactData && (() => {
+                  const d = impactData;
+                  const total   = Math.max(d.venn.totalMothersInNeed, 1);
+                  const bFilled = Math.round((d.venn.bundles.helped   / total) * 50);
+                  const rFilled = Math.round((d.venn.registers.helped / total) * 50);
+                  const dFilled = Math.round((d.venn.discover.helped  / total) * 50);
+                  const pLabel  = (n: number) => `${n} of ${total}`;
+
+                  const trendData = d.trend.slice(-12);
+                  const maxVal = Math.max(...trendData.map(t => t.total), 1);
+                  const CW = 700, CH = 200, PT = 16, PB = 36, PL = 50, PR = 16;
+                  const cw = CW - PL - PR, ch = CH - PT - PB;
+                  const xs = (i: number) => PL + (trendData.length > 1 ? (i / (trendData.length - 1)) * cw : cw / 2);
+                  const ys = (v: number) => PT + ch - (v / maxVal) * ch;
+                  const pathD = (key: "total" | "bundles" | "registers" | "discover") =>
+                    trendData.map((t, i) => `${i === 0 ? "M" : "L"}${xs(i).toFixed(1)},${ys(t[key]).toFixed(1)}`).join(" ");
+
+                  return (
+                    <>
+                      {/* ── Totals strip ──────────────────────────────────────── */}
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+                        {[
+                          { label: "Moms Served",          value: d.totals.momsServed.toLocaleString(),   color: "#1a7a5e", bg: "#e8f5f1" },
+                          { label: "Essentials Delivered",  value: d.totals.essentials.toLocaleString(),   color: "#7c5fc2", bg: "#f0ecfb" },
+                          { label: "Contributors",          value: d.totals.contributors.toLocaleString(), color: "#b07840", bg: "#fef3c7" },
+                          { label: "Total Missions",        value: d.totals.missions.toLocaleString(),      color: "#4a7a3a", bg: "#f0fdf4" },
+                        ].map(({ label, value, color, bg }) => (
+                          <div key={label} style={{ background: bg, borderRadius: 14, padding: "18px 16px", border: `1.5px solid ${color}22` }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: 1, color, marginBottom: 6 }}>{label}</div>
+                            <div style={{ fontFamily: "Lora, serif", fontSize: 28, fontWeight: 700, color }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* ── Venn + Channel cards ─────────────────────────────── */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 20, marginBottom: 24 }}>
+
+                        <div style={{ background: "white", borderRadius: 16, padding: "20px 16px", border: "1px solid #ede8df" }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#1a7a5e", letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 12 }}>Lifetime Reach — Venn</div>
+                          <svg viewBox="0 0 600 540" width="100%" style={{ display: "block" }}>
+                            <circle cx={300} cy={180} r={170} fill="rgba(168,155,217,0.08)" stroke="#a89bd9" strokeWidth={1.8} />
+                            <circle cx={200} cy={340} r={170} fill="rgba(212,165,116,0.08)" stroke="#d4a574" strokeWidth={1.8} />
+                            <circle cx={400} cy={340} r={170} fill="rgba(141,181,128,0.10)" stroke="#8db580" strokeWidth={1.8} />
+                            <text x={300} y={70}  textAnchor="middle" fill="#7c5fc2" fontWeight={700} fontSize={13} letterSpacing={1.4}>🎁 BUNDLES</text>
+                            <text x={140} y={492} textAnchor="middle" fill="#b07840" fontWeight={700} fontSize={12}>📦 REGISTERS</text>
+                            <text x={460} y={492} textAnchor="middle" fill="#4a7a3a" fontWeight={700} fontSize={12}>🛍️ DISCOVER</text>
+                            <text x={300} y={115} textAnchor="middle" fill="#7c5fc2" fontWeight={700} fontSize={22} fontFamily="Lora, serif">{pLabel(d.venn.bundles.helped)}</text>
+                            {Array.from({ length: 50 }, (_, idx) => { const row = Math.floor(idx / 10), col = idx % 10; return <rect key={`b${idx}`} x={230 + col * 14} y={124 + row * 14} width={12} height={12} rx={2} fill={idx < bFilled ? "#c4b8e8" : "#d4cfc8"} />; })}
+                            <text x={300} y={208} textAnchor="middle" fill="#8a8a8a" fontSize={10}>of moms supported</text>
+                            <text x={200} y={282} textAnchor="middle" fill="#b07840" fontWeight={700} fontSize={22} fontFamily="Lora, serif">{pLabel(d.venn.registers.helped)}</text>
+                            {Array.from({ length: 50 }, (_, idx) => { const row = Math.floor(idx / 10), col = idx % 10; return <rect key={`r${idx}`} x={130 + col * 14} y={290 + row * 14} width={12} height={12} rx={2} fill={idx < rFilled ? "#e8b87c" : "#d4cfc8"} />; })}
+                            <text x={200} y={374} textAnchor="middle" fill="#8a8a8a" fontSize={10}>of moms supported</text>
+                            <text x={400} y={282} textAnchor="middle" fill="#4a7a3a" fontWeight={700} fontSize={22} fontFamily="Lora, serif">{pLabel(d.venn.discover.helped)}</text>
+                            {Array.from({ length: 50 }, (_, idx) => { const row = Math.floor(idx / 10), col = idx % 10; return <rect key={`d${idx}`} x={330 + col * 14} y={290 + row * 14} width={12} height={12} rx={2} fill={idx < dFilled ? "#8db580" : "#d4cfc8"} />; })}
+                            <text x={400} y={374} textAnchor="middle" fill="#8a8a8a" fontSize={10}>of moms supported</text>
+                            <text x={300} y={255} textAnchor="middle" fill="#1a7a5e" fontWeight={700} fontSize={9} letterSpacing={1.5}>ALL 3 AREAS</text>
+                            <text x={300} y={274} textAnchor="middle" fontSize={16}>💚</text>
+                            <text x={300} y={300} textAnchor="middle" fill="#1a7a5e" fontWeight={700} fontSize={26} fontFamily="Lora, serif">{pLabel(d.venn.allThreeAreas.helped)}</text>
+                            <text x={300} y={318} textAnchor="middle" fill="#6b7280" fontSize={10}>of moms</text>
+                          </svg>
+                          <div style={{ fontSize: 10, color: "#9ca3af", textAlign: "center", marginTop: 4 }}>Each square represents 2% of lifetime moms in need</div>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                          {[
+                            { label: "Bundles",   icon: "🎁", color: "#7c5fc2", bg: "#f5f3fc", line1: `${d.channels.bundles.delivered} delivered`,   line2: `${d.channels.bundles.momsReached} moms reached`,   line3: `${d.channels.bundles.total} total applications`   },
+                            { label: "Registers", icon: "📦", color: "#b07840", bg: "#fef9f0", line1: `${d.channels.registers.delivered} items fulfilled`, line2: `${d.channels.registers.momsReached} moms reached`, line3: `${d.channels.registers.total} total register items` },
+                            { label: "Discover",  icon: "🛍️", color: "#4a7a3a", bg: "#f0fdf4", line1: `${d.channels.discover.fulfilled} items fulfilled`,  line2: `${d.channels.discover.momsReached} moms reached`,  line3: `${d.channels.discover.total} total requests`       },
+                          ].map(({ label, icon, color, bg, line1, line2, line3 }) => (
+                            <div key={label} style={{ background: bg, borderRadius: 14, padding: "16px 18px", border: `1.5px solid ${color}22`, flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 800, color, marginBottom: 8 }}>{icon} {label}</div>
+                              <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color, marginBottom: 4 }}>{line1}</div>
+                              <div style={{ fontSize: 12, color: "#555", marginBottom: 2 }}>{line2}</div>
+                              <div style={{ fontSize: 11, color: "#9ca3af" }}>{line3}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* ── Monthly trend chart ──────────────────────────────── */}
+                      <div style={{ background: "white", borderRadius: 16, padding: "20px", border: "1px solid #ede8df", marginBottom: 24 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#1a7a5e", letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 4 }}>Essentials Delivered per Month</div>
+                        <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                          {([["Total","#1a7a5e",""],["Bundles","#a89bd9","4 2"],["Registers","#d4a574","4 2"],["Discover","#8db580","4 2"]] as [string,string,string][]).map(([lbl, clr, dash]) => (
+                            <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+                              <svg width={24} height={8}><line x1={0} y1={4} x2={24} y2={4} stroke={clr} strokeWidth={2} strokeDasharray={dash} /></svg>
+                              {lbl}
+                            </div>
+                          ))}
+                        </div>
+                        {trendData.length === 0 ? (
+                          <div style={{ textAlign: "center", padding: "40px 0", color: "#9ca3af", fontSize: 13 }}>No trend data yet</div>
+                        ) : (
+                          <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" style={{ display: "block" }}>
+                            {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
+                              const y = PT + ch * (1 - frac);
+                              return (
+                                <g key={frac}>
+                                  <line x1={PL} y1={y} x2={PL + cw} y2={y} stroke="#f0f0f0" strokeWidth={1} />
+                                  <text x={PL - 6} y={y + 4} textAnchor="end" fontSize={9} fill="#9ca3af">{Math.round(maxVal * frac)}</text>
+                                </g>
+                              );
+                            })}
+                            <path d={pathD("total")}     fill="none" stroke="#1a7a5e" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={pathD("bundles")}   fill="none" stroke="#a89bd9" strokeWidth={1.5} strokeDasharray="4 2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={pathD("registers")} fill="none" stroke="#d4a574" strokeWidth={1.5} strokeDasharray="4 2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d={pathD("discover")}  fill="none" stroke="#8db580" strokeWidth={1.5} strokeDasharray="4 2" strokeLinecap="round" strokeLinejoin="round" />
+                            {trendData.map((t, i) => (
+                              <text key={i} x={xs(i)} y={CH - 8} textAnchor="middle" fontSize={9} fill="#9ca3af">
+                                {t.month.slice(5)}/{t.month.slice(2, 4)}
+                              </text>
+                            ))}
+                          </svg>
+                        )}
+                      </div>
+
+                      {/* ── Bottom row: Top teams + Fulfillment rates ─────────── */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
+
+                        <div style={{ background: "white", borderRadius: 16, padding: "20px", border: "1px solid #ede8df" }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#1a7a5e", letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 4 }}>Top 5 Mission Teams</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 14 }}>Teams contributing the most essentials over time</div>
+                          {d.topTeams.length === 0 ? (
+                            <div style={{ color: "#9ca3af", fontSize: 13, padding: "20px 0" }}>No team data yet</div>
+                          ) : d.topTeams.map((team, rank) => (
+                            <div key={team.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: rank < d.topTeams.length - 1 ? "1px solid #f5f5f5" : "none" }}>
+                              <div style={{ width: 28, height: 28, borderRadius: "50%", background: rank === 0 ? "#fde68a" : "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, color: rank === 0 ? "#92400e" : "#555", flexShrink: 0 }}>
+                                {rank + 1}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{team.missionName}</div>
+                                <div style={{ fontSize: 11, color: "#9ca3af" }}>{team.month} · {team.memberCount} members · Tier {team.tier}</div>
+                              </div>
+                              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a7a5e", flexShrink: 0 }}>{team.lifetimeEssentials.toLocaleString()}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div style={{ background: "white", borderRadius: 16, padding: "20px", border: "1px solid #ede8df" }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#1a7a5e", letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 4 }}>Fulfillment Rate by Channel</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 20 }}>% of needs fulfilled out of total received</div>
+                          {[
+                            { label: "🎁 Bundles",   rate: d.fulfillmentRates.bundles,   total: d.fulfillmentRates.bundlesTotal,   color: "#7c5fc2" },
+                            { label: "📦 Registers", rate: d.fulfillmentRates.registers, total: d.fulfillmentRates.registersTotal, color: "#b07840" },
+                            { label: "🛍️ Discover",  rate: d.fulfillmentRates.discover,  total: d.fulfillmentRates.discoverTotal,  color: "#4a7a3a" },
+                          ].map(({ label, rate, total, color }) => (
+                            <div key={label} style={{ marginBottom: 20 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a" }}>{label}</span>
+                                <span style={{ fontSize: 13, fontWeight: 800, color }}>{rate}%</span>
+                              </div>
+                              <div style={{ height: 10, background: "#f5f5f5", borderRadius: 6, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${rate}%`, background: color, borderRadius: 6 }} />
+                              </div>
+                              <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4 }}>{total.toLocaleString()} total</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
