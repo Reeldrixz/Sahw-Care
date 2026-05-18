@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Baby, Users, Gift } from "lucide-react";
+import { Baby, Users, Gift, Heart, Leaf } from "lucide-react";
 
 interface Props {
   onComplete: () => void;
@@ -42,21 +42,22 @@ const DUE_YEARS = [currentYear, currentYear + 1];
 // Donor submits immediately after step 0.
 
 export default function OnboardingModal({ onComplete }: Props) {
-  const [step, setStep]         = useState(0);
-  const [journey, setJourney]   = useState<Journey>(null);
-  const [dueMonth, setDueMonth] = useState<number>(now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2);
-  const [dueYear, setDueYear]   = useState<number>(currentYear);
-  const [babyAge, setBabyAge]   = useState<number | null>(null);
-  const [saving, setSaving]     = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [step, setStep]           = useState(0);
+  const [journey, setJourney]     = useState<Journey>(null);
+  const [dueMonth, setDueMonth]   = useState<number>(now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2);
+  const [dueYear, setDueYear]     = useState<number>(currentYear);
+  const [babyAge, setBabyAge]     = useState<number | null>(null);
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [donorWelcome, setDonorWelcome] = useState(false);
 
   const totalSteps = journey === "donor" ? 1 : 2;
 
-  const selectRole = async (j: Journey) => {
+  const selectRole = (j: Journey) => {
     setJourney(j);
     setError(null);
     if (j === "donor") {
-      await submitOnboarding(j);
+      setDonorWelcome(true);
     } else {
       setStep(1);
     }
@@ -93,6 +94,72 @@ export default function OnboardingModal({ onComplete }: Props) {
       setSaving(false);
     }
   };
+
+  // ── Donor threshold screen ───────────────────────────────────────────────
+  if (donorWelcome) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, background: "#faf8f3", zIndex: 600,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        justifyContent: "center", padding: "40px 24px",
+      }}>
+        <div style={{ maxWidth: 600, width: "100%", textAlign: "center" }}>
+
+          {/* Top accent */}
+          <div style={{ marginBottom: 52 }}>
+            <Heart size={28} strokeWidth={1.5} color="#1a7a5e" fill="none" />
+          </div>
+
+          {/* First line */}
+          <p style={{
+            fontFamily: "Lora, serif", fontSize: 24, fontWeight: 700,
+            color: "#1a7a5e", lineHeight: 1.45, margin: "0 0 32px",
+          }}>
+            Kradəl is built on compassion and mercy — not convenience.
+          </p>
+
+          {/* Middle paragraph */}
+          <p style={{
+            fontFamily: "Lora, serif", fontSize: 16, fontStyle: "italic",
+            color: "#2a2a2a", lineHeight: 1.85, margin: "0 0 32px",
+          }}>
+            If you&apos;re here, you&apos;re here because mothers deserve real support.
+            The work isn&apos;t always easy. But it&apos;s always worth it.
+          </p>
+
+          {/* Final line */}
+          <p style={{
+            fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700,
+            color: "#1a7a5e", lineHeight: 1.4, margin: "0 0 48px",
+          }}>
+            Welcome to the work.
+          </p>
+
+          {/* Bottom leaf accent */}
+          <div style={{ marginBottom: 32, opacity: 0.35 }}>
+            <Leaf size={20} strokeWidth={1.5} color="#1a7a5e" />
+          </div>
+
+          {/* Begin button */}
+          <button
+            onClick={() => submitOnboarding("donor")}
+            disabled={saving}
+            style={{
+              width: "100%", maxWidth: 400, padding: "16px",
+              background: saving ? "#aaa" : "#1a7a5e", color: "white",
+              border: "none", borderRadius: 16,
+              fontFamily: "Nunito, sans-serif", fontSize: 16, fontWeight: 800,
+              cursor: saving ? "not-allowed" : "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            {saving ? "Setting up…" : "Begin →"}
+          </button>
+
+        </div>
+      </div>
+    );
+  }
 
   // ── Shell ────────────────────────────────────────────────────────────────
   return (
