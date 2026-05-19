@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
   if (user.journeyType === "pregnant" && dueDateStr) {
     const dueDate = new Date(dueDateStr);
     if (!isNaN(dueDate.getTime())) {
+      if (dueDate.getTime() <= Date.now()) {
+        return NextResponse.json({ error: "Due date must be in the future" }, { status: 400 });
+      }
       updates.dueDate = dueDate;
       const newStage = calculateStage("pregnant", dueDate, null);
       if (newStage) updates.currentStage = newStage;
