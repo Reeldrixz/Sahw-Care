@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight, Settings, ShieldCheck, FileText, Clock, CheckCircle, XCircle,
-  Heart, Users, LayoutDashboard, Flag, Package, Gift, Crown,
+  Heart, Users, LayoutDashboard, Flag, Package, Gift, Crown, Calendar,
   type LucideIcon,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
@@ -680,36 +680,39 @@ export default function ProfilePage() {
         {/* ════════════ RECIPIENT VIEW ═════════════════════════════════════ */}
         {!isAdmin && !isDonor && (
           <>
-            {/* Stage countdown card */}
+            {/* Stage countdown card — compact status indicator */}
             {transitionStatus?.daysUntil !== null && transitionStatus?.daysUntil !== undefined &&
              transitionStatus.daysUntil >= 0 && transitionStatus.daysUntil <= 30 &&
              transitionStatus.nextStageKey && (
               <div
                 onClick={() => setShowTransitionModal(true)}
                 style={{
-                  background: "#e8f5f1", borderRadius: 16, padding: "16px",
-                  marginBottom: 14, display: "flex", alignItems: "center", gap: 14,
+                  background: "#e8f5f1", borderRadius: 14, padding: "12px 14px",
+                  marginBottom: 14, display: "flex", alignItems: "center", gap: 12,
                   border: "1.5px solid #b7dfd1", cursor: "pointer",
                 }}
               >
-                <div style={{ fontSize: 28, flexShrink: 0 }}>
-                  {transitionStatus.nextStageKey.startsWith("pregnancy") ? "🌿" :
-                   transitionStatus.nextStageKey === "postpartum-0-3" ? "💛" :
-                   transitionStatus.nextStageKey === "postpartum-4-6" ? "🌙" :
-                   transitionStatus.nextStageKey === "postpartum-7-12" ? "🌍" : "👣"}
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, background: "#b7dfd1",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  <Calendar size={17} color="#1a7a5e" strokeWidth={1.75} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a7a5e", lineHeight: 1.2 }}>
-                    <strong>{transitionStatus.daysUntil}</strong> {transitionStatus.daysUntil === 1 ? "day" : "days"} to {transitionStatus.nextStageName}
+                  <div style={{
+                    fontSize: 13, fontWeight: 800, color: "#1a7a5e",
+                    fontFamily: "Nunito, sans-serif", lineHeight: 1.2,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {transitionStatus.daysUntil} {transitionStatus.daysUntil === 1 ? "day" : "days"} to {transitionStatus.nextStageName}
                   </div>
-                  <div style={{ fontSize: 12, color: "#1a7a5e", opacity: 0.8, fontFamily: "Nunito, sans-serif", marginTop: 3, lineHeight: 1.4 }}>
-                    You&apos;ll be transitioning to the {transitionStatus.nextStageName} stage
-                    {transitionStatus.transitionDate && (
-                      <> on {new Date(transitionStatus.transitionDate).toLocaleDateString("en", { month: "short", day: "numeric" })}</>
-                    )}.
+                  <div style={{ fontSize: 11, color: "#1a7a5e", opacity: 0.65, fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
+                    Transition on {transitionStatus.transitionDate
+                      ? new Date(transitionStatus.transitionDate).toLocaleDateString("en", { month: "short", day: "numeric" })
+                      : "—"}
                   </div>
                 </div>
-                <ChevronRight size={20} color="#1a7a5e" style={{ flexShrink: 0 }} />
+                <ChevronRight size={16} color="#1a7a5e" style={{ flexShrink: 0 }} />
               </div>
             )}
 

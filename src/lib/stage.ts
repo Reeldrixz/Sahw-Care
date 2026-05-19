@@ -116,14 +116,44 @@ const MS_PER_DAY   = 86_400_000;
 const MS_PER_WEEK  = 7   * MS_PER_DAY;
 const MS_PER_MONTH = 30.44 * MS_PER_DAY;
 
-/** Bullet-point copy for the "What this stage means" section of the transition modal. */
-export const STAGE_BULLETS: Partial<Record<StageKey, [string, string, string]>> = {
-  "pregnancy-4-6":    ["You may start feeling more energetic", "New topics, new support", "Fresh guidance for what's ahead"],
-  "pregnancy-7-9":    ["Final preparations for baby's arrival", "Connect with mothers in their final stretch", "Birth-prep resources and support"],
-  "postpartum-0-3":   ["Welcome to the newborn stage", "Postpartum recovery support", "Connect with new mothers in their first weeks"],
-  "postpartum-4-6":   ["Your baby's developing fast", "Sleep, feeding, and routine support", "Mothers navigating the same milestones"],
-  "postpartum-7-12":  ["Baby is becoming more curious", "First-year milestone support", "Connect with mothers approaching toddlerhood"],
-  "postpartum-13-24": ["Welcome to toddlerhood", "Toddler care and development", "The terminal stage in your Circle journey — you'll stay here as your child grows"],
+export interface StageBullet {
+  icon:        string;
+  title:       string;
+  description: string;
+}
+
+/** Two-tier bullet content for the "What this stage means" section of the transition modal. */
+export const STAGE_BULLETS: Partial<Record<StageKey, [StageBullet, StageBullet, StageBullet]>> = {
+  "pregnancy-4-6": [
+    { icon: "zap",            title: "A burst of energy",             description: "Many mothers feel more active and energetic in the second trimester." },
+    { icon: "message-circle", title: "New topics, new support",        description: "Your Circle shifts to bump growth, movement, and what matters most right now." },
+    { icon: "star",           title: "Fresh guidance ahead",           description: "Resources and conversations tailored to where you are in your journey." },
+  ],
+  "pregnancy-7-9": [
+    { icon: "package",   title: "Time to prepare",                description: "Final weeks to nest, pack your bag, and get ready for baby's arrival." },
+    { icon: "users",     title: "Mothers in the home stretch",    description: "Connect with women who know exactly how you feel right now." },
+    { icon: "book-open", title: "Birth-prep support",             description: "Resources on labour signs, birth plans, and what to expect." },
+  ],
+  "postpartum-0-3": [
+    { icon: "heart",       title: "Welcome to the newborn stage",   description: "A tender, overwhelming, beautiful chapter — your Circle is here with you." },
+    { icon: "heart-pulse", title: "Postpartum recovery",            description: "Support for healing your body while caring for a newborn." },
+    { icon: "users",       title: "First-weeks community",          description: "Connect with mothers navigating the same sleepless, precious early days." },
+  ],
+  "postpartum-4-6": [
+    { icon: "sprout", title: "Your baby is growing fast",       description: "New skills, milestones, and personality emerging every week." },
+    { icon: "moon",   title: "Sleep, feeding & routine",        description: "Honest conversations about what really works — and what doesn't." },
+    { icon: "users",  title: "Same-stage mothers",              description: "A Circle of women navigating the same milestones alongside you." },
+  ],
+  "postpartum-7-12": [
+    { icon: "globe", title: "A more curious baby",             description: "Crawling, standing, first words — this stage is full of wonder." },
+    { icon: "star",  title: "First-year milestones",           description: "Support for every check-up, meal, and developmental leap." },
+    { icon: "users", title: "Approaching toddlerhood",         description: "Mothers who are right there with you, ready to share and support." },
+  ],
+  "postpartum-13-24": [
+    { icon: "heart",      title: "Welcome to toddlerhood",       description: "Big feelings, first words, and a whole new level of independence." },
+    { icon: "book-open",  title: "Toddler care & development",   description: "Resources on tantrums, language, play, and healthy growth." },
+    { icon: "leaf",       title: "Your final Circle stage",      description: "You'll stay in the Little Steps Circle as your child continues to grow." },
+  ],
 };
 
 export interface TransitionInfo {
