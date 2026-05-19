@@ -3,11 +3,11 @@
 import { useState, useRef } from "react";
 import Avatar from "./Avatar";
 import {
-  Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy, Users,
+  Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy,
   Camera, ChevronLeft, ArrowRight, type LucideIcon,
 } from "lucide-react";
 
-type Category = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT";
+type Category = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN";
 
 interface Channel { id: string; name: string; emoji: string; }
 
@@ -62,13 +62,6 @@ const CATEGORIES: {
     prompt: "Celebrate a moment, however tiny. You deserve to be cheered on.",
     color: "#0891b2", bg: "#ecfeff",
     Icon: Trophy,
-  },
-  {
-    value: "SUPPORT",
-    label: "Support",
-    prompt: "Reach out when you need it. This circle is here for you.",
-    color: "#db2777", bg: "#fdf2f8",
-    Icon: Users,
   },
 ];
 

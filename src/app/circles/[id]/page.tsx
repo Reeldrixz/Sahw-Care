@@ -61,7 +61,6 @@ type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_
 const POST_FILTERS: { value: PostCategory; label: string }[] = [
   { value: "ALL",       label: "All"        },
   { value: "QUESTION",  label: "Questions"  },
-  { value: "SUPPORT",   label: "Support"    },
   { value: "TIP",       label: "Tips"       },
   { value: "STORY",     label: "Stories"    },
   { value: "SMALL_WIN", label: "Small Wins" },
