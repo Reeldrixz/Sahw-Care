@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { NotifType } from "@prisma/client";
 
 export type ActionType =
   | "click"
@@ -133,6 +134,23 @@ export async function recordMissionAction(
           data:  { totalBlocks: { increment: blocks } },
         }),
       ]);
+    }
+
+    // ── Impact card unlock (first qualifying Discover/Register action) ──────
+    const IMPACT_QUALIFYING: ActionType[] = ["listing_posted", "listing_completed", "register_committed", "register_fulfilled"];
+    if (IMPACT_QUALIFYING.includes(actionType)) {
+      const u = await prisma.user.findUnique({ where: { id: userId }, select: { impactCardUnlockedAt: true } });
+      if (!u?.impactCardUnlockedAt) {
+        await prisma.user.update({ where: { id: userId }, data: { impactCardUnlockedAt: new Date() } });
+        await prisma.notification.create({
+          data: {
+            userId,
+            type: "IMPACT_CARD_UNLOCKED" as NotifType,
+            message: "Your impact card is ready! Share your care journey.",
+            link: "/profile/contributor",
+          },
+        }).catch(() => {});
+      }
     }
 
     // Check mission completion

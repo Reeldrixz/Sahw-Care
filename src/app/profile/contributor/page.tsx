@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import ShareImpactModal from "@/components/ShareImpactModal";
 
 // ── types ──────────────────────────────────────────────────────────────────
 
@@ -554,12 +555,13 @@ export default function ContributorPage() {
   const { user } = useAuth();
   const router   = useRouter();
 
-  const [data,        setData]        = useState<ContributorData | null>(null);
-  const [loading,     setLoading]     = useState(true);
-  const [editing,     setEditing]     = useState(false);
-  const [sharing,     setSharing]     = useState(false);
-  const [shareDone,   setShareDone]   = useState(false);
-  const [tierBanner,  setTierBanner]  = useState<{ tier: number; blockValue: number } | null>(null);
+  const [data,            setData]            = useState<ContributorData | null>(null);
+  const [loading,         setLoading]         = useState(true);
+  const [editing,         setEditing]         = useState(false);
+  const [sharing,         setSharing]         = useState(false);
+  const [shareDone,       setShareDone]       = useState(false);
+  const [tierBanner,      setTierBanner]      = useState<{ tier: number; blockValue: number } | null>(null);
+  const [showImpactModal, setShowImpactModal] = useState(false);
 
   const fetchData = useCallback(() => {
     fetch("/api/profile/contributor")
@@ -967,6 +969,25 @@ export default function ContributorPage() {
 
             {/* ════ SHARE ROW — spans both columns on desktop ════ */}
             <div className="cp2-share-row">
+              {/* Impact card share button — only for donors who have qualifying actions */}
+              {data.hasActions && (
+                <button
+                  onClick={() => setShowImpactModal(true)}
+                  style={{
+                    width: "100%", background: "#0d3d2e",
+                    border: "none", borderRadius: 18,
+                    padding: "16px 0", fontFamily: "Nunito, sans-serif",
+                    fontSize: 15, fontWeight: 800, color: "white",
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <span style={{ fontSize: 17 }}>✨</span>
+                  Share your impact
+                </button>
+              )}
+
               <button
                 onClick={handleShare}
                 disabled={sharing}
@@ -1015,6 +1036,10 @@ export default function ContributorPage() {
           onClose={() => setEditing(false)}
           onSaved={handleSaved}
         />
+      )}
+
+      {showImpactModal && (
+        <ShareImpactModal onClose={() => setShowImpactModal(false)} />
       )}
     </>
   );

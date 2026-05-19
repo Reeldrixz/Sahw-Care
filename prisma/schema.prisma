@@ -91,6 +91,7 @@ model User {
   streakWeeksCompleted     Int       @default(0)
   hasPostedIntro           Boolean   @default(false)
   bio                      String?   // care contributor statement, max 250 chars
+  impactCardUnlockedAt     DateTime?
 
   trustEvents       TrustEvent[]
   trustScoreLogs    TrustScoreLog[]
@@ -900,6 +901,9 @@ enum NotifType {
   // Bundle application
   BUNDLE_APPLICATION_APPROVED
   BUNDLE_APPLICATION_REJECTED
+
+  // Impact card
+  IMPACT_CARD_UNLOCKED
 }
 
 enum BundleInstanceStatus {

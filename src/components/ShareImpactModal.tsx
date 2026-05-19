@@ -1,77 +1,101 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import ImpactCard, { type ImpactVariant, type ImpactStats } from "./ImpactCard";
 
-interface ImpactStats {
-  donations: number;
-  families: number;
-  babiesFed: number;
-  rank: { label: string; emoji: string; next: string | null; nextAt: number | null };
+interface ImpactData {
+  variant: ImpactVariant;
+  stats:   ImpactStats;
+  city:    string | null;
+  month:   string;
 }
 
 interface Props {
   onClose: () => void;
 }
 
-const APP_URL =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL ?? "https://kradel.app";
+const SHARE_TEXT: Record<ImpactVariant, (name: string, s: ImpactStats) => string> = {
+  discover:  (n, s) => `I've shared essentials with ${s.mothersSupported} ${s.mothersSupported === 1 ? "mom" : "moms"} through Kradel 💛 Every mom deserves support. Join me:`,
+  register:  (n, s) => `I've fulfilled ${s.requestsFulfilled} care ${s.requestsFulfilled === 1 ? "request" : "requests"} for moms in need through Kradel 💛 Join me:`,
+  combined:  (n, s) => `I've helped ${s.mothersSupported} mothers through Kradel 💛 — essentials shared, requests fulfilled, care delivered. Join me:`,
+  none:      (n)    => `I just joined Kradel 💛 — a community helping mothers get the essentials they need. Join us:`,
+};
+
+const VARIANT_LABEL: Record<ImpactVariant, string> = {
+  discover: "Discover",
+  register: "Register",
+  combined: "Combined",
+  none:     "",
+};
 
 export default function ShareImpactModal({ onClose }: Props) {
   const { user } = useAuth();
-  const [stats, setStats] = useState<ImpactStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const [data,        setData]        = useState<ImpactData | null>(null);
+  const [loading,     setLoading]     = useState(true);
+  const [copied,      setCopied]      = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch("/api/user/impact")
-      .then((r) => r.json())
-      .then((d) => { setStats(d); setLoading(false); });
+    fetch("/api/profile/impact-share")
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   if (!user) return null;
 
-  const cardUrl = `${APP_URL}/api/og/impact?userId=${user.id}&name=${encodeURIComponent(user.name)}`;
-  const profileUrl = `${APP_URL}/donors/${user.id}`;
-  const firstName = user.name.split(" ")[0];
+  const profileUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/donors/${user.id}`;
+  const firstName  = user.name.split(" ")[0];
 
-  const shareText = stats?.donations
-    ? `I've helped ${stats.families} ${stats.families === 1 ? "family" : "families"} through Kradəl 💛 ${stats.donations} donation${stats.donations !== 1 ? "s" : ""} and counting. Every baby deserves support. Join me:`
-    : `I just joined Kradəl 💛 — a community helping mothers and babies get essentials they need. Join us:`;
-
-  const encodedText = encodeURIComponent(shareText);
-  const encodedUrl = encodeURIComponent(profileUrl);
+  const shareText = data
+    ? SHARE_TEXT[data.variant](firstName, data.stats)
+    : `I'm supporting mothers through Kradel 💛 Join us:`;
 
   const platforms = [
     {
-      id: "twitter",
-      label: "Twitter / X",
-      color: "#000",
-      icon: "𝕏",
-      action: () => window.open(`https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`, "_blank"),
+      id:     "twitter",
+      label:  "Twitter / X",
+      color:  "#000",
+      icon:   "𝕏",
+      action: () => window.open(
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`,
+        "_blank",
+      ),
     },
     {
-      id: "whatsapp",
-      label: "WhatsApp",
-      color: "#25D366",
-      icon: "💬",
-      action: () => window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + profileUrl)}`, "_blank"),
+      id:     "whatsapp",
+      label:  "WhatsApp",
+      color:  "#25D366",
+      icon:   "💬",
+      action: () => window.open(
+        `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + profileUrl)}`,
+        "_blank",
+      ),
     },
     {
-      id: "facebook",
-      label: "Facebook",
-      color: "#1877F2",
-      icon: "f",
-      action: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`, "_blank"),
+      id:     "facebook",
+      label:  "Facebook",
+      color:  "#1877F2",
+      icon:   "f",
+      action: () => window.open(
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}&quote=${encodeURIComponent(shareText)}`,
+        "_blank",
+      ),
     },
     {
-      id: "copy",
-      label: copied ? "Copied!" : "Copy link",
-      color: "var(--green)",
-      icon: copied ? "✓" : "🔗",
+      id:     "copy",
+      label:  copied ? "Copied!" : "Copy link",
+      color:  "var(--green)",
+      icon:   copied ? "✓" : "🔗",
       action: async () => {
         await navigator.clipboard.writeText(`${shareText} ${profileUrl}`);
         setCopied(true);
@@ -81,154 +105,147 @@ export default function ShareImpactModal({ onClose }: Props) {
   ];
 
   const handleDownload = async () => {
+    if (!cardRef.current) return;
     setDownloading(true);
     try {
-      const res = await fetch(cardUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
       const a = document.createElement("a");
-      a.href = url;
+      a.href = dataUrl;
       a.download = `kradel-impact-${firstName.toLowerCase()}.png`;
       a.click();
-      URL.revokeObjectURL(url);
     } catch {
-      // fallback: open in new tab
-      window.open(cardUrl, "_blank");
+      // fallback: nothing — card preview is still visible
+    } finally {
+      setDownloading(false);
     }
-    setDownloading(false);
   };
 
   return (
     <div
       style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 400,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 16,
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 400,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{
-        background: "var(--white)", borderRadius: 20, width: "100%", maxWidth: 440,
-        overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-        maxHeight: "90vh", overflowY: "auto",
+        background: "var(--white)", borderRadius: 24, width: "100%", maxWidth: 420,
+        overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.3)",
+        maxHeight: "92vh", overflowY: "auto",
       }}>
         {/* Header */}
         <div style={{
           background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)",
-          padding: "20px 20px 16px",
+          padding: "18px 20px 16px",
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <div>
-            <div style={{ color: "#7ec8a4", fontSize: 12, fontWeight: 700, marginBottom: 2 }}>YOUR IMPACT</div>
-            <div style={{ color: "white", fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700 }}>
-              Share your story 💛
+            <div style={{ color: "#7ec8a4", fontSize: 11, fontWeight: 800, letterSpacing: "1px", marginBottom: 3 }}>
+              YOUR IMPACT
+            </div>
+            <div style={{ color: "white", fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, lineHeight: 1.2 }}>
+              Share your care story ✨
             </div>
           </div>
           <button onClick={onClose} style={{
             background: "rgba(255,255,255,0.15)", border: "none", color: "white",
             width: 32, height: 32, borderRadius: "50%", fontSize: 16, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "Nunito, sans-serif",
           }}>✕</button>
         </div>
 
-        <div style={{ padding: "20px 20px 24px" }}>
-          {/* Stats summary */}
+        <div style={{ padding: "20px 20px 28px" }}>
           {loading ? (
-            <div style={{ display: "flex", justifyContent: "center", padding: "20px 0" }}>
+            <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
               <div className="spinner" />
             </div>
-          ) : stats && (
-            <div style={{
-              display: "flex", gap: 10, marginBottom: 20,
-              background: "var(--bg)", borderRadius: 14, padding: "14px 16px",
-            }}>
-              {[
-                { v: stats.donations, l: "donations" },
-                { v: stats.families, l: "families" },
-                { v: stats.babiesFed, l: "babies fed" },
-              ].map(({ v, l }) => (
-                <div key={l} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--green)" }}>{v}</div>
-                  <div style={{ fontSize: 11, color: "var(--mid)", fontWeight: 600 }}>{l}</div>
-                </div>
-              ))}
+          ) : !data || data.variant === "none" ? (
+            <div style={{ textAlign: "center", padding: "24px 0" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
+                Your card is almost ready
+              </div>
+              <div style={{ fontSize: 13, color: "var(--mid)", lineHeight: 1.65 }}>
+                Complete your first Discover listing or Register commitment to unlock your personalised impact card.
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Variant badge */}
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "var(--bg)", borderRadius: 20, padding: "4px 12px",
+                fontSize: 11, fontWeight: 800, color: "var(--mid)",
+                marginBottom: 14,
+              }}>
+                {VARIANT_LABEL[data.variant]} impact card
+              </div>
 
-          {/* Card preview */}
-          <div style={{ borderRadius: 14, overflow: "hidden", marginBottom: 20, boxShadow: "var(--shadow)", position: "relative", aspectRatio: "1 / 1", background: "#0d3d2e" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cardUrl}
-              alt="Your impact card"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
-          </div>
+              {/* Card preview */}
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+                <ImpactCard
+                  ref={cardRef}
+                  variant={data.variant}
+                  stats={data.stats}
+                  name={user.name}
+                  city={data.city}
+                  month={data.month}
+                />
+              </div>
 
-          {/* Instagram note */}
-          <div style={{
-            background: "var(--green-light)", borderRadius: 10, padding: "10px 14px",
-            fontSize: 12, color: "var(--green)", fontWeight: 600, marginBottom: 16,
-          }}>
-            📸 For Instagram Stories: download the card and share it from your camera roll.
-          </div>
+              {/* Instagram note */}
+              <div style={{
+                background: "var(--green-light)", borderRadius: 10, padding: "9px 13px",
+                fontSize: 12, color: "var(--green)", fontWeight: 600, marginBottom: 16,
+              }}>
+                📸 For Instagram Stories: download the card and share from your camera roll.
+              </div>
 
-          {/* Share buttons */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {platforms.map((p) => (
+              {/* Share buttons */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                {platforms.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={p.action}
+                    style={{
+                      padding: "11px 10px", borderRadius: 12, border: "none",
+                      background:
+                        p.id === "copy" && copied ? "var(--green-light)"
+                        : p.id === "copy"          ? "var(--bg)"
+                        : p.color,
+                      color: p.id === "copy" ? (copied ? "var(--green)" : "var(--ink)") : "white",
+                      fontSize: 13, fontWeight: 800, cursor: "pointer",
+                      fontFamily: "Nunito, sans-serif",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      transition: "opacity 0.15s",
+                    }}
+                  >
+                    <span style={{ fontSize: 15 }}>{p.icon}</span>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Download */}
               <button
-                key={p.id}
-                onClick={p.action}
+                onClick={handleDownload}
+                disabled={downloading}
                 style={{
-                  padding: "12px 10px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: p.id === "copy" && copied ? "var(--green-light)" : p.id === "copy" ? "var(--bg)" : p.color,
-                  color: p.id === "copy" ? (copied ? "var(--green)" : "var(--ink)") : "white",
-                  fontSize: 13, fontWeight: 800, cursor: "pointer",
+                  width: "100%", padding: "12px", borderRadius: 12,
+                  border: "1.5px solid var(--border)", background: "var(--white)",
+                  color: "var(--ink)", fontSize: 14, fontWeight: 800, cursor: "pointer",
                   fontFamily: "Nunito, sans-serif",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  transition: "opacity 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  opacity: downloading ? 0.7 : 1,
                 }}
               >
-                <span style={{ fontSize: 16 }}>{p.icon}</span>
-                {p.label}
+                {downloading
+                  ? <><div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Downloading…</>
+                  : <>⬇ Download PNG (for Instagram / WhatsApp status)</>
+                }
               </button>
-            ))}
-          </div>
-
-          {/* Download button */}
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            style={{
-              width: "100%", padding: "13px",
-              borderRadius: 12, border: "1.5px solid var(--border)",
-              background: "var(--white)", color: "var(--ink)",
-              fontSize: 14, fontWeight: 800, cursor: "pointer",
-              fontFamily: "Nunito, sans-serif",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}
-          >
-            {downloading ? (
-              <><div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Downloading…</>
-            ) : (
-              <>⬇ Download PNG (for Instagram / WhatsApp status)</>
-            )}
-          </button>
-
-          {/* Next rank nudge */}
-          {stats?.rank.next && stats.rank.nextAt !== null && (
-            <div style={{
-              marginTop: 14, fontSize: 12, color: "var(--mid)", textAlign: "center",
-              fontWeight: 600, lineHeight: 1.5,
-            }}>
-              {stats.rank.nextAt - stats.donations === 1
-                ? `1 more donation and you'll become a ${stats.rank.next} ${stats.donations >= 10 ? "🌟" : "💛"}`
-                : `${stats.rank.nextAt - stats.donations} more donations to become a ${stats.rank.next}`
-              }
-            </div>
+            </>
           )}
         </div>
       </div>
