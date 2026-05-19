@@ -85,14 +85,15 @@ export async function POST(req: NextRequest) {
     ]),
   ].filter((id) => id !== newCircle.id);
 
-  // 4. Update user record
+  // 4. Update user record — also reset transition notification flag for new stage
   await prisma.user.update({
     where: { id: auth.userId },
     data:  {
-      currentStage:       newStageKey,
-      currentCircleId:    newCircle.id,
-      graduatedCircleIds: graduated,
-      lastStageCheck:     new Date(),
+      currentStage:        newStageKey,
+      currentCircleId:     newCircle.id,
+      graduatedCircleIds:  graduated,
+      lastStageCheck:      new Date(),
+      notified30DaysStage: null,
     },
   });
 

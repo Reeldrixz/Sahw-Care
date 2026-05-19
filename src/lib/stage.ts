@@ -112,8 +112,71 @@ export const COHORT_CIRCLES = [
   },
 ];
 
-const MS_PER_WEEK  = 7  * 24 * 60 * 60 * 1000;
-const MS_PER_MONTH = 30.44 * 24 * 60 * 60 * 1000;
+const MS_PER_DAY   = 86_400_000;
+const MS_PER_WEEK  = 7   * MS_PER_DAY;
+const MS_PER_MONTH = 30.44 * MS_PER_DAY;
+
+/** Bullet-point copy for the "What this stage means" section of the transition modal. */
+export const STAGE_BULLETS: Partial<Record<StageKey, [string, string, string]>> = {
+  "pregnancy-4-6":    ["You may start feeling more energetic", "New topics, new support", "Fresh guidance for what's ahead"],
+  "pregnancy-7-9":    ["Final preparations for baby's arrival", "Connect with mothers in their final stretch", "Birth-prep resources and support"],
+  "postpartum-0-3":   ["Welcome to the newborn stage", "Postpartum recovery support", "Connect with new mothers in their first weeks"],
+  "postpartum-4-6":   ["Your baby's developing fast", "Sleep, feeding, and routine support", "Mothers navigating the same milestones"],
+  "postpartum-7-12":  ["Baby is becoming more curious", "First-year milestone support", "Connect with mothers approaching toddlerhood"],
+  "postpartum-13-24": ["Welcome to toddlerhood", "Toddler care and development", "The terminal stage in your Circle journey — you'll stay here as your child grows"],
+};
+
+export interface TransitionInfo {
+  daysUntil:      number | null;
+  transitionDate: Date   | null;
+  nextStageKey:   StageKey | null;
+}
+
+/**
+ * Given a mother's current stage + reference dates, compute how many days
+ * until she transitions to the next stage (or null if terminal / no data).
+ */
+export function computeTransition(
+  currentStage:  string | null,
+  dueDate:       Date | null,
+  babyBirthDate: Date | null,
+): TransitionInfo {
+  const none = { daysUntil: null, transitionDate: null, nextStageKey: null } as const;
+  if (!currentStage) return none;
+
+  const now = new Date();
+  let transitionDate: Date | null = null;
+  let nextStageKey:   StageKey | null = null;
+
+  switch (currentStage) {
+    case "pregnancy-0-3":
+      if (dueDate) { transitionDate = new Date(dueDate.getTime() - 27 * MS_PER_WEEK); nextStageKey = "pregnancy-4-6"; }
+      break;
+    case "pregnancy-4-6":
+      if (dueDate) { transitionDate = new Date(dueDate.getTime() - 14 * MS_PER_WEEK); nextStageKey = "pregnancy-7-9"; }
+      break;
+    case "pregnancy-7-9":
+      if (dueDate) { transitionDate = new Date(dueDate.getTime()); nextStageKey = "postpartum-0-3"; }
+      break;
+    case "postpartum-0-3":
+      if (babyBirthDate) { transitionDate = new Date(babyBirthDate.getTime() + 3  * MS_PER_MONTH); nextStageKey = "postpartum-4-6";    }
+      break;
+    case "postpartum-4-6":
+      if (babyBirthDate) { transitionDate = new Date(babyBirthDate.getTime() + 6  * MS_PER_MONTH); nextStageKey = "postpartum-7-12";   }
+      break;
+    case "postpartum-7-12":
+      if (babyBirthDate) { transitionDate = new Date(babyBirthDate.getTime() + 12 * MS_PER_MONTH); nextStageKey = "postpartum-13-24";  }
+      break;
+    case "postpartum-13-24":
+      return none;
+    default:
+      return none;
+  }
+
+  if (!transitionDate || !nextStageKey) return none;
+  const daysUntil = Math.ceil((transitionDate.getTime() - now.getTime()) / MS_PER_DAY);
+  return { daysUntil, transitionDate, nextStageKey };
+}
 
 /**
  * Calculate the user's stage key from their journey data.

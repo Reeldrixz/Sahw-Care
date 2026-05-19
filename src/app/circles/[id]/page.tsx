@@ -7,6 +7,8 @@ import CirclePostCard, { Post } from "@/components/CirclePostCard";
 import CircleComposer from "@/components/CircleComposer";
 import CircleComments from "@/components/CircleComments";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
+import StageTransitionModal from "@/components/StageTransitionModal";
+import StageRefinementBanner from "@/components/StageRefinementBanner";
 import { STAGE_META, StageKey } from "@/lib/stage";
 import BottomNav from "@/components/BottomNav";
 import {
@@ -178,6 +180,17 @@ export default function CircleDetailPage() {
   const [showGuidelines,    setShowGuidelines]    = useState(false);
   const [modBannerDismissed, dismissModBanner]    = useModBannerDismissed(circleId);
 
+  // Transition countdown
+  const [transitionStatus, setTransitionStatus] = useState<null | {
+    applicable: boolean; daysUntil: number | null; nextStageKey: string | null;
+    nextStageName: string | null; nextStageDesc: string | null;
+    currentStageKey: string; currentStageName: string; currentStageDesc: string;
+    transitionDate: string | null; hasSeenTransitionModal: boolean;
+    showSurveyBanner: boolean; surveyCompleted: boolean; surveyOptedOut: boolean;
+    journeyType: "pregnant" | "postpartum";
+  }>(null);
+  const [showTransitionModal, setShowTransitionModal] = useState(false);
+
   // ── Load circle metadata ──────────────────────────────────────────────────
 
   useEffect(() => {
@@ -215,6 +228,26 @@ export default function CircleDetailPage() {
         }
       });
   }, [user, authLoading, circleId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Transition status ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!user || !user.onboardingComplete || user.journeyType === "donor") return;
+    fetch("/api/user/transition-status")
+      .then(r => r.json())
+      .then(d => {
+        if (!d.applicable) return;
+        setTransitionStatus(d);
+        if (
+          d.daysUntil !== null && d.daysUntil <= 30 && d.daysUntil >= 0 &&
+          !d.hasSeenTransitionModal && d.nextStageKey
+        ) {
+          const t = setTimeout(() => setShowTransitionModal(true), 1200);
+          return () => clearTimeout(t);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Identity modal ────────────────────────────────────────────────────────
 
@@ -426,6 +459,14 @@ export default function CircleDetailPage() {
       {/* ── Content ── */}
       <div style={{ padding: "16px 16px 0" }}>
 
+        {/* Refinement survey banner */}
+        {transitionStatus?.showSurveyBanner && (
+          <StageRefinementBanner
+            journeyType={transitionStatus.journeyType}
+            onCompleted={() => setTransitionStatus(prev => prev ? { ...prev, showSurveyBanner: false, surveyCompleted: true } : prev)}
+          />
+        )}
+
         {/* 1. Safe space banner (members only) */}
         {isMember && (
           <div style={{
@@ -630,6 +671,27 @@ export default function CircleDetailPage() {
 
       {/* Guidelines modal */}
       {showGuidelines && <GuidelinesModal onClose={() => setShowGuidelines(false)} />}
+
+      {/* Stage transition countdown modal */}
+      {showTransitionModal && transitionStatus && transitionStatus.daysUntil !== null && transitionStatus.nextStageKey && (
+        <StageTransitionModal
+          status={{
+            currentStageKey:  transitionStatus.currentStageKey,
+            currentStageName: transitionStatus.currentStageName,
+            currentStageDesc: transitionStatus.currentStageDesc,
+            nextStageKey:     transitionStatus.nextStageKey,
+            nextStageName:    transitionStatus.nextStageName ?? "",
+            nextStageDesc:    transitionStatus.nextStageDesc ?? "",
+            daysUntil:        transitionStatus.daysUntil,
+            transitionDate:   transitionStatus.transitionDate ?? "",
+          }}
+          circleId={circleId}
+          onDismiss={() => {
+            setShowTransitionModal(false);
+            setTransitionStatus(prev => prev ? { ...prev, hasSeenTransitionModal: true } : prev);
+          }}
+        />
+      )}
 
       <BottomNav />
     </div>

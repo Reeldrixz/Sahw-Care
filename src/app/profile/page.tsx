@@ -18,6 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { STAGE_META } from "@/lib/stage";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
 import PhoneSetupSheet from "@/components/PhoneSetupSheet";
+import StageTransitionModal from "@/components/StageTransitionModal";
+import StageRefinementBanner from "@/components/StageRefinementBanner";
 
 // ── Donor level ────────────────────────────────────────────────────────────────
 
@@ -272,6 +274,17 @@ export default function ProfilePage() {
   const [notifPrefs,      setNotifPrefs]      = useState<NotifPrefs | null>(null);
   const [savingPrefs,     setSavingPrefs]     = useState(false);
 
+  // Stage transition countdown
+  const [transitionStatus, setTransitionStatus] = useState<null | {
+    applicable: boolean; daysUntil: number | null; nextStageKey: string | null;
+    nextStageName: string | null; currentStageKey: string | null;
+    transitionDate: string | null; hasSeenTransitionModal: boolean;
+    showSurveyBanner: boolean; journeyType: "pregnant" | "postpartum";
+    currentStageName: string | null; currentStageDesc: string | null;
+    nextStageDesc: string | null;
+  }>(null);
+  const [showTransitionModal, setShowTransitionModal] = useState(false);
+
   useEffect(() => {
     if (!user) router.push("/auth");
   }, [user, router]);
@@ -281,6 +294,12 @@ export default function ProfilePage() {
     fetch("/api/profile/summary").then(r => r.json()).then(d => setSummary(d)).catch(() => {});
     if (user.journeyType === "donor") {
       fetch("/api/notifications/preferences").then(r => r.json()).then(d => setNotifPrefs(d.prefs ?? null)).catch(() => {});
+    }
+    if (user.journeyType && user.journeyType !== "donor" && user.onboardingComplete) {
+      fetch("/api/user/transition-status")
+        .then(r => r.json())
+        .then(d => { if (d.applicable) setTransitionStatus(d); })
+        .catch(() => {});
     }
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -661,6 +680,47 @@ export default function ProfilePage() {
         {/* ════════════ RECIPIENT VIEW ═════════════════════════════════════ */}
         {!isAdmin && !isDonor && (
           <>
+            {/* Stage countdown card */}
+            {transitionStatus?.daysUntil !== null && transitionStatus?.daysUntil !== undefined &&
+             transitionStatus.daysUntil >= 0 && transitionStatus.daysUntil <= 30 &&
+             transitionStatus.nextStageKey && (
+              <div
+                onClick={() => setShowTransitionModal(true)}
+                style={{
+                  background: "#e8f5f1", borderRadius: 16, padding: "16px",
+                  marginBottom: 14, display: "flex", alignItems: "center", gap: 14,
+                  border: "1.5px solid #b7dfd1", cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: 28, flexShrink: 0 }}>
+                  {transitionStatus.nextStageKey.startsWith("pregnancy") ? "🌿" :
+                   transitionStatus.nextStageKey === "postpartum-0-3" ? "💛" :
+                   transitionStatus.nextStageKey === "postpartum-4-6" ? "🌙" :
+                   transitionStatus.nextStageKey === "postpartum-7-12" ? "🌍" : "👣"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a7a5e", lineHeight: 1.2 }}>
+                    <strong>{transitionStatus.daysUntil}</strong> {transitionStatus.daysUntil === 1 ? "day" : "days"} to {transitionStatus.nextStageName}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#1a7a5e", opacity: 0.8, fontFamily: "Nunito, sans-serif", marginTop: 3, lineHeight: 1.4 }}>
+                    You&apos;ll be transitioning to the {transitionStatus.nextStageName} stage
+                    {transitionStatus.transitionDate && (
+                      <> on {new Date(transitionStatus.transitionDate).toLocaleDateString("en", { month: "short", day: "numeric" })}</>
+                    )}.
+                  </div>
+                </div>
+                <ChevronRight size={20} color="#1a7a5e" style={{ flexShrink: 0 }} />
+              </div>
+            )}
+
+            {/* Day-7 refinement survey banner */}
+            {transitionStatus?.showSurveyBanner && (
+              <StageRefinementBanner
+                journeyType={transitionStatus.journeyType}
+                onCompleted={() => setTransitionStatus(prev => prev ? { ...prev, showSurveyBanner: false, surveyCompleted: true } : prev)}
+              />
+            )}
+
             <VerificationBanner
               onUploadDocument={() => setShowDocUpload(true)}
               onVerifyPhone={() => { setVerifyType("PHONE"); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true); }}
@@ -853,6 +913,25 @@ export default function ProfilePage() {
     {showDonate      && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
     {showShareImpact && <ShareImpactModal onClose={() => setShowShareImpact(false)} />}
     {showIdentityModal && <CircleIdentityModal onDone={() => { setShowIdentityModal(false); refreshUser(); }} />}
+    {showTransitionModal && transitionStatus && transitionStatus.daysUntil !== null && transitionStatus.nextStageKey && transitionStatus.currentStageKey && user.currentCircleId && (
+      <StageTransitionModal
+        status={{
+          currentStageKey:  transitionStatus.currentStageKey,
+          currentStageName: transitionStatus.currentStageName ?? "",
+          currentStageDesc: transitionStatus.currentStageDesc ?? "",
+          nextStageKey:     transitionStatus.nextStageKey,
+          nextStageName:    transitionStatus.nextStageName ?? "",
+          nextStageDesc:    transitionStatus.nextStageDesc ?? "",
+          daysUntil:        transitionStatus.daysUntil,
+          transitionDate:   transitionStatus.transitionDate ?? "",
+        }}
+        circleId={user.currentCircleId}
+        onDismiss={() => {
+          setShowTransitionModal(false);
+          setTransitionStatus(prev => prev ? { ...prev, hasSeenTransitionModal: true } : prev);
+        }}
+      />
+    )}
     {showPhoneSetup && (
       <PhoneSetupSheet
         existingPhone={user.phone}

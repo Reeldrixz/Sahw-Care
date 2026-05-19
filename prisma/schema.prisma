@@ -60,6 +60,12 @@ model User {
   graduatedCircleIds String[]  @default([])
   lastStageCheck     DateTime?
 
+  // ── stage transition countdown ───────────────────────────────────────────
+  survey7Completed    Boolean   @default(false) // day-7 refinement survey done
+  survey7DismissedAt  DateTime?                 // last dismissed (re-show after 3 days)
+  survey7OptedOut     Boolean   @default(false) // permanent dismiss
+  notified30DaysStage String?                   // stageKey for which 30-day notif was sent
+
   // ── circle identity ──────────────────────────────────────────────────────
   circleIdentitySet       Boolean   @default(false)
   circleContext           String? // "First-time Mom" | "Experienced Mom" | etc. | null = name only
