@@ -5,11 +5,11 @@ import Avatar from "./Avatar";
 import {
   Heart, HeartHandshake, Sparkles, MessageCircle,
   MoreHorizontal, Pin, X, Shield, Lightbulb, BookOpen,
-  HandHeart, HelpCircle, Trophy, Users, type LucideIcon,
+  HandHeart, HelpCircle, Trophy, Users, Target, type LucideIcon,
 } from "lucide-react";
 
 type ReactionType = "HEART" | "HUG" | "CLAP";
-type PostCategory = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT";
+type PostCategory = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT" | "WORKING_ON";
 
 interface Author {
   id: string;
@@ -63,7 +63,8 @@ const CATEGORY_META: Record<PostCategory, { color: string; bg: string; label: st
   GRATITUDE: { color: "#1a7a5e", bg: "#e8f5f1", label: "Gratitude", Icon: HandHeart  },
   QUESTION:  { color: "#2563eb", bg: "#eff6ff", label: "Question",  Icon: HelpCircle },
   SMALL_WIN: { color: "#0891b2", bg: "#ecfeff", label: "Small Win", Icon: Trophy     },
-  SUPPORT:   { color: "#db2777", bg: "#fdf2f8", label: "Support",   Icon: Users      },
+  SUPPORT:    { color: "#db2777", bg: "#fdf2f8", label: "Support",    Icon: Users   },
+  WORKING_ON: { color: "#c2410c", bg: "#fff7ed", label: "Working on", Icon: Target  },
 };
 
 const REACTIONS: { type: ReactionType; label: string; Icon: LucideIcon }[] = [

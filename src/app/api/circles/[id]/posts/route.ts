@@ -174,7 +174,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!content) return NextResponse.json({ error: "Post content is required" }, { status: 400 });
   if (content.length > 500) return NextResponse.json({ error: "Post must be 500 characters or less" }, { status: 400 });
 
-  const VALID_CATS = ["TIP", "STORY", "GRATITUDE", "QUESTION", "SMALL_WIN"];
+  const VALID_CATS = ["TIP", "STORY", "GRATITUDE", "QUESTION", "SMALL_WIN", "WORKING_ON"];
   if (!VALID_CATS.includes(category)) return NextResponse.json({ error: "Invalid category" }, { status: 400 });
 
   // Block posts containing URLs

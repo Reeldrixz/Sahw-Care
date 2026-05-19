@@ -13,7 +13,7 @@ import { STAGE_META, StageKey } from "@/lib/stage";
 import BottomNav from "@/components/BottomNav";
 import {
   HeartPulse, Heart, Smile, Star, LayoutGrid,
-  Users, Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy,
+  Users, Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy, Target,
   X, Shield,
   type LucideIcon,
 } from "lucide-react";
@@ -56,20 +56,21 @@ function getWeeklyPrompt(): string {
 
 // ── Post filters ───────────────────────────────────────────────────────────────
 
-type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT";
+type PostCategory = "ALL" | "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "SUPPORT" | "WORKING_ON";
 
 const POST_FILTERS: { value: PostCategory; label: string }[] = [
-  { value: "ALL",       label: "All"        },
-  { value: "QUESTION",  label: "Questions"  },
-  { value: "TIP",       label: "Tips"       },
-  { value: "STORY",     label: "Stories"    },
-  { value: "SMALL_WIN", label: "Small Wins" },
-  { value: "GRATITUDE", label: "Gratitude"  },
+  { value: "ALL",        label: "All"        },
+  { value: "QUESTION",   label: "Questions"  },
+  { value: "WORKING_ON", label: "Working on" },
+  { value: "TIP",        label: "Tips"       },
+  { value: "STORY",      label: "Stories"    },
+  { value: "SMALL_WIN",  label: "Small Wins" },
+  { value: "GRATITUDE",  label: "Gratitude"  },
 ];
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
   TIP: Lightbulb, STORY: BookOpen, GRATITUDE: HandHeart,
-  QUESTION: HelpCircle, SMALL_WIN: Trophy, SUPPORT: Users,
+  QUESTION: HelpCircle, SMALL_WIN: Trophy, SUPPORT: Users, WORKING_ON: Target,
 };
 
 // ── Types ──────────────────────────────────────────────────────────────────────

@@ -3,11 +3,11 @@
 import { useState, useRef } from "react";
 import Avatar from "./Avatar";
 import {
-  Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy,
+  Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy, Target,
   Camera, ChevronLeft, ArrowRight, type LucideIcon,
 } from "lucide-react";
 
-type Category = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN";
+type Category = "TIP" | "STORY" | "GRATITUDE" | "QUESTION" | "SMALL_WIN" | "WORKING_ON";
 
 interface Channel { id: string; name: string; emoji: string; }
 
@@ -62,6 +62,13 @@ const CATEGORIES: {
     prompt: "Celebrate a moment, however tiny. You deserve to be cheered on.",
     color: "#0891b2", bg: "#ecfeff",
     Icon: Trophy,
+  },
+  {
+    value: "WORKING_ON",
+    label: "Working on",
+    prompt: "Share something you're actively working toward — sleep training, recovery, a habit, a plan. Progress counts.",
+    color: "#c2410c", bg: "#fff7ed",
+    Icon: Target,
   },
 ];
 

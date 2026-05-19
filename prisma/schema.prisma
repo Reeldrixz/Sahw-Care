@@ -717,6 +717,7 @@ enum PostCategory {
   QUESTION
   SMALL_WIN
   SUPPORT
+  WORKING_ON
 }
 
 enum ReactionType {
