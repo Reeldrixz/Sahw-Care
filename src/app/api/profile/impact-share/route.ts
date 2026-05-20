@@ -37,26 +37,28 @@ export async function GET(req: NextRequest) {
   const hasRegister = registerActions.length > 0;
 
   const variant =
-    hasDiscover && hasRegister ? "combined"  :
-    hasDiscover               ? "discover"  :
-    hasRegister               ? "register"  : "none";
+    hasDiscover && hasRegister ? "combined" :
+    hasDiscover               ? "discover" :
+    hasRegister               ? "register" : "none";
 
   // ── Compute stats ────────────────────────────────────────────────────────
   const listingCompleted  = actions.filter(a => a.actionType === "listing_completed");
   const registerFulfilled = actions.filter(a => a.actionType === "register_fulfilled");
 
-  const discoverMotherIds  = new Set(listingCompleted.map(a => a.recipientUserId).filter(Boolean));
-  const registerFamilyIds  = new Set(registerFulfilled.map(a => a.recipientUserId).filter(Boolean));
+  // Mothers supported: COUNT DISTINCT recipientUserId from Discover listing_completed
+  const discoverMotherIds = new Set(listingCompleted.map(a => a.recipientUserId).filter(Boolean));
+  const mothersSupported  = discoverMotherIds.size;
 
-  const itemsShared         = listingCompleted.reduce((s, a)  => s + (a.itemCount ?? 1), 0);
-  const essentialsDelivered = registerFulfilled.reduce((s, a) => s + (a.itemCount ?? 1), 0);
+  // Essentials: item counts per channel
+  const discoverItems = listingCompleted.reduce((s, a)  => s + (a.itemCount ?? 1), 0); // SUM Discover
+  const needsMet      = registerFulfilled.reduce((s, a) => s + (a.itemCount ?? 1), 0); // SUM Register
+  const essentialsShared = discoverItems + needsMet;                                    // total both
 
   const stats = {
-    mothersSupported:    discoverMotherIds.size,
-    itemsShared,
-    requestsFulfilled:   registerFulfilled.length,
-    familiesSupported:   registerFamilyIds.size,
-    essentialsDelivered,
+    mothersSupported,  // COUNT DISTINCT Discover recipients
+    needsMet,          // SUM itemCount Register register_fulfilled
+    discoverItems,     // SUM itemCount Discover listing_completed
+    essentialsShared,  // discoverItems + needsMet
   };
 
   // ── Location + month ─────────────────────────────────────────────────────

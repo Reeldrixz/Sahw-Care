@@ -6,88 +6,87 @@ import { Leaf } from "lucide-react";
 export type ImpactVariant = "discover" | "register" | "combined" | "none";
 
 export interface ImpactStats {
-  mothersSupported:    number;
-  itemsShared:         number;
-  requestsFulfilled:   number;
-  familiesSupported:   number;
-  essentialsDelivered: number;
+  mothersSupported: number; // COUNT DISTINCT listing_completed recipients
+  needsMet:         number; // SUM itemCount register_fulfilled
+  discoverItems:    number; // SUM itemCount listing_completed
+  essentialsShared: number; // discoverItems + needsMet
 }
 
 interface StatTile {
   icon:         string;
   value:        number;
   label:        string;
-  channel:      string;
-  channelColor: string;
+  subtext:      string;
+  subtextColor: string;
 }
 
 interface VariantConfig {
-  channelPill:    string;
-  channelIcon:    string;
-  hero:           string;
-  narrative1:     string;
-  narrative2:     string;
-  stats:          (s: ImpactStats) => StatTile[];
+  channelPill:  string;
+  channelIcon:  string;
+  hero:         string;
+  narrative1:   string;
+  narrative2:   string;
+  stats:        (s: ImpactStats) => StatTile[];
 }
 
-const DISC_COLOR = "#7ec8a4";
-const REG_COLOR  = "#c4b5fd";
-
-const VARIANTS: Record<ImpactVariant, VariantConfig> = {
-  discover: {
-    channelPill:  "Through Discover",
-    channelIcon:  "🛍️",
-    hero:         "You shared care,\nhand to hand 💛",
-    narrative1:   "You shared baby & maternity essentials directly with mothers who needed them.",
-    narrative2:   "Your care helps mothers feel supported and seen.",
-    stats: (s) => [
-      { icon: "👥", value: s.mothersSupported, label: "Mothers supported", channel: "Through Discover", channelColor: DISC_COLOR },
-      { icon: "🎁", value: s.itemsShared,      label: "Essentials shared", channel: "Through Discover", channelColor: DISC_COLOR },
-    ],
-  },
-
-  register: {
-    channelPill:  "Through Register",
-    channelIcon:  "📋",
-    hero:         "You answered what\nmothers needed 💛",
-    narrative1:   "You helped deliver the specific essentials mothers asked for.",
-    narrative2:   "Your care helps mothers prepare with dignity.",
-    stats: (s) => [
-      { icon: "🤝", value: s.requestsFulfilled, label: "Requests fulfilled", channel: "Through Register", channelColor: REG_COLOR },
-      { icon: "🏠", value: s.familiesSupported,  label: "Families supported", channel: "Through Register", channelColor: REG_COLOR },
-    ],
-  },
-
-  combined: {
-    channelPill:  "Through Discover & Register",
-    channelIcon:  "✨",
-    hero:         "You've made a bigger\nimpact together 💛",
-    narrative1:   "You shared baby & maternity essentials and helped deliver care to mothers who need support.",
-    narrative2:   "Your care helps mothers prepare, feel supported, and thrive.",
-    stats: (s) => [
-      { icon: "👥", value: s.mothersSupported,  label: "Mothers supported", channel: "Through Discover", channelColor: DISC_COLOR },
-      { icon: "🎁", value: s.itemsShared,        label: "Essentials shared", channel: "Through Discover", channelColor: DISC_COLOR },
-      { icon: "🤝", value: s.requestsFulfilled,  label: "Requests fulfilled", channel: "Through Register", channelColor: REG_COLOR  },
-    ],
-  },
-
-  none: {
-    channelPill:  "Kradäl Care",
-    channelIcon:  "🌱",
-    hero:         "Starting your\ncare journey 💛",
-    narrative1:   "Complete your first Discover listing or Register commitment to build your impact story.",
-    narrative2:   "Every action makes a difference.",
-    stats: () => [],
-  },
-};
-
-// ── Colours ────────────────────────────────────────────────────────────────────
-const GREEN  = "#1a4a3a";
-const CREAM  = "#faf7f0";
+// ── Colours ───────────────────────────────────────────────────────────────────
+const GREEN       = "#1a4a3a";
+const CREAM       = "#faf7f0";
 const GREEN_LIGHT = "#e0f2e8";
 const GREEN_MID   = "#b8d4c4";
 const GREEN_TEXT  = "#3d5c4e";
 const GREEN_MUTED = "#6b8c7a";
+const DISC_COLOR  = "#7ec8a4";
+const REG_COLOR   = "#c4b5fd";
+const NEUTRAL_SUB = "rgba(250,247,240,0.55)";
+
+const VARIANTS: Record<ImpactVariant, VariantConfig> = {
+  discover: {
+    channelPill: "Through Discover",
+    channelIcon: "🛍️",
+    hero:        "You shared care,\nhand to hand 💛",
+    narrative1:  "You shared baby & maternity essentials directly with mothers who needed them.",
+    narrative2:  "Your care helps mothers feel supported and seen.",
+    stats: (s) => [
+      { icon: "👥", value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR   },
+      { icon: "🎁", value: s.discoverItems,    label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB  },
+    ],
+  },
+
+  register: {
+    channelPill: "Through Register",
+    channelIcon: "📋",
+    hero:        "You answered what\nmothers needed 💛",
+    narrative1:  "You helped deliver the specific essentials mothers asked for.",
+    narrative2:  "Your care helps mothers prepare with dignity.",
+    stats: (s) => [
+      { icon: "🤝", value: s.needsMet,          label: "Needs met",         subtext: "for mothers and their newborns", subtextColor: REG_COLOR    },
+      { icon: "🎁", value: s.essentialsShared,  label: "Essentials shared",  subtext: "in total",                       subtextColor: NEUTRAL_SUB  },
+    ],
+  },
+
+  combined: {
+    channelPill: "Through Discover & Register",
+    channelIcon: "✨",
+    hero:        "You've made a bigger\nimpact together 💛",
+    narrative1:  "You shared baby & maternity essentials and helped deliver care to mothers who need support.",
+    narrative2:  "Your care helps mothers prepare, feel supported, and thrive.",
+    stats: (s) => [
+      { icon: "👥", value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR   },
+      { icon: "🎁", value: s.essentialsShared, label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB  },
+      { icon: "🤝", value: s.needsMet,          label: "Needs met",          subtext: "for mothers and their newborns", subtextColor: REG_COLOR    },
+    ],
+  },
+
+  none: {
+    channelPill: "Kradəl Care",
+    channelIcon: "🌱",
+    hero:        "Starting your\ncare journey 💛",
+    narrative1:  "Complete your first Discover listing or Register commitment to build your impact story.",
+    narrative2:  "Every action makes a difference.",
+    stats: () => [],
+  },
+};
 
 interface Props {
   variant:  ImpactVariant;
@@ -142,7 +141,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         {/* Header row: wordmark + "every act" pill */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, position: "relative", zIndex: 1 }}>
           <div>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN, lineHeight: 1 }}>Kradäl</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN, lineHeight: 1 }}>Kradəl</div>
             <div style={{ fontSize: 9, color: GREEN_MUTED, fontWeight: 600, marginTop: 2 }}>Impact Story</div>
           </div>
           <div style={{
@@ -189,7 +188,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
           </div>
         </div>
 
-        {/* Location / Date — pushed to bottom of zone */}
+        {/* Location / Date */}
         <div style={{ marginTop: "auto", fontSize: 10, color: GREEN_MUTED, position: "relative", zIndex: 1 }}>
           {location ? `📍 ${location} · ` : ""}📅 {month}
         </div>
@@ -218,7 +217,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         {/* Stat tiles */}
         {tiles.length > 0 && (
           <div style={{ display: "flex", gap: tiles.length === 3 ? 8 : 20, justifyContent: "center", marginBottom: 10 }}>
-            {tiles.map(({ icon, value, label, channel, channelColor }) => (
+            {tiles.map(({ icon, value, label, subtext, subtextColor }) => (
               <div key={label} style={{ textAlign: "center", flex: tiles.length === 3 ? 1 : undefined, minWidth: tiles.length === 3 ? 0 : 90 }}>
                 {/* Circular icon tile */}
                 <div style={{
@@ -230,7 +229,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
                 }}>
                   {icon}
                 </div>
-                {/* Big serif number */}
+                {/* Serif number */}
                 <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "white", lineHeight: 1 }}>
                   {value}
                 </div>
@@ -238,9 +237,9 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
                 <div style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", fontWeight: 700, marginTop: 3, lineHeight: 1.3 }}>
                   {label}
                 </div>
-                {/* Channel attribution */}
-                <div style={{ fontSize: 7, color: channelColor, fontWeight: 800, marginTop: 2, opacity: 0.9 }}>
-                  {channel}
+                {/* Subtext */}
+                <div style={{ fontSize: 7, color: subtextColor, fontWeight: 700, marginTop: 2, lineHeight: 1.3 }}>
+                  {subtext}
                 </div>
               </div>
             ))}
