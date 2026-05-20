@@ -1,7 +1,11 @@
 "use client";
 
 import { forwardRef } from "react";
-import { Leaf } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  Leaf, Heart, Users, Gift, HeartHandshake,
+  MapPin, Calendar, Sparkles, ShoppingBag, ClipboardList,
+} from "lucide-react";
 
 export type ImpactVariant = "discover" | "register" | "combined" | "none";
 
@@ -13,7 +17,7 @@ export interface ImpactStats {
 }
 
 interface StatTile {
-  icon:         string;
+  icon:         ReactNode;
   value:        number;
   label:        string;
   subtext:      string;
@@ -22,8 +26,8 @@ interface StatTile {
 
 interface VariantConfig {
   channelPill:  string;
-  channelIcon:  string;
-  hero:         string;
+  channelIcon:  ReactNode;
+  hero:         ReactNode;
   narrative1:   string;
   narrative2:   string;
   stats:        (s: ImpactStats) => StatTile[];
@@ -39,49 +43,59 @@ const GREEN_MUTED = "#6b8c7a";
 const DISC_COLOR  = "#7ec8a4";
 const REG_COLOR   = "#c4b5fd";
 const NEUTRAL_SUB = "rgba(250,247,240,0.55)";
+const GOLD        = "#e8b84b";
+
+const heartInline = (
+  <Heart
+    size={13}
+    fill={GOLD}
+    color={GOLD}
+    style={{ display: "inline", verticalAlign: "middle", marginBottom: 2 }}
+  />
+);
 
 const VARIANTS: Record<ImpactVariant, VariantConfig> = {
   discover: {
     channelPill: "Through Discover",
-    channelIcon: "🛍️",
-    hero:        "You shared care,\nhand to hand 💛",
+    channelIcon: <ShoppingBag size={11} color={GREEN} />,
+    hero:        <>You shared care,{"\n"}hand to hand {heartInline}</>,
     narrative1:  "You shared baby & maternity essentials directly with mothers who needed them.",
     narrative2:  "Your care helps mothers feel supported and seen.",
     stats: (s) => [
-      { icon: "👥", value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR   },
-      { icon: "🎁", value: s.discoverItems,    label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB  },
+      { icon: <Users size={16} color={DISC_COLOR} strokeWidth={1.5} />, value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR  },
+      { icon: <Gift  size={16} color={CREAM}       strokeWidth={1.5} />, value: s.discoverItems,    label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB },
     ],
   },
 
   register: {
     channelPill: "Through Register",
-    channelIcon: "📋",
-    hero:        "You answered what\nmothers needed 💛",
+    channelIcon: <ClipboardList size={11} color={GREEN} />,
+    hero:        <>You answered what{"\n"}mothers needed {heartInline}</>,
     narrative1:  "You helped deliver the specific essentials mothers asked for.",
     narrative2:  "Your care helps mothers prepare with dignity.",
     stats: (s) => [
-      { icon: "🤝", value: s.needsMet,          label: "Needs met",         subtext: "for mothers and their newborns", subtextColor: REG_COLOR    },
-      { icon: "🎁", value: s.essentialsShared,  label: "Essentials shared",  subtext: "in total",                       subtextColor: NEUTRAL_SUB  },
+      { icon: <HeartHandshake size={16} color={REG_COLOR} strokeWidth={1.5} />, value: s.needsMet,          label: "Needs met",         subtext: "for mothers and their newborns", subtextColor: REG_COLOR   },
+      { icon: <Gift           size={16} color={CREAM}     strokeWidth={1.5} />, value: s.essentialsShared,  label: "Essentials shared",  subtext: "in total",                       subtextColor: NEUTRAL_SUB },
     ],
   },
 
   combined: {
     channelPill: "Through Discover & Register",
-    channelIcon: "✨",
-    hero:        "You've made a bigger\nimpact together 💛",
+    channelIcon: <Sparkles size={11} color={GREEN} />,
+    hero:        <>You've made a bigger{"\n"}impact together {heartInline}</>,
     narrative1:  "You shared baby & maternity essentials and helped deliver care to mothers who need support.",
     narrative2:  "Your care helps mothers prepare, feel supported, and thrive.",
     stats: (s) => [
-      { icon: "👥", value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR   },
-      { icon: "🎁", value: s.essentialsShared, label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB  },
-      { icon: "🤝", value: s.needsMet,          label: "Needs met",          subtext: "for mothers and their newborns", subtextColor: REG_COLOR    },
+      { icon: <Users          size={16} color={DISC_COLOR} strokeWidth={1.5} />, value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR  },
+      { icon: <Gift           size={16} color={CREAM}      strokeWidth={1.5} />, value: s.essentialsShared, label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB },
+      { icon: <HeartHandshake size={16} color={REG_COLOR}  strokeWidth={1.5} />, value: s.needsMet,         label: "Needs met",          subtext: "for mothers and their newborns", subtextColor: REG_COLOR   },
     ],
   },
 
   none: {
     channelPill: "Kradəl Care",
-    channelIcon: "🌱",
-    hero:        "Starting your\ncare journey 💛",
+    channelIcon: <Leaf size={11} color={GREEN} />,
+    hero:        <>Starting your{"\n"}care journey {heartInline}</>,
     narrative1:  "Complete your first Discover listing or Register commitment to build your impact story.",
     narrative2:  "Every action makes a difference.",
     stats: () => [],
@@ -102,7 +116,6 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
 ) {
   const cfg   = VARIANTS[variant];
   const tiles = cfg.stats(stats);
-  const first = name.split(" ")[0];
 
   return (
     <div
@@ -123,9 +136,10 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         {/* Heart motif — large pale bg accent */}
         <div style={{
           position: "absolute", right: -8, top: "38%", transform: "translateY(-50%)",
-          fontSize: 140, color: GREEN, opacity: 0.05,
-          pointerEvents: "none", userSelect: "none", lineHeight: 1,
-        }}>♥</div>
+          opacity: 0.05, pointerEvents: "none",
+        }}>
+          <Heart size={140} color={GREEN} fill={GREEN} />
+        </div>
 
         {/* Leaf sprigs */}
         <div style={{ position: "absolute", top: 10, right: 12, opacity: 0.18, transform: "rotate(25deg)", pointerEvents: "none" }}>
@@ -148,9 +162,11 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
             border: `1.5px solid ${GREEN_MID}`, borderRadius: 20,
             padding: "3px 9px", fontSize: 9, fontWeight: 700,
             color: GREEN, background: GREEN_LIGHT,
-            flexShrink: 0, maxWidth: 170, textAlign: "right",
+            flexShrink: 0, maxWidth: 170,
+            display: "flex", alignItems: "center", gap: 4,
           }}>
-            ♡ Every act of care matters
+            <Heart size={8} color={GREEN} />
+            Every act of care matters
           </div>
         </div>
 
@@ -162,7 +178,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
           fontSize: 10, fontWeight: 800, color: GREEN,
           marginBottom: 10, alignSelf: "flex-start", position: "relative", zIndex: 1,
         }}>
-          <span style={{ fontSize: 11 }}>{cfg.channelIcon}</span>
+          {cfg.channelIcon}
           {cfg.channelPill}
         </div>
 
@@ -189,8 +205,16 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         </div>
 
         {/* Location / Date */}
-        <div style={{ marginTop: "auto", fontSize: 10, color: GREEN_MUTED, position: "relative", zIndex: 1 }}>
-          {location ? `📍 ${location} · ` : ""}📅 {month}
+        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: GREEN_MUTED, position: "relative", zIndex: 1 }}>
+          {location && (
+            <>
+              <MapPin size={9} color={GREEN_MUTED} />
+              <span>{location}</span>
+              <span style={{ margin: "0 2px" }}>·</span>
+            </>
+          )}
+          <Calendar size={9} color={GREEN_MUTED} />
+          <span>{month}</span>
         </div>
       </div>
 
@@ -208,10 +232,13 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
 
         {/* Band header */}
         <div style={{
-          textAlign: "center", fontSize: 10, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          fontSize: 10, fontWeight: 700,
           color: DISC_COLOR, marginBottom: 10, letterSpacing: "0.4px",
         }}>
-          🌿 Your impact so far 🌿
+          <Leaf size={10} color={DISC_COLOR} />
+          Your impact so far
+          <Leaf size={10} color={DISC_COLOR} />
         </div>
 
         {/* Stat tiles */}
@@ -225,7 +252,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
                   background: "rgba(250,247,240,0.13)",
                   border: "1px solid rgba(250,247,240,0.2)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 16, margin: "0 auto 5px",
+                  margin: "0 auto 5px",
                 }}>
                   {icon}
                 </div>
@@ -248,10 +275,12 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
 
         {/* Band footer */}
         <div style={{
-          textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.14)",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+          borderTop: "1px solid rgba(255,255,255,0.14)",
           paddingTop: 8, fontSize: 9, color: "rgba(255,255,255,0.65)", fontWeight: 600,
         }}>
-          💛 Thank you for being part of the circle of care.
+          <Heart size={9} fill={GOLD} color={GOLD} />
+          Thank you for being part of the circle of care.
         </div>
       </div>
     </div>

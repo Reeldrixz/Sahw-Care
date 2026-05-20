@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Camera, Check, Download, Leaf, Link, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import ImpactCard, { type ImpactVariant, type ImpactStats } from "./ImpactCard";
 
@@ -65,7 +66,7 @@ export default function ShareImpactModal({ onClose }: Props) {
       id:     "twitter",
       label:  "Twitter / X",
       color:  "#000",
-      icon:   "𝕏",
+      icon:   <span style={{ fontFamily: "serif", fontWeight: 900, fontSize: 13 }}>𝕏</span>,
       action: () => window.open(
         `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`,
         "_blank",
@@ -75,7 +76,7 @@ export default function ShareImpactModal({ onClose }: Props) {
       id:     "whatsapp",
       label:  "WhatsApp",
       color:  "#25D366",
-      icon:   "💬",
+      icon:   <MessageCircle size={15} />,
       action: () => window.open(
         `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + profileUrl)}`,
         "_blank",
@@ -85,7 +86,7 @@ export default function ShareImpactModal({ onClose }: Props) {
       id:     "facebook",
       label:  "Facebook",
       color:  "#1877F2",
-      icon:   "f",
+      icon:   <span style={{ fontWeight: 800, fontSize: 15 }}>f</span>,
       action: () => window.open(
         `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileUrl)}&quote=${encodeURIComponent(shareText)}`,
         "_blank",
@@ -95,7 +96,7 @@ export default function ShareImpactModal({ onClose }: Props) {
       id:     "copy",
       label:  copied ? "Copied!" : "Copy link",
       color:  "var(--green)",
-      icon:   copied ? "✓" : "🔗",
+      icon:   copied ? <Check size={15} /> : <Link size={15} />,
       action: async () => {
         await navigator.clipboard.writeText(`${shareText} ${profileUrl}`);
         setCopied(true);
@@ -145,7 +146,7 @@ export default function ShareImpactModal({ onClose }: Props) {
               YOUR IMPACT
             </div>
             <div style={{ color: "white", fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, lineHeight: 1.2 }}>
-              Share your care story ✨
+              Share your care story
             </div>
           </div>
           <button onClick={onClose} style={{
@@ -162,7 +163,9 @@ export default function ShareImpactModal({ onClose }: Props) {
             </div>
           ) : !data || data.variant === "none" ? (
             <div style={{ textAlign: "center", padding: "24px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🌱</div>
+              <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
+                <Leaf size={36} color="var(--mid)" />
+              </div>
               <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
                 Your card is almost ready
               </div>
@@ -198,8 +201,10 @@ export default function ShareImpactModal({ onClose }: Props) {
               <div style={{
                 background: "var(--green-light)", borderRadius: 10, padding: "9px 13px",
                 fontSize: 12, color: "var(--green)", fontWeight: 600, marginBottom: 16,
+                display: "flex", alignItems: "center", gap: 7,
               }}>
-                📸 For Instagram Stories: download the card and share from your camera roll.
+                <Camera size={13} />
+                For Instagram Stories: download the card and share from your camera roll.
               </div>
 
               {/* Share buttons */}
@@ -221,7 +226,7 @@ export default function ShareImpactModal({ onClose }: Props) {
                       transition: "opacity 0.15s",
                     }}
                   >
-                    <span style={{ fontSize: 15 }}>{p.icon}</span>
+                    {p.icon}
                     {p.label}
                   </button>
                 ))}
@@ -242,7 +247,7 @@ export default function ShareImpactModal({ onClose }: Props) {
               >
                 {downloading
                   ? <><div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Downloading…</>
-                  : <>⬇ Download PNG (for Instagram / WhatsApp status)</>
+                  : <><Download size={16} /> Download PNG (for Instagram / WhatsApp status)</>
                 }
               </button>
             </>
