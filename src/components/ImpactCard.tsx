@@ -182,7 +182,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
       </div>
 
       {/* ── metrics ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", position: "relative", zIndex: 1 }}>
+      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
         {tiles.length > 0 && (
           <>
             <div style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.4)", letterSpacing: "1.3px", textTransform: "uppercase", marginBottom: 7 }}>

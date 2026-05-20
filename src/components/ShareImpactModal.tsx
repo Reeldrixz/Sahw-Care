@@ -179,7 +179,7 @@ export default function ShareImpactModal({ onClose }: Props) {
                 fontSize: 11, fontWeight: 800, color: "var(--mid)",
                 marginBottom: 14,
               }}>
-                {VARIANT_LABEL[data.variant]} impact card
+                {VARIANT_LABEL[data.variant]}
               </div>
 
               {/* Card preview */}
