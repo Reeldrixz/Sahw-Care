@@ -16,16 +16,16 @@ interface Props {
 }
 
 const SHARE_TEXT: Record<ImpactVariant, (name: string, s: ImpactStats) => string> = {
-  discover:  (n, s) => `I've shared essentials with ${s.mothersSupported} ${s.mothersSupported === 1 ? "mom" : "moms"} through Kradel 💛 Every mom deserves support. Join me:`,
-  register:  (n, s) => `I've fulfilled ${s.requestsFulfilled} care ${s.requestsFulfilled === 1 ? "request" : "requests"} for moms in need through Kradel 💛 Join me:`,
-  combined:  (n, s) => `I've helped ${s.mothersSupported} mothers through Kradel 💛 — essentials shared, requests fulfilled, care delivered. Join me:`,
-  none:      (n)    => `I just joined Kradel 💛 — a community helping mothers get the essentials they need. Join us:`,
+  discover: (n, s) => `I've shared essentials with ${s.mothersSupported} ${s.mothersSupported === 1 ? "mother" : "mothers"} through Kradäl Discover 💛 Every mother deserves support. Join me:`,
+  register: (n, s) => `I've fulfilled ${s.requestsFulfilled} care ${s.requestsFulfilled === 1 ? "request" : "requests"} for mothers in need through Kradäl Register 💛 Join me:`,
+  combined: (n, s) => `I've supported ${s.mothersSupported} mothers through Kradäl 💛 — essentials shared through Discover, care requests fulfilled through Register. Join me:`,
+  none:     ()     => `I just joined Kradäl 💛 — a community helping mothers get the essentials they need. Join us:`,
 };
 
 const VARIANT_LABEL: Record<ImpactVariant, string> = {
-  discover: "Discover",
-  register: "Register",
-  combined: "Combined",
+  discover: "Discover impact card",
+  register: "Register impact card",
+  combined: "Discover & Register impact card",
   none:     "",
 };
 
