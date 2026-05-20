@@ -59,16 +59,16 @@ export async function GET(req: NextRequest) {
     essentialsDelivered,
   };
 
-  // ── City + month ─────────────────────────────────────────────────────────
-  const loc    = user.location ?? "";
-  const city   = loc.includes(",") ? loc.split(",")[0].trim() : loc || null;
-  const now    = new Date();
-  const month  = now.toLocaleString("en", { month: "long", year: "numeric" });
+  // ── Location + month ─────────────────────────────────────────────────────
+  const loc      = user.location ?? "";
+  const location = loc.trim() || null;
+  const now      = new Date();
+  const month    = now.toLocaleString("en", { month: "long", year: "numeric" });
 
   return NextResponse.json({
     variant,
     stats,
-    city,
+    location,
     month,
     unlocked: !!user.impactCardUnlockedAt,
   });

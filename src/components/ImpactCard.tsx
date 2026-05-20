@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
+import { Leaf } from "lucide-react";
 
 export type ImpactVariant = "discover" | "register" | "combined" | "none";
 
@@ -13,28 +14,20 @@ export interface ImpactStats {
 }
 
 interface StatTile {
+  icon:         string;
   value:        number;
   label:        string;
   channel:      string;
   channelColor: string;
 }
 
-interface NarrativeLine {
-  text:    string;
-  channel: "discover" | "register";
-}
-
 interface VariantConfig {
-  bg1:              string;
-  bg2:              string;
-  accent:           string;
-  channelPill:      string;
-  channelPillBg:    string;
-  channelPillColor: string;
-  narrative:        string | null;
-  narrativeLines:   NarrativeLine[] | null;
-  stats:            (s: ImpactStats) => StatTile[];
-  channelExplainer: string | null;
+  channelPill:    string;
+  channelIcon:    string;
+  hero:           string;
+  narrative1:     string;
+  narrative2:     string;
+  stats:          (s: ImpactStats) => StatTile[];
 }
 
 const DISC_COLOR = "#7ec8a4";
@@ -42,77 +35,70 @@ const REG_COLOR  = "#c4b5fd";
 
 const VARIANTS: Record<ImpactVariant, VariantConfig> = {
   discover: {
-    bg1: "#0d3d2e", bg2: "#1a5c45",
-    accent: DISC_COLOR,
-    channelPill:      "Through Discover",
-    channelPillBg:    "rgba(126,200,164,0.18)",
-    channelPillColor: DISC_COLOR,
-    narrative:        "Shared baby & maternity essentials directly\nwith mothers through Discover.",
-    narrativeLines:   null,
+    channelPill:  "Through Discover",
+    channelIcon:  "🛍️",
+    hero:         "You shared care,\nhand to hand 💛",
+    narrative1:   "You shared baby & maternity essentials directly with mothers who needed them.",
+    narrative2:   "Your care helps mothers feel supported and seen.",
     stats: (s) => [
-      { value: s.mothersSupported, label: "Mothers supported", channel: "Discover", channelColor: DISC_COLOR },
-      { value: s.itemsShared,      label: "Essentials shared", channel: "Discover", channelColor: DISC_COLOR },
+      { icon: "👥", value: s.mothersSupported, label: "Mothers supported", channel: "Through Discover", channelColor: DISC_COLOR },
+      { icon: "🎁", value: s.itemsShared,      label: "Essentials shared", channel: "Through Discover", channelColor: DISC_COLOR },
     ],
-    channelExplainer: "Discover · neighbours pass on gently-used essentials",
   },
 
   register: {
-    bg1: "#2d1b69", bg2: "#4c2f9e",
-    accent: REG_COLOR,
-    channelPill:      "Through Register",
-    channelPillBg:    "rgba(196,181,253,0.18)",
-    channelPillColor: REG_COLOR,
-    narrative:        "Helped fulfill mothers' care requests\nthrough Register.",
-    narrativeLines:   null,
+    channelPill:  "Through Register",
+    channelIcon:  "📋",
+    hero:         "You answered what\nmothers needed 💛",
+    narrative1:   "You helped deliver the specific essentials mothers asked for.",
+    narrative2:   "Your care helps mothers prepare with dignity.",
     stats: (s) => [
-      { value: s.requestsFulfilled, label: "Requests fulfilled", channel: "Register", channelColor: REG_COLOR },
-      { value: s.familiesSupported, label: "Families supported", channel: "Register", channelColor: REG_COLOR },
+      { icon: "🤝", value: s.requestsFulfilled, label: "Requests fulfilled", channel: "Through Register", channelColor: REG_COLOR },
+      { icon: "🏠", value: s.familiesSupported,  label: "Families supported", channel: "Through Register", channelColor: REG_COLOR },
     ],
-    channelExplainer: "Register · mothers list what they need; donors commit to fulfill it",
   },
 
   combined: {
-    bg1: "#0d3d2e", bg2: "#2d1b69",
-    accent: "#a5f3d5",
-    channelPill:      "Through Discover & Register",
-    channelPillBg:    "rgba(165,243,213,0.13)",
-    channelPillColor: "#a5f3d5",
-    narrative:        null,
-    narrativeLines: [
-      { text: "Shared essentials through Discover",          channel: "discover" },
-      { text: "Helped fulfill care requests through Register", channel: "register" },
-    ],
+    channelPill:  "Through Discover & Register",
+    channelIcon:  "✨",
+    hero:         "You've made a bigger\nimpact together 💛",
+    narrative1:   "You shared baby & maternity essentials and helped deliver care to mothers who need support.",
+    narrative2:   "Your care helps mothers prepare, feel supported, and thrive.",
     stats: (s) => [
-      { value: s.mothersSupported,  label: "Mothers supported", channel: "Discover", channelColor: DISC_COLOR },
-      { value: s.itemsShared,       label: "Essentials shared", channel: "Discover", channelColor: DISC_COLOR },
-      { value: s.requestsFulfilled, label: "Requests fulfilled", channel: "Register", channelColor: REG_COLOR  },
+      { icon: "👥", value: s.mothersSupported,  label: "Mothers supported", channel: "Through Discover", channelColor: DISC_COLOR },
+      { icon: "🎁", value: s.itemsShared,        label: "Essentials shared", channel: "Through Discover", channelColor: DISC_COLOR },
+      { icon: "🤝", value: s.requestsFulfilled,  label: "Requests fulfilled", channel: "Through Register", channelColor: REG_COLOR  },
     ],
-    channelExplainer: null,
   },
 
   none: {
-    bg1: "#1a1a1a", bg2: "#2e2e2e",
-    accent: "#888",
-    channelPill:      "Kradäl Care",
-    channelPillBg:    "rgba(136,136,136,0.18)",
-    channelPillColor: "#888",
-    narrative:        "Starting my care journey.",
-    narrativeLines:   null,
-    stats:            () => [],
-    channelExplainer: null,
+    channelPill:  "Kradäl Care",
+    channelIcon:  "🌱",
+    hero:         "Starting your\ncare journey 💛",
+    narrative1:   "Complete your first Discover listing or Register commitment to build your impact story.",
+    narrative2:   "Every action makes a difference.",
+    stats: () => [],
   },
 };
 
+// ── Colours ────────────────────────────────────────────────────────────────────
+const GREEN  = "#1a4a3a";
+const CREAM  = "#faf7f0";
+const GREEN_LIGHT = "#e0f2e8";
+const GREEN_MID   = "#b8d4c4";
+const GREEN_TEXT  = "#3d5c4e";
+const GREEN_MUTED = "#6b8c7a";
+
 interface Props {
-  variant: ImpactVariant;
-  stats:   ImpactStats;
-  name:    string;
-  city:    string | null;
-  month:   string;
+  variant:  ImpactVariant;
+  stats:    ImpactStats;
+  name:     string;
+  location: string | null;
+  month:    string;
 }
 
 const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
-  { variant, stats, name, city, month },
+  { variant, stats, name, location, month },
   ref,
 ) {
   const cfg   = VARIANTS[variant];
@@ -123,106 +109,151 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
     <div
       ref={ref}
       style={{
-        width: 340, height: 340, flexShrink: 0,
-        background: `linear-gradient(145deg, ${cfg.bg1} 0%, ${cfg.bg2} 100%)`,
-        borderRadius: 24, position: "relative", overflow: "hidden",
-        fontFamily: "Nunito, sans-serif",
+        width: 360, height: 450,
+        border: `2px solid ${GREEN}`, borderRadius: 20,
+        overflow: "hidden", background: CREAM,
         display: "flex", flexDirection: "column",
-        padding: "20px 20px 16px",
+        fontFamily: "Nunito, sans-serif",
+        position: "relative",
         boxSizing: "border-box",
       }}
     >
-      {/* subtle bg circles */}
-      <div style={{ position: "absolute", top: -50, right: -50, width: 210, height: 210, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: -35, left: -35, width: 150, height: 150, borderRadius: "50%", background: "rgba(255,255,255,0.03)", pointerEvents: "none" }} />
+      {/* ══ CREAM TOP ZONE ══════════════════════════════════════════════════ */}
+      <div style={{ flex: 1, padding: "16px 18px 10px", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
-      {/* ── top row: wordmark + channel pill ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, position: "relative", zIndex: 1 }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "white", fontFamily: "Lora, serif", letterSpacing: "-0.2px", lineHeight: 1 }}>
-            Kradäl
+        {/* Heart motif — large pale bg accent */}
+        <div style={{
+          position: "absolute", right: -8, top: "38%", transform: "translateY(-50%)",
+          fontSize: 140, color: GREEN, opacity: 0.05,
+          pointerEvents: "none", userSelect: "none", lineHeight: 1,
+        }}>♥</div>
+
+        {/* Leaf sprigs */}
+        <div style={{ position: "absolute", top: 10, right: 12, opacity: 0.18, transform: "rotate(25deg)", pointerEvents: "none" }}>
+          <Leaf size={15} color={GREEN} />
+        </div>
+        <div style={{ position: "absolute", bottom: 18, right: 22, opacity: 0.13, transform: "rotate(-18deg)", pointerEvents: "none" }}>
+          <Leaf size={11} color={GREEN} />
+        </div>
+        <div style={{ position: "absolute", bottom: 24, left: 14, opacity: 0.1, transform: "rotate(10deg)", pointerEvents: "none" }}>
+          <Leaf size={10} color={GREEN} />
+        </div>
+
+        {/* Header row: wordmark + "every act" pill */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, position: "relative", zIndex: 1 }}>
+          <div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN, lineHeight: 1 }}>Kradäl</div>
+            <div style={{ fontSize: 9, color: GREEN_MUTED, fontWeight: 600, marginTop: 2 }}>Impact Story</div>
           </div>
-          <div style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginTop: 2, fontStyle: "italic", fontFamily: "Lora, serif" }}>
-            Impact Story
+          <div style={{
+            border: `1.5px solid ${GREEN_MID}`, borderRadius: 20,
+            padding: "3px 9px", fontSize: 9, fontWeight: 700,
+            color: GREEN, background: GREEN_LIGHT,
+            flexShrink: 0, maxWidth: 170, textAlign: "right",
+          }}>
+            ♡ Every act of care matters
           </div>
         </div>
+
+        {/* Channel pill */}
         <div style={{
-          background: cfg.channelPillBg,
-          border: `1px solid ${cfg.channelPillColor}55`,
-          borderRadius: 20, padding: "4px 10px",
-          fontSize: 9, fontWeight: 800, color: cfg.channelPillColor,
-          letterSpacing: "0.3px", whiteSpace: "nowrap",
+          display: "inline-flex", alignItems: "center", gap: 5,
+          background: GREEN_LIGHT, border: `1px solid ${GREEN_MID}`,
+          borderRadius: 20, padding: "4px 11px",
+          fontSize: 10, fontWeight: 800, color: GREEN,
+          marginBottom: 10, alignSelf: "flex-start", position: "relative", zIndex: 1,
         }}>
+          <span style={{ fontSize: 11 }}>{cfg.channelIcon}</span>
           {cfg.channelPill}
         </div>
-      </div>
 
-      {/* ── narrative ── */}
-      <div style={{ position: "relative", zIndex: 1, marginBottom: 14 }}>
-        {cfg.narrativeLines ? (
-          // Combined: two attributed lines
-          cfg.narrativeLines.map((line, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 7 }}>
-              <div style={{
-                width: 3, height: 3, borderRadius: "50%",
-                background: line.channel === "discover" ? DISC_COLOR : REG_COLOR,
-                flexShrink: 0, marginTop: 6,
-              }} />
-              <div style={{ fontSize: 12, fontFamily: "Lora, serif", fontWeight: 600, color: "white", lineHeight: 1.45 }}>
-                {line.text}
-              </div>
-            </div>
-          ))
-        ) : (
-          // Single block narrative
-          <div style={{ fontSize: 13, fontFamily: "Lora, serif", fontWeight: 600, color: "white", lineHeight: 1.5, whiteSpace: "pre-line" }}>
-            {cfg.narrative}
+        {/* Hero line */}
+        <div style={{
+          fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: GREEN,
+          lineHeight: 1.3, marginBottom: 11, whiteSpace: "pre-line",
+          position: "relative", zIndex: 1,
+        }}>
+          {cfg.hero}
+        </div>
+
+        {/* Narrative lines with rule */}
+        <div style={{ position: "relative", zIndex: 1, marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 5 }}>
+            <Leaf size={10} color={GREEN} style={{ marginTop: 3, flexShrink: 0, opacity: 0.7 }} />
+            <div style={{ fontSize: 11, color: GREEN_TEXT, lineHeight: 1.5 }}>{cfg.narrative1}</div>
           </div>
-        )}
-      </div>
-
-      {/* ── metrics ── */}
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
-        {tiles.length > 0 && (
-          <>
-            <div style={{ fontSize: 8, fontWeight: 800, color: "rgba(255,255,255,0.4)", letterSpacing: "1.3px", textTransform: "uppercase", marginBottom: 7 }}>
-              Your impact so far
-            </div>
-            <div style={{ display: "flex", gap: 7 }}>
-              {tiles.map(({ value, label, channel, channelColor }) => (
-                <div key={label} style={{
-                  flex: 1, background: "rgba(255,255,255,0.1)",
-                  borderRadius: 12, padding: "9px 6px", textAlign: "center",
-                }}>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "white", lineHeight: 1, fontFamily: "Nunito, sans-serif" }}>
-                    {value}
-                  </div>
-                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", fontWeight: 700, marginTop: 4, lineHeight: 1.3 }}>
-                    {label}
-                  </div>
-                  <div style={{ fontSize: 7, color: channelColor, fontWeight: 800, marginTop: 2, opacity: 0.85 }}>
-                    · {channel}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ── footer ── */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", paddingTop: 10, marginTop: 12, position: "relative", zIndex: 1 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "white" }}>{first}</div>
-          <div style={{ fontSize: 9, color: cfg.accent, fontWeight: 600 }}>
-            {city ? `${city} · ` : ""}{month}
+          <div style={{ borderTop: `1px solid ${GREEN_MID}`, margin: "5px 0 5px 16px" }} />
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <Leaf size={10} color={GREEN} style={{ marginTop: 3, flexShrink: 0, opacity: 0.7 }} />
+            <div style={{ fontSize: 11, color: GREEN_TEXT, lineHeight: 1.5 }}>{cfg.narrative2}</div>
           </div>
         </div>
-        {cfg.channelExplainer && (
-          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", lineHeight: 1.5, marginTop: 4 }}>
-            {cfg.channelExplainer}
+
+        {/* Location / Date — pushed to bottom of zone */}
+        <div style={{ marginTop: "auto", fontSize: 10, color: GREEN_MUTED, position: "relative", zIndex: 1 }}>
+          {location ? `📍 ${location} · ` : ""}📅 {month}
+        </div>
+      </div>
+
+      {/* ══ WAVY DIVIDER ════════════════════════════════════════════════════ */}
+      <svg
+        viewBox="0 0 360 18"
+        preserveAspectRatio="none"
+        style={{ display: "block", width: "100%", flexShrink: 0, marginBottom: -1 }}
+      >
+        <path d="M0,18 C80,3 180,14 280,6 C320,2 360,10 360,5 L360,18 Z" fill={GREEN} />
+      </svg>
+
+      {/* ══ DARK STATS BAND ═════════════════════════════════════════════════ */}
+      <div style={{ background: GREEN, padding: "6px 18px 14px", flexShrink: 0 }}>
+
+        {/* Band header */}
+        <div style={{
+          textAlign: "center", fontSize: 10, fontWeight: 700,
+          color: DISC_COLOR, marginBottom: 10, letterSpacing: "0.4px",
+        }}>
+          🌿 Your impact so far 🌿
+        </div>
+
+        {/* Stat tiles */}
+        {tiles.length > 0 && (
+          <div style={{ display: "flex", gap: tiles.length === 3 ? 8 : 20, justifyContent: "center", marginBottom: 10 }}>
+            {tiles.map(({ icon, value, label, channel, channelColor }) => (
+              <div key={label} style={{ textAlign: "center", flex: tiles.length === 3 ? 1 : undefined, minWidth: tiles.length === 3 ? 0 : 90 }}>
+                {/* Circular icon tile */}
+                <div style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  background: "rgba(250,247,240,0.13)",
+                  border: "1px solid rgba(250,247,240,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 16, margin: "0 auto 5px",
+                }}>
+                  {icon}
+                </div>
+                {/* Big serif number */}
+                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "white", lineHeight: 1 }}>
+                  {value}
+                </div>
+                {/* Label */}
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", fontWeight: 700, marginTop: 3, lineHeight: 1.3 }}>
+                  {label}
+                </div>
+                {/* Channel attribution */}
+                <div style={{ fontSize: 7, color: channelColor, fontWeight: 800, marginTop: 2, opacity: 0.9 }}>
+                  {channel}
+                </div>
+              </div>
+            ))}
           </div>
         )}
+
+        {/* Band footer */}
+        <div style={{
+          textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.14)",
+          paddingTop: 8, fontSize: 9, color: "rgba(255,255,255,0.65)", fontWeight: 600,
+        }}>
+          💛 Thank you for being part of the circle of care.
+        </div>
       </div>
     </div>
   );

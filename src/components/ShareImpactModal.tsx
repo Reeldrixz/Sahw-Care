@@ -5,10 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import ImpactCard, { type ImpactVariant, type ImpactStats } from "./ImpactCard";
 
 interface ImpactData {
-  variant: ImpactVariant;
-  stats:   ImpactStats;
-  city:    string | null;
-  month:   string;
+  variant:  ImpactVariant;
+  stats:    ImpactStats;
+  location: string | null;
+  month:    string;
 }
 
 interface Props {
@@ -109,7 +109,7 @@ export default function ShareImpactModal({ onClose }: Props) {
     setDownloading(true);
     try {
       const { toPng } = await import("html-to-image");
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2 });
+      const dataUrl = await toPng(cardRef.current, { pixelRatio: 3 });
       const a = document.createElement("a");
       a.href = dataUrl;
       a.download = `kradel-impact-${firstName.toLowerCase()}.png`;
@@ -189,7 +189,7 @@ export default function ShareImpactModal({ onClose }: Props) {
                   variant={data.variant}
                   stats={data.stats}
                   name={user.name}
-                  city={data.city}
+                  location={data.location}
                   month={data.month}
                 />
               </div>
