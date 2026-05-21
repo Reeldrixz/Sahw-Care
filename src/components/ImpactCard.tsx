@@ -131,7 +131,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
       }}
     >
       {/* ══ CREAM TOP ZONE ══════════════════════════════════════════════════ */}
-      <div style={{ flex: 1, padding: "16px 18px 10px", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, padding: "22px 18px 10px", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
         {/* Heart motif — large pale bg accent */}
         <div style={{
@@ -228,7 +228,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
       </svg>
 
       {/* ══ DARK STATS BAND ═════════════════════════════════════════════════ */}
-      <div style={{ background: GREEN, padding: "6px 18px 14px", flexShrink: 0 }}>
+      <div style={{ background: GREEN, padding: "6px 18px 20px", flexShrink: 0 }}>
 
         {/* Band header */}
         <div style={{
