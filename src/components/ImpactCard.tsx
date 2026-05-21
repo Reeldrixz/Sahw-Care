@@ -62,8 +62,8 @@ const VARIANTS: Record<ImpactVariant, VariantConfig> = {
     narrative1:  "You shared baby & maternity essentials directly with mothers who needed them.",
     narrative2:  "Your care helps mothers feel supported and seen.",
     stats: (s) => [
-      { icon: <Users size={16} color={DISC_COLOR} strokeWidth={1.5} />, value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR  },
-      { icon: <Gift  size={16} color={CREAM}       strokeWidth={1.5} />, value: s.discoverItems,    label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB },
+      { icon: <Users size={14} color={DISC_COLOR} strokeWidth={1.5} />, value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR  },
+      { icon: <Gift  size={14} color={CREAM}       strokeWidth={1.5} />, value: s.discoverItems,    label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB },
     ],
   },
 
@@ -74,8 +74,8 @@ const VARIANTS: Record<ImpactVariant, VariantConfig> = {
     narrative1:  "You helped deliver the specific essentials mothers asked for.",
     narrative2:  "Your care helps mothers prepare with dignity.",
     stats: (s) => [
-      { icon: <HeartHandshake size={16} color={REG_COLOR} strokeWidth={1.5} />, value: s.needsMet,          label: "Needs met",         subtext: "for mothers and their newborns", subtextColor: REG_COLOR   },
-      { icon: <Gift           size={16} color={CREAM}     strokeWidth={1.5} />, value: s.essentialsShared,  label: "Essentials shared",  subtext: "in total",                       subtextColor: NEUTRAL_SUB },
+      { icon: <HeartHandshake size={14} color={REG_COLOR} strokeWidth={1.5} />, value: s.needsMet,          label: "Needs met",         subtext: "for mothers and their newborns", subtextColor: REG_COLOR   },
+      { icon: <Gift           size={14} color={CREAM}     strokeWidth={1.5} />, value: s.essentialsShared,  label: "Essentials shared",  subtext: "in total",                       subtextColor: NEUTRAL_SUB },
     ],
   },
 
@@ -86,9 +86,9 @@ const VARIANTS: Record<ImpactVariant, VariantConfig> = {
     narrative1:  "You shared baby & maternity essentials and helped deliver care to mothers who need support.",
     narrative2:  "Your care helps mothers prepare, feel supported, and thrive.",
     stats: (s) => [
-      { icon: <Users          size={16} color={DISC_COLOR} strokeWidth={1.5} />, value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR  },
-      { icon: <Gift           size={16} color={CREAM}      strokeWidth={1.5} />, value: s.essentialsShared, label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB },
-      { icon: <HeartHandshake size={16} color={REG_COLOR}  strokeWidth={1.5} />, value: s.needsMet,         label: "Needs met",          subtext: "for mothers and their newborns", subtextColor: REG_COLOR   },
+      { icon: <Users          size={14} color={DISC_COLOR} strokeWidth={1.5} />, value: s.mothersSupported, label: "Mothers supported", subtext: "via peer-to-peer donation",       subtextColor: DISC_COLOR  },
+      { icon: <Gift           size={14} color={CREAM}      strokeWidth={1.5} />, value: s.essentialsShared, label: "Essentials shared",  subtext: "in total",                        subtextColor: NEUTRAL_SUB },
+      { icon: <HeartHandshake size={14} color={REG_COLOR}  strokeWidth={1.5} />, value: s.needsMet,         label: "Needs met",          subtext: "for mothers and their newborns", subtextColor: REG_COLOR   },
     ],
   },
 
@@ -110,6 +110,7 @@ interface Props {
   month:    string;
 }
 
+// 360×360 CSS = 1080×1080 at pixelRatio 3 (1:1 Instagram feed, never crops)
 const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
   { variant, stats, name, location, month },
   ref,
@@ -121,7 +122,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
     <div
       ref={ref}
       style={{
-        width: 360, height: 450,
+        width: 360, height: 360,
         border: `2px solid ${GREEN}`, borderRadius: 20,
         overflow: "hidden", background: CREAM,
         display: "flex", flexDirection: "column",
@@ -131,29 +132,29 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
       }}
     >
       {/* ══ CREAM TOP ZONE ══════════════════════════════════════════════════ */}
-      <div style={{ flex: 1, padding: "22px 18px 10px", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, padding: "10px 18px 8px", position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
         {/* Heart motif — large pale bg accent */}
         <div style={{
           position: "absolute", right: -8, top: "38%", transform: "translateY(-50%)",
           opacity: 0.05, pointerEvents: "none",
         }}>
-          <Heart size={140} color={GREEN} fill={GREEN} />
+          <Heart size={110} color={GREEN} fill={GREEN} />
         </div>
 
         {/* Leaf sprigs */}
-        <div style={{ position: "absolute", top: 10, right: 12, opacity: 0.18, transform: "rotate(25deg)", pointerEvents: "none" }}>
-          <Leaf size={15} color={GREEN} />
+        <div style={{ position: "absolute", top: 8, right: 10, opacity: 0.18, transform: "rotate(25deg)", pointerEvents: "none" }}>
+          <Leaf size={14} color={GREEN} />
         </div>
-        <div style={{ position: "absolute", bottom: 18, right: 22, opacity: 0.13, transform: "rotate(-18deg)", pointerEvents: "none" }}>
-          <Leaf size={11} color={GREEN} />
-        </div>
-        <div style={{ position: "absolute", bottom: 24, left: 14, opacity: 0.1, transform: "rotate(10deg)", pointerEvents: "none" }}>
+        <div style={{ position: "absolute", bottom: 12, right: 18, opacity: 0.13, transform: "rotate(-18deg)", pointerEvents: "none" }}>
           <Leaf size={10} color={GREEN} />
+        </div>
+        <div style={{ position: "absolute", bottom: 16, left: 12, opacity: 0.1, transform: "rotate(10deg)", pointerEvents: "none" }}>
+          <Leaf size={9} color={GREEN} />
         </div>
 
         {/* Header row: wordmark + "every act" pill */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, position: "relative", zIndex: 1 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 7, position: "relative", zIndex: 1 }}>
           <div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN, lineHeight: 1 }}>Kradəl</div>
             <div style={{ fontSize: 9, color: GREEN_MUTED, fontWeight: 600, marginTop: 2 }}>Impact Story</div>
@@ -174,9 +175,9 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 5,
           background: GREEN_LIGHT, border: `1px solid ${GREEN_MID}`,
-          borderRadius: 20, padding: "4px 11px",
+          borderRadius: 20, padding: "3px 10px",
           fontSize: 10, fontWeight: 800, color: GREEN,
-          marginBottom: 10, alignSelf: "flex-start", position: "relative", zIndex: 1,
+          marginBottom: 6, alignSelf: "flex-start", position: "relative", zIndex: 1,
         }}>
           {cfg.channelIcon}
           {cfg.channelPill}
@@ -184,36 +185,36 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
 
         {/* Hero line */}
         <div style={{
-          fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: GREEN,
-          lineHeight: 1.3, marginBottom: 11, whiteSpace: "pre-line",
+          fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN,
+          lineHeight: 1.3, marginBottom: 5, whiteSpace: "pre-line",
           position: "relative", zIndex: 1,
         }}>
           {cfg.hero}
         </div>
 
         {/* Narrative lines with rule */}
-        <div style={{ position: "relative", zIndex: 1, marginBottom: 10 }}>
-          <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 5 }}>
-            <Leaf size={10} color={GREEN} style={{ marginTop: 3, flexShrink: 0, opacity: 0.7 }} />
-            <div style={{ fontSize: 11, color: GREEN_TEXT, lineHeight: 1.5 }}>{cfg.narrative1}</div>
+        <div style={{ position: "relative", zIndex: 1, marginBottom: 2 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-start", marginBottom: 3 }}>
+            <Leaf size={9} color={GREEN} style={{ marginTop: 3, flexShrink: 0, opacity: 0.7 }} />
+            <div style={{ fontSize: 11, color: GREEN_TEXT, lineHeight: 1.45 }}>{cfg.narrative1}</div>
           </div>
-          <div style={{ borderTop: `1px solid ${GREEN_MID}`, margin: "5px 0 5px 16px" }} />
+          <div style={{ borderTop: `1px solid ${GREEN_MID}`, margin: "3px 0 3px 15px" }} />
           <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-            <Leaf size={10} color={GREEN} style={{ marginTop: 3, flexShrink: 0, opacity: 0.7 }} />
-            <div style={{ fontSize: 11, color: GREEN_TEXT, lineHeight: 1.5 }}>{cfg.narrative2}</div>
+            <Leaf size={9} color={GREEN} style={{ marginTop: 3, flexShrink: 0, opacity: 0.7 }} />
+            <div style={{ fontSize: 11, color: GREEN_TEXT, lineHeight: 1.45 }}>{cfg.narrative2}</div>
           </div>
         </div>
 
         {/* Location / Date */}
-        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: GREEN_MUTED, position: "relative", zIndex: 1 }}>
+        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 9, color: GREEN_MUTED, position: "relative", zIndex: 1 }}>
           {location && (
             <>
-              <MapPin size={9} color={GREEN_MUTED} />
+              <MapPin size={8} color={GREEN_MUTED} />
               <span>{location}</span>
               <span style={{ margin: "0 2px" }}>·</span>
             </>
           )}
-          <Calendar size={9} color={GREEN_MUTED} />
+          <Calendar size={8} color={GREEN_MUTED} />
           <span>{month}</span>
         </div>
       </div>
@@ -228,44 +229,44 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
       </svg>
 
       {/* ══ DARK STATS BAND ═════════════════════════════════════════════════ */}
-      <div style={{ background: GREEN, padding: "6px 18px 20px", flexShrink: 0 }}>
+      <div style={{ background: GREEN, padding: "4px 18px 8px", flexShrink: 0 }}>
 
         {/* Band header */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          fontSize: 10, fontWeight: 700,
-          color: DISC_COLOR, marginBottom: 10, letterSpacing: "0.4px",
+          fontSize: 9, fontWeight: 700,
+          color: DISC_COLOR, marginBottom: 4, letterSpacing: "0.4px",
         }}>
-          <Leaf size={10} color={DISC_COLOR} />
+          <Leaf size={9} color={DISC_COLOR} />
           Your impact so far
-          <Leaf size={10} color={DISC_COLOR} />
+          <Leaf size={9} color={DISC_COLOR} />
         </div>
 
         {/* Stat tiles */}
         {tiles.length > 0 && (
-          <div style={{ display: "flex", gap: tiles.length === 3 ? 8 : 20, justifyContent: "center", marginBottom: 10 }}>
+          <div style={{ display: "flex", gap: tiles.length === 3 ? 8 : 20, justifyContent: "center", marginBottom: 6 }}>
             {tiles.map(({ icon, value, label, subtext, subtextColor }) => (
               <div key={label} style={{ textAlign: "center", flex: tiles.length === 3 ? 1 : undefined, minWidth: tiles.length === 3 ? 0 : 90 }}>
                 {/* Circular icon tile */}
                 <div style={{
-                  width: 34, height: 34, borderRadius: "50%",
+                  width: 26, height: 26, borderRadius: "50%",
                   background: "rgba(250,247,240,0.13)",
                   border: "1px solid rgba(250,247,240,0.2)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  margin: "0 auto 5px",
+                  margin: "0 auto 4px",
                 }}>
                   {icon}
                 </div>
                 {/* Serif number */}
-                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "white", lineHeight: 1 }}>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: "white", lineHeight: 1 }}>
                   {value}
                 </div>
                 {/* Label */}
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", fontWeight: 700, marginTop: 3, lineHeight: 1.3 }}>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.8)", fontWeight: 700, marginTop: 2, lineHeight: 1.3 }}>
                   {label}
                 </div>
                 {/* Subtext */}
-                <div style={{ fontSize: 7, color: subtextColor, fontWeight: 700, marginTop: 2, lineHeight: 1.3 }}>
+                <div style={{ fontSize: 7, color: subtextColor, fontWeight: 700, marginTop: 1, lineHeight: 1.3 }}>
                   {subtext}
                 </div>
               </div>
@@ -277,7 +278,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
           borderTop: "1px solid rgba(255,255,255,0.14)",
-          paddingTop: 8, fontSize: 9, color: "rgba(255,255,255,0.65)", fontWeight: 600,
+          paddingTop: 5, fontSize: 9, color: "rgba(255,255,255,0.65)", fontWeight: 600,
         }}>
           <Heart size={9} fill={GOLD} color={GOLD} />
           Thank you for being part of the circle of care.
