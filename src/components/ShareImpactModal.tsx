@@ -207,7 +207,7 @@ export default function ShareImpactModal({ onClose }: Props) {
                 display: "flex", alignItems: "center", gap: 7,
               }}>
                 <Camera size={13} style={{ flexShrink: 0 }} />
-                Download and share from your camera roll — works for IG feed, Stories, WhatsApp, and Facebook.
+                Download and share directly from your camera roll — works on Instagram, WhatsApp, and Facebook.
               </div>
 
               {/* Social share buttons */}
