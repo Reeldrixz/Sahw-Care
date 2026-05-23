@@ -58,3 +58,46 @@ export function getPublicIdFromUrl(url: string): string {
   const folder = parts[parts.length - 2];
   return `${folder}/${filename.split(".")[0]}`;
 }
+
+// ── Layer 3: private/authenticated documents ─────────────────────────────────
+
+/**
+ * Uploads a Layer 3 escalation document as a Cloudinary authenticated asset.
+ * Returns the public_id (not a URL) — store this in layer3DocumentUrl.
+ * Access is only possible via a time-limited signed URL (see getSignedDocumentUrl).
+ */
+export async function uploadAuthenticatedDocument(
+  file: Buffer,
+  userId: string
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream(
+        {
+          folder:        `kradel/layer3/${userId}`,
+          resource_type: "image",
+          type:          "authenticated",
+          transformation: [{ quality: "auto" }],
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result!.public_id);
+        }
+      )
+      .end(file);
+  });
+}
+
+/**
+ * Generates a time-limited signed URL for an authenticated Layer 3 document.
+ * Default expiry: 1 hour.
+ */
+export function getSignedDocumentUrl(publicId: string, expiresInSeconds = 3600): string {
+  return cloudinary.url(publicId, {
+    resource_type: "image",
+    type:          "authenticated",
+    sign_url:      true,
+    expires_at:    Math.floor(Date.now() / 1000) + expiresInSeconds,
+    secure:        true,
+  });
+}

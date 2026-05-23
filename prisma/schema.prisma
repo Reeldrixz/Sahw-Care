@@ -34,7 +34,28 @@ model User {
   phoneVerified          Boolean   @default(false)
   emailVerified          Boolean   @default(false)
 
-  // layer 2 motherhood verification
+  // ── layer 1 identity verification (v2) ─────────────────────────────────────
+  identityVerified          Boolean   @default(false)
+  personaInquiryId          String?
+  identityVerifiedAt        DateTime?
+  identityOverrideByAdminId String?
+  identityOverrideReason    String?
+
+  // ── layer 2 risk controls (v2) ───────────────────────────────────────────
+  riskFlagged  Boolean @default(false)
+  riskReason   String?
+  shippingHold Boolean @default(false)
+
+  // ── layer 3 escalation (v2) ──────────────────────────────────────────────
+  layer3Status           Layer3Status @default(NONE)
+  layer3DocumentUrl      String?      // stores Cloudinary public_id (authenticated/signed)
+  layer3DocumentType     String?
+  layer3Note             String?
+  layer3ResolvedAt       DateTime?
+  layer3ClearedByAdminId String?
+  layer3OverrideReason   String?
+
+  // ── layer 2 motherhood verification (deprecated — kept until v2 migration complete) ─
   docStatus    DocStatus @default(UNVERIFIED)
   documentUrl  String?
   documentType String?
@@ -588,6 +609,13 @@ enum OtpType {
 
 enum DocStatus {
   UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum Layer3Status {
+  NONE
   PENDING
   VERIFIED
   REJECTED
