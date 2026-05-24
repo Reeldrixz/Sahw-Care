@@ -37,6 +37,7 @@ model User {
   // ── layer 1 identity verification (v2) ─────────────────────────────────────
   identityVerified          Boolean   @default(false)
   personaInquiryId          String?
+  personaStatus             String?   // "pending" | "approved" | "declined" | "failed" | "expired"
   identityVerifiedAt        DateTime?
   identityOverrideByAdminId String?
   identityOverrideReason    String?
