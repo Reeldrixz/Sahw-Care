@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { logAbuseEvent, runAbuseChecks } from "@/lib/abuse";
+import { canClaimDiscoverItem } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -51,14 +52,23 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Enforce Layer 1 before requesting items (bypassed for verificationLevel >= 2)
-  const requester = await prisma.user.findUnique({
-    where: { id: user.userId },
-    select: {
-      phoneVerified: true, emailVerified: true, avatar: true,
-      trustScore: true, verificationLevel: true,
-      activeRequestLockedUntil: true, requestCountSinceReset: true,
-    },
-  });
+  const [requester, priorClaimCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user.userId },
+      select: {
+        phoneVerified: true, emailVerified: true, avatar: true,
+        trustScore: true, verificationLevel: true,
+        manualReviewStatus: true, identityVerified: true,
+        activeRequestLockedUntil: true, requestCountSinceReset: true,
+      },
+    }),
+    prisma.request.count({
+      where: {
+        requesterId: user.userId,
+        status: { in: ["FULFILLED", "CONFIRMED"] },
+      },
+    }),
+  ]);
   if (!requester) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const isFullyVerified = (requester.verificationLevel ?? 0) >= 2;
@@ -69,13 +79,12 @@ export async function POST(req: NextRequest) {
     }, { status: 403 });
   }
 
-  // Trust gate: score must be >= 25 to request items
-  if ((requester.trustScore ?? 0) < 25) {
+  // Access gate: verification tier check
+  const claimAccess = canClaimDiscoverItem(requester, priorClaimCount);
+  if (!claimAccess.allowed) {
     return NextResponse.json({
-      error: "Complete your profile verification to request items.",
-      code: "TRUST_SCORE_TOO_LOW",
-      required: 25,
-      current: requester.trustScore ?? 0,
+      error: claimAccess.message,
+      code:  claimAccess.code,
     }, { status: 403 });
   }
 

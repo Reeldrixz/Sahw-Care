@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canApplyForBundle } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const applicant = await prisma.user.findUnique({
     where:  { id: currentUser.userId },
-    select: { role: true, trustScore: true },
+    select: { role: true, identityVerified: true, manualReviewStatus: true },
   });
 
   if (applicant?.role !== "RECIPIENT") {
@@ -37,11 +38,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bundle not found" }, { status: 404 });
   }
 
-  // Trust gate: score >= 25 required to apply for bundles
-  if ((applicant.trustScore ?? 0) < 25) {
+  const bundleAccess = canApplyForBundle(applicant);
+  if (!bundleAccess.allowed) {
     return NextResponse.json({
-      error: "Complete your profile verification to apply for bundles.",
-      code:  "TRUST_SCORE_TOO_LOW",
+      error: bundleAccess.message,
+      code:  bundleAccess.code,
     }, { status: 403 });
   }
 

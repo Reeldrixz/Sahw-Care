@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canCreateRegister } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -55,18 +56,18 @@ export async function POST(req: NextRequest) {
   const auth = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Trust gate: score >= 25 required to create a register
   const creator = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { trustScore: true },
+    select: { manualReviewStatus: true, identityVerified: true },
   });
 
   if (!creator) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  if (creator.trustScore < 25) {
+  const registerAccess = canCreateRegister(creator);
+  if (!registerAccess.allowed) {
     return NextResponse.json({
-      error: "Complete your profile verification to create a register.",
-      code: "TRUST_SCORE_TOO_LOW",
+      error: registerAccess.message,
+      code:  registerAccess.code,
     }, { status: 403 });
   }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { countryCodeToFlag } from "@/lib/stage";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
-import { TRUST_THRESHOLDS } from "@/lib/trust";
+import { canClaimDiscoverItem } from "@/lib/access";
 import { createAbuseFlag } from "@/lib/abuse";
 import { recordMissionAction } from "@/lib/missions";
 
@@ -89,18 +89,30 @@ export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const auth  = token ? await verifyToken(token) : null;
 
-  // Fetch caller info (trust score for requestable flag + countryCode for ranking)
-  let callerTrustScore  = 0;
+  // Fetch caller info for requestable flag + country ranking
+  let canRequest = false;
+  let requestLockedReason: string | null = null;
   let userCountryCode: string | null = null;
   if (auth) {
-    const caller = await prisma.user.findUnique({
-      where: { id: auth.userId },
-      select: { trustScore: true, countryCode: true },
-    });
-    callerTrustScore = caller?.trustScore ?? 0;
-    userCountryCode  = caller?.countryCode ?? null;
+    const [caller, priorClaimCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { manualReviewStatus: true, identityVerified: true, countryCode: true },
+      }),
+      prisma.request.count({
+        where: {
+          requesterId: auth.userId,
+          status: { in: ["FULFILLED", "CONFIRMED"] },
+        },
+      }),
+    ]);
+    userCountryCode = caller?.countryCode ?? null;
+    if (caller) {
+      const access = canClaimDiscoverItem(caller, priorClaimCount);
+      canRequest = access.allowed;
+      requestLockedReason = access.allowed ? null : (access.message ?? null);
+    }
   }
-  const canRequest = callerTrustScore >= TRUST_THRESHOLDS.MARKETPLACE;
 
   const { searchParams } = req.nextUrl;
   const category = searchParams.get("category");
@@ -145,7 +157,7 @@ export async function GET(req: NextRequest) {
     const formatted = items.map((item) => ({
       ...item,
       requestable: canRequest,
-      requestLockedReason: canRequest ? null : `You need a trust score of ${TRUST_THRESHOLDS.MARKETPLACE} to request items.`,
+      requestLockedReason: canRequest ? null : requestLockedReason,
       donor: {
         id:                item.donor.id,
         name:              item.donor.name,
@@ -188,7 +200,7 @@ export async function GET(req: NextRequest) {
   const formatted = ranked.map((item) => ({
     ...item,
     requestable: canRequest,
-    requestLockedReason: canRequest ? null : `You need a trust score of ${TRUST_THRESHOLDS.MARKETPLACE} to request items.`,
+    requestLockedReason: canRequest ? null : requestLockedReason,
     donor: {
       id:                item.donor.id,
       name:              item.donor.name,
