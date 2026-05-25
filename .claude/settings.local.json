@@ -61,7 +61,12 @@
       "Bash(rm \"C:/Users/user/carecircle/src/app/api/bundles/[campaignId]/request/route.ts\")",
       "Bash([ -f \"C:/Users/user/carecircle/$f\" ])",
       "Bash(grep -o \"SECTION 4[^\\\\\\\\\\\\\\\\]*\" \"C:\\\\Users\\\\user\\\\.claude\\\\projects\\\\C--Users-user-carecircle\\\\3ced2671-6720-4572-ae3d-b870dfef435f.jsonl\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(awk 'NR>=1969 && NR<=2200' \"C:/Users/user/carecircle/src/app/admin/page.tsx\")",
+      "Bash(npm ls *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_kAeUInfR6zC0@ep-bold-breeze-ampnforo.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx prisma *)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_kAeUInfR6zC0@ep-bold-breeze-ampnforo.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\" npx tsx *)"
     ]
   }
 }
