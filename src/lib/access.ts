@@ -38,6 +38,18 @@ export function canApplyForBundle(user: UserForAccess): AccessResult {
   };
 }
 
+export function canReceiveShipment(user: UserForAccess): AccessResult {
+  if (user.identityVerified === true) {
+    return { allowed: true };
+  }
+  return {
+    allowed: false,
+    code: "NEEDS_IDENTITY_VERIFICATION",
+    message:
+      "To confirm your shipping address, please complete identity verification on your profile first. This keeps your address and your delivery secure.",
+  };
+}
+
 export function canClaimDiscoverItem(
   user: UserForAccess,
   priorClaimCount: number,

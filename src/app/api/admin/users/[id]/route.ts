@@ -30,8 +30,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       });
 
-      // Step 2: award verification trust events idempotently via new engine
-      for (const eventType of ["EMAIL_VERIFIED", "PHONE_VERIFIED", "DOC_VERIFIED"]) {
+      // Step 2: award contact verification trust events idempotently via new engine
+      for (const eventType of ["EMAIL_VERIFIED", "PHONE_VERIFIED"]) {
         await awardTrust(id, eventType, { reason: "manual admin verification" });
       }
 

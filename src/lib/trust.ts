@@ -282,9 +282,6 @@ export async function getTrustSummary(userId: string) {
       age:          { earned: user.agePoints,          cap: CATEGORY_CAPS.age },
       fulfilment:   { earned: user.fulfilmentPoints,   cap: CATEGORY_CAPS.fulfilment },
     },
-    canCreateRegister: user.trustScore >= 25,
-    canApplyForBundle: user.trustScore >= 25,
-    bundlePriority:    user.trustScore >= 85,
   };
 }
 
