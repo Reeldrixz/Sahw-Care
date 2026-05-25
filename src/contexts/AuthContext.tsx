@@ -23,6 +23,7 @@ export interface User {
   manualReviewStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
   manualReviewSubmittedAt: string | null;
   manualReviewRejectionReason: string | null;
+  identityVerified: boolean;
   status: string;
   createdAt: string;
   // cohort / onboarding

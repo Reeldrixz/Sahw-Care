@@ -1,7 +1,5 @@
-import { ManualReviewStatus } from "@prisma/client";
-
 type UserForAccess = {
-  manualReviewStatus: ManualReviewStatus;
+  manualReviewStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
   identityVerified: boolean;
 };
 

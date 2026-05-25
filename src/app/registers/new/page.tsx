@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Toast from "@/components/Toast";
-import DocumentUploadSheet from "@/components/DocumentUploadSheet";
+import { canCreateRegister } from "@/lib/access";
 
 interface CatalogEntry {
   id: string;
@@ -55,8 +55,6 @@ export default function NewRegisterPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [showDocUpload, setShowDocUpload] = useState(false);
-
   // Suggestion modal
   const [showSuggest,      setShowSuggest]      = useState(false);
   const [suggestName,      setSuggestName]      = useState("");
@@ -143,9 +141,8 @@ export default function NewRegisterPage() {
 
   if (!user) return <div className="loading" style={{ minHeight: "100vh" }}><div className="spinner" /></div>;
 
-  const fullyVerified = user.verificationLevel >= 2;
-  const layer1Done = fullyVerified || ((user.phoneVerified || user.emailVerified) && !!user.avatar);
-  const layer2Done = fullyVerified || user.docStatus === "VERIFIED";
+  const layer1Done = (user.phoneVerified || user.emailVerified) && !!user.avatar;
+  const createAccess = canCreateRegister(user);
 
   if (!layer1Done) {
     return (
@@ -180,7 +177,7 @@ export default function NewRegisterPage() {
     );
   }
 
-  if (!layer2Done) {
+  if (!createAccess.allowed) {
     return (
       <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
         <div className="discover-desktop">
@@ -189,43 +186,25 @@ export default function NewRegisterPage() {
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700 }}>Create Register</div>
           </div>
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
-            {user.docStatus === "PENDING" ? (
+            {user.manualReviewStatus === "REJECTED" ? (
               <>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Document under review</div>
-                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 20 }}>
-                  Your {user.documentType} is being reviewed — usually within 24 hours. We'll notify you when it's confirmed!
+                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Profile review unsuccessful</div>
+                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 24 }}>
+                  {user.manualReviewRejectionReason ?? "We were unable to approve your profile. Please visit your profile for more details and to re-submit."}
                 </p>
-              </>
-            ) : user.docStatus === "REJECTED" ? (
-              <>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>💌</div>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Document needs resubmission</div>
-                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 16 }}>
-                  {user.documentNote ?? "We weren't able to verify your document. Please try uploading a clearer version."}
-                </p>
-                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>Upload new document</button>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🤱</div>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>One more step to protect you</div>
-                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 16 }}>
-                  To create a Register, we ask all mothers to upload one document — a hospital letter, pregnancy scan, birth certificate, or immunisation card.
+                <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>One step before creating a Register</div>
+                <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 24 }}>
+                  To create a Register of Needs, please submit your profile for our team to review first. Head to your profile and tap &apos;Submit for review&apos; — it usually takes just a short while.
                 </p>
-                <button className="btn-primary" onClick={() => setShowDocUpload(true)}>Upload a document →</button>
               </>
             )}
+            <button className="btn-primary" onClick={() => router.push("/profile")}>Go to your profile →</button>
           </div>
         </div>
         <BottomNav />
-        {showDocUpload && (
-          <DocumentUploadSheet
-            onClose={() => setShowDocUpload(false)}
-            onSuccess={() => { setShowDocUpload(false); setToast("Document submitted! We'll review it within 24 hours 💛"); }}
-          />
-        )}
-        <Toast message={toast} onClose={() => setToast(null)} />
       </div>
     );
   }

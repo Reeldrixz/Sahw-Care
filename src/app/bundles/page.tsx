@@ -7,6 +7,8 @@ import {
   Shield, Lock, Building2, Clock, AlertCircle,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { useAuth } from "@/contexts/AuthContext";
+import { canApplyForBundle } from "@/lib/access";
 
 type BundleStage = "PREGNANCY" | "LABOUR" | "NEWBORN" | "POSTPARTUM";
 
@@ -113,6 +115,8 @@ export default function BundlesPage() {
   const [submitted,                  setSubmitted]                  = useState(false);
   const [error,                      setError]                      = useState<string | null>(null);
   const [openFaq,                    setOpenFaq]                    = useState<number | null>(null);
+
+  const { user } = useAuth();
 
   const fetchBundles = useCallback(async () => {
     setLoading(true);
@@ -348,11 +352,14 @@ export default function BundlesPage() {
 
                 const isMyApplication  = b.id === myActiveApplicationBundleId;
                 const hasOtherActive   = !!myActiveApplicationBundleId && !isMyApplication;
+                const bundleBlocked    = isRecipient && !!user && !canApplyForBundle(user).allowed;
                 const isDisabled       = !isRecipient || hasOtherActive;
                 const preview          = getPreviewItems(b.contentsMarkdown, 3);
 
                 const btnLabel = !isRecipient
                   ? "Available for mothers in need"
+                  : bundleBlocked
+                  ? "Identity verification required"
                   : isMyApplication
                   ? "Application submitted ✓"
                   : hasOtherActive
@@ -361,7 +368,7 @@ export default function BundlesPage() {
                   ? "Intake closed"
                   : "Apply for support →";
 
-                const btnClickable = isRecipient && !isMyApplication && !hasOtherActive && !full;
+                const btnClickable = isRecipient && !bundleBlocked && !isMyApplication && !hasOtherActive && !full;
 
                 const btnStyle: React.CSSProperties = {
                   flex: 1, padding: "10px 0",
@@ -370,10 +377,10 @@ export default function BundlesPage() {
                   fontFamily: "Nunito, sans-serif",
                   cursor: btnClickable ? "pointer" : "default",
                   background: isMyApplication ? "#e8f5f1"
-                    : (isDisabled || full) ? "#f0f0f0"
+                    : (isDisabled || bundleBlocked || full) ? "#f0f0f0"
                     : th.text,
                   color: isMyApplication ? "#1a7a5e"
-                    : (isDisabled || full) ? "#9ca3af"
+                    : (isDisabled || bundleBlocked || full) ? "#9ca3af"
                     : "white",
                 };
 
@@ -528,6 +535,11 @@ export default function BundlesPage() {
                           {!isRecipient && (
                             <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
                               For mothers who need this support
+                            </div>
+                          )}
+                          {bundleBlocked && (
+                            <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
+                              Complete identity verification on your profile to apply
                             </div>
                           )}
                         </div>
