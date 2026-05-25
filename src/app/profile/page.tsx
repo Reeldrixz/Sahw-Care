@@ -13,7 +13,6 @@ import DonateModal from "@/components/DonateModal";
 import Toast from "@/components/Toast";
 import ShareImpactModal from "@/components/ShareImpactModal";
 import VerificationBanner from "@/components/VerificationBanner";
-import DocumentUploadSheet from "@/components/DocumentUploadSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { STAGE_META } from "@/lib/stage";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
@@ -352,7 +351,6 @@ export default function ProfilePage() {
   const [locationInput,   setLocationInput]   = useState("");
 
   // Modals
-  const [showDocUpload,     setShowDocUpload]     = useState(false);
   const [showPhoneSetup,    setShowPhoneSetup]    = useState(false);
   const [showIdentityModal, setShowIdentityModal] = useState(false);
 
@@ -823,44 +821,9 @@ export default function ProfilePage() {
             )}
 
             <VerificationBanner
-              onUploadDocument={() => setShowDocUpload(true)}
               onVerifyPhone={() => { setVerifyType("PHONE"); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true); }}
               onVerifyEmail={() => { setVerifyType("EMAIL"); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true); }}
             />
-
-            {user.docStatus === "PENDING" && (
-              <div style={{ background: "var(--yellow-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 22 }}>⏳</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#b8860b", marginBottom: 3 }}>Document under review</div>
-                  <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>Your {user.documentType} is being reviewed. This usually takes less than 24 hours.</div>
-                </div>
-              </div>
-            )}
-            {user.docStatus === "REJECTED" && (
-              <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 22 }}>💌</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--terra)", marginBottom: 3 }}>Document needs resubmission</div>
-                  <div style={{ fontSize: 12, color: "var(--terra)", lineHeight: 1.5, marginBottom: 10 }}>{user.documentNote ?? "Please upload a clearer version."}</div>
-                  <button onClick={() => setShowDocUpload(true)} style={{ fontSize: 12, fontWeight: 800, background: "var(--terra)", color: "white", border: "none", padding: "6px 14px", borderRadius: 20, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Upload new document</button>
-                </div>
-              </div>
-            )}
-
-            {/* Verified & Active card */}
-            {user.docStatus === "VERIFIED" && (
-              <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1.5px solid #bbf0db", display: "flex", alignItems: "center", gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <ShieldCheck size={22} color="#1a7a5e" strokeWidth={1.75} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a7a5e", marginBottom: 2 }}>Verified & Active</div>
-                  <div style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.5 }}>Your identity is confirmed and your account is active in the community.</div>
-                </div>
-                <CheckCircle size={18} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0 }} />
-              </div>
-            )}
 
             <ManualReviewStatusCard onSubmitSuccess={refreshUser} />
 
@@ -1040,12 +1003,6 @@ export default function ProfilePage() {
         existingPhone={user.phone}
         onClose={() => setShowPhoneSetup(false)}
         onSuccess={async () => { setShowPhoneSetup(false); await refreshUser(); setToast("Phone number verified ✓"); }}
-      />
-    )}
-    {showDocUpload && (
-      <DocumentUploadSheet
-        onClose={() => setShowDocUpload(false)}
-        onSuccess={() => { setShowDocUpload(false); setToast("Document submitted! We'll review it within 24 hours 💛"); }}
       />
     )}
     <Toast message={toast} onClose={() => setToast(null)} />
