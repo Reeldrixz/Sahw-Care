@@ -241,6 +241,104 @@ interface NotifPrefs {
   notifyVerification: boolean;
 }
 
+// ── Manual Review Status Card ──────────────────────────────────────────────────
+
+function ManualReviewStatusCard({ onSubmitSuccess }: { onSubmitSuccess: () => void }) {
+  const { user } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+
+  if (!user || user.role !== "RECIPIENT") return null;
+
+  const { manualReviewStatus: status, manualReviewRejectionReason: reason } = user;
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res  = await fetch("/api/verify/manual-review/submit", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Something went wrong. Please try again."); return; }
+      onSubmitSuccess();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // APPROVED — quiet success, no action needed
+  if (status === "APPROVED") {
+    return (
+      <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1.5px solid #bbf0db", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <ShieldCheck size={20} color="#1a7a5e" strokeWidth={1.75} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a7a5e", marginBottom: 2 }}>Profile verified</div>
+          <div style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.5 }}>Your profile has been confirmed by our team.</div>
+        </div>
+        <CheckCircle size={16} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0 }} />
+      </div>
+    );
+  }
+
+  // PENDING — under review, no action
+  if (status === "PENDING") {
+    return (
+      <div style={{ background: "var(--yellow-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <Clock size={20} color="#b8860b" style={{ flexShrink: 0, marginTop: 1 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#b8860b", marginBottom: 2 }}>Under review</div>
+          <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>Your profile is being reviewed by our team. We'll notify you as soon as it's confirmed — this usually takes a short while.</div>
+        </div>
+      </div>
+    );
+  }
+
+  // REJECTED — invite to resubmit, kind copy
+  if (status === "REJECTED") {
+    return (
+      <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>💌</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--terra)", marginBottom: 3 }}>Needs another look</div>
+          <div style={{ fontSize: 12, color: "var(--terra)", lineHeight: 1.5, marginBottom: 10 }}>
+            {reason ?? "We'd love to take another look — please make sure your contact is verified and your photo is clear, then resubmit."}
+          </div>
+          {error && <div style={{ fontSize: 12, color: "var(--terra)", fontWeight: 700, marginBottom: 8 }}>{error}</div>}
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={{ fontSize: 12, fontWeight: 800, background: "var(--terra)", color: "white", border: "none", padding: "7px 16px", borderRadius: 20, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", opacity: submitting ? 0.7 : 1 }}
+          >
+            {submitting ? "Submitting…" : "Resubmit for review"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // NONE — not started, offer submission
+  return (
+    <div style={{ background: "var(--bg)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <ShieldCheck size={16} color="var(--mid)" strokeWidth={1.75} />
+        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>Get your profile verified</div>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.55, marginBottom: 12 }}>
+        A quick review by our team confirms you're part of the community. You'll need a verified phone or email and a profile photo first.
+      </div>
+      {error && <div style={{ fontSize: 12, color: "var(--terra)", fontWeight: 700, marginBottom: 8 }}>{error}</div>}
+      <button
+        onClick={handleSubmit}
+        disabled={submitting}
+        style={{ fontSize: 12, fontWeight: 800, background: "var(--green)", color: "white", border: "none", padding: "7px 16px", borderRadius: 20, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", opacity: submitting ? 0.7 : 1 }}
+      >
+        {submitting ? "Submitting…" : "Submit for review"}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
@@ -763,6 +861,8 @@ export default function ProfilePage() {
                 <CheckCircle size={18} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0 }} />
               </div>
             )}
+
+            <ManualReviewStatusCard onSubmitSuccess={refreshUser} />
 
             {/* My Requests summary card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>

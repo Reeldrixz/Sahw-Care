@@ -42,6 +42,13 @@ model User {
   identityOverrideByAdminId String?
   identityOverrideReason    String?
 
+  // ── manual review (baseline free-tier verification) ─────────────────────
+  manualReviewStatus          ManualReviewStatus @default(NONE)
+  manualReviewSubmittedAt     DateTime?
+  manualReviewedAt            DateTime?
+  manualReviewedByAdminId     String?
+  manualReviewRejectionReason String?
+
   // ── layer 2 risk controls (v2) ───────────────────────────────────────────
   riskFlagged  Boolean @default(false)
   riskReason   String?
@@ -622,6 +629,13 @@ enum Layer3Status {
   REJECTED
 }
 
+enum ManualReviewStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ==================== CIRCLES ====================
 
 model Circle {
@@ -933,6 +947,10 @@ enum NotifType {
 
   // Impact card
   IMPACT_CARD_UNLOCKED
+
+  // Manual review baseline verification
+  MANUAL_REVIEW_APPROVED
+  MANUAL_REVIEW_REJECTED
 }
 
 enum BundleInstanceStatus {

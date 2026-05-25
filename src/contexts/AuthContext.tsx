@@ -20,6 +20,9 @@ export interface User {
   documentType: string | null;
   documentNote: string | null;
   verifiedAt: string | null;
+  manualReviewStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
+  manualReviewSubmittedAt: string | null;
+  manualReviewRejectionReason: string | null;
   status: string;
   createdAt: string;
   // cohort / onboarding

@@ -55,6 +55,13 @@ interface VerifUser {
   phoneVerified: boolean; emailVerified: boolean;
 }
 
+interface ManualReviewUser {
+  id: string; name: string; email: string | null; phone: string | null; avatar: string | null;
+  phoneVerified: boolean; emailVerified: boolean;
+  manualReviewStatus: string; manualReviewSubmittedAt: string | null;
+  manualReviewRejectionReason: string | null; createdAt: string;
+}
+
 interface CircleInfo {
   id: string; name: string; country: string;
   _count: { members: number; posts: number };
@@ -229,6 +236,9 @@ export default function AdminPage() {
   const [verifUsers, setVerifUsers] = useState<VerifUser[]>([]);
   const [verifFilter, setVerifFilter] = useState("PENDING");
   const [rejectNote, setRejectNote] = useState<Record<string, string>>({});
+  const [mrUsers,    setMrUsers]    = useState<ManualReviewUser[]>([]);
+  const [mrFilter,   setMrFilter]   = useState("PENDING");
+  const [mrNote,     setMrNote]     = useState<Record<string, string>>({});
   const [circles, setCircles] = useState<CircleInfo[]>([]);
   const [flaggedPosts, setFlaggedPosts] = useState<FlaggedPostInfo[]>([]);
   const [flaggedFilter, setFlaggedFilter] = useState("PENDING");
@@ -315,6 +325,7 @@ export default function AdminPage() {
   const fetchReports  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/reports?status=${reportFilter}`); if (r.ok) { const d = await r.json(); setReports(d.reports ?? []); } setLoading(false); }, [reportFilter]);
   const fetchTrust    = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/trust"); if (r.ok) { const d = await r.json(); setTrustUsers(d.users ?? []); } setLoading(false); }, []);
   const fetchVerif    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/verification?status=${verifFilter}`); if (r.ok) { const d = await r.json(); setVerifUsers(d.users ?? []); } setLoading(false); }, [verifFilter]);
+  const fetchMrQueue  = useCallback(async () => { const r = await fetch(`/api/admin/verification/manual-review?status=${mrFilter}`); if (r.ok) { const d = await r.json(); setMrUsers(d.users ?? []); } }, [mrFilter]);
   const fetchCircles  = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/circles"); if (r.ok) { const d = await r.json(); setCircles(d.circles ?? []); } setLoading(false); }, []);
   const fetchFlagged  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/circles/flagged?status=${flaggedFilter}`); if (r.ok) { const d = await r.json(); setFlaggedPosts(d.flagged ?? []); } setLoading(false); }, [flaggedFilter]);
   const fetchAbuseFlags   = useCallback(async () => { setLoading(true); const sev = abuseSeverity !== "all" ? `&severity=${abuseSeverity.toUpperCase()}` : ""; const r = await fetch(`/api/admin/abuse/flags?status=OPEN${sev}`); if (r.ok) { const d = await r.json(); setAbuseFlags(d.flags ?? []); } setLoading(false); }, [abuseSeverity]);
@@ -340,7 +351,7 @@ export default function AdminPage() {
   useEffect(() => { if (section === "listings") fetchItems(); }, [section, fetchItems, itemSearch]);
   useEffect(() => { if (section === "reports")  fetchReports(); }, [section, fetchReports, reportFilter]);
   useEffect(() => { if (section === "trust")        fetchTrust(); }, [section, fetchTrust]);
-  useEffect(() => { if (section === "verification") fetchVerif(); }, [section, fetchVerif, verifFilter]);
+  useEffect(() => { if (section === "verification") { fetchVerif(); fetchMrQueue(); } }, [section, fetchVerif, fetchMrQueue, verifFilter, mrFilter]);
   useEffect(() => { if (section === "circles") { fetchCircles(); fetchFlagged(); } }, [section, fetchCircles, fetchFlagged, flaggedFilter]);
   useEffect(() => {
     if (section !== "abuse") return;
@@ -542,6 +553,19 @@ export default function AdminPage() {
     if (res.ok) {
       fetchVerif(); fetchStats();
       setToast(action === "approve" ? "✅ Document approved — mother notified!" : "Document rejected with feedback.");
+    }
+  };
+
+  const reviewManual = async (userId: string, action: "approve" | "reject") => {
+    const reason = action === "reject" ? mrNote[userId] : undefined;
+    const res = await fetch(`/api/admin/verification/manual-review/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, reason }),
+    });
+    if (res.ok) {
+      fetchMrQueue();
+      setToast(action === "approve" ? "✅ Profile approved — mother notified!" : "Profile returned with kind feedback.");
     }
   };
 
@@ -938,6 +962,104 @@ export default function AdminPage() {
                       )}
                     </div>
                   ))}
+              </div>
+            )}
+
+            {/* ── MANUAL REVIEW QUEUE ──────────────────────────────────── */}
+            {section === "verification" && (
+              <div style={{ marginTop: 32 }}>
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 24, marginBottom: 16 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "var(--ink)", marginBottom: 4 }}>Manual Review Queue</div>
+                  <div style={{ fontSize: 12, color: "var(--mid)" }}>Profiles submitted for baseline verification (no government ID).</div>
+                </div>
+
+                {/* Filter tabs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {(["PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
+                    <button key={s} onClick={() => setMrFilter(s)} style={{
+                      padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer",
+                      fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700,
+                      background: mrFilter === s ? "var(--green)" : "var(--bg)",
+                      color: mrFilter === s ? "white" : "var(--mid)",
+                    }}>{s.charAt(0) + s.slice(1).toLowerCase()}</button>
+                  ))}
+                </div>
+
+                {mrUsers.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "32px 0", color: "var(--mid)" }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>🧾</div>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>No {mrFilter.toLowerCase()} profiles</div>
+                  </div>
+                ) : mrUsers.map((u) => (
+                  <div key={u.id} style={{ background: "var(--white)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "var(--shadow)" }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--green-light)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, color: "var(--green)", flexShrink: 0, overflow: "hidden" }}>
+                        {u.avatar
+                          ? <img src={u.avatar} alt={u.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> // eslint-disable-line @next/next/no-img-element
+                          : u.name[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 800, fontSize: 14 }}>{u.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--mid)" }}>
+                          {u.email ?? u.phone ?? "—"} · Joined {new Date(u.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                        {u.manualReviewSubmittedAt && (
+                          <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 1 }}>
+                            Submitted {new Date(u.manualReviewSubmittedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                        background: u.manualReviewStatus === "APPROVED" ? "var(--green-light)" : u.manualReviewStatus === "REJECTED" ? "var(--terra-light)" : "var(--yellow-light)",
+                        color: u.manualReviewStatus === "APPROVED" ? "var(--green)" : u.manualReviewStatus === "REJECTED" ? "var(--terra)" : "#b8860b",
+                      }}>{u.manualReviewStatus}</span>
+                    </div>
+
+                    {/* Contact badges */}
+                    <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: u.phoneVerified ? "var(--green-light)" : "var(--bg)", color: u.phoneVerified ? "var(--green)" : "var(--mid)" }}>
+                        {u.phoneVerified ? "📱 Phone ✓" : "📱 Phone ✗"}
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, background: u.emailVerified ? "var(--green-light)" : "var(--bg)", color: u.emailVerified ? "var(--green)" : "var(--mid)" }}>
+                        {u.emailVerified ? "📧 Email ✓" : "📧 Email ✗"}
+                      </span>
+                    </div>
+
+                    {/* Previous rejection reason */}
+                    {u.manualReviewRejectionReason && u.manualReviewStatus === "PENDING" && (
+                      <div style={{ background: "var(--terra-light)", borderRadius: 8, padding: "8px 10px", marginBottom: 10, fontSize: 12, color: "var(--terra)", lineHeight: 1.4 }}>
+                        Previous reason: {u.manualReviewRejectionReason}
+                      </div>
+                    )}
+
+                    {/* Actions — PENDING only */}
+                    {u.manualReviewStatus === "PENDING" && (
+                      <div>
+                        <textarea
+                          placeholder="Rejection note (optional — a kind default message is used if left blank)"
+                          value={mrNote[u.id] ?? ""}
+                          onChange={(e) => setMrNote((p) => ({ ...p, [u.id]: e.target.value }))}
+                          style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", resize: "vertical", marginBottom: 10, boxSizing: "border-box" }}
+                          rows={2}
+                        />
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => reviewManual(u.id, "approve")} style={{
+                            flex: 1, padding: "10px", borderRadius: 10, border: "none",
+                            background: "var(--green)", color: "white", fontSize: 13, fontWeight: 800,
+                            cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                          }}>✅ Approve</button>
+                          <button onClick={() => reviewManual(u.id, "reject")} style={{
+                            flex: 1, padding: "10px", borderRadius: 10, border: "1.5px solid var(--terra)",
+                            background: "white", color: "var(--terra)", fontSize: 13, fontWeight: 800,
+                            cursor: "pointer", fontFamily: "Nunito, sans-serif",
+                          }}>✗ Return with feedback</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
