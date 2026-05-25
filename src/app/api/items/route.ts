@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
       prisma.request.count({
         where: {
           requesterId: auth.userId,
-          status: { in: ["FULFILLED", "CONFIRMED"] },
+          status: { notIn: ["CANCELLED", "DECLINED", "REJECTED"] },
         },
       }),
     ]);
