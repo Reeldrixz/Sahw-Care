@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       manualReviewSubmittedAt: true,
       manualReviewRejectionReason: true,
       identityVerified: true,
+      personaStatus: true,
       status: true,
       createdAt: true,
       onboardingComplete: true,

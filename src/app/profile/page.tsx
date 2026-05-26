@@ -338,6 +338,103 @@ function ManualReviewStatusCard({ onSubmitSuccess }: { onSubmitSuccess: () => vo
   );
 }
 
+// ── Identity Verification Card ─────────────────────────────────────────────────
+
+function IdentityVerificationCard() {
+  const { user, refreshUser } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  if (!user || user.role !== "RECIPIENT") return null;
+
+  const launch = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res  = await fetch("/api/verify/persona/start", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Something went wrong. Please try again."); return; }
+      if (data.alreadyVerified) { await refreshUser(); return; }
+      window.location.href = data.hostedUrl;
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (user.identityVerified) {
+    return (
+      <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1.5px solid #bbf0db", display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <ShieldCheck size={20} color="#1a7a5e" strokeWidth={1.75} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a7a5e", marginBottom: 2 }}>Identity verified</div>
+          <div style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.5 }}>Your identity has been confirmed. You can receive shipments and apply for bundles.</div>
+        </div>
+        <CheckCircle size={16} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0 }} />
+      </div>
+    );
+  }
+
+  if (user.personaStatus === "pending") {
+    return (
+      <div style={{ background: "var(--yellow-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <Clock size={20} color="#b8860b" style={{ flexShrink: 0, marginTop: 1 }} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#b8860b", marginBottom: 2 }}>Verification in progress</div>
+          <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>We&apos;re reviewing your submission — this usually only takes a few minutes. You&apos;ll receive a notification once it&apos;s confirmed.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const needsRetry = user.personaStatus === "declined" || user.personaStatus === "failed" || user.personaStatus === "expired";
+
+  if (needsRetry) {
+    return (
+      <div style={{ background: "var(--terra-light)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <XCircle size={20} color="var(--terra)" style={{ flexShrink: 0, marginTop: 1 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--terra)", marginBottom: 3 }}>Needs another try</div>
+          <div style={{ fontSize: 12, color: "var(--terra)", lineHeight: 1.5, marginBottom: 10 }}>
+            We weren&apos;t able to complete your identity verification. Please try again — it only takes a few minutes.
+          </div>
+          {error && <div style={{ fontSize: 12, color: "var(--terra)", fontWeight: 700, marginBottom: 8 }}>{error}</div>}
+          <button
+            onClick={launch}
+            disabled={loading}
+            style={{ fontSize: 12, fontWeight: 800, background: "var(--terra)", color: "white", border: "none", padding: "7px 16px", borderRadius: 20, cursor: loading ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? "Starting…" : "Try again"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "var(--bg)", borderRadius: 14, padding: "14px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <ShieldCheck size={16} color="var(--mid)" strokeWidth={1.75} />
+        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>Verify your identity</div>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.55, marginBottom: 12 }}>
+        Identity verification unlocks shipment confirmations, bundle applications, and repeat item requests. It takes just a few minutes.
+      </div>
+      {error && <div style={{ fontSize: 12, color: "var(--terra)", fontWeight: 700, marginBottom: 8 }}>{error}</div>}
+      <button
+        onClick={launch}
+        disabled={loading}
+        style={{ fontSize: 12, fontWeight: 800, background: "var(--green)", color: "white", border: "none", padding: "7px 16px", borderRadius: 20, cursor: loading ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", opacity: loading ? 0.7 : 1 }}
+      >
+        {loading ? "Starting…" : "Verify your identity →"}
+      </button>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
@@ -826,6 +923,8 @@ export default function ProfilePage() {
             />
 
             <ManualReviewStatusCard onSubmitSuccess={refreshUser} />
+
+            <IdentityVerificationCard />
 
             {/* My Requests summary card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>

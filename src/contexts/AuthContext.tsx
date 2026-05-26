@@ -24,6 +24,7 @@ export interface User {
   manualReviewSubmittedAt: string | null;
   manualReviewRejectionReason: string | null;
   identityVerified: boolean;
+  personaStatus: string | null;
   status: string;
   createdAt: string;
   // cohort / onboarding

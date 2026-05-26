@@ -302,7 +302,11 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       setToast("Address confirmed! We'll begin fulfilling your item.");
     } else {
       const d = await res.json();
-      setToast(d.error ?? "Failed to confirm address");
+      if (d.code === "NEEDS_IDENTITY_VERIFICATION") {
+        router.push("/profile");
+      } else {
+        setToast(d.error ?? "Failed to confirm address");
+      }
     }
   };
 

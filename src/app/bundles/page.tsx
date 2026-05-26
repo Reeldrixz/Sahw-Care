@@ -538,8 +538,10 @@ export default function BundlesPage() {
                             </div>
                           )}
                           {bundleBlocked && (
-                            <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
-                              Complete identity verification on your profile to apply
+                            <div style={{ fontSize: 10, fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
+                              <a href="/profile" style={{ color: "#1a7a5e", fontWeight: 700, textDecoration: "underline" }}>
+                                Verify your identity on your profile →
+                              </a>
                             </div>
                           )}
                         </div>

@@ -283,11 +283,10 @@ export default function ListCard({ item, requested, favourited, locked, onReques
               item.requestable === false ? (
                 <button
                   className="btn-reserve"
-                  style={{ background: "var(--border)", color: "var(--mid)", cursor: "not-allowed", fontSize: 12, padding: "6px 12px", height: 36 }}
-                  onClick={(e) => e.stopPropagation()}
-                  disabled
+                  style={{ background: "#1a7a5e", color: "white", cursor: "pointer", fontSize: 12, padding: "6px 12px", height: 36 }}
+                  onClick={(e) => { e.stopPropagation(); window.location.href = "/profile"; }}
                 >
-                  Locked
+                  Verify ID
                 </button>
               ) : locked ? (
                 <button
