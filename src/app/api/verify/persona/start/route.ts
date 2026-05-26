@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
 
   const hostedUrl =
     `https://withpersona.com/verify?inquiry-id=${inquiryId}` +
-    (sessionToken ? `&session-token=${sessionToken}` : "");
+    (sessionToken ? `&session-token=${sessionToken}` : "") +
+    `&redirect-uri=${encodeURIComponent(returnUrl)}`;
 
   return NextResponse.json({ inquiryId, hostedUrl });
 }

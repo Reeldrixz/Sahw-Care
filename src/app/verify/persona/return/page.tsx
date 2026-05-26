@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, Clock, AlertCircle } from "lucide-react";
 
@@ -79,12 +79,22 @@ const styles = `
 `;
 
 function ReturnContent() {
-  const params = useSearchParams();
-  const status = params.get("status"); // Persona appends ?status=completed|canceled|failed
+  const params  = useSearchParams();
+  const router  = useRouter();
+  const status  = params.get("status"); // Persona appends ?status=completed|canceled|failed
 
   const isCanceled = status === "canceled";
   const isFailed   = status === "failed";
   const isNegative = isCanceled || isFailed;
+
+  const [countdown, setCountdown] = useState(4);
+
+  useEffect(() => {
+    if (isNegative) return;
+    const interval = setInterval(() => setCountdown((n) => n - 1), 1000);
+    const timeout  = setTimeout(() => router.push("/profile"), 4000);
+    return () => { clearInterval(interval); clearTimeout(timeout); };
+  }, [isNegative, router]);
 
   if (isNegative) {
     return (
@@ -115,12 +125,14 @@ function ReturnContent() {
         <Clock size={11} />
         Usually within a few minutes
       </div>
-      <div className="pr-title">We've received your verification</div>
+      <div className="pr-title">Thanks — we've received your verification</div>
       <div className="pr-body">
-        Our team is reviewing your submission. You'll get a notification as soon as it's confirmed — most verifications complete within a few minutes.
+        We're reviewing your submission. You'll see your updated status on your profile — most verifications complete within a few minutes.
       </div>
       <Link href="/profile" className="pr-link">Back to my profile</Link>
-      <Link href="/" className="pr-link-ghost">Go home</Link>
+      <div style={{ marginTop: 12, fontSize: 12, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
+        Redirecting in {countdown}s…
+      </div>
     </div>
   );
 }
