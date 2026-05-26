@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
   // ── Derive country code: try location first, fall back to request IP ─────
   const dbUser = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { location: true, countryCode: true },
+    select: { location: true, countryCode: true, role: true },
   });
 
   let countryCode: string | null = dbUser?.countryCode ?? null;
@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
       subTags: subTags ?? [],
       ...(countryCode && { countryCode }),
       ...(countryFlag && { countryFlag }),
+      // Promote DONOR → RECIPIENT; never touch ADMIN or an already-promoted RECIPIENT
+      ...(dbUser?.role === "DONOR" && { role: "RECIPIENT" }),
     },
     select: {
       id: true,
