@@ -922,6 +922,18 @@ export default function ProfilePage() {
               onVerifyEmail={() => { setVerifyType("EMAIL"); setOtpStep("send"); setOtpCode(""); setDevOtp(null); setShowVerify(true); }}
             />
 
+            {user.accountHold && (
+              <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 14, padding: "14px 16px", marginBottom: 12, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ fontSize: 18, lineHeight: 1 }}>ℹ️</div>
+                <div>
+                  <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 14, color: "#92400e", marginBottom: 4 }}>Account review in progress</div>
+                  <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#78350f", lineHeight: 1.55 }}>
+                    We need to confirm a few details before you can receive items or apply for bundles. Our team will be in touch — thank you for your patience.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <ManualReviewStatusCard onSubmitSuccess={refreshUser} />
 
             <IdentityVerificationCard />

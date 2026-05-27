@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
         phoneVerified: true, emailVerified: true, docStatus: true,
         createdAt: true,
         activeRequestLockedUntil: true,
+        accountHold: true, accountHoldReason: true, accountHoldAt: true,
         _count: { select: { items: true, requests: true } },
       },
       orderBy: { createdAt: "desc" },

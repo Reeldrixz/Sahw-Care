@@ -15,6 +15,7 @@ interface AdminUser {
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
   docStatus: string | null; createdAt: string;
   activeRequestLockedUntil: string | null;
+  accountHold: boolean; accountHoldReason: string | null; accountHoldAt: string | null;
   _count: { items: number; requests: number };
 }
 
@@ -511,6 +512,36 @@ export default function AdminPage() {
     }
   };
 
+  const placeHold = async (userId: string) => {
+    const reason = window.prompt("Reason for placing this account on hold (required — internal only, not shown to user):");
+    if (!reason?.trim()) return;
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "placeHold", reason: reason.trim() }),
+    });
+    if (res.ok) {
+      setUsers((p) => p.map((u) => u.id === userId ? { ...u, accountHold: true, accountHoldReason: reason.trim(), accountHoldAt: new Date().toISOString() } : u));
+      setToast("Account hold placed");
+    } else {
+      setToast("Failed to place hold");
+    }
+  };
+
+  const releaseHold = async (userId: string) => {
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "releaseHold" }),
+    });
+    if (res.ok) {
+      setUsers((p) => p.map((u) => u.id === userId ? { ...u, accountHold: false, accountHoldReason: null, accountHoldAt: null } : u));
+      setToast("Account hold released");
+    } else {
+      setToast("Failed to release hold");
+    }
+  };
+
   const updateItemStatus = async (itemId: string, status: string) => {
     const res = await fetch(`/api/admin/items/${itemId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
     if (res.ok) { setItems((p) => p.map((i) => i.id === itemId ? { ...i, status } : i)); setToast(`Item ${status.toLowerCase()}`); }
@@ -713,7 +744,12 @@ export default function AdminPage() {
                         </td>
                         <td style={{ fontSize: 11, color: "var(--mid)" }}>{VERIFY_LABELS[Math.min(u.verificationLevel, 3)]}</td>
                         <td>{u._count.items}</td>
-                        <td><span className={`status-pill status-${u.status}`}>{u.status}</span></td>
+                        <td>
+                          <span className={`status-pill status-${u.status}`}>{u.status}</span>
+                          {u.accountHold && (
+                            <span title={u.accountHoldReason ?? ""} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>⏸ HOLD</span>
+                          )}
+                        </td>
                         <td>
                           {u.status !== "ACTIVE"     && <button className="action-btn action-approve" onClick={() => updateUserStatus(u.id, "ACTIVE")}>✓ Approve</button>}
                           {u.status !== "FLAGGED"    && <button className="action-btn" style={{ background: "rgba(196,98,45,0.1)", color: "var(--terra)" }} onClick={() => updateUserStatus(u.id, "FLAGGED")}>🚩 Flag</button>}
@@ -724,6 +760,10 @@ export default function AdminPage() {
                           {u.activeRequestLockedUntil && new Date(u.activeRequestLockedUntil) > new Date() && (
                             <button className="action-btn" style={{ background: "rgba(245,158,11,0.12)", color: "#b45309", fontWeight: 800 }} onClick={() => resetRequestLock(u.id)}>🔓 Unlock</button>
                           )}
+                          {!u.accountHold
+                            ? <button className="action-btn" style={{ background: "rgba(146,64,14,0.1)", color: "#92400e", fontWeight: 800 }} onClick={() => placeHold(u.id)}>⏸ Hold</button>
+                            : <button className="action-btn" style={{ background: "rgba(26,122,94,0.12)", color: "var(--green)", fontWeight: 800 }} onClick={() => releaseHold(u.id)}>▶ Release</button>
+                          }
                           <button className="action-btn action-remove" onClick={() => deleteUser(u.id)}>✕ Remove</button>
                         </td>
                       </tr>

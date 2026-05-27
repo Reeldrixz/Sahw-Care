@@ -1,6 +1,7 @@
 type UserForAccess = {
   manualReviewStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED";
   identityVerified: boolean;
+  accountHold: boolean;
 };
 
 interface AccessResult {
@@ -8,6 +9,13 @@ interface AccessResult {
   code?: string;
   message?: string;
 }
+
+const HOLD_RESULT: AccessResult = {
+  allowed: false,
+  code: "ACCOUNT_UNDER_REVIEW",
+  message:
+    "We need to confirm a few details before this can continue — we'll be in touch.",
+};
 
 export function canCreateRegister(user: UserForAccess): AccessResult {
   if (
@@ -25,6 +33,7 @@ export function canCreateRegister(user: UserForAccess): AccessResult {
 }
 
 export function canApplyForBundle(user: UserForAccess): AccessResult {
+  if (user.accountHold) return HOLD_RESULT;
   if (user.identityVerified === true) {
     return { allowed: true };
   }
@@ -37,6 +46,7 @@ export function canApplyForBundle(user: UserForAccess): AccessResult {
 }
 
 export function canReceiveShipment(user: UserForAccess): AccessResult {
+  if (user.accountHold) return HOLD_RESULT;
   if (user.identityVerified === true) {
     return { allowed: true };
   }
@@ -52,6 +62,8 @@ export function canClaimDiscoverItem(
   user: UserForAccess,
   priorClaimCount: number,
 ): AccessResult {
+  if (user.accountHold) return HOLD_RESULT;
+
   if (priorClaimCount === 0) {
     if (user.manualReviewStatus === "APPROVED") {
       return { allowed: true };

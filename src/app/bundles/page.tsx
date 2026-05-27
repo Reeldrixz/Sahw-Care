@@ -352,7 +352,9 @@ export default function BundlesPage() {
 
                 const isMyApplication  = b.id === myActiveApplicationBundleId;
                 const hasOtherActive   = !!myActiveApplicationBundleId && !isMyApplication;
-                const bundleBlocked    = isRecipient && !!user && !canApplyForBundle(user).allowed;
+                const bundleAccess     = isRecipient && user ? canApplyForBundle(user) : null;
+                const bundleBlocked    = !!bundleAccess && !bundleAccess.allowed;
+                const bundleHeld       = bundleAccess?.code === "ACCOUNT_UNDER_REVIEW";
                 const isDisabled       = !isRecipient || hasOtherActive;
                 const preview          = getPreviewItems(b.contentsMarkdown, 3);
 
@@ -539,9 +541,10 @@ export default function BundlesPage() {
                           )}
                           {bundleBlocked && (
                             <div style={{ fontSize: 10, fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
-                              <a href="/profile" style={{ color: "#1a7a5e", fontWeight: 700, textDecoration: "underline" }}>
-                                Verify your identity on your profile →
-                              </a>
+                              {bundleHeld
+                                ? <span style={{ color: "#92400e" }}>We need to confirm a few details — we'll be in touch.</span>
+                                : <a href="/profile" style={{ color: "#1a7a5e", fontWeight: 700, textDecoration: "underline" }}>Verify your identity on your profile →</a>
+                              }
                             </div>
                           )}
                         </div>

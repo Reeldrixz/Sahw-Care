@@ -62,6 +62,9 @@ export async function GET(req: NextRequest) {
       preferredCity: true,
       preferredRadius: true,
       locationSetByGPS: true,
+      accountHold: true,
+      accountHoldReason: true,
+      accountHoldAt: true,
       _count: { select: { items: true, requests: true } },
     },
   });

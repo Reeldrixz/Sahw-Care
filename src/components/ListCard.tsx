@@ -93,13 +93,14 @@ interface ListCardProps {
   requested?: boolean;
   favourited?: boolean;
   locked?: boolean;
+  userOnHold?: boolean;
   onRequest: (e: React.MouseEvent) => void;
   onFavourite?: (e: React.MouseEvent) => void;
   onClick: () => void;
   badge?: string;
 }
 
-export default function ListCard({ item, requested, favourited, locked, onRequest, onFavourite, onClick }: ListCardProps) {
+export default function ListCard({ item, requested, favourited, locked, userOnHold, onRequest, onFavourite, onClick }: ListCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportSubmitted, setReportSubmitted] = useState(false);
@@ -283,10 +284,10 @@ export default function ListCard({ item, requested, favourited, locked, onReques
               item.requestable === false ? (
                 <button
                   className="btn-reserve"
-                  style={{ background: "#1a7a5e", color: "white", cursor: "pointer", fontSize: 12, padding: "6px 12px", height: 36 }}
+                  style={{ background: userOnHold ? "#fef3c7" : "#1a7a5e", color: userOnHold ? "#92400e" : "white", cursor: "pointer", fontSize: 12, padding: "6px 12px", height: 36, border: userOnHold ? "1px solid #fcd34d" : "none" }}
                   onClick={(e) => { e.stopPropagation(); window.location.href = "/profile"; }}
                 >
-                  Verify ID
+                  {userOnHold ? "See profile" : "Verify ID"}
                 </button>
               ) : locked ? (
                 <button

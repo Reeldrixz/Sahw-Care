@@ -63,6 +63,12 @@ model User {
   layer3ClearedByAdminId String?
   layer3OverrideReason   String?
 
+  // ── admin account hold ───────────────────────────────────────────────────
+  accountHold          Boolean   @default(false)
+  accountHoldReason    String?
+  accountHoldAt        DateTime?
+  accountHoldByAdminId String?
+
   // ── layer 2 motherhood verification (deprecated — kept until v2 migration complete) ─
   docStatus    DocStatus @default(UNVERIFIED)
   documentUrl  String?

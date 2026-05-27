@@ -81,6 +81,7 @@ export default function BrowsePage() {
               item={item}
               requested={requested[item.id]}
               favourited={favs[item.id]}
+              userOnHold={!!user?.accountHold}
               onRequest={(e) => { e.stopPropagation(); handleRequest(item); }}
               onFavourite={() => setFavs((f) => ({ ...f, [item.id]: !f[item.id] }))}
               onClick={() => router.push(`/items/${item.id}`)}

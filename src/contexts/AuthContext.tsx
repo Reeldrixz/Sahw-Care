@@ -53,6 +53,10 @@ export interface User {
   preferredCity: string | null;
   preferredRadius: number | null;
   locationSetByGPS: boolean;
+  // account hold
+  accountHold: boolean;
+  accountHoldReason: string | null;
+  accountHoldAt: string | null;
   _count?: { items: number; requests: number };
 }
 

@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
         trustScore: true, verificationLevel: true,
         manualReviewStatus: true, identityVerified: true,
         activeRequestLockedUntil: true, requestCountSinceReset: true,
+        accountHold: true,
       },
     }),
     prisma.request.count({

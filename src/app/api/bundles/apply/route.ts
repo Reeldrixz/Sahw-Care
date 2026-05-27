@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const applicant = await prisma.user.findUnique({
     where:  { id: currentUser.userId },
-    select: { role: true, identityVerified: true, manualReviewStatus: true },
+    select: { role: true, identityVerified: true, manualReviewStatus: true, accountHold: true },
   });
 
   if (applicant?.role !== "RECIPIENT") {

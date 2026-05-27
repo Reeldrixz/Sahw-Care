@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     const [caller, priorClaimCount] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.userId },
-        select: { manualReviewStatus: true, identityVerified: true, countryCode: true },
+        select: { manualReviewStatus: true, identityVerified: true, countryCode: true, accountHold: true },
       }),
       prisma.request.count({
         where: {

@@ -12,7 +12,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await req.json();
-    const { action, status, role, isPremium, trustScore } = body;
+    const { action, status, role, isPremium, trustScore, reason } = body;
 
     // ── Manual verification override ─────────────────────────────────────────
     if (action === "manualVerify") {
@@ -40,6 +40,36 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       const updated = await prisma.user.findUnique({
         where: { id },
         select: { id: true, name: true, trustScore: true, verificationLevel: true, phoneVerified: true, emailVerified: true, docStatus: true, onboardingComplete: true },
+      });
+      return NextResponse.json({ user: updated });
+    }
+
+    // ── Account hold ─────────────────────────────────────────────────────────
+    if (action === "placeHold") {
+      if (!reason?.trim()) return NextResponse.json({ error: "Reason is required" }, { status: 400 });
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          accountHold: true,
+          accountHoldReason: reason.trim(),
+          accountHoldAt: new Date(),
+          accountHoldByAdminId: admin.userId,
+        },
+        select: { id: true, accountHold: true, accountHoldReason: true, accountHoldAt: true },
+      });
+      return NextResponse.json({ user: updated });
+    }
+
+    if (action === "releaseHold") {
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          accountHold: false,
+          accountHoldReason: null,
+          accountHoldAt: null,
+          accountHoldByAdminId: null,
+        },
+        select: { id: true, accountHold: true },
       });
       return NextResponse.json({ user: updated });
     }

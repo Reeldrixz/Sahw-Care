@@ -40,7 +40,7 @@ export async function POST(
   // Identity gate: recipient must be identity-verified before committing a shipment address
   const recipient = await prisma.user.findUnique({
     where:  { id: auth.userId },
-    select: { identityVerified: true, manualReviewStatus: true },
+    select: { identityVerified: true, manualReviewStatus: true, accountHold: true },
   });
   if (!recipient) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
