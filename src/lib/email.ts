@@ -1,6 +1,6 @@
 import { getResend } from "@/lib/resend";
 
-const FROM    = process.env.EMAIL_FROM          ?? "Kradəl <onboarding@resend.dev>";
+const FROM    = process.env.RESEND_FROM_EMAIL   ?? "noreply@kradel.care";
 const NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL  ?? "";
 
 const JOURNEY_LABEL: Record<string, string> = {
@@ -16,10 +16,10 @@ export async function sendPasswordResetEmail(opts: {
   email: string;
   resetUrl: string;
 }) {
-  return getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Reset your Kradəl password",
+    subject: "Reset your Kradel password",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">Reset your password</h2>
@@ -37,10 +37,11 @@ export async function sendPasswordResetEmail(opts: {
         <p style="color:#555;font-size:13px;line-height:1.6">
           If you didn't request this, you can safely ignore this email — your password won't change.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care 🌱</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 // ── Bundle notifications ─────────────────────────────────────────────────────

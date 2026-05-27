@@ -36,7 +36,6 @@ export default function ForgotPasswordPage() {
 
         {submitted ? (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Check your inbox</div>
             <p style={{ fontSize: 13, color: "var(--mid)", marginBottom: 24, lineHeight: 1.6 }}>
               If an account exists for <strong>{identifier}</strong>, you&apos;ll receive a reset link shortly.
