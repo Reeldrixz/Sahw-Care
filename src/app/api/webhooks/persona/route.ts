@@ -97,9 +97,26 @@ async function fetchPersonaDocument(
 
     if (!govId) return null;
 
-    const docNumber   = govId.attributes?.["document-number"];
-    const countryCode = govId.attributes?.["country-code"];
-    if (!docNumber || !countryCode) return null;
+    const identificationNumber = govId.attributes?.["identification-number"];
+    const documentNumber       = govId.attributes?.["document-number"];
+    const countryCode          = govId.attributes?.["country-code"];
+
+    let docNumber: unknown;
+    let docField: string;
+    if (identificationNumber) {
+      docNumber = identificationNumber;
+      docField  = "identification-number";
+    } else if (documentNumber) {
+      docNumber = documentNumber;
+      docField  = "document-number";
+    } else {
+      console.warn("[persona-webhook] No identification-number or document-number on verification — skipping hash");
+      return null;
+    }
+
+    if (!countryCode) return null;
+
+    console.log("[persona-webhook] Hashing from field:", docField, "country:", String(countryCode).toUpperCase());
 
     return {
       docNumber:   String(docNumber).trim().toUpperCase(),
