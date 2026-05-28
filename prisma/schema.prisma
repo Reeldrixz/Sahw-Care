@@ -42,6 +42,7 @@ model User {
   identityVerifiedAt        DateTime?
   identityOverrideByAdminId String?
   identityOverrideReason    String?
+  identityHash              String?   // sha256(salt+countryCode+docNumber) — dedupe only, never stores raw doc
 
   // ── manual review (baseline free-tier verification) ─────────────────────
   manualReviewStatus          ManualReviewStatus @default(NONE)

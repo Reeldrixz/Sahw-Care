@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +60,57 @@ function verifyPersonaSignature(
   }
 }
 
+// ── Persona API: fetch government-ID document fields ─────────────────────────
+
+async function fetchPersonaDocument(
+  inquiryId: string,
+): Promise<{ docNumber: string; countryCode: string } | null> {
+  const apiKey = process.env.PERSONA_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const res = await fetch(
+      `https://withpersona.com/api/v1/inquiries/${inquiryId}?include=verifications`,
+      {
+        headers: {
+          Authorization:     `Bearer ${apiKey}`,
+          "Persona-Version": "2023-01-05",
+          Accept:            "application/json",
+        },
+      },
+    );
+    if (!res.ok) {
+      console.warn("[persona-webhook] Persona API fetch failed:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    const included: unknown[] = Array.isArray(data.included) ? data.included : [];
+
+    // Find the passed government-ID verification
+    const govId = included.find((v: unknown) => {
+      const ver = v as Record<string, unknown>;
+      return (
+        ver.type === "verification/government-id" &&
+        (ver.attributes as Record<string, unknown>)?.status === "passed"
+      );
+    }) as Record<string, Record<string, unknown>> | undefined;
+
+    if (!govId) return null;
+
+    const docNumber   = govId.attributes?.["document-number"];
+    const countryCode = govId.attributes?.["country-code"];
+    if (!docNumber || !countryCode) return null;
+
+    return {
+      docNumber:   String(docNumber).trim().toUpperCase(),
+      countryCode: String(countryCode).trim().toUpperCase(),
+    };
+  } catch (err) {
+    console.warn("[persona-webhook] Error fetching Persona document:", err);
+    return null;
+  }
+}
+
 // ── Event handler ─────────────────────────────────────────────────────────────
 
 async function handleInquiryEvent(
@@ -97,10 +148,67 @@ async function handleInquiryEvent(
       data: {
         userId:  user.id,
         type:    "VERIFICATION_APPROVED",
-        message: "Your identity has been verified — you're all set 💛",
+        message: "Your identity has been verified — you're all set",
         link:    "/profile",
       },
     });
+
+    // ── Duplicate identity detection ───────────────────────────────────────
+    const doc = await fetchPersonaDocument(inquiryId);
+    if (doc) {
+      const salt         = process.env.PERSONA_DEDUPE_SALT ?? "";
+      const identityHash = createHash("sha256")
+        .update(salt + doc.countryCode + doc.docNumber)
+        .digest("hex");
+
+      const duplicate = await prisma.user.findFirst({
+        where:  { identityHash, id: { not: user.id } },
+        select: { id: true },
+      });
+
+      if (duplicate) {
+        // Same document verified on a different account → auto-hold the newly verified one
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            identityHash,
+            accountHold:       true,
+            accountHoldReason: "Duplicate identity — matches an existing account",
+            accountHoldAt:     new Date(),
+          },
+        });
+
+        // In-app alert for every admin
+        const admins = await prisma.user.findMany({
+          where:  { role: "ADMIN" },
+          select: { id: true },
+        });
+        if (admins.length > 0) {
+          await prisma.notification.createMany({
+            data: admins.map((a) => ({
+              userId:   a.id,
+              type:     "ADMIN_MESSAGE" as const,
+              title:    "Duplicate identity flagged",
+              message:  `Account ${user.id} verified with a document already on account ${duplicate.id}. Auto-hold applied.`,
+              link:     `/admin?userId=${user.id}`,
+              metadata: { newUserId: user.id, existingUserId: duplicate.id },
+            })),
+          });
+        }
+
+        console.warn(
+          "[persona-webhook] Duplicate identity: new=%s existing=%s — hold applied",
+          user.id,
+          duplicate.id,
+        );
+      } else {
+        // No duplicate — store hash (or refresh on re-verification)
+        await prisma.user.update({
+          where: { id: user.id },
+          data:  { identityHash },
+        });
+      }
+    }
 
     return;
   }
