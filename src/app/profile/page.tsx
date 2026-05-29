@@ -660,7 +660,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <span onClick={() => { setLocationInput(user.location ?? ""); setEditingLocation(true); }} style={{ cursor: "pointer", opacity: 0.8 }}>
-                📍 {user.location ?? "Add your location"}
+                {user.location ?? "Add your location"}
               </span>
             )}
             {user.currentStage && STAGE_META[user.currentStage as keyof typeof STAGE_META] && (

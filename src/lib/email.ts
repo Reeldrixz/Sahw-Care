@@ -44,6 +44,37 @@ export async function sendPasswordResetEmail(opts: {
   if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
+// ── Welcome email ────────────────────────────────────────────────────────────
+
+export async function sendWelcomeEmail(opts: { name: string; email: string }) {
+  const firstName = opts.name.split(" ")[0];
+  const { error } = await getResend().emails.send({
+    from:    FROM,
+    to:      opts.email,
+    subject: "Welcome to Kradəl",
+    html: `
+      <div style="background:#faf8f3;padding:40px 16px;font-family:sans-serif">
+        <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:40px 32px">
+          <p style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:700;color:#1a1a1a;margin:0 0 24px">
+            Welcome, ${firstName}.
+          </p>
+          <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 16px">
+            Kradəl is a care community where mothers receive support from people who want to help —
+            essentials, registers, and connections that make the early days a little easier.
+          </p>
+          <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 32px">
+            Your account is ready. Take a look around whenever you are.
+          </p>
+          <div style="border-top:1px solid #ede8df;padding-top:24px">
+            <p style="color:#999;font-size:13px;margin:0">Kradəl Care</p>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+  if (error) throw new Error(`Resend error: ${error.message}`);
+}
+
 // ── Bundle notifications ─────────────────────────────────────────────────────
 
 export async function sendBundleRequestReceived(opts: {
@@ -52,13 +83,13 @@ export async function sendBundleRequestReceived(opts: {
   templateName: string;
 }) {
   if (!opts.email) return;
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Your Kradəl bundle request was received 💛",
+    subject: "Your Kradəl bundle request was received",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#1a7a5e;margin-bottom:8px">We got your request! 💛</h2>
+        <h2 style="color:#1a7a5e;margin-bottom:8px">We received your request</h2>
         <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
         <p style="color:#555;line-height:1.6">
           Your request for the <strong>${opts.templateName}</strong> bundle has been received.
@@ -67,10 +98,11 @@ export async function sendBundleRequestReceived(opts: {
         <p style="color:#555;line-height:1.6">
           You can track the status of your bundle in the app under <strong>Full Care Bundles</strong>.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care — with you every step of the way 🌱</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 export async function sendAdminNewBundleRequest(opts: {
@@ -80,13 +112,13 @@ export async function sendAdminNewBundleRequest(opts: {
   instanceId: string;
 }) {
   if (!NOTIFY) return;
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      NOTIFY,
     subject: `New bundle request from ${opts.firstName} in ${opts.city}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="margin-bottom:16px">New Bundle Request 📦</h2>
+        <h2 style="margin-bottom:16px">New Bundle Request</h2>
         <table style="width:100%;border-collapse:collapse">
           <tr><td style="padding:8px 0;color:#6b7280;width:140px">Name</td><td style="font-weight:600">${opts.firstName}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280">City</td><td>${opts.city}</td></tr>
@@ -97,6 +129,7 @@ export async function sendAdminNewBundleRequest(opts: {
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 export async function sendBundleApproved(opts: {
@@ -105,22 +138,23 @@ export async function sendBundleApproved(opts: {
   templateName: string;
 }) {
   if (!opts.email) return;
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Your Kradəl bundle has been approved! 🎉",
+    subject: "Your Kradəl bundle has been approved",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#1a7a5e;margin-bottom:8px">Bundle approved! 🎉</h2>
+        <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle has been approved</h2>
         <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
         <p style="color:#555;line-height:1.6">
-          Great news — your <strong>${opts.templateName}</strong> bundle has been approved
+          Your <strong>${opts.templateName}</strong> bundle has been approved
           and is being prepared for you. We'll send you another message as soon as it's on its way.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care 🌱</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 export async function sendBundleShipped(opts: {
@@ -130,13 +164,13 @@ export async function sendBundleShipped(opts: {
   trackingNumber: string | null;
 }) {
   if (!opts.email) return;
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Your Kradəl bundle is on its way! 🚚",
+    subject: "Your Kradəl bundle is on its way",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle is on its way! 🚚</h2>
+        <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle is on its way</h2>
         <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
         <p style="color:#555;line-height:1.6">
           Your <strong>${opts.templateName}</strong> has been shipped and is heading to you.
@@ -144,12 +178,13 @@ export async function sendBundleShipped(opts: {
         </p>
         <p style="color:#555;line-height:1.6">
           Once it arrives, please open the Kradəl app and confirm receipt so we can keep
-          supporting more moms like you 💛
+          supporting more moms like you.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care 🌱</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 // ── Bug report admin notification ────────────────────────────────────────────
@@ -160,7 +195,7 @@ export async function sendBugReportNotification(opts: {
   pageUrl:     string | null;
   userAgent:   string | null;
   screenshotUrl: string | null;
-  submittedBy: string;        // "Name <email>" or "Anonymous <email>"
+  submittedBy: string;
   submittedAt: Date;
   baseUrl:     string;
 }) {
@@ -174,13 +209,13 @@ export async function sendBugReportNotification(opts: {
     timeZone: "UTC", dateStyle: "medium", timeStyle: "short",
   }) + " UTC";
 
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      adminEmail,
     subject: `[Kradel Bug] New report from ${opts.submittedBy}`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
-        <h2 style="margin:0 0 16px;color:#1a1a1a">New Bug Report 🐛</h2>
+        <h2 style="margin:0 0 16px;color:#1a1a1a">New Bug Report</h2>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
           <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">User</td><td style="padding:8px 0;font-weight:600">${opts.submittedBy}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td><td style="padding:8px 0">${opts.pageUrl ? `<a href="${opts.pageUrl}" style="color:#1a7a5e">${opts.pageUrl}</a>` : "—"}</td></tr>
@@ -199,10 +234,11 @@ export async function sendBugReportNotification(opts: {
             View in Admin Queue
           </a>
         </div>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care 🌱</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 // ── Signup notification ──────────────────────────────────────────────────────
@@ -213,7 +249,7 @@ export async function sendNewSignupNotification(opts: {
   signedUpAt:  Date;
   totalUsers:  number;
 }) {
-  if (!NOTIFY) return; // no-op if env var not set
+  if (!NOTIFY) return;
 
   const { firstName, journeyType, signedUpAt, totalUsers } = opts;
   const label = JOURNEY_LABEL[journeyType] ?? journeyType;
@@ -223,13 +259,13 @@ export async function sendNewSignupNotification(opts: {
     timeStyle: "short",
   }) + " UTC";
 
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      NOTIFY,
-    subject: "New Kradəl signup 🎉",
+    subject: "New Kradəl signup",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="margin:0 0 16px">New signup on Kradəl 🎉</h2>
+        <h2 style="margin:0 0 16px">New signup on Kradəl</h2>
         <table style="width:100%;border-collapse:collapse">
           <tr>
             <td style="padding:8px 0;color:#6b7280;width:140px">First name</td>
@@ -251,4 +287,5 @@ export async function sendNewSignupNotification(opts: {
       </div>
     `,
   });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }

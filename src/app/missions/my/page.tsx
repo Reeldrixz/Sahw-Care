@@ -1,4 +1,3 @@
-// TODO: Remove debug panel before production launch
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -234,35 +233,9 @@ const styles = `
   .leave-err { background: #fff5f5; border: 1px solid #fecaca; border-radius: 12px;
     padding: 10px 14px; margin-top: 10px; font-size: 13px; color: #dc2626; }
 
-  /* ── Debug panel ── */
-  .debug-panel { background: #fffbeb; border: 1px solid #fbbf24; border-radius: 14px;
-    padding: 12px 16px; margin-bottom: 20px; font-family: 'Nunito', sans-serif; }
-  .debug-summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #92400e;
-    user-select: none; display: flex; align-items: center; gap: 8px; list-style: none; }
-  .debug-summary::-webkit-details-marker { display: none; }
-  .debug-group-label { font-size: 10px; font-weight: 800; letter-spacing: 1px;
-    text-transform: uppercase; margin-bottom: 6px; }
-  .debug-btn { padding: 7px 13px; border-radius: 8px; border: 1px solid;
-    font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
-    cursor: pointer; transition: opacity 0.15s; }
-  .debug-btn:disabled { opacity: 0.45; cursor: default; }
 `;
 
 const BLOCK_SIGNUP = "#c8d8c8";
-
-// Admin-only — role check is the gate, no env restriction
-const SHOW_DEBUG_PANEL = true;
-
-// Nominal blocks per action type (used for toast display)
-const ACTION_BLOCKS: Record<string, number> = {
-  click: 1, signup: 2, listing_posted: 2, register_committed: 2,
-  listing_completed: 4, register_fulfilled: 4, bundle_delivered: 4,
-};
-// Net delta for upgrade-in-place types (prior intent was +2, upgrade adds +2 more)
-const UPGRADE_DELTA: Record<string, number> = {
-  listing_completed: 2,
-  register_fulfilled: 2,
-};
 
 // ── Helper components ──────────────────────────────────────────────────────────
 function MissionMosaic({ completed = 0, activity = 0, signups = 0, clicks = 0, total = 40 }: {
@@ -327,12 +300,6 @@ export default function MyMissionPage() {
   const [leaveErr, setLeaveErr] = useState<string | null>(null);
   const [copied,   setCopied]   = useState(false);
 
-  // ── Debug panel state ──────────────────────────────────────────────────────
-  const [lastListingRefId,  setLastListingRefId]  = useState<string | null>(null);
-  const [lastRegisterRefId, setLastRegisterRefId] = useState<string | null>(null);
-  const [debugCooldown,     setDebugCooldown]     = useState(false);
-  const [debugToast, setDebugToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
   const load = useCallback(async () => {
     const r = await fetch("/api/missions/my");
     if (r.ok) { const d = await r.json(); setData(d.membership ?? null); }
@@ -343,60 +310,6 @@ export default function MyMissionPage() {
     if (!user) { router.push("/auth"); return; }
     load();
   }, [user, load, router]);
-
-  // ── Debug action trigger ───────────────────────────────────────────────────
-  const fireDebugAction = useCallback(async (actionType: string) => {
-    if (!data || debugCooldown) return;
-    setDebugCooldown(true);
-    setDebugToast(null);
-
-    // Compute referenceId — upgrade types reuse the prior intent's id
-    let refId: string;
-    const ts = Date.now();
-    if (actionType === "listing_posted") {
-      refId = `debug-listing-${ts}`;
-      setLastListingRefId(refId);
-    } else if (actionType === "register_committed") {
-      refId = `debug-register-${ts}`;
-      setLastRegisterRefId(refId);
-    } else if (actionType === "listing_completed") {
-      refId = lastListingRefId ?? `debug-listing-${ts}`;
-    } else if (actionType === "register_fulfilled") {
-      refId = lastRegisterRefId ?? `debug-register-${ts}`;
-    } else if (actionType === "bundle_delivered") {
-      refId = `debug-bundle-${ts}`;
-    } else {
-      refId = `debug-${actionType.replace(/_/g, "-")}-${ts}`;
-    }
-
-    try {
-      const res = await fetch("/api/missions/action", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          teamId: data.teamId,
-          actionType,
-          meta: { referenceId: refId },
-        }),
-      });
-
-      if (res.ok) {
-        const isUpgrade = actionType in UPGRADE_DELTA;
-        const delta = isUpgrade ? UPGRADE_DELTA[actionType] : ACTION_BLOCKS[actionType] ?? "?";
-        const suffix = isUpgrade ? " (upgraded prior)" : "";
-        setDebugToast({ msg: `Action recorded: ${actionType} (+${delta} blocks${suffix})`, ok: true });
-        await load();
-      } else {
-        const body = await res.json().catch(() => ({}));
-        setDebugToast({ msg: body.error ?? "Request failed", ok: false });
-      }
-    } catch {
-      setDebugToast({ msg: "Network error", ok: false });
-    }
-
-    setTimeout(() => setDebugCooldown(false), 500);
-    setTimeout(() => setDebugToast(null), 4000);
-  }, [data, debugCooldown, lastListingRefId, lastRegisterRefId, load]);
 
   const handleLeave = async () => {
     if (!data || !canLeave) return;
@@ -502,128 +415,6 @@ export default function MyMissionPage() {
       <style>{styles}</style>
       <div className="mission-page">
         <div className="mp-container">
-
-          {/* ── Admin debug panel — top of page, above everything ── */}
-          {SHOW_DEBUG_PANEL && user?.role === "ADMIN" && (
-            <details className="debug-panel">
-              <summary className="debug-summary">
-                🔧 Debug — Trigger mission actions
-                <span style={{ fontWeight: 400, color: "#b45309", fontSize: 11, marginLeft: "auto" }}>
-                  Admin only · Remove before launch
-                </span>
-              </summary>
-
-              {/* Toast */}
-              {debugToast && (
-                <div style={{
-                  margin: "10px 0 4px", padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                  background: debugToast.ok ? "#f0fdf4" : "#fef2f2",
-                  color:      debugToast.ok ? "#166534" : "#dc2626",
-                  border:     `1px solid ${debugToast.ok ? "#bbf7d0" : "#fecaca"}`,
-                }}>
-                  {debugToast.msg}
-                </div>
-              )}
-
-              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-
-                {/* ── AWARENESS group ── */}
-                <div>
-                  <div className="debug-group-label" style={{ color: "#6b7280" }}>
-                    Awareness
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("click")}
-                      disabled={debugCooldown}
-                      style={{ background: "#f9fafb", borderColor: "#d1d5db", color: "#374151" }}
-                    >
-                      +1 Click
-                    </button>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("signup")}
-                      disabled={debugCooldown}
-                      style={{ background: "#f9fafb", borderColor: "#d1d5db", color: "#374151" }}
-                    >
-                      +2 Signup
-                    </button>
-                  </div>
-                </div>
-
-                {/* ── ACTIVITY group ── */}
-                <div>
-                  <div className="debug-group-label" style={{ color: "#166534" }}>
-                    Activity — intent actions
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("listing_posted")}
-                      disabled={debugCooldown}
-                      style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#166534" }}
-                      title="Stores refId for upgrade-in-place test"
-                    >
-                      +2 Listing Posted (Discover)
-                    </button>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("register_committed")}
-                      disabled={debugCooldown}
-                      style={{ background: "#f0fdf4", borderColor: "#86efac", color: "#166534" }}
-                      title="Stores refId for upgrade-in-place test"
-                    >
-                      +2 Register Committed
-                    </button>
-                  </div>
-                  {(lastListingRefId || lastRegisterRefId) && (
-                    <div style={{ marginTop: 5, fontSize: 10, color: "#6b7280" }}>
-                      {lastListingRefId  && <span>listing ref: <code style={{ fontSize: 10 }}>{lastListingRefId}</code></span>}
-                      {lastListingRefId && lastRegisterRefId && " · "}
-                      {lastRegisterRefId && <span>register ref: <code style={{ fontSize: 10 }}>{lastRegisterRefId}</code></span>}
-                    </div>
-                  )}
-                </div>
-
-                {/* ── OUTCOME group ── */}
-                <div>
-                  <div className="debug-group-label" style={{ color: C.green }}>
-                    Outcome — completion / upgrade-in-place
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("listing_completed")}
-                      disabled={debugCooldown}
-                      style={{ background: "#dcfce7", borderColor: "#4ade80", color: "#14532d" }}
-                      title={lastListingRefId ? `Will upgrade row: ${lastListingRefId}` : "No prior listing_posted — fires as fresh"}
-                    >
-                      +2 Listing Completed {lastListingRefId ? "↑ upgrades prior" : "(no prior)"}
-                    </button>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("register_fulfilled")}
-                      disabled={debugCooldown}
-                      style={{ background: "#dcfce7", borderColor: "#4ade80", color: "#14532d" }}
-                      title={lastRegisterRefId ? `Will upgrade row: ${lastRegisterRefId}` : "No prior register_committed — fires as fresh"}
-                    >
-                      +2 Register Fulfilled {lastRegisterRefId ? "↑ upgrades prior" : "(no prior)"}
-                    </button>
-                    <button
-                      className="debug-btn"
-                      onClick={() => fireDebugAction("bundle_delivered")}
-                      disabled={debugCooldown}
-                      style={{ background: "#bbf7d0", borderColor: "#22c55e", color: "#14532d", fontWeight: 800 }}
-                    >
-                      +4 Bundle Delivered (fresh)
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </details>
-          )}
 
           {/* Back */}
           <button className="mp-back" onClick={() => router.back()}>← Back</button>

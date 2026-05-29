@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { validatePassword } from "@/lib/password";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +13,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Token and password are required" }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    const pwError = validatePassword(password);
+    if (pwError) {
+      return NextResponse.json({ error: pwError }, { status: 400 });
     }
 
     const resetToken = await prisma.passwordResetToken.findUnique({

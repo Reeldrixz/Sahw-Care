@@ -5,6 +5,8 @@ import { signToken } from "@/lib/auth";
 import { autoJoinCircle } from "@/lib/countryCircle";
 import { detectGeoFromRequest } from "@/lib/geoip";
 import { logAbuseEvent } from "@/lib/abuse";
+import { validatePassword } from "@/lib/password";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name, email/phone and password are required" }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    const pwError = validatePassword(password);
+    if (pwError) {
+      return NextResponse.json({ error: pwError }, { status: 400 });
     }
 
     const isEmail = identifier.includes("@");
@@ -48,6 +51,12 @@ export async function POST(req: NextRequest) {
         role: "DONOR",
       },
     });
+
+    // Welcome email (fire-and-forget — never blocks signup)
+    if (user.email) {
+      sendWelcomeEmail({ name: user.name, email: user.email })
+        .catch((err) => console.error("[register] welcome email failed:", err));
+    }
 
     // Auto-join circle if location provided at registration
     autoJoinCircle(user.id, user.location).catch(() => {});

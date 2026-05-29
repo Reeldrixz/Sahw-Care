@@ -6,12 +6,13 @@ import { getResend } from "@/lib/resend";
 export const dynamic = "force-dynamic";
 
 async function sendBundleEmail(to: string, subject: string, fullName: string, body: string) {
-  return getResend().emails.send({
-    from:    process.env.EMAIL_FROM ?? "noreply@kradel.ca",
+  const { error } = await getResend().emails.send({
+    from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
     to,
     subject,
     html:    `<p>Hi ${fullName},</p><p>${body}</p><p>The Kradəl Team</p>`,
-  }).catch(() => {});
+  });
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 export async function PATCH(
@@ -63,7 +64,7 @@ export async function PATCH(
         "Your Kradəl Bundle has been approved",
         fullName,
         `Your application for <strong>${bundleName}</strong> has been approved. We'll prepare and ship your bundle shortly.`
-      );
+      ).catch((err) => console.error("[bundle email]", err));
     }
   } else if (status === "REJECTED") {
     const reasonClause = note ? `${note} ` : "";
@@ -82,7 +83,7 @@ export async function PATCH(
         "Update on your Kradəl Bundle application",
         fullName,
         `Your application for <strong>${bundleName}</strong> was not approved this month. ${reasonClause}You're welcome to apply again next month.`
-      );
+      ).catch((err) => console.error("[bundle email]", err));
     }
   } else if (status === "WAITLISTED") {
     if (userId) {
@@ -100,7 +101,7 @@ export async function PATCH(
         "You're on the Kradəl Bundle waitlist",
         fullName,
         `Your application for <strong>${bundleName}</strong> is on the waitlist. We'll be in touch when a slot becomes available.`
-      );
+      ).catch((err) => console.error("[bundle email]", err));
     }
   } else if (status === "DELIVERED") {
     if (userId) {
@@ -118,7 +119,7 @@ export async function PATCH(
         "Your Kradəl Bundle has been delivered",
         fullName,
         `Your <strong>${bundleName}</strong> has been delivered. We hope it helps.`
-      );
+      ).catch((err) => console.error("[bundle email]", err));
     }
   }
 
