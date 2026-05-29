@@ -139,7 +139,7 @@ async function handleInquiryEvent(
   // to personaInquiryId in case the reference-id wasn't stored correctly.
   const user = await prisma.user.findFirst({
     where:  referenceId ? { id: referenceId } : { personaInquiryId: inquiryId },
-    select: { id: true, identityVerified: true, personaInquiryId: true },
+    select: { id: true, email: true, identityVerified: true, personaInquiryId: true },
   });
 
   if (!user) {
@@ -180,17 +180,46 @@ async function handleInquiryEvent(
 
       const duplicate = await prisma.user.findFirst({
         where:  { identityHash, id: { not: user.id } },
-        select: { id: true },
+        select: { id: true, deletedAt: true, accountHold: true },
       });
 
       if (duplicate) {
+        const isDeletedAccount = duplicate.deletedAt != null;
+
+        let holdReason: string;
+        let adminMessage: string;
+
+        if (isDeletedAccount) {
+          holdReason = "Duplicate identity — matches a previously deleted account";
+
+          const [flagCount, eventCount] = await Promise.all([
+            prisma.abuseFlag.count({ where: { userId: duplicate.id } }),
+            prisma.abuseEventLog.count({ where: { userId: duplicate.id } }),
+          ]);
+
+          const deletedOn = duplicate.deletedAt!.toLocaleDateString("en-GB", {
+            day: "numeric", month: "short", year: "numeric",
+          });
+          const wasHeld = duplicate.accountHold ? "held" : "not held";
+          const bLabel  = user.email ?? user.id;
+
+          adminMessage =
+            `Duplicate identity match on new account ${bLabel}. ` +
+            `Matched account (${duplicate.id}) was deleted on ${deletedOn}, ` +
+            `had ${flagCount} prior flag(s), ${eventCount} abuse event(s), ` +
+            `and was ${wasHeld} at the time of deletion.`;
+        } else {
+          holdReason   = "Duplicate identity — matches an existing account";
+          adminMessage = `Account ${user.id} verified with a document already on account ${duplicate.id}. Auto-hold applied.`;
+        }
+
         // Same document verified on a different account → auto-hold the newly verified one
         await prisma.user.update({
           where: { id: user.id },
           data: {
             identityHash,
             accountHold:       true,
-            accountHoldReason: "Duplicate identity — matches an existing account",
+            accountHoldReason: holdReason,
             accountHoldAt:     new Date(),
           },
         });
@@ -206,7 +235,7 @@ async function handleInquiryEvent(
               userId:   a.id,
               type:     "ADMIN_MESSAGE" as const,
               title:    "Duplicate identity flagged",
-              message:  `Account ${user.id} verified with a document already on account ${duplicate.id}. Auto-hold applied.`,
+              message:  adminMessage,
               link:     `/admin?userId=${user.id}`,
               metadata: { newUserId: user.id, existingUserId: duplicate.id },
             })),
@@ -214,9 +243,10 @@ async function handleInquiryEvent(
         }
 
         console.warn(
-          "[persona-webhook] Duplicate identity: new=%s existing=%s — hold applied",
+          "[persona-webhook] Duplicate identity: new=%s existing=%s deleted=%s — hold applied",
           user.id,
           duplicate.id,
+          isDeletedAccount,
         );
       } else {
         // No duplicate — store hash (or refresh on re-verification)
