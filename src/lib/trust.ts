@@ -451,19 +451,13 @@ export async function awardImpactPoints(
   ]);
 
   if (newLevel !== prevLevel) {
-    const labels: Record<string, string> = {
-      ACTIVE_DONOR: "Active Donor", TRUSTED_DONOR: "Trusted Donor", IMPACT_PARTNER: "Impact Partner",
-    };
-    const label = labels[newLevel];
-    if (label) {
-      prisma.notification.create({
-        data: {
-          userId, type: "DONOR_LEVEL_UP",
-          message: `You've reached ${label} status! Keep giving to unlock more recognition.`,
-          link: "/profile",
-        },
-      }).catch(() => {});
-    }
+    prisma.notification.create({
+      data: {
+        userId, type: "DONOR_LEVEL_UP",
+        message: "Thank you for supporting mothers on Kradəl.",
+        link: "/profile",
+      },
+    }).catch(() => {});
   }
 
   return newScore;

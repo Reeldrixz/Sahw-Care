@@ -20,14 +20,6 @@ import PhoneSetupSheet from "@/components/PhoneSetupSheet";
 import StageTransitionModal from "@/components/StageTransitionModal";
 import StageRefinementBanner from "@/components/StageRefinementBanner";
 
-// ── Donor level ────────────────────────────────────────────────────────────────
-
-const DONOR_LEVEL_META: Record<string, { label: string; icon: string; color: string; next: number | null }> = {
-  NEW_DONOR:      { label: "New Donor",      icon: "🌱", color: "#6b7280", next: 50  },
-  ACTIVE_DONOR:   { label: "Active Donor",   icon: "💚", color: "#16a34a", next: 150 },
-  TRUSTED_DONOR:  { label: "Trusted Donor",  icon: "⭐", color: "#ca8a04", next: 300 },
-  IMPACT_PARTNER: { label: "Impact Partner", icon: "👑", color: "#7c3aed", next: null },
-};
 
 const CAT_BG: Record<string, string> = {
   "Feeding": "#e8f5f1", "Diapering": "#fff3e0", "Maternity": "#f3e5f5",
@@ -155,25 +147,19 @@ function ContributorCard() {
 
 function DonorStatusCard() {
   const { user } = useAuth();
-  const [level, setLevel] = useState<string>("NEW_DONOR");
 
-  useEffect(() => {
-    fetch("/api/user/trust")
-      .then(r => r.json())
-      .then(d => { if (d.donorLevel) setLevel(d.donorLevel); })
-      .catch(() => {});
-  }, []);
-
-  const meta      = DONOR_LEVEL_META[level] ?? DONOR_LEVEL_META.NEW_DONOR;
-  const verified  = (user?.verificationLevel ?? 0) >= 1;
+  const verified      = (user?.verificationLevel ?? 0) >= 1;
   const fullyVerified = (user?.verificationLevel ?? 0) >= 2;
+  const label         = verified ? "Verified Donor" : "Donor";
 
   return (
     <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 32 }}>{meta.icon}</span>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Heart size={20} color="#1a7a5e" />
+        </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: meta.color }}>{meta.label}</div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>{label}</div>
           <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
             {fullyVerified ? "Fully verified donor" : verified ? "Verified donor" : "Unverified — complete verification to unlock more"}
           </div>
