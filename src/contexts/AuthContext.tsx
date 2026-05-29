@@ -11,7 +11,6 @@ export interface User {
   avatar: string | null;
   location: string | null;
   isPremium: boolean;
-  trustScore: number;
   verificationLevel: number;
   phoneVerified: boolean;
   emailVerified: boolean;

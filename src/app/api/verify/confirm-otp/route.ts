@@ -91,5 +91,5 @@ export async function POST(req: NextRequest) {
   // Log verification event
   logAbuseEvent(auth.userId, "VERIFICATION_SUBMITTED", newScore, { type, verificationLevel }, req).catch(() => {});
 
-  return NextResponse.json({ verified: true, verificationLevel, trustScore: newScore });
+  return NextResponse.json({ verified: true, verificationLevel });
 }

@@ -587,7 +587,7 @@ export default function ProfilePage() {
     if (!res.ok) { setToast(d.error); setVerifyLoading(false); return; }
     await refreshUser();
     setShowVerify(false); setOtpStep("send"); setOtpCode(""); setDevOtp(null);
-    setToast(`${verifyType === "PHONE" ? "Phone" : "Email"} verified! Trust score updated.`);
+    setToast(`${verifyType === "PHONE" ? "Phone" : "Email"} verified.`);
     setVerifyLoading(false);
   };
 

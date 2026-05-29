@@ -24,7 +24,6 @@ export async function GET(req: NextRequest) {
       avatar: true,
       location: true,
       isPremium: true,
-      trustScore: true,
       verificationLevel: true,
       phoneVerified: true,
       emailVerified: true,
