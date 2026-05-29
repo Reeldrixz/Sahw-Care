@@ -213,7 +213,6 @@ export async function awardTrust(
     }),
   ]);
 
-  fireMilestoneNotif(userId, prevScore, newScore).catch(() => {});
   return newScore;
 }
 
@@ -241,7 +240,6 @@ export async function deductTrust(
     prisma.user.update({ where: { id: userId }, data: { trustScore: newScore } }),
   ]);
 
-  fireWarningNotif(userId, prevScore, newScore).catch(() => {});
   return newScore;
 }
 

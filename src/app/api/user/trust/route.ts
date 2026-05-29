@@ -11,46 +11,19 @@ export async function GET(req: NextRequest) {
   const user = await prisma.user.findUnique({
     where:  { id: auth.userId },
     select: {
-      trustScore: true,
       impactScore: true, donorLevel: true,
       bundleRestrictedUntil: true,
-      streakCurrentDays: true, streakWeeksCompleted: true,
-      dailyPointsEarned: true, dailyPointsDate: true,
     },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  const logs = await prisma.trustScoreLog.findMany({
-    where:   { userId: auth.userId },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
-
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const lastDate = user.dailyPointsDate ? new Date(user.dailyPointsDate) : null;
-  if (lastDate) lastDate.setHours(0, 0, 0, 0);
-  const isToday = !!lastDate && lastDate.getTime() === today.getTime();
-  const dailyPointsEarned = isToday ? user.dailyPointsEarned : 0;
 
   const rbwDaysLeft = user.bundleRestrictedUntil && user.bundleRestrictedUntil > new Date()
     ? Math.ceil((user.bundleRestrictedUntil.getTime() - Date.now()) / (86400 * 1000))
     : null;
 
   return NextResponse.json({
-    trustScore:        user.trustScore,
-    impactScore:       user.impactScore,
-    donorLevel:        user.donorLevel,
+    impactScore: user.impactScore,
+    donorLevel:  user.donorLevel,
     rbwDaysLeft,
-    streakCurrentDays: user.streakCurrentDays,
-    streakWeeksCompleted: user.streakWeeksCompleted,
-    dailyPointsEarned,
-    dailyPointsCap: 5,
-    recentEvents: logs.map(e => ({
-      id:          e.id,
-      eventType:   e.eventType,
-      pointsDelta: e.pointsDelta,
-      newScore:    e.newScore,
-      createdAt:   e.createdAt,
-    })),
   });
 }
