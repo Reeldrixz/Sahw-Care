@@ -183,7 +183,7 @@ model User {
   notifyVerification  Boolean @default(true)
 
   notifications Notification[]
-  savedRegisters           SavedRegister[]
+  savedItems     SavedItem[]
 
   missionMemberships MissionMember[]
   missionActions     MissionAction[]
@@ -233,18 +233,20 @@ model Favourite {
   @@unique([userId, itemId])
 }
 
-model SavedRegister {
+model SavedItem {
   id         String   @id @default(cuid())
   userId     String
   registerId String
-  createdAt  DateTime @default(now())
+  itemId     String
+  savedAt    DateTime @default(now())
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  register Register @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  register Register     @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  item     RegisterItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, registerId])
+  @@unique([userId, itemId])
   @@index([userId])
-  @@index([registerId])
+  @@index([itemId])
 }
 
 model Review {
@@ -440,7 +442,7 @@ model Register {
   creator      User            @relation("CreatorRegisters", fields: [creatorId], references: [id], onDelete: Cascade)
   items        RegisterItem[]
   savedAddress RegisterAddress?
-  savedBy      SavedRegister[]
+  savedItems   SavedItem[]
 }
 
 model RegisterItem {
@@ -465,6 +467,7 @@ model RegisterItem {
   funding          RegisterItemFunding[]
   fulfillmentQueue FulfillmentQueue?
   shipmentAddress  ShipmentAddress?
+  savedBy          SavedItem[]
 }
 
 model ItemAssignment {

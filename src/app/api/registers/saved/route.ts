@@ -9,29 +9,38 @@ export async function GET(req: NextRequest) {
   const auth = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const saved = await prisma.savedRegister.findMany({
+  const saved = await prisma.savedItem.findMany({
     where: { userId: auth.userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { savedAt: "desc" },
     include: {
+      item: {
+        select: {
+          id: true,
+          name: true,
+          quantity: true,
+          status: true,
+          fundingStatus: true,
+          standardPriceCents: true,
+          totalFundedCents: true,
+          registerId: true,
+          catalogItem: { select: { imageUrl: true } },
+        },
+      },
       register: {
-        include: {
-          creator: { select: { id: true, name: true, location: true, verificationLevel: true } },
-          items: {
-            select: {
-              id: true,
-              status: true,
-              fundingStatus: true,
-              standardPriceCents: true,
-              totalFundedCents: true,
-              _count: { select: { funding: true } },
-              catalogItem: { select: { imageUrl: true } },
-            },
-          },
+        select: {
+          id: true,
+          city: true,
+          dueDate: true,
+          creator: { select: { id: true, name: true, verificationLevel: true, circleContext: true } },
         },
       },
     },
   });
 
-  const registers = saved.map((s) => ({ ...s.register, savedByMe: true }));
-  return NextResponse.json({ registers });
+  const items = saved.map((s) => ({
+    ...s.item,
+    savedByMe: true,
+    register: s.register,
+  }));
+  return NextResponse.json({ items });
 }

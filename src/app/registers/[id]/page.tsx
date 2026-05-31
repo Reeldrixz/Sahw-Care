@@ -164,14 +164,28 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   }, []);
 
   useEffect(() => {
+    if (!register) return;
     const params = new URLSearchParams(window.location.search);
+    const itemParam = params.get("item");
+
     if (params.get("confirm") === "true") {
       setConfirmMode(true);
-      const itemParam = params.get("item");
-      if (itemParam && register) {
+      if (itemParam) {
         const target = register.items.find((i) => i.id === itemParam && i.status === "AWAITING_ADDRESS");
         if (target) { setAddressItem(target); setShowAddressSheet(true); }
       }
+      return;
+    }
+
+    // Aisle deep-link: open the fund panel for this item
+    if (itemParam) {
+      const target = register.items.find((i) => i.id === itemParam);
+      if (target && ["UNFUNDED", "PARTIAL"].includes(target.fundingStatus)) {
+        setSelectedItem(target);
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.delete("item");
+      window.history.replaceState({}, "", url.toString());
     }
   }, [register]);
 

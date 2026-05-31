@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           name: true,
+          quantity: true,
           status: true,
           fundingStatus: true,
           standardPriceCents: true,
@@ -39,16 +40,19 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const savedIds = auth
+  const savedItemIds = auth
     ? new Set(
-        (await prisma.savedRegister.findMany({
+        (await prisma.savedItem.findMany({
           where: { userId: auth.userId },
-          select: { registerId: true },
-        })).map((s) => s.registerId)
+          select: { itemId: true },
+        })).map((s) => s.itemId)
       )
     : new Set<string>();
 
-  const result = registers.map((r) => ({ ...r, savedByMe: savedIds.has(r.id) }));
+  const result = registers.map((r) => ({
+    ...r,
+    items: r.items.map((i) => ({ ...i, savedByMe: savedItemIds.has(i.id) })),
+  }));
   return NextResponse.json({ registers: result });
 }
 
