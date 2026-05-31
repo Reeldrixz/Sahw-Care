@@ -23,10 +23,11 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
     include: {
-      creator: { select: { id: true, name: true, location: true, verificationLevel: true } },
+      creator: { select: { id: true, name: true, location: true, verificationLevel: true, circleContext: true } },
       items: {
         select: {
           id: true,
+          name: true,
           status: true,
           fundingStatus: true,
           standardPriceCents: true,

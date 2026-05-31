@@ -397,12 +397,18 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
           <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4 }}>
             {firstName}&apos;s Register
           </div>
-          <div style={{ fontSize: 12, color: "#3d7a62", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 12, color: "#3d7a62", fontWeight: 600, display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
             <MapPin size={11} />
             {register.city}
             <span style={{ opacity: 0.5 }}>·</span>
             {stageLine}
           </div>
+          <a
+            href={`/registers/${register.id}`}
+            style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 600, textDecoration: "none" }}
+          >
+            View full register →
+          </a>
         </div>
 
         {/* ── Part 3: Emotional context card ─────────────── */}
