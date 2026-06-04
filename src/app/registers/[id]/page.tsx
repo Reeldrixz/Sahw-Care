@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle, Package, Loader2, Users, Heart,
@@ -13,6 +13,7 @@ import HowKradelWorks from "@/components/HowKradelWorks";
 import TrustAndSafety from "@/components/TrustAndSafety";
 import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
+import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
 
 interface FundingEntry {
   firstName: string;
@@ -109,6 +110,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [selectedItem, setSelectedItem]     = useState<RegisterItemData | null>(null);
   const [fundingDetails, setFundingDetails] = useState<{ donorCount: number; contributors: FundingEntry[] } | null>(null);
   const [fundAmount, setFundAmount]         = useState("");
+  const [supportOn, setSupportOn]           = useState(true);
+  const [coverStripe, setCoverStripe]       = useState(true);
   const [processing, setProcessing]         = useState(false);
   const [funded, setFunded]                 = useState(false);
   const [fundedAmount, setFundedAmount]     = useState(0);
@@ -213,16 +216,21 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const breakdown = useMemo(() => {
+    const cents = Math.round(parseFloat(fundAmount) * 100);
+    if (!cents || cents <= 0 || !Number.isFinite(cents)) return null;
+    return computeBreakdown(cents, supportOn, coverStripe);
+  }, [fundAmount, supportOn, coverStripe]);
+
   const handleFund = async () => {
     if (!user) { router.push("/auth"); return; }
-    if (!selectedItem || !fundAmount) return;
-    const cents = Math.round(parseFloat(fundAmount) * 100);
-    if (!cents || cents <= 0) { setToast("Enter a valid amount"); return; }
+    if (!selectedItem || !breakdown) return;
+    if (breakdown.itemSubtotal < MIN_GIFT_CENTS) { setToast(`Minimum contribution is $${MIN_GIFT_CENTS / 100}`); return; }
     setProcessing(true);
     const res = await fetch(`/api/registers/${id}/items/${selectedItem.id}/fund`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amountCents: cents }),
+      body: JSON.stringify({ amountCents: breakdown.itemSubtotal, supportOn, coverStripe }),
     });
     if (res.ok) {
       const { sessionUrl } = await res.json();
@@ -930,6 +938,57 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
 
+                    {/* Fee breakdown */}
+                    {breakdown && (
+                      <div style={{ background: "#f5f5f0", borderRadius: 12, padding: "12px 14px", marginBottom: 12, fontFamily: "Nunito, sans-serif", fontSize: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, color: "var(--ink)" }}>
+                          <span>Item contribution</span>
+                          <span style={{ fontWeight: 700 }}>${(breakdown.itemSubtotal / 100).toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, color: "var(--mid)" }}>
+                          <span>Kradel platform fee (7%)</span>
+                          <span>${(breakdown.kradelFee / 100).toFixed(2)}</span>
+                        </div>
+
+                        {/* Optional support toggle */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: supportOn ? "var(--ink)" : "var(--mid)" }}>
+                            <input
+                              type="checkbox"
+                              checked={supportOn}
+                              onChange={(e) => setSupportOn(e.target.checked)}
+                              style={{ accentColor: "#1a7a5e", width: 14, height: 14 }}
+                            />
+                            Support Kradel (10%)
+                          </label>
+                          <span style={{ color: supportOn ? "var(--ink)" : "var(--mid)", fontWeight: supportOn ? 600 : 400 }}>
+                            {supportOn ? `$${(breakdown.optionalSupport / 100).toFixed(2)}` : "—"}
+                          </span>
+                        </div>
+
+                        {/* Cover processing fee toggle */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: coverStripe ? "var(--ink)" : "var(--mid)" }}>
+                            <input
+                              type="checkbox"
+                              checked={coverStripe}
+                              onChange={(e) => setCoverStripe(e.target.checked)}
+                              style={{ accentColor: "#1a7a5e", width: 14, height: 14 }}
+                            />
+                            Cover processing fee
+                          </label>
+                          <span style={{ color: coverStripe ? "var(--ink)" : "var(--mid)", fontWeight: coverStripe ? 600 : 400 }}>
+                            {coverStripe ? `$${(breakdown.stripeFee / 100).toFixed(2)}` : "—"}
+                          </span>
+                        </div>
+
+                        <div style={{ borderTop: "1px solid #ddd", paddingTop: 8, display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 13, color: "var(--ink)" }}>
+                          <span>Total charged</span>
+                          <span>${(breakdown.total / 100).toFixed(2)} CAD</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Trust block */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f9fafb", borderRadius: 10, padding: "10px 12px", marginBottom: 14 }}>
                       <ShieldCheck size={14} color="#1a7a5e" strokeWidth={1.75} />
@@ -941,16 +1000,20 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                     {user ? (
                       <button
                         onClick={handleFund}
-                        disabled={processing || !fundAmount || parseFloat(fundAmount) <= 0}
+                        disabled={processing || !breakdown || breakdown.itemSubtotal < MIN_GIFT_CENTS}
                         style={{
                           width: "100%", padding: "14px", borderRadius: 12, border: "none",
-                          background: processing || !fundAmount || parseFloat(fundAmount) <= 0 ? "#9ca3af" : "var(--green)",
+                          background: processing || !breakdown || breakdown.itemSubtotal < MIN_GIFT_CENTS ? "#9ca3af" : "var(--green)",
                           color: "white", fontSize: 14, fontWeight: 800,
-                          cursor: processing || !fundAmount || parseFloat(fundAmount) <= 0 ? "default" : "pointer",
+                          cursor: processing || !breakdown || breakdown.itemSubtotal < MIN_GIFT_CENTS ? "default" : "pointer",
                           fontFamily: "Nunito, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                         }}
                       >
-                        {processing ? "Redirecting to payment…" : fundAmount && parseFloat(fundAmount) > 0 ? "Contribute via Stripe" : "Enter an amount to contribute"}
+                        {processing
+                          ? "Redirecting to payment…"
+                          : breakdown
+                            ? `Contribute $${(breakdown.total / 100).toFixed(2)} via Stripe`
+                            : "Enter an amount to contribute"}
                       </button>
                     ) : (
                       <button

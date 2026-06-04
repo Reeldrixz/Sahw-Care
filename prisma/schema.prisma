@@ -1276,15 +1276,19 @@ model ItemCatalog {
 }
 
 model RegisterItemFunding {
-  id                   String        @id @default(cuid())
-  registerItemId       String
-  donorId              String
-  amountCents          Int
-  status               FundingStatus @default(PENDING)
-  stripeSessionId      String?
+  id                    String        @id @default(cuid())
+  registerItemId        String
+  donorId               String
+  amountCents           Int           // item contribution only — used for progress tracking
+  kradelFee             Int           @default(0)
+  optionalSupport       Int           @default(0)
+  stripeFee             Int           @default(0)
+  totalCharged          Int           @default(0) // actual Stripe charge = amountCents + fees
+  status                FundingStatus @default(PENDING)
+  stripeSessionId       String?
   stripePaymentIntentId String?
-  refundedAt           DateTime?
-  createdAt            DateTime      @default(now())
+  refundedAt            DateTime?
+  createdAt             DateTime      @default(now())
 
   registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
   donor        User         @relation(fields: [donorId], references: [id], onDelete: Cascade)

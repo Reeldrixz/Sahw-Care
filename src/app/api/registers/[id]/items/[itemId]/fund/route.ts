@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { itemId } = await params;
-  const { amountCents } = await req.json();
+  const body = await req.json();
+  const { amountCents, supportOn = true, coverStripe = true } = body;
 
-  if (!amountCents || typeof amountCents !== "number" || amountCents <= 0) {
-    return NextResponse.json({ error: "amountCents must be a positive number" }, { status: 400 });
+  if (!amountCents || typeof amountCents !== "number" || !Number.isInteger(amountCents) || amountCents <= 0) {
+    return NextResponse.json({ error: "amountCents must be a positive integer" }, { status: 400 });
   }
-  if (!Number.isInteger(amountCents)) {
-    return NextResponse.json({ error: "amountCents must be a whole number" }, { status: 400 });
+  if (amountCents < MIN_GIFT_CENTS) {
+    return NextResponse.json({ error: `Minimum contribution is $${MIN_GIFT_CENTS / 100}` }, { status: 400 });
   }
 
   const [item, donor] = await Promise.all([
@@ -39,6 +41,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "This item is already fully funded" }, { status: 409 });
   }
 
+  const breakdown = computeBreakdown(amountCents, Boolean(supportOn), Boolean(coverStripe));
+
   const existingPending = await prisma.registerItemFunding.findFirst({
     where: { registerItemId: itemId, donorId: auth.userId, status: "PENDING" },
   });
@@ -49,23 +53,29 @@ export async function POST(req: NextRequest, { params }: Params) {
         const stripe = getStripe();
         const existingSession = await stripe.checkout.sessions.retrieve(existingPending.stripeSessionId);
         if (existingSession.status === "open") {
-          // Session still valid — send donor back to their existing checkout page
           return NextResponse.json({ sessionUrl: existingSession.url }, { status: 200 });
         }
-        // "expired" or "complete" — stale, fall through to create a fresh session
       } catch {
-        // Session not found or Stripe API error — fall through
+        // Session not found — fall through
       }
     }
-    // Delete the stale PENDING row before creating a new one
     await prisma.registerItemFunding.delete({ where: { id: existingPending.id } });
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const registerId = item.register.id;
 
   const funding = await prisma.registerItemFunding.create({
-    data: { registerItemId: itemId, donorId: auth.userId, amountCents, status: "PENDING" },
+    data: {
+      registerItemId:  itemId,
+      donorId:         auth.userId,
+      amountCents:     breakdown.itemSubtotal,
+      kradelFee:       breakdown.kradelFee,
+      optionalSupport: breakdown.optionalSupport,
+      stripeFee:       breakdown.stripeFee,
+      totalCharged:    breakdown.total,
+      status:          "PENDING",
+    },
   });
 
   let stripe;
@@ -85,10 +95,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         quantity: 1,
         price_data: {
           currency: "cad",
-          unit_amount: amountCents,
+          unit_amount: breakdown.total,
           product_data: {
             name: item.name,
-            description: `Contribution to ${item.register.title}`,
+            description: `Gift contribution${breakdown.stripeFee > 0 ? " (incl. processing fee)" : ""}`,
           },
         },
       }],
