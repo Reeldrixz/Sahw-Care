@@ -12,6 +12,7 @@ import Toast from "@/components/Toast";
 import HowKradelWorks from "@/components/HowKradelWorks";
 import TrustAndSafety from "@/components/TrustAndSafety";
 import RegisterIntroEditor from "@/components/RegisterIntroEditor";
+import RegisterTour from "@/components/RegisterTour";
 import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
 import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
@@ -146,6 +147,21 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   // Share link
   const [shareCopied, setShareCopied] = useState(false);
 
+  // Guided tour (mothers, register detail only)
+  const [runTour, setRunTour] = useState(false);
+  const TOUR_SEEN_KEY = "kradel_register_tour_seen";
+
+  const handleTourEnd = useCallback(() => {
+    setRunTour(false);
+    try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch { /* storage unavailable */ }
+    // Strip ?tour=1 so a reload doesn't re-trigger the re-launch.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("tour")) {
+      url.searchParams.delete("tour");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
   const handleShare = async () => {
     if (!register) return;
     const fn = register.creator.name.split(" ")[0];
@@ -224,6 +240,20 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       .then((d) => setCatalog(d.items ?? []))
       .catch(() => {});
   }, []);
+
+  // Auto-start the guided tour once for the register's creator — only after
+  // onboarding is complete, so it never collides with the OnboardingModal.
+  useEffect(() => {
+    if (!register || !user) return;
+    if (user.id !== register.creator.id) return;   // mothers (creator) only
+    if (!user.onboardingComplete) return;           // sequence after onboarding
+    const forced = new URLSearchParams(window.location.search).get("tour") === "1";
+    let seen = false;
+    try { seen = localStorage.getItem(TOUR_SEEN_KEY) === "1"; } catch { /* ignore */ }
+    if (!forced && seen) return;
+    const t = setTimeout(() => setRunTour(true), 600); // let targets mount/paint
+    return () => clearTimeout(t);
+  }, [register, user]);
 
   const openItem = async (item: RegisterItemData) => {
     setSelectedItem(item);
@@ -426,6 +456,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             >←</button>
             {!isClosed && (
               <button
+                data-tour="share"
                 onClick={handleShare}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--white)", border: "1.5px solid #1a7a5e", color: "#1a7a5e", borderRadius: 20, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
               >
@@ -488,17 +519,22 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
         {/* ── Mom: personalize your intro ─────────────────── */}
         {isMom && !isClosed && (
-          <RegisterIntroEditor
-            registerId={register.id}
-            firstName={firstName}
-            initialIntro={register.intro}
-            onSaved={(intro) => setRegister((prev) => (prev ? { ...prev, intro } : prev))}
-          />
+          <div data-tour="intro">
+            <RegisterIntroEditor
+              registerId={register.id}
+              firstName={firstName}
+              initialIntro={register.intro}
+              onSaved={(intro) => setRegister((prev) => (prev ? { ...prev, intro } : prev))}
+            />
+          </div>
         )}
+
+        {/* Guided tour — creator only, auto-starts once after onboarding */}
+        {isMom && <RegisterTour run={runTour} onClose={handleTourEnd} />}
 
         {/* ── Part 4: Progress section ────────────────────── */}
         {totalItems > 0 && totalNeeded > 0 && (
-          <div style={{ margin: "16px 16px 0", background: "var(--white)", borderRadius: 12, padding: "14px 16px" }}>
+          <div data-tour="progress" style={{ margin: "16px 16px 0", background: "var(--white)", borderRadius: 12, padding: "14px 16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>
                 {isFullyFunded ? "Fully funded" : `${fmtMoney(totalFunded)} raised`}
@@ -558,6 +594,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             {isMom && !isClosed && (
               <div style={{ display: "flex", gap: 8 }}>
                 <button
+                  data-tour="add-item"
                   onClick={() => setAddingItem(true)}
                   style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
                 >+ Add item</button>

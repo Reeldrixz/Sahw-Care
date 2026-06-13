@@ -20,6 +20,7 @@ import PhoneSetupSheet from "@/components/PhoneSetupSheet";
 import StageTransitionModal from "@/components/StageTransitionModal";
 import StageRefinementBanner from "@/components/StageRefinementBanner";
 import ReferFriendCard from "@/components/ReferFriendCard";
+import RetakeTourButton from "@/components/RetakeTourButton";
 
 
 const CAT_BG: Record<string, string> = {
@@ -926,6 +927,8 @@ export default function ProfilePage() {
             <IdentityVerificationCard />
 
             <ReferFriendCard />
+
+            <RetakeTourButton />
 
             {/* My Requests summary card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>
