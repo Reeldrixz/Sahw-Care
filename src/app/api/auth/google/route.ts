@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
         audience: CLIENT_ID,
       });
       claims = payload as GoogleClaims;
-    } catch {
+    } catch (err) {
+      console.error("Google token verification failed:", err);
       return NextResponse.json({ error: "Could not verify Google sign-in" }, { status: 401 });
     }
 

@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   // auth flows that must work for logged-out users
   "/api/auth/login",
   "/api/auth/register",
+  "/api/auth/google",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   // public data APIs
