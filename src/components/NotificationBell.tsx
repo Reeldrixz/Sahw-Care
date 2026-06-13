@@ -13,6 +13,23 @@ export default function NotificationBell() {
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [unread, setUnread] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  // Position the panel relative to the viewport, clamped so it never runs off
+  // either edge. The bell isn't necessarily at the screen's right edge (the
+  // avatar sits to its right on mobile), so a plain right-anchor pushed the
+  // panel's left side — and the header text — off-screen.
+  const computePos = useCallback(() => {
+    const el = btnRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const margin = 12;
+    const width = Math.min(380, window.innerWidth - margin * 2);
+    // Prefer right-aligning the panel to the bell, then clamp into the viewport.
+    const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin));
+    setPos({ top: rect.bottom + 8, left, width });
+  }, []);
 
   const fetchNotifs = useCallback(async () => {
     if (!user) return;
@@ -30,6 +47,18 @@ export default function NotificationBell() {
     const t = setInterval(fetchNotifs, 30000);
     return () => clearInterval(t);
   }, [user, fetchNotifs]);
+
+  // Keep the panel positioned correctly while open (resize / scroll)
+  useEffect(() => {
+    if (!open) return;
+    computePos();
+    window.addEventListener("resize", computePos);
+    window.addEventListener("scroll", computePos, true);
+    return () => {
+      window.removeEventListener("resize", computePos);
+      window.removeEventListener("scroll", computePos, true);
+    };
+  }, [open, computePos]);
 
   // Close on outside click
   useEffect(() => {
@@ -65,8 +94,9 @@ export default function NotificationBell() {
     <div style={{ position: "relative" }} ref={panelRef}>
       {/* Bell button */}
       <button
+        ref={btnRef}
         className="icon-btn"
-        onClick={() => { setOpen((p) => !p); if (!open) fetchNotifs(); }}
+        onClick={() => { const next = !open; setOpen(next); if (next) { computePos(); fetchNotifs(); } }}
         style={{ position: "relative" }}
         aria-label="Notifications"
       >
@@ -86,13 +116,11 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Popup panel */}
-      {open && (
+      {/* Popup panel — fixed to the viewport and clamped on-screen */}
+      {open && pos && (
         <div style={{
-          position: "absolute", top: "calc(100% + 8px)", right: 0,
-          // Cap to the viewport (minus 32px for left/right breathing room) so the
-          // right-anchored panel never overflows the left edge on small screens.
-          width: "min(380px, calc(100vw - 32px))", maxWidth: "calc(100vw - 32px)",
+          position: "fixed", top: pos.top, left: pos.left,
+          width: pos.width, maxWidth: "calc(100vw - 24px)",
           background: "white", borderRadius: 16,
           boxShadow: "0 8px 40px rgba(0,0,0,0.14)", border: "1px solid var(--border)",
           zIndex: 200, overflow: "hidden",
