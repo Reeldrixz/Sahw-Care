@@ -90,7 +90,10 @@ export default function NotificationBell() {
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 8px)", right: 0,
-          width: 380, background: "white", borderRadius: 16,
+          // Cap to the viewport (minus 32px for left/right breathing room) so the
+          // right-anchored panel never overflows the left edge on small screens.
+          width: "min(380px, calc(100vw - 32px))", maxWidth: "calc(100vw - 32px)",
+          background: "white", borderRadius: 16,
           boxShadow: "0 8px 40px rgba(0,0,0,0.14)", border: "1px solid var(--border)",
           zIndex: 200, overflow: "hidden",
         }}>
