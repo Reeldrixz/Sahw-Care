@@ -170,7 +170,10 @@ export async function POST(req: NextRequest, { params }: Params) {
                   replierName: commenterName,
                   snippet,
                 });
-              } catch { /* email is best-effort — never blocks the reply */ }
+              } catch (err) {
+                console.error("Circle reply email failed:", err);
+                /* email is best-effort — never blocks the reply */
+              }
             }
           }
         }
