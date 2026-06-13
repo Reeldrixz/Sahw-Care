@@ -28,6 +28,7 @@ export interface User {
   createdAt: string;
   // cohort / onboarding
   onboardingComplete: boolean;
+  tourCompletedAt: string | null;
   journeyType: string | null;
   currentStage: string | null;
   countryFlag: string | null;

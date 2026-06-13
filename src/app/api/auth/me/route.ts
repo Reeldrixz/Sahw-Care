@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       status: true,
       createdAt: true,
       onboardingComplete: true,
+      tourCompletedAt: true,
       journeyType: true,
       currentStage: true,
       countryCode: true,

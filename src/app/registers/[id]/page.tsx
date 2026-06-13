@@ -105,7 +105,7 @@ function ItemStateIcon({ status }: { status: RegisterItemData["fundingStatus"] }
 
 export default function RegisterDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const router = useRouter();
 
   const [register, setRegister]             = useState<RegisterData | null>(null);
@@ -149,18 +149,21 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
   // Guided tour (mothers, register detail only)
   const [runTour, setRunTour] = useState(false);
-  const TOUR_SEEN_KEY = "kradel_register_tour_seen";
 
   const handleTourEnd = useCallback(() => {
     setRunTour(false);
-    try { localStorage.setItem(TOUR_SEEN_KEY, "1"); } catch { /* storage unavailable */ }
+    // Persist "seen" at the account level (finish OR skip), then refresh so the
+    // local user object reflects it. Fire-and-forget — never blocks the UI.
+    fetch("/api/user/tour-complete", { method: "POST" })
+      .then(() => refreshUser())
+      .catch(() => {});
     // Strip ?tour=1 so a reload doesn't re-trigger the re-launch.
     const url = new URL(window.location.href);
     if (url.searchParams.has("tour")) {
       url.searchParams.delete("tour");
       window.history.replaceState({}, "", url.toString());
     }
-  }, []);
+  }, [refreshUser]);
 
   const handleShare = async () => {
     if (!register) return;
@@ -248,9 +251,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     if (user.id !== register.creator.id) return;   // mothers (creator) only
     if (!user.onboardingComplete) return;           // sequence after onboarding
     const forced = new URLSearchParams(window.location.search).get("tour") === "1";
-    let seen = false;
-    try { seen = localStorage.getItem(TOUR_SEEN_KEY) === "1"; } catch { /* ignore */ }
-    if (!forced && seen) return;
+    // Account-level "seen" flag (follows the user across devices). ?tour=1
+    // re-launch overrides it regardless.
+    if (!forced && user.tourCompletedAt) return;
     const t = setTimeout(() => setRunTour(true), 600); // let targets mount/paint
     return () => clearTimeout(t);
   }, [register, user]);
