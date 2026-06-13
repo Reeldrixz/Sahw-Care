@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { STAGE_META, StageKey, countryCodeToFlag } from "@/lib/stage";
 import { awardTrust } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
+import { sendCircleReplyEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -24,17 +25,34 @@ export async function GET(req: NextRequest, { params }: Params) {
     },
   });
 
-  const formatted = comments.map((c) => {
+  const formatComment = (c: (typeof comments)[number]) => {
     const loc  = c.user.location ?? "";
     const city = loc.includes(",") ? loc.split(",")[0].trim() : null;
     return {
       id:            c.id,
       content:       c.content,
       identityLabel: c.identityLabel ?? null,
+      parentId:      c.parentId ?? null,
       createdAt:     c.createdAt,
       author:        { id: c.user.id, name: c.user.name, avatar: c.user.avatar, city, countryFlag: c.user.countryCode ? countryCodeToFlag(c.user.countryCode) : null, circleContext: c.user.circleContext ?? null, circleDisplayName: c.user.circleDisplayName ?? null },
     };
-  });
+  };
+
+  // Build a one-level thread: top-level comments each carry their replies
+  // (chronological). Replies are flattened to one level at write time, so any
+  // comment with a parentId is a direct reply to a top-level comment.
+  const repliesByParent = new Map<string, ReturnType<typeof formatComment>[]>();
+  for (const c of comments) {
+    if (c.parentId) {
+      const arr = repliesByParent.get(c.parentId) ?? [];
+      arr.push(formatComment(c));
+      repliesByParent.set(c.parentId, arr);
+    }
+  }
+
+  const formatted = comments
+    .filter((c) => !c.parentId)
+    .map((c) => ({ ...formatComment(c), replies: repliesByParent.get(c.id) ?? [] }));
 
   return NextResponse.json({ comments: formatted });
 }
@@ -45,7 +63,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { postId } = await params;
-  const { content } = await req.json();
+  const { content, parentId } = await req.json();
 
   if (!content?.trim()) return NextResponse.json({ error: "Comment cannot be empty" }, { status: 400 });
   if (content.trim().length > 300) return NextResponse.json({ error: "Comment must be 300 characters or less" }, { status: 400 });
@@ -67,6 +85,24 @@ export async function POST(req: NextRequest, { params }: Params) {
   });
   if (!post || post.isHidden) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
+  // ── Resolve reply target (one level of nesting) ───────────────────────────
+  // When replying to a comment, we notify the author of the comment that was
+  // replied to, but always store the new comment one level deep — under the
+  // top-level comment — so the thread never nests further than comment → reply.
+  let storageParentId: string | null = null;
+  let replyTargetUserId: string | null = null;
+  if (parentId) {
+    const parent = await prisma.postComment.findUnique({
+      where:  { id: parentId },
+      select: { id: true, postId: true, parentId: true, userId: true },
+    });
+    if (!parent || parent.postId !== postId) {
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+    }
+    storageParentId   = parent.parentId ?? parent.id; // flatten to the top-level comment
+    replyTargetUserId = parent.userId;                // author of the comment being replied to
+  }
+
   // ── Compute identity label ────────────────────────────────────────────────
   let identityLabel: string | null = null;
   const isInPrimaryCircle = commenter?.currentCircleId === post.circleId;
@@ -83,7 +119,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // ── Create comment ────────────────────────────────────────────────────────
   const comment = await prisma.postComment.create({
-    data: { postId, userId: auth.userId, content: content.trim(), identityLabel },
+    data: { postId, userId: auth.userId, content: content.trim(), identityLabel, parentId: storageParentId },
     include: { user: { select: { id: true, name: true, avatar: true, location: true, countryCode: true, circleContext: true, circleDisplayName: true } } },
   });
 
@@ -104,64 +140,67 @@ export async function POST(req: NextRequest, { params }: Params) {
     try {
       const commenterUser = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
       const commenterName = commenterUser?.name?.split(" ")[0] ?? "Someone";
+      const snippet = comment.content.length > 120 ? `${comment.content.slice(0, 117)}…` : comment.content;
 
-      // Get the post's author
-      const postFull = await prisma.circlePost.findUnique({
-        where: { id: postId },
-        select: { userId: true, circleId: true },
-      });
-      if (!postFull) return;
-
-      // REPLY: notify post author (if not the commenter)
-      if (postFull.userId !== auth.userId) {
-        const postAuthor = await prisma.user.findUnique({
-          where: { id: postFull.userId },
-          select: { notifyReplies: true },
-        });
-        if (postAuthor?.notifyReplies) {
-          await prisma.notification.create({
-            data: {
-              userId: postFull.userId,
-              type: "REPLY",
-              message: `${commenterName} replied to your post`,
-              circleId: postFull.circleId,
-              postId,
-              triggeredByUserId: auth.userId,
-              link: `/circles`,
-            },
+      if (replyTargetUserId) {
+        // ── Reply to a specific comment → notify that comment's author ────────
+        if (replyTargetUserId !== auth.userId) {
+          const target = await prisma.user.findUnique({
+            where:  { id: replyTargetUserId },
+            select: { name: true, email: true, notifyReplies: true },
           });
+          if (target?.notifyReplies) {
+            await prisma.notification.create({
+              data: {
+                userId:            replyTargetUserId,
+                type:              "CIRCLE_THREAD_REPLY",
+                message:           `${commenterName} replied to your comment`,
+                circleId:          post.circleId,
+                postId,
+                triggeredByUserId: auth.userId,
+                link:              `/circles`,
+              },
+            });
+            // Existing Resend email path
+            if (target.email) {
+              try {
+                await sendCircleReplyEmail({
+                  firstName:   target.name.split(" ")[0],
+                  email:       target.email,
+                  replierName: commenterName,
+                  snippet,
+                });
+              } catch { /* email is best-effort — never blocks the reply */ }
+            }
+          }
         }
-      }
-
-      // THREAD_REPLY: notify other commenters in this thread
-      const threadCommenters = await prisma.postComment.findMany({
-        where: { postId, userId: { not: auth.userId } },
-        select: { userId: true },
-        distinct: ["userId"],
-      });
-      const threadIds = threadCommenters
-        .map(c => c.userId)
-        .filter(id => id !== postFull.userId); // post author already handled above
-
-      if (threadIds.length > 0) {
-        const threadUsers = await prisma.user.findMany({
-          where: { id: { in: threadIds }, notifyThreadReplies: true },
-          select: { id: true },
+      } else {
+        // ── Top-level comment on the post → notify post author (in-app) ───────
+        const postAuthor = await prisma.circlePost.findUnique({
+          where:  { id: postId },
+          select: { userId: true },
         });
-        const threadNotifs = threadUsers.map(u => ({
-          userId: u.id,
-          type: "THREAD_REPLY" as const,
-          message: `${commenterName} also replied in a thread you're in`,
-          circleId: postFull.circleId,
-          postId,
-          triggeredByUserId: auth.userId,
-          link: `/circles`,
-        }));
-        if (threadNotifs.length > 0) {
-          await prisma.notification.createMany({ data: threadNotifs, skipDuplicates: true });
+        if (postAuthor && postAuthor.userId !== auth.userId) {
+          const author = await prisma.user.findUnique({
+            where:  { id: postAuthor.userId },
+            select: { notifyReplies: true },
+          });
+          if (author?.notifyReplies) {
+            await prisma.notification.create({
+              data: {
+                userId:            postAuthor.userId,
+                type:              "REPLY",
+                message:           `${commenterName} replied to your post`,
+                circleId:          post.circleId,
+                postId,
+                triggeredByUserId: auth.userId,
+                link:              `/circles`,
+              },
+            });
+          }
         }
       }
-    } catch {}
+    } catch { /* notifications are best-effort */ }
   })();
 
   const loc  = comment.user.location ?? "";
@@ -172,6 +211,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       id:            comment.id,
       content:       comment.content,
       identityLabel: comment.identityLabel ?? null,
+      parentId:      comment.parentId ?? null,
       createdAt:     comment.createdAt,
       author:        { id: comment.user.id, name: comment.user.name, avatar: comment.user.avatar, city, countryFlag: comment.user.countryCode ? countryCodeToFlag(comment.user.countryCode) : null, circleContext: comment.user.circleContext ?? null, circleDisplayName: comment.user.circleDisplayName ?? null },
     },

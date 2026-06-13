@@ -75,6 +75,46 @@ export async function sendWelcomeEmail(opts: { name: string; email: string }) {
   if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
+// ── Circle reply notification ────────────────────────────────────────────────
+
+export async function sendCircleReplyEmail(opts: {
+  firstName:   string;
+  email:       string | null;
+  replierName: string;
+  snippet:     string;
+}) {
+  if (!opts.email) return;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
+  const safeSnippet = opts.snippet.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const { error } = await getResend().emails.send({
+    from:    FROM,
+    to:      opts.email,
+    subject: `${opts.replierName} replied to your comment on Kradəl`,
+    html: `
+      <div style="background:#faf8f3;padding:40px 16px;font-family:sans-serif">
+        <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:36px 32px">
+          <p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 16px">
+            ${opts.replierName} replied to your comment
+          </p>
+          <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 16px">Hi ${opts.firstName},</p>
+          <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 16px">
+            Someone in your circle replied to a comment you left:
+          </p>
+          <div style="background:#f5f5f0;border-left:3px solid #1a7a5e;border-radius:8px;padding:14px 16px;color:#333;font-size:14px;line-height:1.6;margin:0 0 24px;white-space:pre-wrap">${safeSnippet}</div>
+          <div style="text-align:center;margin:0 0 8px">
+            <a href="${appUrl}/circles"
+               style="background:#1a7a5e;color:#fff;padding:13px 26px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">
+              View the conversation
+            </a>
+          </div>
+          <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
+        </div>
+      </div>
+    `,
+  });
+  if (error) throw new Error(`Resend error: ${error.message}`);
+}
+
 // ── Bundle notifications ─────────────────────────────────────────────────────
 
 export async function sendBundleRequestReceived(opts: {

@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle, Package, Loader2, Users, Heart,
   BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
-  ShieldCheck, ImageOff, HandHeart, AlertCircle,
+  ShieldCheck, ImageOff, HandHeart, AlertCircle, Share2, Check,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import HowKradelWorks from "@/components/HowKradelWorks";
 import TrustAndSafety from "@/components/TrustAndSafety";
+import RegisterIntroEditor from "@/components/RegisterIntroEditor";
 import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
 import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
@@ -39,6 +40,7 @@ interface RegisterData {
   title: string;
   city: string;
   dueDate: string;
+  intro: string | null;
   status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
   addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
   creator: { id: string; name: string; location: string | null; verificationLevel?: number };
@@ -140,6 +142,30 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [addrPostal,        setAddrPostal]        = useState("");
   const [addrPhone,         setAddrPhone]         = useState("");
   const [confirmingAddress, setConfirmingAddress] = useState(false);
+
+  // Share link
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    if (!register) return;
+    const fn = register.creator.name.split(" ")[0];
+    const url = `${window.location.origin}/r/${register.id}`;
+    const shareData = {
+      title: `${fn}'s Register on Kradəl`,
+      text: `Help provide real essentials for ${fn}'s baby — every item is a genuine need.`,
+      url,
+    };
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share(shareData); return; } catch { /* dismissed — fall through to copy */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2200);
+    } catch {
+      setToast("Could not copy link");
+    }
+  };
 
   const fetchRegister = useCallback(async () => {
     const res = await fetch(`/api/registers/${id}`);
@@ -393,10 +419,20 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
         {/* ── Part 2: Header ─────────────────────────────── */}
         <div style={{ background: "#e8f5f1", padding: "16px 16px 20px" }}>
-          <button
-            onClick={() => router.push("/registers")}
-            style={{ background: "rgba(26,122,94,0.12)", border: "none", borderRadius: "50%", width: 36, height: 36, fontSize: 18, cursor: "pointer", color: "#1a7a5e", marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}
-          >←</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <button
+              onClick={() => router.push("/registers")}
+              style={{ background: "rgba(26,122,94,0.12)", border: "none", borderRadius: "50%", width: 36, height: 36, fontSize: 18, cursor: "pointer", color: "#1a7a5e", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}
+            >←</button>
+            {!isClosed && (
+              <button
+                onClick={handleShare}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--white)", border: "1.5px solid #1a7a5e", color: "#1a7a5e", borderRadius: 20, padding: "7px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+              >
+                {shareCopied ? <><Check size={13} strokeWidth={2.5} /> Link copied</> : <><Share2 size={13} strokeWidth={2.25} /> Share</>}
+              </button>
+            )}
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
             {isVerified && (
@@ -441,11 +477,23 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)", marginBottom: 4 }}>
                 {firstName} is preparing for her baby
               </div>
-              <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                Every item on this register is something {firstName} has identified as a real need — not a wish list, but a preparation list for her baby&apos;s first weeks. Your contribution goes directly to purchasing and delivering these items to her.
+              <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                {register.intro?.trim()
+                  ? register.intro
+                  : `Every item on this register is something ${firstName} has identified as a real need — not a wish list, but a preparation list for her baby's first weeks. Your contribution goes directly to purchasing and delivering these items to her.`}
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── Mom: personalize your intro ─────────────────── */}
+        {isMom && !isClosed && (
+          <RegisterIntroEditor
+            registerId={register.id}
+            firstName={firstName}
+            initialIntro={register.intro}
+            onSaved={(intro) => setRegister((prev) => (prev ? { ...prev, intro } : prev))}
+          />
         )}
 
         {/* ── Part 4: Progress section ────────────────────── */}

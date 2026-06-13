@@ -19,6 +19,7 @@ import CircleIdentityModal from "@/components/CircleIdentityModal";
 import PhoneSetupSheet from "@/components/PhoneSetupSheet";
 import StageTransitionModal from "@/components/StageTransitionModal";
 import StageRefinementBanner from "@/components/StageRefinementBanner";
+import ReferFriendCard from "@/components/ReferFriendCard";
 
 
 const CAT_BG: Record<string, string> = {
@@ -923,6 +924,8 @@ export default function ProfilePage() {
             <ManualReviewStatusCard onSubmitSuccess={refreshUser} />
 
             <IdentityVerificationCard />
+
+            <ReferFriendCard />
 
             {/* My Requests summary card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>

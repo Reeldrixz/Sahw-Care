@@ -20,6 +20,11 @@ export default function DesktopNav() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
+  // The public landing page (root, logged-out) has its own header — don't stack
+  // the app nav on top of it. While auth is resolving, user is null, so this
+  // also avoids briefly flashing app links to a logged-out visitor.
+  if (pathname === "/" && !user) return null;
+
   const isDonor = user?.journeyType === "donor";
   const NAV_LINKS = ALL_NAV_LINKS.filter(({ momOnly }) => !(isDonor && momOnly));
 

@@ -431,6 +431,7 @@ model Register {
   title       String
   city        String
   dueDate     DateTime
+  intro       String? // mother's own (optionally AI-copyedited) intro; null = use default template
   addressMode RegisterAddressMode @default(ASK_PER_SHIPMENT)
   status      RegisterStatus      @default(DRAFT)
   completedAt DateTime?
@@ -733,12 +734,18 @@ model PostComment {
   id            String   @id @default(cuid())
   postId        String
   userId        String
+  parentId      String? // null = top-level comment on the post; set = reply to a comment (one level only)
   content       String
   identityLabel String? // computed at creation: "Previously in this stage" | "Mom in [stage]" | null
   createdAt     DateTime @default(now())
 
-  post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    CirclePost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  PostComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies PostComment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([parentId])
 }
 
 model PostReport {

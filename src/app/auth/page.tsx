@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 function AuthForm() {
-  const { user, login, register } = useAuth();
+  const { user, login, register, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [authMode, setAuthMode] = useState<"login" | "signup">(
     searchParams.get("mode") === "signup" ? "signup" : "login"
   );
+  // Only honour same-origin relative paths to avoid open-redirect abuse.
+  const rawRedirect = searchParams.get("redirect");
+  const redirectTo = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+    ? rawRedirect
+    : "/";
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -19,8 +25,19 @@ function AuthForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) router.push("/");
-  }, [user, router]);
+    if (user) router.push(redirectTo);
+  }, [user, router, redirectTo]);
+
+  const handleSocialSuccess = useCallback(async () => {
+    setError("");
+    setLoading(true);
+    try {
+      await refreshUser();
+      router.push(redirectTo);
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshUser, router, redirectTo]);
 
   const handleSubmit = async () => {
     setError("");
@@ -35,7 +52,7 @@ function AuthForm() {
       } else {
         await register(name, identifier, password);
       }
-      router.push("/");
+      router.push(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -104,6 +121,14 @@ function AuthForm() {
         <button className="btn-primary" onClick={handleSubmit} disabled={loading} style={{ marginTop: 4 }}>
           {loading ? "Please wait..." : authMode === "login" ? "Sign In" : "Create Free Account"}
         </button>
+
+        {/* Social sign-in — donor / general accounts only */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 14px" }}>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          <span style={{ fontSize: 12, color: "var(--mid)", fontWeight: 600 }}>or</span>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        </div>
+        <GoogleSignInButton onSuccess={handleSocialSuccess} onError={(m) => setError(m)} />
 
         <p style={{ textAlign: "center", fontSize: 13, color: "var(--mid)", marginTop: 16, fontWeight: 600 }}>
           {authMode === "login" ? "New here? " : "Already have an account? "}
