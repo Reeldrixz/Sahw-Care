@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           data: {
             userId:  creatorId,
             type:    "ITEM_DELIVERED",
-            message: `Your item "${itemName}" has been delivered. Please confirm receipt.`,
+            message: `Your item "${itemName}" has been delivered.`,
             link:    `/registers/${registerId}`,
           },
         });
