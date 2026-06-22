@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     n: "3",
-    title: "A neighbour funds an item",
+    title: "Someone funds an item",
     body: "Someone funds an item, and it is purchased and delivered straight to her door.",
   },
 ];
@@ -108,7 +108,7 @@ export default async function LandingPage() {
             marginBottom: 22,
           }}
         >
-          Neighbours helping neighbours
+          A world looking out for mothers and babies
         </span>
         <h1
           style={{
@@ -132,7 +132,7 @@ export default async function LandingPage() {
             margin: "0 auto 28px",
           }}
         >
-          Kradəl lets neighbours fund the specific items a mother needs for her baby — purchased and
+          Kradəl lets anyone, anywhere fund the specific items a mother needs for her baby — purchased and
           delivered directly to her, with her privacy protected every step of the way.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
@@ -239,7 +239,7 @@ export default async function LandingPage() {
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, maxWidth: 560, margin: "0 auto 32px" }}>
             Every contribution becomes a specific item delivered to a specific family — never a handout,
-            always a hand from a neighbour.
+            always a hand from someone who chose to care.
           </p>
 
           {stats.hasData ? (
@@ -263,8 +263,8 @@ export default async function LandingPage() {
                 fontWeight: 600,
               }}
             >
-              We are just getting started in our first community. Be one of the first neighbours to fund an
-              item for a mother near you.
+              We are just getting started. Be one of the first people anywhere to fund an
+              item for a mother who needs it.
             </div>
           )}
         </div>
@@ -277,7 +277,7 @@ export default async function LandingPage() {
             A small gift, delivered with dignity
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, margin: "0 0 26px" }}>
-            Join as a neighbour and fund the exact things a mother has asked for — or, if you support
+            Join people around the world funding the exact things a mother has asked for — or, if you support
             families directly, learn how to connect someone to Kradəl.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
