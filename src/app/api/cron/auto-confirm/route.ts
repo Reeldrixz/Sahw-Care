@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 import { createAbuseFlag } from "@/lib/abuse";
 
+import { isAuthorizedCron } from "@/lib/cronAuth";
+
 export const dynamic = "force-dynamic";
 
-const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * POST /api/cron/auto-confirm
@@ -19,8 +20,7 @@ const CRON_SECRET = process.env.CRON_SECRET;
  *    unverified-to-verified ratios.
  */
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("secret");
-  if (CRON_SECRET && secret !== CRON_SECRET) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -140,3 +140,4 @@ export async function POST(req: NextRequest) {
     timestamp:       now.toISOString(),
   });
 }
+export { POST as GET };

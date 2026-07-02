@@ -18,6 +18,9 @@ const PUBLIC_PATHS = [
   "/api/items",
   "/api/users",
   "/api/webhooks",
+  // cron endpoints: routable by Vercel Cron (no user session); each route
+  // enforces CRON_SECRET itself (fail-closed) as the security boundary.
+  "/api/cron",
 ];
 const ADMIN_PATHS = ["/admin", "/api/admin"];
 

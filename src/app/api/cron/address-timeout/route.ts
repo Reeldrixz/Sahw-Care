@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 
+import { isAuthorizedCron } from "@/lib/cronAuth";
+
 export const dynamic = "force-dynamic";
 
-const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("secret");
-  if (CRON_SECRET && secret !== CRON_SECRET) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -130,3 +130,4 @@ export async function POST(req: NextRequest) {
     timestamp:      now.toISOString(),
   });
 }
+export { POST as GET };

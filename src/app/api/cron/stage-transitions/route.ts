@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeTransition } from "@/lib/stage";
 
+import { isAuthorizedCron } from "@/lib/cronAuth";
+
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret");
-  if (secret !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAuthorizedCron(req)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const mothers = await prisma.user.findMany({
@@ -53,3 +54,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, sent });
 }
+export { POST as GET };

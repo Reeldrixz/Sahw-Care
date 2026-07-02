@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 
+import { isAuthorizedCron } from "@/lib/cronAuth";
+
 export const dynamic = "force-dynamic";
 
-const CRON_SECRET = process.env.CRON_SECRET;
 
 function hashAddress(
   streetAddress: string,
@@ -33,8 +34,7 @@ function hashAddress(
  * Idempotent — rows with redactedAt already set are skipped.
  */
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret") ?? req.nextUrl.searchParams.get("secret");
-  if (CRON_SECRET && secret !== CRON_SECRET) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -49,7 +49,10 @@ export async function POST(req: NextRequest) {
     where: {
       redactedAt: null,
       registerItem: {
-        status: { in: ["DELIVERED", "CANCELLED"] },
+        // Delivered register items are set to FULFILLED (not DELIVERED) by the
+        // fulfillment queue, so FULFILLED must be included or delivered
+        // shipping addresses are never redacted.
+        status: { in: ["FULFILLED", "DELIVERED", "CANCELLED"] },
         updatedAt: { lte: cutoff },
       },
     },
@@ -136,3 +139,4 @@ export async function POST(req: NextRequest) {
     timestamp:        now.toISOString(),
   });
 }
+export { POST as GET };
