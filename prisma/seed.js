@@ -9,8 +9,8 @@ if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "product
   console.error("Refusing to run seed against a production environment.");
   process.exit(1);
 }
-const SEED_PASSWORD = process.env.SEED_PASSWORD;
-if (!SEED_PASSWORD || SEED_PASSWORD.length < 12) {
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? "";
+if (SEED_PASSWORD.length < 12) {
   console.error("Set SEED_PASSWORD (>=12 chars) before seeding, e.g. SEED_PASSWORD=... node prisma/seed.js");
   process.exit(1);
 }
