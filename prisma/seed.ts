@@ -3,6 +3,18 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// Safety guards: never seed a production database, and never bake in a weak
+// default password. The seed password must be supplied via SEED_PASSWORD.
+if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+  console.error("Refusing to run seed against a production environment.");
+  process.exit(1);
+}
+const SEED_PASSWORD = process.env.SEED_PASSWORD;
+if (!SEED_PASSWORD || SEED_PASSWORD.length < 12) {
+  console.error("Set SEED_PASSWORD (>=12 chars) before seeding.");
+  process.exit(1);
+}
+
 async function main() {
   console.log("Seeding database...");
 
@@ -14,7 +26,7 @@ async function main() {
       create: {
         name: "Amara Okafor",
         email: "amara@carecircle.ng",
-        password: await bcrypt.hash("password123", 12),
+        password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
         location: "Ikeja, Lagos",
         status: "ACTIVE",
@@ -26,7 +38,7 @@ async function main() {
       create: {
         name: "Fatima Bello",
         email: "fatima@carecircle.ng",
-        password: await bcrypt.hash("password123", 12),
+        password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
         location: "Lekki, Lagos",
         status: "ACTIVE",
@@ -38,7 +50,7 @@ async function main() {
       create: {
         name: "Grace Nwosu",
         email: "grace@carecircle.ng",
-        password: await bcrypt.hash("password123", 12),
+        password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
         location: "Surulere, Lagos",
         status: "ACTIVE",
@@ -50,7 +62,7 @@ async function main() {
       create: {
         name: "Kemi Adeyemi",
         email: "kemi@carecircle.ng",
-        password: await bcrypt.hash("password123", 12),
+        password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
         location: "Victoria Island, Lagos",
         status: "ACTIVE",
@@ -62,7 +74,7 @@ async function main() {
       create: {
         name: "Sandra Eze",
         email: "sandra@carecircle.ng",
-        password: await bcrypt.hash("password123", 12),
+        password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
         location: "Yaba, Lagos",
         status: "ACTIVE",
@@ -74,7 +86,7 @@ async function main() {
       create: {
         name: "Titi Martins",
         email: "titi@carecircle.ng",
-        password: await bcrypt.hash("password123", 12),
+        password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
         location: "Gbagada, Lagos",
         status: "ACTIVE",
@@ -91,7 +103,7 @@ async function main() {
     update: {},
     create: {
       name: "Ngozi Eze", email: "ngozi@carecircle.ng",
-      password: await bcrypt.hash("password123", 12),
+      password: await bcrypt.hash(SEED_PASSWORD, 12),
       role: "RECIPIENT", location: "Agege, Lagos", status: "ACTIVE",
     },
   });
@@ -100,7 +112,7 @@ async function main() {
     update: {},
     create: {
       name: "Chioma Obi", email: "chioma@carecircle.ng",
-      password: await bcrypt.hash("password123", 12),
+      password: await bcrypt.hash(SEED_PASSWORD, 12),
       role: "RECIPIENT", location: "Mushin, Lagos", status: "ACTIVE",
     },
   });
@@ -193,7 +205,7 @@ async function main() {
     create: {
       name: "Demo Reviewer",
       email: "reviewer@carecircle.ng",
-      password: await bcrypt.hash("password123", 12),
+      password: await bcrypt.hash(SEED_PASSWORD, 12),
       role: "RECIPIENT",
       status: "ACTIVE",
     },
@@ -251,7 +263,7 @@ async function main() {
   await seedCatalog();
 
   console.log("\n✅ Seed complete!");
-  console.log("   Test accounts (all use password: password123):");
+  console.log("   Test accounts (all use password: value of SEED_PASSWORD):");
   console.log("   Donors: amara@carecircle.ng, fatima@carecircle.ng, grace@carecircle.ng");
   console.log("   Recipient: reviewer@carecircle.ng");
 }

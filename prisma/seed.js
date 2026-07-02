@@ -3,10 +3,22 @@ const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
+// Safety guards: never seed a production database, and never bake in a weak
+// default password. The seed password must be supplied via SEED_PASSWORD.
+if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+  console.error("Refusing to run seed against a production environment.");
+  process.exit(1);
+}
+const SEED_PASSWORD = process.env.SEED_PASSWORD;
+if (!SEED_PASSWORD || SEED_PASSWORD.length < 12) {
+  console.error("Set SEED_PASSWORD (>=12 chars) before seeding, e.g. SEED_PASSWORD=... node prisma/seed.js");
+  process.exit(1);
+}
+
 async function main() {
   console.log("Seeding database...");
 
-  const hash = await bcrypt.hash("password123", 12);
+  const hash = await bcrypt.hash(SEED_PASSWORD, 12);
 
   const donors = await Promise.all([
     prisma.user.upsert({
@@ -190,7 +202,7 @@ async function main() {
   }
 
   console.log("\n✅ Seed complete! Visit http://localhost:3000");
-  console.log("   Test accounts (password: password123):");
+  console.log("   Test accounts (password: value of SEED_PASSWORD):");
   console.log("   Donor:     amara@carecircle.ng");
   console.log("   Recipient: reviewer@carecircle.ng");
 }
