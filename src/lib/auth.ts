@@ -3,9 +3,19 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "fallback-secret-change-in-production"
-);
+// Fail closed: never fall back to a hardcoded/known secret. A missing secret
+// must break token signing/verification (rejecting all tokens) rather than
+// silently sign with a guessable value that would let anyone forge admin JWTs.
+let _jwtSecret: Uint8Array | null = null;
+function getJwtSecret(): Uint8Array {
+  if (_jwtSecret) return _jwtSecret;
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 16) {
+    throw new Error("JWT_SECRET is not set (or too short). Refusing to sign/verify tokens.");
+  }
+  _jwtSecret = new TextEncoder().encode(secret);
+  return _jwtSecret;
+}
 
 const COOKIE_NAME = "cc_token";
 
@@ -20,12 +30,12 @@ export async function signToken(payload: JWTPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("2d")
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     return payload as unknown as JWTPayload;
   } catch {
     return null;
