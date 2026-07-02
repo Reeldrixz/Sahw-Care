@@ -11,10 +11,22 @@ const CAT_BG: Record<string, string> = {
   "Clothing": "#eff6ff", "Hygiene": "#f0fdf4", "Other": "#f5f5f5",
 };
 
+// Escape HTML so user-supplied text (item titles, register titles, etc.) can
+// never inject markup when rendered via dangerouslySetInnerHTML below.
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function highlight(text: string, query: string) {
-  if (!query.trim()) return text;
+  const safe = escapeHtml(text);
+  if (!query.trim()) return safe;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.replace(new RegExp(`(${escaped})`, "gi"), "<strong>$1</strong>");
+  return safe.replace(new RegExp(`(${escaped})`, "gi"), "<strong>$1</strong>");
 }
 
 interface SearchResults {
