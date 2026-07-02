@@ -43,7 +43,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  // This is a PUBLIC (unauthenticated) donor-profile endpoint. Only DONOR
+  // records may be returned — never a recipient/mother's name, location, or
+  // avatar. Return 404 for anything else so existence isn't confirmed either.
+  if (!user || user.role !== "DONOR") {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
 
   // compute average ratings
   const reviews = user.reviewsReceived;
