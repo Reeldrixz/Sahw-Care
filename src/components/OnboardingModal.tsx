@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Baby, Users, Gift, Heart, Leaf } from "lucide-react";
 
 interface Props {
@@ -42,6 +43,7 @@ const DUE_YEARS = [currentYear, currentYear + 1];
 // Donor submits immediately after step 0.
 
 export default function OnboardingModal({ onComplete }: Props) {
+  const router = useRouter();
   const [step, setStep]           = useState(0);
   const [journey, setJourney]     = useState<Journey>(null);
   const [dueMonth, setDueMonth]   = useState<number>(now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2);
@@ -88,6 +90,9 @@ export default function OnboardingModal({ onComplete }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Something went wrong");
       onComplete();
+      // Self-serve pregnant/postpartum selection: mother role is referral-only,
+      // so point them to the partner directory to get connected.
+      if (data.redirectTo) router.push(data.redirectTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {

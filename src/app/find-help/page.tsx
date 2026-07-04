@@ -75,8 +75,14 @@ function PartnerCard({ p }: { p: ReferralPartner }) {
   );
 }
 
-export default function FindHelpPage() {
+export default async function FindHelpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
   const grouped = partnersByCity();
+  const { from } = await searchParams;
+  const fromOnboarding = from === "onboarding";
 
   return (
     <main style={{ background: CREAM, color: INK, minHeight: "100vh", fontFamily: SANS }}>
@@ -104,11 +110,16 @@ export default function FindHelpPage() {
             marginBottom: 20,
           }}
         >
-          A friend thought Kradəl could help
+          {fromOnboarding ? "You're in the right place" : "A friend thought Kradəl could help"}
         </span>
         <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 700, lineHeight: 1.2, margin: "0 0 16px", color: INK }}>
           Here&apos;s how to get connected
         </h1>
+        {fromOnboarding && (
+          <p style={{ fontFamily: SANS, fontSize: 16.5, lineHeight: 1.65, color: GREEN, fontWeight: 700, margin: "0 auto 16px", maxWidth: 560 }}>
+            Support for you and your baby starts with a caring introduction from a partner near you — here&apos;s your next step.
+          </p>
+        )}
         <p style={{ fontFamily: SANS, fontSize: 16.5, lineHeight: 1.65, color: MUTED, margin: "0 auto", maxWidth: 560 }}>
           Kradəl helps mothers get the specific things they need for their baby — funded by neighbours and
           delivered with dignity. Mothers join through a trusted community partner who offers a warm,

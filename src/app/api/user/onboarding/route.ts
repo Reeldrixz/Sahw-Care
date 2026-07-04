@@ -58,7 +58,49 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ user: updated, circleId: null });
   }
 
+  // ── Mother role is referral-only ─────────────────────────────────────────
+  // The RECIPIENT (mother) role is granted ONLY through the referral/partner
+  // path — never self-serve. If a user who is not already a RECIPIENT selects
+  // pregnant/postpartum, do NOT promote them or run mother onboarding. Complete
+  // a donor-role account and route them to the partner directory instead.
+  const currentUser = await prisma.user.findUnique({
+    where:  { id: auth.userId },
+    select: { role: true },
+  });
+
+  if (currentUser?.role !== "RECIPIENT") {
+    const updated = await prisma.user.update({
+      where: { id: auth.userId },
+      data:  {
+        onboardingComplete: true,
+        journeyType: "donor",
+        ...(safeGender && { gender: safeGender }),
+        subTags: subTags ?? [],
+      },
+      select: {
+        id: true, name: true, email: true, phone: true, role: true,
+        avatar: true, location: true, isPremium: true,
+        trustScore: true, verificationLevel: true, phoneVerified: true,
+        emailVerified: true,
+        docStatus: true, documentUrl: true, documentType: true, documentNote: true,
+        verifiedAt: true, status: true, createdAt: true,
+        onboardingComplete: true, journeyType: true, currentStage: true,
+        countryFlag: true, subTags: true, currentCircleId: true,
+        _count: { select: { items: true, requests: true } },
+      },
+    });
+    fireSignupNotification(updated.name, "donor", updated.createdAt);
+    return NextResponse.json({
+      user: updated,
+      circleId: null,
+      redirectTo: "/find-help?from=onboarding",
+      motherRoleRequiresReferral: true,
+    });
+  }
+
   // ── Compute dueDate / babyBirthDate ─────────────────────────────────────
+  // (Only reached by users who are already RECIPIENT — i.e. granted the mother
+  // role through the referral/partner path. Their onboarding is unchanged.)
   let dueDate:       Date | null = null;
   let babyBirthDate: Date | null = null;
 
@@ -128,8 +170,14 @@ export async function POST(req: NextRequest) {
       subTags: subTags ?? [],
       ...(countryCode && { countryCode }),
       ...(countryFlag && { countryFlag }),
-      // Promote DONOR → RECIPIENT; never touch ADMIN or an already-promoted RECIPIENT
-      ...(dbUser?.role === "DONOR" && { role: "RECIPIENT" }),
+      // Role is intentionally NOT set here. This block is reached only by users
+      // who are already RECIPIENT (granted via the referral/partner path); the
+      // self-serve DONOR → RECIPIENT promotion has been removed.
+      // TODO(referral): the partner/referral grant path is the ONLY place that
+      // may set role=RECIPIENT. When it does, it MUST also reset
+      // onboardingComplete=false and clear journeyType so the newly-granted
+      // mother re-runs this onboarding (stage + cohort circle assignment).
+      // Otherwise she'll be left as journeyType="donor" with no stage/circle.
     },
     select: {
       id: true,
