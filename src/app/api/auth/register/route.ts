@@ -7,11 +7,21 @@ import { detectGeoFromRequest } from "@/lib/geoip";
 import { logAbuseEvent } from "@/lib/abuse";
 import { validatePassword } from "@/lib/password";
 import { sendWelcomeEmail } from "@/lib/email";
+import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    // Abuse protection: cap signups per IP (10 / hour)
+    const rl = await rateLimitAsync(`signup:${getClientIp(req)}`, 10, 60 * 60 * 1000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: `Too many signups from this network. Try again in ${rl.retryAfter} seconds.` },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+      );
+    }
+
     const { name, identifier, password } = await req.json();
 
     if (!name || !identifier || !password) {

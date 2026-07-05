@@ -8,6 +8,7 @@ import { autoJoinCircle } from "@/lib/countryCircle";
 import { detectGeoFromRequest } from "@/lib/geoip";
 import { logAbuseEvent } from "@/lib/abuse";
 import { sendWelcomeEmail } from "@/lib/email";
+import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,15 @@ export async function POST(req: NextRequest) {
   try {
     if (!CLIENT_ID) {
       return NextResponse.json({ error: "Google sign-in is not configured" }, { status: 503 });
+    }
+
+    // Abuse protection: cap Google auth attempts per IP (20 / 5 min)
+    const rl = await rateLimitAsync(`google-auth:${getClientIp(req)}`, 20, 5 * 60 * 1000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: `Too many attempts. Try again in ${rl.retryAfter} seconds.` },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+      );
     }
 
     const { credential } = await req.json();

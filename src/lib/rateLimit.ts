@@ -1,4 +1,6 @@
-// In-memory rate limiter. Resets on cold starts — replace with Redis for multi-instance scale.
+// Rate limiting: distributed (Upstash Redis) when configured, else in-memory.
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 interface Entry {
   count:   number;
@@ -41,6 +43,52 @@ export function rateLimit(
 
   entry.count += 1;
   return { ok: true };
+}
+
+// ── Distributed rate limiting (Upstash) ─────────────────────────────────────
+// Falls back to the in-memory limiter above when Upstash env vars are absent
+// (local dev / unconfigured deploys) or if a Redis call fails, so a Redis
+// outage degrades to per-instance limiting rather than locking users out.
+
+const upstashConfigured =
+  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const redis = upstashConfigured ? Redis.fromEnv() : null;
+
+// One Ratelimit instance per (max, window) combo; the per-caller bucket key is
+// passed to .limit().
+const limiters = new Map<string, Ratelimit>();
+
+function getLimiter(max: number, windowMs: number): Ratelimit {
+  const cacheKey = `${max}:${windowMs}`;
+  let limiter = limiters.get(cacheKey);
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis: redis!,
+      limiter: Ratelimit.fixedWindow(max, `${windowMs} ms`),
+      prefix: "rl",
+      analytics: false,
+    });
+    limiters.set(cacheKey, limiter);
+  }
+  return limiter;
+}
+
+export async function rateLimitAsync(
+  key: string,
+  max: number,
+  windowMs: number,
+): Promise<{ ok: boolean; retryAfter?: number }> {
+  if (!redis) return rateLimit(key, max, windowMs); // in-memory fallback
+  try {
+    const res = await getLimiter(max, windowMs).limit(key);
+    if (res.success) return { ok: true };
+    const retryAfter = Math.max(1, Math.ceil((res.reset - Date.now()) / 1000));
+    return { ok: false, retryAfter };
+  } catch {
+    // Redis unreachable — degrade to in-memory rather than failing the request.
+    return rateLimit(key, max, windowMs);
+  }
 }
 
 export function getClientIp(req: Request): string {

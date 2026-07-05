@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
+import { rateLimitAsync } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   const token = await getTokenFromRequest(req);
   const auth  = token ? await verifyToken(token) : null;
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Cap checkout-session creation per user (15 / 5 min)
+  const rl = await rateLimitAsync(`fund:${auth.userId}`, 15, 5 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Too many attempts. Please wait ${rl.retryAfter} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
 
   const { itemId } = await params;
   const body = await req.json();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { uploadImage } from "@/lib/cloudinary";
+import { rateLimitAsync } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,15 @@ export async function POST(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const user = token ? await verifyToken(token) : null;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Cap uploads per user (30 / hour) — abuse/cost control
+  const rl = await rateLimitAsync(`upload:${user.userId}`, 30, 60 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: `Too many uploads. Please wait ${rl.retryAfter} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
 
   try {
     const formData = await req.formData();
