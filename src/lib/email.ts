@@ -3,6 +3,17 @@ import { getResend } from "@/lib/resend";
 const FROM    = process.env.RESEND_FROM_EMAIL   ?? "noreply@kradel.care";
 const NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL  ?? "";
 
+// Escape user-supplied values before interpolating them into email HTML (text
+// or attribute context). Prevents markup/attribute injection into emails.
+function esc(s: string | null | undefined): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const JOURNEY_LABEL: Record<string, string> = {
   pregnant:   "Pregnant",
   postpartum: "Mother",
@@ -23,7 +34,7 @@ export async function sendPasswordResetEmail(opts: {
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">Reset your password</h2>
-        <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
+        <p style="color:#555;line-height:1.6">Hi ${esc(opts.firstName)},</p>
         <p style="color:#555;line-height:1.6">
           We received a request to reset your Kradəl password.
           Click the button below to choose a new one. This link expires in <strong>1 hour</strong>.
@@ -56,7 +67,7 @@ export async function sendWelcomeEmail(opts: { name: string; email: string }) {
       <div style="background:#faf8f3;padding:40px 16px;font-family:sans-serif">
         <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:40px 32px">
           <p style="font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:700;color:#1a1a1a;margin:0 0 24px">
-            Welcome, ${firstName}.
+            Welcome, ${esc(firstName)}.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 16px">
             Kradəl is a care community where mothers receive support from people who want to help —
@@ -89,14 +100,14 @@ export async function sendCircleReplyEmail(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: `${opts.replierName} replied to your comment on Kradəl`,
+    subject: `${esc(opts.replierName)} replied to your comment on Kradəl`,
     html: `
       <div style="background:#faf8f3;padding:40px 16px;font-family:sans-serif">
         <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:36px 32px">
           <p style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;color:#1a1a1a;margin:0 0 16px">
-            ${opts.replierName} replied to your comment
+            ${esc(opts.replierName)} replied to your comment
           </p>
-          <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 16px">Hi ${opts.firstName},</p>
+          <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 16px">Hi ${esc(opts.firstName)},</p>
           <p style="color:#555;font-size:15px;line-height:1.7;margin:0 0 16px">
             Someone in your circle replied to a comment you left:
           </p>
@@ -130,9 +141,9 @@ export async function sendBundleRequestReceived(opts: {
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">We received your request</h2>
-        <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
+        <p style="color:#555;line-height:1.6">Hi ${esc(opts.firstName)},</p>
         <p style="color:#555;line-height:1.6">
-          Your request for the <strong>${opts.templateName}</strong> bundle has been received.
+          Your request for the <strong>${esc(opts.templateName)}</strong> bundle has been received.
           Our team will review it and get back to you within 1–2 business days.
         </p>
         <p style="color:#555;line-height:1.6">
@@ -155,14 +166,14 @@ export async function sendAdminNewBundleRequest(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      NOTIFY,
-    subject: `New bundle request from ${opts.firstName} in ${opts.city}`,
+    subject: `New bundle request from ${esc(opts.firstName)} in ${esc(opts.city)}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="margin-bottom:16px">New Bundle Request</h2>
         <table style="width:100%;border-collapse:collapse">
-          <tr><td style="padding:8px 0;color:#6b7280;width:140px">Name</td><td style="font-weight:600">${opts.firstName}</td></tr>
-          <tr><td style="padding:8px 0;color:#6b7280">City</td><td>${opts.city}</td></tr>
-          <tr><td style="padding:8px 0;color:#6b7280">Bundle</td><td style="font-weight:600">${opts.templateName}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;width:140px">Name</td><td style="font-weight:600">${esc(opts.firstName)}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280">City</td><td>${esc(opts.city)}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280">Bundle</td><td style="font-weight:600">${esc(opts.templateName)}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280">Instance ID</td><td style="font-size:12px;color:#9ca3af">${opts.instanceId}</td></tr>
         </table>
         <p style="color:#6b7280;font-size:13px;margin-top:16px">Review in the admin panel → Bundles → Fulfillment Queue</p>
@@ -185,9 +196,9 @@ export async function sendBundleApproved(opts: {
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle has been approved</h2>
-        <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
+        <p style="color:#555;line-height:1.6">Hi ${esc(opts.firstName)},</p>
         <p style="color:#555;line-height:1.6">
-          Your <strong>${opts.templateName}</strong> bundle has been approved
+          Your <strong>${esc(opts.templateName)}</strong> bundle has been approved
           and is being prepared for you. We'll send you another message as soon as it's on its way.
         </p>
         <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
@@ -211,10 +222,10 @@ export async function sendBundleShipped(opts: {
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle is on its way</h2>
-        <p style="color:#555;line-height:1.6">Hi ${opts.firstName},</p>
+        <p style="color:#555;line-height:1.6">Hi ${esc(opts.firstName)},</p>
         <p style="color:#555;line-height:1.6">
-          Your <strong>${opts.templateName}</strong> has been shipped and is heading to you.
-          ${opts.trackingNumber ? `Your tracking number is <strong>${opts.trackingNumber}</strong>.` : ""}
+          Your <strong>${esc(opts.templateName)}</strong> has been shipped and is heading to you.
+          ${opts.trackingNumber ? `Your tracking number is <strong>${esc(opts.trackingNumber)}</strong>.` : ""}
         </p>
         <p style="color:#555;line-height:1.6">
           Once it arrives, please open the Kradəl app and confirm receipt so we can keep
@@ -252,13 +263,13 @@ export async function sendBugReportNotification(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      adminEmail,
-    subject: `[Kradel Bug] New report from ${opts.submittedBy}`,
+    subject: `[Kradel Bug] New report from ${esc(opts.submittedBy)}`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
         <h2 style="margin:0 0 16px;color:#1a1a1a">New Bug Report</h2>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">User</td><td style="padding:8px 0;font-weight:600">${opts.submittedBy}</td></tr>
-          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td><td style="padding:8px 0">${opts.pageUrl ? `<a href="${opts.pageUrl}" style="color:#1a7a5e">${opts.pageUrl}</a>` : "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">User</td><td style="padding:8px 0;font-weight:600">${esc(opts.submittedBy)}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td><td style="padding:8px 0">${opts.pageUrl ? `<a href="${esc(opts.pageUrl)}" style="color:#1a7a5e">${esc(opts.pageUrl)}</a>` : "—"}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Time</td><td style="padding:8px 0">${ts}</td></tr>
         </table>
         <div style="margin-bottom:20px">
@@ -266,7 +277,7 @@ export async function sendBugReportNotification(opts: {
           <div style="background:#f5f5f5;border-radius:8px;padding:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#333">${opts.description.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
         </div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">Browser</td><td style="padding:8px 0;font-size:12px;color:#555">${opts.userAgent ?? "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">Browser</td><td style="padding:8px 0;font-size:12px;color:#555">${esc(opts.userAgent ?? "—")}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Screenshot</td><td style="padding:8px 0">${opts.screenshotUrl ? `<a href="${opts.screenshotUrl}" style="color:#1a7a5e">View screenshot</a>` : "none"}</td></tr>
         </table>
         <div style="text-align:center;margin-top:24px">
@@ -309,7 +320,7 @@ export async function sendNewSignupNotification(opts: {
         <table style="width:100%;border-collapse:collapse">
           <tr>
             <td style="padding:8px 0;color:#6b7280;width:140px">First name</td>
-            <td style="padding:8px 0;font-weight:600">${firstName}</td>
+            <td style="padding:8px 0;font-weight:600">${esc(firstName)}</td>
           </tr>
           <tr>
             <td style="padding:8px 0;color:#6b7280">Journey type</td>
