@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +12,8 @@ export const dynamic = "force-dynamic";
  *   status: DISPUTED | AUTO_CONFIRMED | PENDING (default DISPUTED)
  */
 export async function GET(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
   const status = req.nextUrl.searchParams.get("status") ?? "DISPUTED";

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getTokenFromRequest, verifyToken } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const token = await getTokenFromRequest(req);
-  const user = token ? await verifyToken(token) : null;
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = req.nextUrl;
   const status  = searchParams.get("status") ?? "";

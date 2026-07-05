@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getResend } from "@/lib/resend";
 
@@ -19,8 +19,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   const { status, adminNote } = await req.json();
@@ -36,7 +36,7 @@ export async function PATCH(
       ...(status && {
         status,
         reviewedAt: new Date(),
-        reviewedBy: user.userId,
+        reviewedBy: admin.userId,
       }),
       ...(adminNote !== undefined && { adminNote }),
     },

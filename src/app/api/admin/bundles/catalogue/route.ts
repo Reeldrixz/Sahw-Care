@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -55,8 +55,8 @@ export async function GET(_req: NextRequest) {
 
 // PATCH — toggle isActive or update slotsPerMonth
 export async function PATCH(req: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id, isActive, slotsPerMonth } = await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
