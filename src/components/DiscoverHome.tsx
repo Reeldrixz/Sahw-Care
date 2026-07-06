@@ -58,10 +58,13 @@ const CATS = [
 
 function useTooltipDismissed() {
   const KEY = "kradel_fab_tooltip_dismissed";
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem(KEY) === "1";
-  });
+  // Start "dismissed" so server and first client render match (no hydration
+  // mismatch). Read the real localStorage value after mount; the tooltip then
+  // appears only if it wasn't previously dismissed.
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    setDismissed(localStorage.getItem(KEY) === "1");
+  }, []);
   const dismiss = () => {
     localStorage.setItem(KEY, "1");
     setDismissed(true);

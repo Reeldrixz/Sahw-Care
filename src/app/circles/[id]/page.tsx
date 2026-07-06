@@ -97,10 +97,12 @@ function isNewMember(joinedAt: string): boolean {
 
 function useModBannerDismissed(circleId: string) {
   const key = `mod_banner_${circleId}`;
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem(key) === "1";
-  });
+  // Start "dismissed" so server and first client render match (no hydration
+  // mismatch); read the real value from localStorage after mount.
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    setDismissed(localStorage.getItem(key) === "1");
+  }, [key]);
   const dismiss = () => { localStorage.setItem(key, "1"); setDismissed(true); };
   return [dismissed, dismiss] as const;
 }
