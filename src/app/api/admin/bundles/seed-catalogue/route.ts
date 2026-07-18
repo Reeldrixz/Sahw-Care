@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Target item counts: B01–B05=8, B06/B07/B08/B12=10, B09/B10=8, B11=12
+// Target item counts: B01–B04=8, B05=7, B06/B07/B08/B12=10, B09=7, B10=8, B11=12
 // Internal price bands (never shown to mothers): $100 Essentials, $175 Core, $250 Complete
 const BUNDLES = [
   {
@@ -93,7 +93,6 @@ const BUNDLES = [
       "- Massage roller & hand lotion",
       "- Comfort focal-point card set",
       "- Snacks for the support person",
-      "- Portable phone charger",
       "- Cooling spray bottle",
       "- Hand-held mini fan",
       "- Encouraging messages card set",
@@ -111,7 +110,7 @@ const BUNDLES = [
       "- Newborn onesies (6-pack, gender-neutral)",
       "- Swaddle blankets (3-pack)",
       "- Baby beanie & mittens set",
-      "- Newborn nappies (pack of 48)",
+      "- Newborn nappies (pack of 48) ×2",
       "- Fragrance-free baby wipes (pack of 64)",
       "- Baby nail file set",
       "- Digital baby thermometer",
@@ -150,7 +149,7 @@ const BUNDLES = [
     stage: "NEWBORN" as const,
     description: "Support for breastfeeding and bottle-feeding through the early weeks.",
     contentsMarkdown: [
-      "- Manual breast pump",
+      "- Electric double breast pump",
       "- Breast pads (reusable, 8-pack)",
       "- Nipple cream",
       "- Bottle set (3 bottles with slow-flow nipples)",
@@ -175,7 +174,6 @@ const BUNDLES = [
       "- Perineal spray",
       "- Sitz bath kit",
       "- Stool softener (gentle, 30-day)",
-      "- Postpartum belly wrap / binder",
       "- Nipple shields",
       "- Peri bottle (postpartum hygiene)",
       "- Witch hazel pads (40-pack)",
