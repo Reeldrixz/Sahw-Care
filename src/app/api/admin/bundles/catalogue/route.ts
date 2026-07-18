@@ -40,6 +40,8 @@ export async function GET(req: NextRequest) {
       stage: b.stage,
       description: b.description,
       estimatedValue: b.estimatedValue,
+      priceBand: b.priceBand,
+      targetPriceCad: b.targetPriceCad,
       slotsPerMonth: b.slotsPerMonth,
       isActive: b.isActive,
       totalApplications: b._count.applications,

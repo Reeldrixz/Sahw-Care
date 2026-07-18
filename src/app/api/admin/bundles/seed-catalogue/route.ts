@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 // Target item counts: B01–B05=8, B06/B07/B08/B12=10, B09/B10=8, B11=12
+// Internal price bands (never shown to mothers): $100 Essentials, $175 Core, $250 Complete
 const BUNDLES = [
   {
     code: "B01",
@@ -22,6 +23,8 @@ const BUNDLES = [
       "- Pregnancy-safe lip balm & skin care set",
     ].join("\n"),
     estimatedValue: 18000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B02",
@@ -39,6 +42,8 @@ const BUNDLES = [
       "- Lumbar support wedge cushion",
     ].join("\n"),
     estimatedValue: 14000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B03",
@@ -56,6 +61,8 @@ const BUNDLES = [
       "- Prenatal probiotic (30-day supply)",
     ].join("\n"),
     estimatedValue: 12000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B04",
@@ -73,6 +80,8 @@ const BUNDLES = [
       "- Perineal cooling pads (20-pack)",
     ].join("\n"),
     estimatedValue: 10000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B05",
@@ -90,6 +99,8 @@ const BUNDLES = [
       "- Encouraging messages card set",
     ].join("\n"),
     estimatedValue: 8000,
+    priceBand: "ESSENTIALS_100" as const,
+    targetPriceCad: 100,
   },
   {
     code: "B06",
@@ -109,6 +120,8 @@ const BUNDLES = [
       "- Baby hair brush & comb set",
     ].join("\n"),
     estimatedValue: 15000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B07",
@@ -128,6 +141,8 @@ const BUNDLES = [
       "- Nightlight with timer",
     ].join("\n"),
     estimatedValue: 13000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B08",
@@ -147,6 +162,8 @@ const BUNDLES = [
       "- Baby feeding pillow",
     ].join("\n"),
     estimatedValue: 20000,
+    priceBand: "COMPLETE_250" as const,
+    targetPriceCad: 250,
   },
   {
     code: "B09",
@@ -164,6 +181,8 @@ const BUNDLES = [
       "- Witch hazel pads (40-pack)",
     ].join("\n"),
     estimatedValue: 16000,
+    priceBand: "ESSENTIALS_100" as const,
+    targetPriceCad: 100,
   },
   {
     code: "B10",
@@ -181,6 +200,8 @@ const BUNDLES = [
       "- Calming soy candle",
     ].join("\n"),
     estimatedValue: 11000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B11",
@@ -202,6 +223,8 @@ const BUNDLES = [
       "- Postpartum meal prep guide",
     ].join("\n"),
     estimatedValue: 13500,
+    priceBand: "COMPLETE_250" as const,
+    targetPriceCad: 250,
   },
   {
     code: "B12",
@@ -221,6 +244,8 @@ const BUNDLES = [
       "- Tummy time support pillow",
     ].join("\n"),
     estimatedValue: 17000,
+    priceBand: "COMPLETE_250" as const,
+    targetPriceCad: 250,
   },
 ];
 
@@ -239,6 +264,8 @@ export async function POST(req: NextRequest) {
         description: b.description,
         contentsMarkdown: b.contentsMarkdown,
         estimatedValue: b.estimatedValue,
+        priceBand: b.priceBand,
+        targetPriceCad: b.targetPriceCad,
       },
       create: {
         code: b.code,
@@ -247,6 +274,8 @@ export async function POST(req: NextRequest) {
         description: b.description,
         contentsMarkdown: b.contentsMarkdown,
         estimatedValue: b.estimatedValue,
+        priceBand: b.priceBand,
+        targetPriceCad: b.targetPriceCad,
         slotsPerMonth: 10,
         isActive: true,
       },

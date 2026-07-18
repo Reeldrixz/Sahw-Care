@@ -137,12 +137,21 @@ interface SuggestionGroup {
   similarSuggestions: { id: string; notes: string | null; createdAt: string }[];
 }
 
+type PriceBand = "ESSENTIALS_100" | "CORE_175" | "COMPLETE_250";
+
 interface BundleCatalogueAdmin {
   id: string; code: string; name: string; stage: string; description: string;
-  estimatedValue: number; slotsPerMonth: number; isActive: boolean;
+  estimatedValue: number; priceBand: PriceBand | null; targetPriceCad: number | null;
+  slotsPerMonth: number; isActive: boolean;
   totalApplications: number; monthPending: number; monthApproved: number;
   slotsUsed: number; slotsRemaining: number;
 }
+
+const PRICE_BAND_META: Record<PriceBand, { label: string; bg: string; color: string }> = {
+  ESSENTIALS_100: { label: "Essentials", bg: "#f0f9f4", color: "#1a7a5e" },
+  CORE_175:       { label: "Core",       bg: "#eff6ff", color: "#1e50a2" },
+  COMPLETE_250:   { label: "Complete",   bg: "#faf5ff", color: "#7c3aed" },
+};
 
 interface BundleApplicationAdmin {
   id: string; bundleId: string; fullName: string; phone: string;
@@ -2211,7 +2220,7 @@ export default function AdminPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "Nunito, sans-serif" }}>
                       <thead>
                         <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
-                          {["Code", "Name", "Stage", "Est. Value", "Slots/mo", "This month", "Remaining", "Status"].map((h) => (
+                          {["Code", "Name", "Stage", "Est. Value", "Price band", "Slots/mo", "This month", "Remaining", "Status"].map((h) => (
                             <th key={h} style={{ textAlign: "left", padding: "8px 10px", fontWeight: 800, color: "#555" }}>{h}</th>
                           ))}
                         </tr>
@@ -2231,6 +2240,19 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td style={{ padding: "10px 10px" }}>${(b.estimatedValue / 100).toFixed(0)}</td>
+                            <td style={{ padding: "10px 10px" }}>
+                              {b.priceBand ? (
+                                <span style={{
+                                  background: PRICE_BAND_META[b.priceBand].bg,
+                                  color: PRICE_BAND_META[b.priceBand].color,
+                                  fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 20, whiteSpace: "nowrap",
+                                }}>
+                                  {PRICE_BAND_META[b.priceBand].label} · ${b.targetPriceCad}
+                                </span>
+                              ) : (
+                                <span style={{ color: "#9ca3af" }}>—</span>
+                              )}
+                            </td>
                             <td style={{ padding: "10px 10px" }}>{b.slotsPerMonth}</td>
                             <td style={{ padding: "10px 10px" }}>
                               <span style={{ color: "#d97706", fontWeight: 700 }}>{b.monthPending} pending</span>
