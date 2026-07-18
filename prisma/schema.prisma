@@ -1579,3 +1579,45 @@ model BugReport {
   @@index([status, createdAt])
   @@index([userId])
 }
+
+// ==================== REFERRAL GRANT (beta: mother role is referral-only) ====================
+
+enum ReferralCodeStatus {
+  UNUSED
+  USED
+  REVOKED
+}
+
+// A partner organization that refers mothers into Kradəl during the beta.
+// NOTE: distinct from the hardcoded public directory type `ReferralPartner`
+// in src/lib/partners.ts (that one lists orgs on /find-help; this one issues
+// single-use referral codes). Same name, unrelated concept.
+model ReferralPartner {
+  id           String   @id @default(cuid())
+  name         String
+  orgType      String
+  contactEmail String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  codes ReferralCode[]
+}
+
+// One code = one mother, single-use. Consumed atomically at redemption.
+model ReferralCode {
+  id           String             @id @default(cuid())
+  code         String             @unique // unguessable bearer token
+  partnerId    String
+  status       ReferralCodeStatus @default(UNUSED)
+  createdAt    DateTime           @default(now())
+  usedAt       DateTime?
+  usedByUserId String?            // soft FK to User (no relation, matches currentCircleId style)
+  expiresAt    DateTime?
+  note         String?
+
+  partner ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+  @@index([status])
+}

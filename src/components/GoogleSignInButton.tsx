@@ -14,9 +14,11 @@ declare global {
 export default function GoogleSignInButton({
   onSuccess,
   onError,
+  referralCode,
 }: {
   onSuccess: () => void;
   onError?: (msg: string) => void;
+  referralCode?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
@@ -51,7 +53,7 @@ export default function GoogleSignInButton({
           const r = await fetch("/api/auth/google", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ credential: resp.credential }),
+            body: JSON.stringify({ credential: resp.credential, ...(referralCode ? { referralCode } : {}) }),
           });
           if (r.ok) {
             onSuccess();
@@ -73,7 +75,7 @@ export default function GoogleSignInButton({
       width: 300,
       logo_alignment: "center",
     });
-  }, [ready, onSuccess, onError]);
+  }, [ready, onSuccess, onError, referralCode]);
 
   // When unconfigured, render nothing so the auth page stays clean.
   if (!CLIENT_ID) return null;

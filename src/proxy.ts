@@ -8,12 +8,18 @@ const PUBLIC_PATHS = [
   "/donors",
   "/favourites",
   "/browse",
+  // referral landing: a referred mother reaches this while logged out
+  "/join",
   // auth flows that must work for logged-out users
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/google",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
+  // public referral-code validation (non-leaking, rate-limited). Redemption
+  // itself happens through the auth routes above or the authenticated
+  // /api/referral/redeem (which stays protected).
+  "/api/referral/validate",
   // public data APIs
   "/api/items",
   "/api/users",

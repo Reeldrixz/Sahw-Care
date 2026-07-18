@@ -675,6 +675,10 @@ export default function AdminPage() {
                 {label}
               </div>
             ))}
+            {/* Referral codes live on a dedicated page (not a section) */}
+            <div className="admin-nav-item" onClick={() => router.push("/admin/referrals")} title="Partner referral codes">
+              🎟️ Referrals
+            </div>
           </div>
 
           {/* Content */}

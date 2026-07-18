@@ -8,6 +8,14 @@ import { logAbuseEvent } from "@/lib/abuse";
 import { validatePassword } from "@/lib/password";
 import { sendWelcomeEmail } from "@/lib/email";
 import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
+import { awardTrust } from "@/lib/trust";
+import {
+  REFERRAL_REJECTION_MESSAGE,
+  ReferralConsumeError,
+  consumeReferralCode,
+  lookupRedeemableCode,
+  referralGrantFields,
+} from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +30,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, identifier, password } = await req.json();
+    const { name, identifier, password, referralCode } = await req.json();
+    const hasReferral = typeof referralCode === "string" && referralCode.trim().length > 0;
 
     if (!name || !identifier || !password) {
       return NextResponse.json({ error: "Name, email/phone and password are required" }, { status: 400 });
@@ -44,6 +53,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (existing) {
+      // A referred mother who already has an account can't re-register through
+      // the link; she signs in and redeems from /join (authenticated upgrade).
+      if (hasReferral) {
+        return NextResponse.json(
+          { error: `You already have an account with this ${isEmail ? "email" : "phone number"}. Please sign in, then open your invitation link again to join.` },
+          { status: 409 },
+        );
+      }
       return NextResponse.json(
         { error: `An account with this ${isEmail ? "email" : "phone number"} already exists` },
         { status: 409 }
@@ -52,15 +69,50 @@ export async function POST(req: NextRequest) {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email: isEmail ? normalizedId : null,
-        phone: !isEmail ? normalizedId : null,
-        password: hashedPassword,
-        role: "DONOR",
-      },
-    });
+    // ── Referral signup: create the account as a RECIPIENT (mother) and consume
+    // the code in one transaction, so a code can never be spent twice. If the
+    // code is invalid or lost a race, no account is created and we return the
+    // warm rejection.
+    let user;
+    if (hasReferral) {
+      const code = referralCode.trim();
+      const redeemable = await lookupRedeemableCode(code);
+      if (!redeemable) {
+        return NextResponse.json({ error: REFERRAL_REJECTION_MESSAGE, referralInvalid: true }, { status: 400 });
+      }
+      try {
+        user = await prisma.$transaction(async (tx) => {
+          const created = await tx.user.create({
+            data: {
+              name,
+              email: isEmail ? normalizedId : null,
+              phone: !isEmail ? normalizedId : null,
+              password: hashedPassword,
+              ...referralGrantFields(),
+            },
+          });
+          const consumed = await consumeReferralCode(tx, code, created.id);
+          if (!consumed) throw new ReferralConsumeError();
+          return created;
+        });
+      } catch (e) {
+        if (e instanceof ReferralConsumeError) {
+          return NextResponse.json({ error: REFERRAL_REJECTION_MESSAGE, referralInvalid: true }, { status: 409 });
+        }
+        throw e;
+      }
+      awardTrust(user.id, "EMAIL_VERIFIED", { reason: "referral partner grant" }).catch(() => {});
+    } else {
+      user = await prisma.user.create({
+        data: {
+          name,
+          email: isEmail ? normalizedId : null,
+          phone: !isEmail ? normalizedId : null,
+          password: hashedPassword,
+          role: "DONOR",
+        },
+      });
+    }
 
     // Welcome email (fire-and-forget — never blocks signup)
     if (user.email) {

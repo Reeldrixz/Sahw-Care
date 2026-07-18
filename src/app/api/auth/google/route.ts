@@ -9,6 +9,14 @@ import { detectGeoFromRequest } from "@/lib/geoip";
 import { logAbuseEvent } from "@/lib/abuse";
 import { sendWelcomeEmail } from "@/lib/email";
 import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
+import { awardTrust } from "@/lib/trust";
+import {
+  REFERRAL_REJECTION_MESSAGE,
+  ReferralConsumeError,
+  consumeReferralCode,
+  lookupRedeemableCode,
+  referralGrantFields,
+} from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +45,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { credential } = await req.json();
+    const { credential, referralCode } = await req.json();
     if (!credential || typeof credential !== "string") {
       return NextResponse.json({ error: "Missing Google credential" }, { status: 400 });
     }
+    const hasReferral = typeof referralCode === "string" && referralCode.trim().length > 0;
 
     // Verify the Google ID token against Google's public keys.
     let claims: GoogleClaims;
@@ -81,6 +90,29 @@ export async function POST(req: NextRequest) {
       userId   = existing.id;
       userName = existing.name;
       userRole = existing.role;
+
+      // Referral upgrade: Google has proven ownership of this email, so an
+      // existing DONOR who opens their invite link can be upgraded to a mother.
+      // Existing RECIPIENT/ADMIN accounts ignore the code (already set up).
+      if (hasReferral && existing.role === "DONOR") {
+        const code = referralCode.trim();
+        try {
+          await prisma.$transaction(async (tx) => {
+            await tx.user.update({ where: { id: existing.id }, data: referralGrantFields() });
+            const consumed = await consumeReferralCode(tx, code, existing.id);
+            if (!consumed) throw new ReferralConsumeError();
+          });
+          userRole = "RECIPIENT";
+          awardTrust(existing.id, "EMAIL_VERIFIED", { reason: "referral partner grant" }).catch(() => {});
+        } catch (e) {
+          if (e instanceof ReferralConsumeError) {
+            // Code lost a race / no longer redeemable: don't block a real login,
+            // just leave them as a donor and surface the warm rejection.
+            return NextResponse.json({ error: REFERRAL_REJECTION_MESSAGE, referralInvalid: true }, { status: 409 });
+          }
+          throw e;
+        }
+      }
     } else {
       // ── New account → public/general signup, created as a DONOR (mothers come
       // in referral-only, never through this page). No avatar is stored.
@@ -88,17 +120,51 @@ export async function POST(req: NextRequest) {
       // OAuth accounts have no usable password; store a random unguessable hash.
       const randomHash = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
 
-      const created = await prisma.user.create({
-        data: {
-          name:          displayName,
-          email,
-          password:      randomHash,
-          role:          "DONOR",
-          emailVerified: true,
-          // avatar intentionally left null — never import the Google profile photo
-        },
-        select: { id: true, name: true, role: true, location: true, trustScore: true },
-      });
+      // Referral signup: create the new account as a RECIPIENT (mother) and
+      // consume the code atomically. An invalid/raced code creates no account.
+      let created;
+      if (hasReferral) {
+        const code = referralCode.trim();
+        const redeemable = await lookupRedeemableCode(code);
+        if (!redeemable) {
+          return NextResponse.json({ error: REFERRAL_REJECTION_MESSAGE, referralInvalid: true }, { status: 400 });
+        }
+        try {
+          created = await prisma.$transaction(async (tx) => {
+            const u = await tx.user.create({
+              data: {
+                name:          displayName,
+                email,
+                password:      randomHash,
+                ...referralGrantFields(), // includes emailVerified: true
+                // avatar intentionally left null — never import the Google profile photo
+              },
+              select: { id: true, name: true, role: true, location: true, trustScore: true },
+            });
+            const consumed = await consumeReferralCode(tx, code, u.id);
+            if (!consumed) throw new ReferralConsumeError();
+            return u;
+          });
+        } catch (e) {
+          if (e instanceof ReferralConsumeError) {
+            return NextResponse.json({ error: REFERRAL_REJECTION_MESSAGE, referralInvalid: true }, { status: 409 });
+          }
+          throw e;
+        }
+        awardTrust(created.id, "EMAIL_VERIFIED", { reason: "referral partner grant" }).catch(() => {});
+      } else {
+        created = await prisma.user.create({
+          data: {
+            name:          displayName,
+            email,
+            password:      randomHash,
+            role:          "DONOR",
+            emailVerified: true,
+            // avatar intentionally left null — never import the Google profile photo
+          },
+          select: { id: true, name: true, role: true, location: true, trustScore: true },
+        });
+      }
       userId   = created.id;
       userName = created.name;
       userRole = created.role;
