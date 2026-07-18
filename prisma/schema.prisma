@@ -1403,6 +1403,13 @@ enum BundleStage {
   POSTPARTUM
 }
 
+// Internal / sponsor-facing price tiers. Never shown on mother-facing pages.
+enum PriceBand {
+  ESSENTIALS_100
+  CORE_175
+  COMPLETE_250
+}
+
 enum BundleApplicationStatus {
   PENDING
   APPROVED
@@ -1419,6 +1426,8 @@ model Bundle {
   description     String
   contentsMarkdown String
   estimatedValue  Int         // cents
+  priceBand       PriceBand?  // internal/sponsor-facing target tier
+  targetPriceCad  Int?        // internal/sponsor-facing target price, whole CAD dollars
   slotsPerMonth   Int         @default(10)
   isActive        Boolean     @default(true)
   createdAt       DateTime    @default(now())

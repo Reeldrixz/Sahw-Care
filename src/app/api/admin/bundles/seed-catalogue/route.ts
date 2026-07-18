@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Target item counts: B01–B05=8, B06/B07/B08/B12=10, B09/B10=8, B11=12
+// Target item counts: B01–B04=8, B05=7, B06/B07/B08/B12=10, B09=7, B10=8, B11=14
+// Internal price bands (never shown to mothers): $100 Essentials, $175 Core, $250 Complete
 const BUNDLES = [
   {
     code: "B01",
@@ -22,6 +23,8 @@ const BUNDLES = [
       "- Pregnancy-safe lip balm & skin care set",
     ].join("\n"),
     estimatedValue: 18000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B02",
@@ -39,6 +42,8 @@ const BUNDLES = [
       "- Lumbar support wedge cushion",
     ].join("\n"),
     estimatedValue: 14000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B03",
@@ -56,6 +61,8 @@ const BUNDLES = [
       "- Prenatal probiotic (30-day supply)",
     ].join("\n"),
     estimatedValue: 12000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B04",
@@ -73,10 +80,12 @@ const BUNDLES = [
       "- Perineal cooling pads (20-pack)",
     ].join("\n"),
     estimatedValue: 10000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B05",
-    name: "Hospital Bag — Baby",
+    name: "Birth Partner Support Kit",
     stage: "LABOUR" as const,
     description: "Tools and comforts to help a birth partner provide meaningful support during labour.",
     contentsMarkdown: [
@@ -84,12 +93,13 @@ const BUNDLES = [
       "- Massage roller & hand lotion",
       "- Comfort focal-point card set",
       "- Snacks for the support person",
-      "- Portable phone charger",
       "- Cooling spray bottle",
       "- Hand-held mini fan",
       "- Encouraging messages card set",
     ].join("\n"),
     estimatedValue: 8000,
+    priceBand: "ESSENTIALS_100" as const,
+    targetPriceCad: 100,
   },
   {
     code: "B06",
@@ -100,7 +110,7 @@ const BUNDLES = [
       "- Newborn onesies (6-pack, gender-neutral)",
       "- Swaddle blankets (3-pack)",
       "- Baby beanie & mittens set",
-      "- Newborn nappies (pack of 48)",
+      "- Newborn nappies (pack of 48) ×2",
       "- Fragrance-free baby wipes (pack of 64)",
       "- Baby nail file set",
       "- Digital baby thermometer",
@@ -109,10 +119,12 @@ const BUNDLES = [
       "- Baby hair brush & comb set",
     ].join("\n"),
     estimatedValue: 15000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B07",
-    name: "Feeding Kit",
+    name: "Newborn Sleep & Soothing Kit",
     stage: "NEWBORN" as const,
     description: "Help baby and mother get the rest they need with sleep aids and soothing essentials.",
     contentsMarkdown: [
@@ -128,14 +140,16 @@ const BUNDLES = [
       "- Nightlight with timer",
     ].join("\n"),
     estimatedValue: 13000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B08",
-    name: "Hygiene & Care Kit",
+    name: "Feeding Kit",
     stage: "NEWBORN" as const,
     description: "Support for breastfeeding and bottle-feeding through the early weeks.",
     contentsMarkdown: [
-      "- Manual breast pump",
+      "- Electric double breast pump",
       "- Breast pads (reusable, 8-pack)",
       "- Nipple cream",
       "- Bottle set (3 bottles with slow-flow nipples)",
@@ -147,6 +161,8 @@ const BUNDLES = [
       "- Baby feeding pillow",
     ].join("\n"),
     estimatedValue: 20000,
+    priceBand: "COMPLETE_250" as const,
+    targetPriceCad: 250,
   },
   {
     code: "B09",
@@ -158,16 +174,17 @@ const BUNDLES = [
       "- Perineal spray",
       "- Sitz bath kit",
       "- Stool softener (gentle, 30-day)",
-      "- Postpartum belly wrap / binder",
       "- Nipple shields",
       "- Peri bottle (postpartum hygiene)",
       "- Witch hazel pads (40-pack)",
     ].join("\n"),
     estimatedValue: 16000,
+    priceBand: "ESSENTIALS_100" as const,
+    targetPriceCad: 100,
   },
   {
     code: "B10",
-    name: "Breastfeeding Support Kit",
+    name: "Fourth Trimester Wellness Kit",
     stage: "POSTPARTUM" as const,
     description: "Resources and self-care items to support maternal mental health in the fourth trimester.",
     contentsMarkdown: [
@@ -181,31 +198,37 @@ const BUNDLES = [
       "- Calming soy candle",
     ].join("\n"),
     estimatedValue: 11000,
+    priceBand: "CORE_175" as const,
+    targetPriceCad: 175,
   },
   {
     code: "B11",
-    name: "Complete Maternal Bundle",
+    name: "Maternal Nutrition & Recovery Bundle",
     stage: "POSTPARTUM" as const,
     description: "Nutritional support for recovery and breastfeeding in the months after birth.",
     contentsMarkdown: [
-      "- Postnatal multivitamin (60-day supply)",
+      "- Postnatal multivitamin (90-day supply)",
       "- Omega-3 supplement",
       "- Lactation tea (30 bags)",
       "- Lactation cookies (2 boxes)",
       "- Protein meal-replacement shakes (1-week supply)",
+      "- Lactation protein powder (large tub, 30 servings)",
       "- Reusable snack bags",
       "- Iron supplement (postpartum)",
       "- Collagen peptides powder (30 servings)",
       "- Bone broth sachets (10-pack)",
       "- Nut & seed trail mix (500g)",
       "- Electrolyte drink mix (30-pack)",
+      "- Postpartum belly wrap / binder",
       "- Postpartum meal prep guide",
     ].join("\n"),
-    estimatedValue: 13500,
+    estimatedValue: 23000,
+    priceBand: "COMPLETE_250" as const,
+    targetPriceCad: 250,
   },
   {
     code: "B12",
-    name: "First Month Home Kit",
+    name: "Baby Development & Play Kit",
     stage: "NEWBORN" as const,
     description: "Stimulating and developmental toys for babies aged 0–6 months.",
     contentsMarkdown: [
@@ -221,6 +244,8 @@ const BUNDLES = [
       "- Tummy time support pillow",
     ].join("\n"),
     estimatedValue: 17000,
+    priceBand: "COMPLETE_250" as const,
+    targetPriceCad: 250,
   },
 ];
 
@@ -239,6 +264,8 @@ export async function POST(req: NextRequest) {
         description: b.description,
         contentsMarkdown: b.contentsMarkdown,
         estimatedValue: b.estimatedValue,
+        priceBand: b.priceBand,
+        targetPriceCad: b.targetPriceCad,
       },
       create: {
         code: b.code,
@@ -247,6 +274,8 @@ export async function POST(req: NextRequest) {
         description: b.description,
         contentsMarkdown: b.contentsMarkdown,
         estimatedValue: b.estimatedValue,
+        priceBand: b.priceBand,
+        targetPriceCad: b.targetPriceCad,
         slotsPerMonth: 10,
         isActive: true,
       },
