@@ -173,11 +173,11 @@ export async function POST(req: NextRequest) {
       // Role is intentionally NOT set here. This block is reached only by users
       // who are already RECIPIENT (granted via the referral/partner path); the
       // self-serve DONOR → RECIPIENT promotion has been removed.
-      // TODO(referral): the partner/referral grant path is the ONLY place that
-      // may set role=RECIPIENT. When it does, it MUST also reset
-      // onboardingComplete=false and clear journeyType so the newly-granted
-      // mother re-runs this onboarding (stage + cohort circle assignment).
-      // Otherwise she'll be left as journeyType="donor" with no stage/circle.
+      // The referral grant (src/lib/referral.ts `referralGrantFields`, applied
+      // in api/auth/register, api/auth/google, and api/referral/redeem) is the
+      // ONLY place that sets role=RECIPIENT. It sets onboardingComplete=false
+      // and journeyType=null precisely so the newly-granted mother re-runs this
+      // onboarding here (stage + cohort circle assignment).
     },
     select: {
       id: true,
