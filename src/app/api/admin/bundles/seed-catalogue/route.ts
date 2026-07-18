@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Target item counts: B01–B04=8, B05=7, B06/B07/B08/B12=10, B09=7, B10=8, B11=12
+// Target item counts: B01–B04=8, B05=7, B06/B07/B08/B12=10, B09=7, B10=8, B11=14
 // Internal price bands (never shown to mothers): $100 Essentials, $175 Core, $250 Complete
 const BUNDLES = [
   {
@@ -207,20 +207,22 @@ const BUNDLES = [
     stage: "POSTPARTUM" as const,
     description: "Nutritional support for recovery and breastfeeding in the months after birth.",
     contentsMarkdown: [
-      "- Postnatal multivitamin (60-day supply)",
+      "- Postnatal multivitamin (90-day supply)",
       "- Omega-3 supplement",
       "- Lactation tea (30 bags)",
       "- Lactation cookies (2 boxes)",
       "- Protein meal-replacement shakes (1-week supply)",
+      "- Lactation protein powder (large tub, 30 servings)",
       "- Reusable snack bags",
       "- Iron supplement (postpartum)",
       "- Collagen peptides powder (30 servings)",
       "- Bone broth sachets (10-pack)",
       "- Nut & seed trail mix (500g)",
       "- Electrolyte drink mix (30-pack)",
+      "- Postpartum belly wrap / binder",
       "- Postpartum meal prep guide",
     ].join("\n"),
-    estimatedValue: 13500,
+    estimatedValue: 23000,
     priceBand: "COMPLETE_250" as const,
     targetPriceCad: 250,
   },
