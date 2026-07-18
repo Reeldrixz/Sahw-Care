@@ -8,6 +8,8 @@ const PUBLIC_PATHS = [
   "/donors",
   "/favourites",
   "/browse",
+  // public community-partners (sponsorship) marketing page
+  "/partners",
   // auth flows that must work for logged-out users
   "/api/auth/login",
   "/api/auth/register",

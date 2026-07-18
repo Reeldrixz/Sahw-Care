@@ -313,15 +313,25 @@ export default async function LandingPage() {
               Need support?
             </Link>
           </div>
+          <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, margin: "18px 0 0" }}>
+            Are you a business?{" "}
+            <Link href="/partners" style={{ color: GREEN, fontWeight: 800, textDecoration: "none" }}>
+              Partner with us →
+            </Link>
+          </p>
         </div>
       </section>
 
       {/* ── Footer line ─────────────────────────────────── */}
       <footer style={{ padding: "30px 22px 40px", textAlign: "center" }}>
         <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradəl</div>
-        <p style={{ fontFamily: SANS, fontSize: 13, color: MUTED, margin: 0 }}>
+        <p style={{ fontFamily: SANS, fontSize: 13, color: MUTED, margin: "0 0 12px" }}>
           Maternal &amp; baby care, delivered with dignity.
         </p>
+        <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/find-help" style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: GREEN, textDecoration: "none" }}>Need support?</Link>
+          <Link href="/partners" style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: GREEN, textDecoration: "none" }}>Community Partners</Link>
+        </div>
       </footer>
     </main>
   );
