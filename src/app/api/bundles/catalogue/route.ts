@@ -70,6 +70,8 @@ export async function GET(_req: NextRequest) {
     slotsUsed:        b._count.applications,
     slotsRemaining:   Math.max(0, b.slotsPerMonth - b._count.applications),
     itemCount:        b.contentsMarkdown.split("\n").filter((l) => l.startsWith("- ")).length,
+    sponsorName:      b.sponsorName,
+    sponsorUrl:       b.sponsorUrl,
   }));
 
   return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved, isRecipient });

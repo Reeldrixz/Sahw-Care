@@ -17,6 +17,15 @@ interface BundleItem {
   description: string; contentsMarkdown: string;
   slotsPerMonth: number; slotsUsed: number; slotsRemaining: number;
   itemCount: number;
+  sponsorName?: string | null; sponsorUrl?: string | null;
+}
+
+// Only linkify sponsor URLs that are http(s); never a javascript:/data: sink.
+// (Sponsor text is rendered as JSX and auto-escaped by React.)
+function safeHttpUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const t = url.trim();
+  return /^https?:\/\//i.test(t) ? t : null;
 }
 
 type StageFilter = "ALL" | BundleStage;
@@ -507,6 +516,29 @@ export default function BundlesPage() {
                                 : `${b.slotsRemaining} ${b.slotsRemaining === 1 ? "space" : "spaces"} remaining · Intake open`}
                             </span>
                           </div>
+                        )}
+                      </div>
+
+                      {/* Sponsor recognition — quiet line celebrating the business + the bundle.
+                          Never implies a mother owes anything; bundles remain completely free. */}
+                      <div style={{ marginBottom: 12, paddingTop: 10, borderTop: "1px dashed #efeae3" }}>
+                        {b.sponsorName ? (
+                          <div style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                            This month&apos;s {b.name} is made possible by{" "}
+                            {safeHttpUrl(b.sponsorUrl) ? (
+                              <a href={safeHttpUrl(b.sponsorUrl)!} target="_blank" rel="noopener noreferrer"
+                                 style={{ color: th.text, fontWeight: 700, textDecoration: "underline" }}>
+                                {b.sponsorName}
+                              </a>
+                            ) : (
+                              <span style={{ color: th.text, fontWeight: 700 }}>{b.sponsorName}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <a href="/partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
+                            This bundle is open for community sponsorship{" "}
+                            <span style={{ color: th.text, fontWeight: 700 }}>→</span>
+                          </a>
                         )}
                       </div>
 

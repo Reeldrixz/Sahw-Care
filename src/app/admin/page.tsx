@@ -140,6 +140,7 @@ interface SuggestionGroup {
 interface BundleCatalogueAdmin {
   id: string; code: string; name: string; stage: string; description: string;
   estimatedValue: number; slotsPerMonth: number; isActive: boolean;
+  sponsorName: string | null; sponsorUrl: string | null;
   totalApplications: number; monthPending: number; monthApproved: number;
   slotsUsed: number; slotsRemaining: number;
 }
@@ -298,6 +299,10 @@ export default function AdminPage() {
   const [bundleAppsTotal,       setBundleAppsTotal]       = useState(0);
   const [appNoteMap,            setAppNoteMap]            = useState<Record<string, string>>({});
   const [expandedAppId,         setExpandedAppId]         = useState<string | null>(null);
+  const [sponsorEditId,         setSponsorEditId]         = useState<string | null>(null);
+  const [sponsorNameDraft,      setSponsorNameDraft]      = useState("");
+  const [sponsorUrlDraft,       setSponsorUrlDraft]       = useState("");
+  const [sponsorSaveError,      setSponsorSaveError]      = useState<string | null>(null);
 
   // Fulfillments state
   const [fulfillments,      setFulfillments]      = useState<AdminFulfillment[]>([]);
@@ -2211,7 +2216,7 @@ export default function AdminPage() {
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, fontFamily: "Nunito, sans-serif" }}>
                       <thead>
                         <tr style={{ borderBottom: "2px solid #e0e0e0" }}>
-                          {["Code", "Name", "Stage", "Est. Value", "Slots/mo", "This month", "Remaining", "Status"].map((h) => (
+                          {["Code", "Name", "Stage", "Est. Value", "Slots/mo", "This month", "Remaining", "Sponsor", "Status"].map((h) => (
                             <th key={h} style={{ textAlign: "left", padding: "8px 10px", fontWeight: 800, color: "#555" }}>{h}</th>
                           ))}
                         </tr>
@@ -2240,6 +2245,35 @@ export default function AdminPage() {
                               <span style={{ color: b.slotsRemaining === 0 ? "#c0392b" : b.slotsRemaining <= 2 ? "#d97706" : "#1a7a5e", fontWeight: 700 }}>
                                 {b.slotsRemaining}
                               </span>
+                            </td>
+                            <td style={{ padding: "10px 10px", minWidth: 170 }}>
+                              {sponsorEditId === b.id ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  <input value={sponsorNameDraft} onChange={(e) => setSponsorNameDraft(e.target.value)} placeholder="Sponsor name (empty = clear)"
+                                    style={{ padding: "5px 8px", border: "1.5px solid #e0e0e0", borderRadius: 6, fontSize: 12, fontFamily: "Nunito, sans-serif" }} />
+                                  <input value={sponsorUrlDraft} onChange={(e) => setSponsorUrlDraft(e.target.value)} placeholder="https://sponsor.com (optional)"
+                                    style={{ padding: "5px 8px", border: "1.5px solid #e0e0e0", borderRadius: 6, fontSize: 12, fontFamily: "Nunito, sans-serif" }} />
+                                  {sponsorSaveError && <span style={{ fontSize: 10, color: "#c0392b" }}>{sponsorSaveError}</span>}
+                                  <div style={{ display: "flex", gap: 6 }}>
+                                    <button
+                                      onClick={async () => {
+                                        setSponsorSaveError(null);
+                                        const r = await fetch("/api/admin/bundles/catalogue", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, sponsorName: sponsorNameDraft, sponsorUrl: sponsorUrlDraft }) });
+                                        if (!r.ok) { setSponsorSaveError((await r.json().catch(() => ({}))).error ?? "Save failed"); return; }
+                                        setSponsorEditId(null); fetchBundleAppCatalogue();
+                                      }}
+                                      style={{ padding: "4px 10px", borderRadius: 6, border: "none", background: "#1a7a5e", color: "white", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Save</button>
+                                    <button onClick={() => { setSponsorEditId(null); setSponsorSaveError(null); }}
+                                      style={{ padding: "4px 10px", borderRadius: 6, border: "1.5px solid #e0e0e0", background: "none", color: "#666", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <span style={{ fontSize: 12, color: b.sponsorName ? "#1a1a1a" : "#9ca3af", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.sponsorName ?? "—"}</span>
+                                  <button onClick={() => { setSponsorEditId(b.id); setSponsorNameDraft(b.sponsorName ?? ""); setSponsorUrlDraft(b.sponsorUrl ?? ""); setSponsorSaveError(null); }}
+                                    style={{ padding: "3px 8px", borderRadius: 6, border: "1.5px solid #e0e0e0", background: "none", color: "#1a7a5e", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>{b.sponsorName ? "Edit" : "Set"}</button>
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: "10px 10px" }}>
                               <button
