@@ -76,7 +76,7 @@ const BUNDLES = [
   },
   {
     code: "B05",
-    name: "Hospital Bag — Baby",
+    name: "Birth Partner Support Kit",
     stage: "LABOUR" as const,
     description: "Tools and comforts to help a birth partner provide meaningful support during labour.",
     contentsMarkdown: [
@@ -112,7 +112,7 @@ const BUNDLES = [
   },
   {
     code: "B07",
-    name: "Feeding Kit",
+    name: "Newborn Sleep & Soothing Kit",
     stage: "NEWBORN" as const,
     description: "Help baby and mother get the rest they need with sleep aids and soothing essentials.",
     contentsMarkdown: [
@@ -131,7 +131,7 @@ const BUNDLES = [
   },
   {
     code: "B08",
-    name: "Hygiene & Care Kit",
+    name: "Feeding Kit",
     stage: "NEWBORN" as const,
     description: "Support for breastfeeding and bottle-feeding through the early weeks.",
     contentsMarkdown: [
@@ -167,7 +167,7 @@ const BUNDLES = [
   },
   {
     code: "B10",
-    name: "Breastfeeding Support Kit",
+    name: "Fourth Trimester Wellness Kit",
     stage: "POSTPARTUM" as const,
     description: "Resources and self-care items to support maternal mental health in the fourth trimester.",
     contentsMarkdown: [
@@ -184,7 +184,7 @@ const BUNDLES = [
   },
   {
     code: "B11",
-    name: "Complete Maternal Bundle",
+    name: "Maternal Nutrition & Recovery Bundle",
     stage: "POSTPARTUM" as const,
     description: "Nutritional support for recovery and breastfeeding in the months after birth.",
     contentsMarkdown: [
@@ -205,7 +205,7 @@ const BUNDLES = [
   },
   {
     code: "B12",
-    name: "First Month Home Kit",
+    name: "Baby Development & Play Kit",
     stage: "NEWBORN" as const,
     description: "Stimulating and developmental toys for babies aged 0–6 months.",
     contentsMarkdown: [

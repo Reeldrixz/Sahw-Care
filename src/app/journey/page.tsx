@@ -195,14 +195,14 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
       return [
         { key: "B03", label: "Third Trimester Preparation Kit", description: "Everything you need as you approach your due date.", actionLabel: "Apply", href: "/bundles" },
         { key: "B04", label: "Hospital Bag — Mother", description: "Essentials for labour and your hospital stay.", actionLabel: "Apply", href: "/bundles" },
-        { key: "B05", label: "Hospital Bag — Baby", description: "First outfit, blanket, and newborn necessities.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B05", label: "Birth Partner Support Kit", description: "Comfort and tools to help your birth partner support you through labour.", actionLabel: "Apply", href: "/bundles" },
         { key: "reg", label: "Create a register for hospital essentials", description: "Let your community support you with specific items.", actionLabel: "Create", href: "/registers/new" },
       ];
     }
     // labour
     return [
       { key: "B04", label: "Hospital Bag — Mother", description: "Essentials for labour and your hospital stay.", actionLabel: "Apply", href: "/bundles" },
-      { key: "B05", label: "Hospital Bag — Baby", description: "First outfit, blanket, and newborn necessities.", actionLabel: "Apply", href: "/bundles" },
+      { key: "B05", label: "Birth Partner Support Kit", description: "Comfort and tools to help your birth partner support you through labour.", actionLabel: "Apply", href: "/bundles" },
       { key: "circles", label: "Connect with other mothers", description: "A community that's been through it — just like you.", actionLabel: "Explore", href: "/circles" },
     ];
   }
@@ -214,15 +214,15 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
     if (agedays <= 84) {
       return [
         { key: "B09", label: "Postpartum Recovery Kit", description: "Support for your body and mind in the first weeks.", actionLabel: "Apply", href: "/bundles" },
-        { key: "B10", label: "Breastfeeding Support Kit", description: "Pumps, pads, and practical breastfeeding essentials.", actionLabel: "Apply", href: "/bundles" },
-        { key: "B12", label: "First Month Home Kit", description: "Everything you need for the first weeks at home.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B10", label: "Fourth Trimester Wellness Kit", description: "Self-care and resources to support your mental wellbeing.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B12", label: "Baby Development & Play Kit", description: "Stimulating, developmental toys for babies 0–6 months.", actionLabel: "Apply", href: "/bundles" },
         { key: "discover", label: "Find postpartum items near you", description: "Browse donated items in your community.", actionLabel: "Browse", href: "/" },
       ];
     }
     if (agedays <= 365) {
       return [
-        { key: "B07", label: "Infant Feeding Kit", description: "Bottles, formula support, and feeding accessories.", actionLabel: "Apply", href: "/bundles" },
-        { key: "B08", label: "Hygiene & Care Kit", description: "Baby bath, skincare, and essential care items.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B07", label: "Newborn Sleep & Soothing Kit", description: "Sleep aids and soothing essentials to help you both rest.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B08", label: "Feeding Kit", description: "Support for breastfeeding and bottle-feeding in the early weeks.", actionLabel: "Apply", href: "/bundles" },
         { key: "B06", label: "Complete Newborn Bundle", description: "Clothing, sleep items, and newborn necessities.", actionLabel: "Apply", href: "/bundles" },
         { key: "discover", label: "Browse available items", description: "Discover what's being donated in your area.", actionLabel: "Browse", href: "/" },
       ];
