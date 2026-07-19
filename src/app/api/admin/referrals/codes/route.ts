@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       }
     }
     if (!inserted) {
-      return NextResponse.json({ error: "Could not generate a unique code — please retry" }, { status: 500 });
+      return NextResponse.json({ error: "Could not generate a unique code. Please retry" }, { status: 500 });
     }
   }
 

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const existing = await prisma.registerAddress.findUnique({ where: { registerId } });
-  if (existing) return NextResponse.json({ error: "Address already exists — use PUT to update" }, { status: 409 });
+  if (existing) return NextResponse.json({ error: "Address already exists. Use PUT to update" }, { status: 409 });
 
   const body = parseBody(await req.json());
   if (!body) return NextResponse.json({ error: "fullName, streetAddress, city, province, postalCode and phone are required" }, { status: 400 });
@@ -62,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const { registerId } = await params;
   const existing = await prisma.registerAddress.findUnique({ where: { registerId } });
-  if (!existing) return NextResponse.json({ error: "No saved address found — use POST to create" }, { status: 404 });
+  if (!existing) return NextResponse.json({ error: "No saved address found. Use POST to create" }, { status: 404 });
 
   const body = parseBody(await req.json());
   if (!body) return NextResponse.json({ error: "fullName, streetAddress, city, province, postalCode and phone are required" }, { status: 400 });
