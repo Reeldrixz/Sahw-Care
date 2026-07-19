@@ -31,7 +31,7 @@ const CATEGORIES: {
   {
     value: "TIP",
     label: "Tip",
-    prompt: "Share something that helped you — others here will thank you for it.",
+    prompt: "Share something that helped you. Others here will thank you for it.",
     color: "#d97706", bg: "#fef3c7",
     Icon: Lightbulb,
   },
@@ -45,7 +45,7 @@ const CATEGORIES: {
   {
     value: "GRATITUDE",
     label: "Gratitude",
-    prompt: "What are you grateful for right now? Big or small — it all counts.",
+    prompt: "What are you grateful for right now? Big or small, it all counts.",
     color: "#1a7a5e", bg: "#e8f5f1",
     Icon: HandHeart,
   },
@@ -66,7 +66,7 @@ const CATEGORIES: {
   {
     value: "WORKING_ON",
     label: "Working on",
-    prompt: "Share something you're actively working toward — sleep training, recovery, a habit, a plan. Progress counts.",
+    prompt: "Share something you're actively working toward: sleep training, recovery, a habit, a plan. Progress counts.",
     color: "#c2410c", bg: "#fff7ed",
     Icon: Target,
   },

@@ -362,7 +362,7 @@ export default function MyMissionPage() {
   const monthDate = new Date(yearNum, monthNum - 1, 1);
   const monthLabel = monthDate.toLocaleString("en", { month: "long" });
   const lastDay    = new Date(yearNum, monthNum, 0).getDate();
-  const dateRange  = `${monthLabel} 1 – ${monthLabel} ${lastDay}`;
+  const dateRange  = `${monthLabel} 1 to ${monthLabel} ${lastDay}`;
 
   const categoryLabel = mission.category === "registers"  ? "Register Support"
     : mission.category === "postpartum" ? "Postpartum Support"

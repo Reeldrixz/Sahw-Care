@@ -16,7 +16,7 @@ const STEP_DEFS: { target: string; content: string }[] = [
   },
   {
     target: '[data-tour="progress"]',
-    content: "This shows what's been funded so far — you'll see it grow.",
+    content: "This shows what's been funded so far. You'll see it grow.",
   },
   {
     target: '[data-tour="share"]',

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     data: {
       userId: coordination.request.requesterId,
       type: "COORDINATION_DELIVERED",
-      message: "Your donor is at the pickup location — head over!",
+      message: "Your donor is at the pickup location. Head over!",
       link: `/coordination/${requestId}`,
       triggeredByUserId: user.userId,
     },

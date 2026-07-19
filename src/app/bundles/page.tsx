@@ -59,10 +59,10 @@ const PROVINCES = [
 
 const FAQS: { q: string; a: string }[] = [
   { q: "Who is eligible for a bundle?", a: "Verified mothers in Canada who are pregnant, have a newborn, or are in the postpartum period. Every application is reviewed by our team to ensure bundles reach those who need them most." },
-  { q: "Is this a first-come-first-served system?", a: "No. Applications are reviewed privately by the Kradəl team. Selection considers timing, stage of journey, urgency, verification status, and relevance to the bundle — not simply who applies first." },
-  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, sponsors, and CSR partners. No mother ever pays for a bundle — they are fully covered." },
+  { q: "Is this a first-come-first-served system?", a: "No. Applications are reviewed privately by the Kradəl team. Selection considers timing, stage of journey, urgency, verification status, and relevance to the bundle. It is not simply who applies first." },
+  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, sponsors, and CSR partners. No mother ever pays for a bundle. They are fully covered." },
   { q: "Can I apply for more than one bundle?", a: "One application per monthly cycle. This ensures fairness across all mothers. If your application is not approved, you're welcome to apply to another relevant bundle in the next cycle." },
-  { q: "How long does the review take?", a: "Our team reviews applications within 2–3 business days. You'll receive a private notification through the platform once a decision has been made." },
+  { q: "How long does the review take?", a: "Our team reviews applications within 2 to 3 business days. You'll receive a private notification through the platform once a decision has been made." },
 ];
 
 const JOURNEY_STEPS = [
@@ -74,9 +74,9 @@ const JOURNEY_STEPS = [
 ];
 
 const TRUST_PRINCIPLES = [
-  { Icon: Heart,       label: "Dignity First",             desc: "Every mother is treated with care and respect — no public competition, no pressure." },
+  { Icon: Heart,       label: "Dignity First",             desc: "Every mother is treated with care and respect. No public competition, no pressure." },
   { Icon: CheckCircle, label: "Quality Guaranteed",        desc: "Only vetted, high-quality products are included in every bundle." },
-  { Icon: Shield,      label: "Reviewed Fairly",           desc: "Applications are matched by our team based on stage, urgency, and need — not speed." },
+  { Icon: Shield,      label: "Reviewed Fairly",           desc: "Applications are matched by our team based on stage, urgency, and need. Not speed." },
   { Icon: Lock,        label: "Privacy Protected",         desc: "Personal information is never shared, published, or visible to other users." },
 ];
 
@@ -214,7 +214,7 @@ export default function BundlesPage() {
                 Curated essentials. Delivered with dignity.
               </div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 24 }}>
-                Each month, Kradəl assembles carefully curated care bundles for mothers across Canada —
+                Each month, Kradəl assembles carefully curated care bundles for mothers across Canada. They are
                 fully funded and delivered free of charge. Each bundle is a structured care program,
                 reviewed and matched privately by our team.
               </div>
@@ -279,7 +279,7 @@ export default function BundlesPage() {
                   <Gift size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ fontSize: 11, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
                     <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Funded by Kradəl and our sponsors.</span>
-                    {" "}Every bundle is fully covered — no cost to any mother.
+                    {" "}Every bundle is fully covered. No cost to any mother.
                   </div>
                 </div>
               </div>
@@ -312,7 +312,7 @@ export default function BundlesPage() {
           </div>
           <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
             Browse the programs below and apply for the one that matches your stage. Applications are reviewed
-            privately by the Kradəl team — selection is based on stage, urgency, and relevance, not first-come-first-served.
+            privately by the Kradəl team. Selection is based on stage, urgency, and relevance, not first-come-first-served.
             Approved bundles are packed and delivered directly to you, completely free.
           </div>
         </div>
@@ -324,7 +324,7 @@ export default function BundlesPage() {
               <CheckCircle size={28} color="#1a7a5e" strokeWidth={1.75} />
             </div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
-              You&apos;ve received 9 Kradəl bundles — the full programme.
+              You&apos;ve received 9 Kradəl bundles: the full programme.
             </div>
             <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7 }}>
               Thank you for allowing us to support your journey.
@@ -574,7 +574,7 @@ export default function BundlesPage() {
                           {bundleBlocked && (
                             <div style={{ fontSize: 10, fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
                               {bundleHeld
-                                ? <span style={{ color: "#92400e" }}>We need to confirm a few details — we'll be in touch.</span>
+                                ? <span style={{ color: "#92400e" }}>We need to confirm a few details. We'll be in touch.</span>
                                 : <a href="/profile" style={{ color: "#1a7a5e", fontWeight: 700, textDecoration: "underline" }}>Verify your identity on your profile →</a>
                               }
                             </div>
@@ -630,7 +630,7 @@ export default function BundlesPage() {
             </div>
             <div style={{ fontSize: 12, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
               Selection is not first-come-first-served. Our team reviews every application privately
-              to ensure fair and relevant support — considering your stage, urgency, and verification status.
+              to ensure fair and relevant support. We consider your stage, urgency, and verification status.
             </div>
           </div>
         </div>
@@ -643,7 +643,7 @@ export default function BundlesPage() {
               How support reaches mothers
             </div>
             <div style={{ fontSize: 12, color: "#666", fontFamily: "Nunito, sans-serif", marginBottom: 20, lineHeight: 1.5 }}>
-              A private, careful process — from application to your doorstep.
+              A private, careful process: from application to your doorstep.
             </div>
 
             <div className="journey-steps">
@@ -738,7 +738,7 @@ export default function BundlesPage() {
               Local businesses stand behind these bundles
             </div>
             <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 12 }}>
-              Every bundle is fully funded by our community partners — so it reaches a mother completely free.
+              Every bundle is fully funded by our community partners, so it reaches a mother completely free.
             </div>
             <a href="/partners" style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
               Meet our partners →
@@ -784,7 +784,7 @@ export default function BundlesPage() {
           <div style={{ width: "100%", maxWidth: 640, background: "white", borderRadius: "20px 20px 0 0", maxHeight: "90vh", overflowY: "auto", padding: "0 0 32px" }}>
             <div style={{ position: "sticky", top: 0, background: "white", padding: "16px 20px 12px", borderBottom: "1px solid #f0f0f0", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Apply — {applying.name}</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Apply for {applying.name}</div>
                 <div style={{ fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif" }}>
                   Reviewed privately by the Kradəl team
                 </div>
@@ -804,7 +804,7 @@ export default function BundlesPage() {
                   Thank you for applying for the <strong>{applying.name}</strong>.
                 </div>
                 <div style={{ fontSize: 12, color: "#888", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, maxWidth: 340, margin: "0 auto 24px" }}>
-                  Our team will review your application privately. You&apos;ll receive a notification within 2–3 business days. This is not a first-come-first-served process — every application is read carefully.
+                  Our team will review your application privately. You&apos;ll receive a notification within 2 to 3 business days. This is not a first-come-first-served process. Every application is read carefully.
                 </div>
                 <button onClick={closeApply} style={{ padding: "12px 32px", background: "#1a7a5e", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Done</button>
               </div>
@@ -814,7 +814,7 @@ export default function BundlesPage() {
                 <div style={{ background: "#e8f5f1", borderRadius: 10, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 8, alignItems: "flex-start" }}>
                   <Shield size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
                   <div style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                    Your application is reviewed privately by our team. Selection is based on stage, urgency, and relevance — not speed of submission.
+                    Your application is reviewed privately by our team. Selection is based on stage, urgency, and relevance. Not speed of submission.
                   </div>
                 </div>
 
@@ -846,7 +846,7 @@ export default function BundlesPage() {
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Your situation *</div>
                   <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>
-                    Tell us a little about your situation and why this bundle would support you (100–500 characters).
+                    Tell us a little about your situation and why this bundle would support you (100 to 500 characters).
                   </div>
                   <textarea required minLength={100} maxLength={500} value={form.story} onChange={(e) => setForm((f) => ({ ...f, story: e.target.value }))} placeholder="Share a bit about your journey…" rows={4} style={{ ...inputStyle, resize: "vertical", minHeight: 90 }} />
                   <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "right" }}>{form.story.length}/500</div>

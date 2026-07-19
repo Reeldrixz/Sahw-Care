@@ -443,7 +443,7 @@ export default function ImpactPage() {
                   <div className="ip-info-card">
                     <div className="ip-card-label">Why it matters</div>
                     {[
-                      { icon: "🧡", text: "Every square is a real mom — a name, a story, a need met." },
+                      { icon: "🧡", text: "Every square is a real mom: a name, a story, a need met." },
                       { icon: "🌿", text: "Your support removes barriers that keep moms from thriving." },
                       { icon: "🤝", text: "When we work across channels, no one falls through the gaps." },
                       { icon: "💫", text: "Small acts. Big ripple. You might never know whose life you changed." },

@@ -108,7 +108,7 @@ function ReturnContent() {
         <div className="pr-body">
           {isCanceled
             ? "You closed the verification before it was complete. You can start again whenever you're ready."
-            : "We ran into a problem completing your verification. Please try again — it usually only takes a minute."}
+            : "We ran into a problem completing your verification. Please try again. It usually only takes a minute."}
         </div>
         <Link href="/profile" className="pr-link">Try again</Link>
         <Link href="/" className="pr-link-ghost">Go home</Link>
@@ -125,9 +125,9 @@ function ReturnContent() {
         <Clock size={11} />
         Usually within a few minutes
       </div>
-      <div className="pr-title">Thanks — we've received your verification</div>
+      <div className="pr-title">Thanks. We've received your verification</div>
       <div className="pr-body">
-        We're reviewing your submission. You'll see your updated status on your profile — most verifications complete within a few minutes.
+        We're reviewing your submission. You'll see your updated status on your profile. Most verifications complete within a few minutes.
       </div>
       <Link href="/profile" className="pr-link">Back to my profile</Link>
       <div style={{ marginTop: 12, fontSize: 12, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>

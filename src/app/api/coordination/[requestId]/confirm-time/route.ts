@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
 
   // The proposer cannot confirm their own proposal
   if (coordination.proposedBy === user.userId) {
-    return NextResponse.json({ error: "You cannot confirm your own time proposal — the other party must confirm" }, { status: 409 });
+    return NextResponse.json({ error: "You cannot confirm your own time proposal. The other party must confirm" }, { status: 409 });
   }
 
   const updated = await prisma.pickupCoordination.update({

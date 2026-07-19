@@ -23,7 +23,7 @@ export default function RetakeTourButton() {
       const d = await res.json();
       const regs = d.registers ?? [];
       if (!regs.length) {
-        setMsg("Create your register first — then you can take the tour.");
+        setMsg("Create your register first. Then you can take the tour.");
         setLoading(false);
         return;
       }

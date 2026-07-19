@@ -204,7 +204,7 @@ export default function ItemDetailPage() {
     if (res.ok) {
       const d = await res.json();
       setItem((prev) => prev ? { ...prev, ...d.item } : prev);
-      setToast(action === "blur" ? "Item blurred — under review" : action === "freeze" ? "Listing frozen" : "Listing removed");
+      setToast(action === "blur" ? "Item blurred. Under review" : action === "freeze" ? "Listing frozen" : "Listing removed");
     }
   };
 
@@ -290,7 +290,7 @@ export default function ItemDetailPage() {
           </div>
         )}
         <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
-          {requested ? "✓ Request Sent — Awaiting donor" : "Request"}
+          {requested ? "✓ Request Sent, Awaiting donor" : "Request"}
         </button>
       </div>
     );

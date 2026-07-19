@@ -122,7 +122,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       data: {
         userId:            request.requesterId,
         type:              "FULFILLMENT_PENDING",
-        message:           "Your request wasn't accepted this time. Keep browsing — there are more items available!",
+        message:           "Your request wasn't accepted this time. Keep browsing. There are more items available!",
         link:              "/",
         triggeredByUserId: request.item.donorId,
       },

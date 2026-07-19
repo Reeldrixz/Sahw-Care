@@ -10,7 +10,7 @@ export default function ReferFriendCard() {
     const url = `${window.location.origin}/find-help`;
     const shareData = {
       title: "Kradəl",
-      text: "A friend thought Kradəl could help — here's how to get connected to support for you and your baby.",
+      text: "A friend thought Kradəl could help. Here's how to get connected to support for you and your baby.",
       url,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -33,7 +33,7 @@ export default function ReferFriendCard() {
           Know someone who could use Kradəl?
         </div>
         <div style={{ fontSize: 12.5, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.55, marginBottom: 12 }}>
-          Share a link that points a friend toward our community partners — they&apos;ll help her get connected.
+          Share a link that points a friend toward our community partners. They&apos;ll help her get connected.
         </div>
         <button
           onClick={handleShare}

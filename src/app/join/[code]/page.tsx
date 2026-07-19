@@ -114,7 +114,7 @@ export default function JoinPage() {
           This invitation can&apos;t be opened
         </div>
         <div style={{ fontSize: 14, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 24 }}>
-          This invitation link can&apos;t be used right now. Please reach out to the organization that referred you — they&apos;ll be able to help you get set up.
+          This invitation link can&apos;t be used right now. Please reach out to the organization that referred you. They&apos;ll be able to help you get set up.
         </div>
         <button onClick={() => router.push("/find-help")} style={btnGhost}>Find support near you</button>
       </div>,
@@ -149,7 +149,7 @@ export default function JoinPage() {
           {invitedBy}
         </div>
         <div style={{ fontSize: 13, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-          Create your account to access curated support for your pregnancy and motherhood journey — always free.
+          Create your account to access curated support for your pregnancy and motherhood journey. Always free.
         </div>
       </div>
 

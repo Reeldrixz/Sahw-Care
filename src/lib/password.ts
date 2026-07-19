@@ -8,7 +8,7 @@ export function validatePassword(password: string): string | null {
     return "Please choose a longer password (at least 8 characters).";
   }
   if (BLOCKLIST.has(password)) {
-    return "This password is too common — please choose another.";
+    return "This password is too common. Please choose another.";
   }
   return null;
 }

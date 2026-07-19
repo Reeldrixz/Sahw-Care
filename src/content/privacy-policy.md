@@ -59,7 +59,7 @@ We are committed to this disclosure: any difference between what you contribute 
 
 **Lane 2: Support Kradəl directly**
 
-Running a platform has real costs — payment processing fees, hosting, fulfilment time, and the day-to-day work of keeping things operating. Some donors want to contribute specifically to keep Kradəl running. There is a separate "Support Kradəl" contribution flow for this purpose.
+Running a platform has real costs: payment processing fees, hosting, fulfilment time, and the day-to-day work of keeping things operating. Some donors want to contribute specifically to keep Kradəl running. There is a separate "Support Kradəl" contribution flow for this purpose.
 
 Contributions made through this lane:
 
@@ -86,11 +86,11 @@ Bundles are NOT funded by Kradəl's own profit (we don't take any from item cont
 
 **How Bundles work**
 
-- Pre-curated by stage: Pregnancy bundle, Newborn (0–3 months) bundle, Postpartum recovery bundle. Each contains 4–6 items from our catalogue.
+- Pre-curated by stage: Pregnancy bundle, Newborn (0-3 months) bundle, Postpartum recovery bundle. Each contains 4 to 6 items from our catalogue.
 - Recipient selection is automatic. An algorithm selects mothers from a hybrid pool: mothers with active registers whose high-need items have been unfunded for a long time, AND mothers signed up on Kradəl who don't have a register yet.
 - Each mother receives at most one bundle. The algorithm doesn't repeat selections until all eligible mothers have received one and a new round begins.
-- Recipients are notified, asked to confirm shipping address (per the same address-handling rules as registers — see section 5), and the bundle is shipped from Amazon Business or another vendor.
-- Bundles are attributed as "Funded by Kradəl supporters" — no individual donor names are attached, since bundles are funded by accumulated surplus from many contributions.
+- Recipients are notified, asked to confirm shipping address (per the same address-handling rules as registers, see section 5), and the bundle is shipped from Amazon Business or another vendor.
+- Bundles are attributed as "Funded by Kradəl supporters". No individual donor names are attached, since bundles are funded by accumulated surplus from many contributions.
 
 ### 2.3 What Kradəl does and does not earn
 
@@ -118,7 +118,7 @@ We collect different types of information depending on whether you are a mother 
 - Phone number
 - A profile photo, if you choose to upload one
 - Your city or general location (for matching you with relevant content)
-- Account password (stored using industry-standard one-way encryption — we never see your actual password)
+- Account password (stored using industry-standard one-way encryption, so we never see your actual password)
 
 **Mothers (when you create a register)**
 
@@ -126,7 +126,7 @@ We collect different types of information depending on whether you are a mother 
 - The city you are based in
 - The items you are looking for support with
 - Identity verification documents (we describe how these are handled in section 3.4)
-- A delivery address — this is sensitive and we describe its handling in detail in section 5
+- A delivery address. This is sensitive, and we describe its handling in detail in section 5
 
 **Donors (when you contribute or share items)**
 
@@ -209,7 +209,7 @@ Bundles distribution requires a different set of data flows. To select bundle re
 - Her city and stage (Pregnancy, Newborn, Postpartum) to match her with the appropriate bundle
 - Her shipping address, asked at the time of bundle confirmation, with the same handling and retention rules as register addresses
 
-Bundle recipient selection is automated. An algorithm picks based on signup recency, register status, and need indicators — there is no human discretion that could introduce bias or favoritism. We commit to publishing the algorithm's selection criteria publicly so the process is auditable.
+Bundle recipient selection is automated. An algorithm picks based on signup recency, register status, and need indicators. There is no human discretion that could introduce bias or favoritism. We commit to publishing the algorithm's selection criteria publicly so the process is auditable.
 
 ### 4.4 To keep the platform safe
 
@@ -272,7 +272,7 @@ You may decline a bundle if offered. There is no penalty or impact on your eligi
 
 We want to be very clear: donors never see your delivery address. Not the street, not the postal code, not the city. Donors see your first name, your general city (which you choose to display), and what items you need. The shipping logistics are handled entirely by Kradəl.
 
-This is enforced at multiple levels of our system: in our database queries, in our application code, and in the way our software is structured. It is not just a promise — it is built into how the platform works.
+This is enforced at multiple levels of our system: in our database queries, in our application code, and in the way our software is structured. It is not just a promise. It is built into how the platform works.
 
 ### 5.4 Your address can be any address you control
 
@@ -291,9 +291,9 @@ Your choice is final.
 
 The only people who see your full address are:
 
-- You — when you set or update it, and on your own register's settings page so you can verify what is on file
-- The Kradəl operator (one person, the platform's founder) — only when an item you've funded is being prepared for purchase, and only on the operational dashboard used to place orders
-- The shipping carrier — when they actually deliver the package
+- You: when you set or update it, and on your own register's settings page so you can verify what is on file
+- The Kradəl operator (one person, the platform's founder): only when an item you've funded is being prepared for purchase, and only on the operational dashboard used to place orders
+- The shipping carrier: when they actually deliver the package
 
 That is the complete list. No advertising partners. No data brokers. No analytics services. No machine learning training. No other team members.
 
@@ -302,7 +302,7 @@ That is the complete list. No advertising partners. No data brokers. No analytic
 We retain delivery addresses only as long as needed for shipping:
 
 - For Mode 1 (per-shipment): the address is purged within 24 hours after the carrier confirms delivery.
-- For Mode 2 (per-register saved): the address is purged when your register reaches a final state — when all items are delivered, when you manually close the register, when 90 days pass with no activity, or when you delete your account.
+- For Mode 2 (per-register saved): the address is purged when your register reaches a final state: when all items are delivered, when you manually close the register, when 90 days pass with no activity, or when you delete your account.
 - For bundle deliveries: the address is purged within 24 hours of the bundle being confirmed delivered.
 
 After purge, we keep a partial audit record consisting of: city, province, country, the first three characters of the postal code, and a one-way encrypted hash of the original full address. This record is sufficient for us to investigate a chargeback or shipping dispute ("yes, an item shipped to a Toronto M5V address on this date") but cannot be reversed to your full address. We retain audit records for 7 years to comply with Canadian financial-record retention requirements.
@@ -321,7 +321,7 @@ The Discover feature is separate from Registers and Bundles. On Discover, donors
 
 Important privacy notes about Discover:
 
-- Pickups happen at public locations only — community centres, libraries, coffee shops, parks, etc. — not at anyone's home.
+- Pickups happen at public locations only: community centres, libraries, coffee shops, parks, and so on. Never at anyone's home.
 - We do not collect home addresses for Discover. There is no place to enter one.
 - Mothers and donors see each other's first name and the agreed pickup location only.
 - Coordination messages happen inside Kradəl and are visible to operators for safety review when reports are filed.
@@ -414,8 +414,8 @@ If you are selected to receive a Bundle, you may decline it. There is no penalty
 
 You have the right to file a complaint:
 
-- First with us — email jimohidris2010@gmail.com and we will respond within 30 days.
-- With the Office of the Privacy Commissioner of Canada — priv.gc.ca, 1-800-282-1376.
+- First with us: email jimohidris2010@gmail.com and we will respond within 30 days.
+- With the Office of the Privacy Commissioner of Canada: priv.gc.ca, 1-800-282-1376.
 - With your provincial privacy commissioner (Quebec, Alberta, British Columbia each have their own).
 
 We will not retaliate against you for filing a complaint.
@@ -428,7 +428,7 @@ We take reasonable security measures to protect your information against loss, t
 
 - Encryption of data in transit (HTTPS) and at rest (database-level encryption via Neon)
 - Industry-standard password hashing (bcrypt)
-- Access controls — only the operator and authorized service providers can read sensitive data
+- Access controls: only the operator and authorized service providers can read sensitive data
 - Regular software updates to fix known security issues
 - Database backups in case of data loss
 - Audit logs of access to sensitive operations like address lookups
@@ -534,7 +534,7 @@ We aim to respond to all privacy inquiries within 30 days. If your request is ur
 
 If you are not satisfied with our response, you may contact:
 
-- The Office of the Privacy Commissioner of Canada — priv.gc.ca, 1-800-282-1376
+- The Office of the Privacy Commissioner of Canada: priv.gc.ca, 1-800-282-1376
 - Your provincial privacy commissioner (Quebec, Alberta, British Columbia)
 
 Thank you for trusting us with your information. We take this responsibility seriously.

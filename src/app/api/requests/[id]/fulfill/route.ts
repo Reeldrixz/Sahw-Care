@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     data: {
       userId:            request.requesterId,
       type:              "FULFILLMENT_PENDING",
-      message:           `${request.requester.name.split(" ")[0]}, your donor says they've sent your item — please confirm you received it.`,
+      message:           `${request.requester.name.split(" ")[0]}, your donor says they've sent your item. Please confirm you received it.`,
       link:              `/?confirm=${requestId}`,
       triggeredByUserId: auth.userId,
     },

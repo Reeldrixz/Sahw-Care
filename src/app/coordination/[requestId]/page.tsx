@@ -42,11 +42,11 @@ interface Coordination {
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING:           "Waiting for donor to confirm",
-  LOCATION_CONFIRMED: "Location agreed — propose a time",
-  TIME_PROPOSED:     "Time proposed — waiting for confirmation",
+  LOCATION_CONFIRMED: "Location agreed. Propose a time",
+  TIME_PROPOSED:     "Time proposed. Waiting for confirmation",
   SCHEDULED:         "Meetup scheduled ✓",
   DONOR_READY:       "Donor is at the location",
-  DELIVERED:         "Item handed over — please confirm",
+  DELIVERED:         "Item handed over. Please confirm",
   CONFIRMED:         "Pickup complete ✓",
   CANCELLED:         "Coordination cancelled",
   REPORTED:          "Under review by Kradəl team",
@@ -88,9 +88,9 @@ const REPORT_LABELS: Record<string, string> = {
 };
 
 const TIME_BLOCKS = [
-  { key: "MORNING",   label: "Morning", sub: "8am–12pm" },
-  { key: "AFTERNOON", label: "Afternoon", sub: "12pm–5pm" },
-  { key: "EVENING",   label: "Evening", sub: "5pm–8pm" },
+  { key: "MORNING",   label: "Morning", sub: "8am-12pm" },
+  { key: "AFTERNOON", label: "Afternoon", sub: "12pm-5pm" },
+  { key: "EVENING",   label: "Evening", sub: "5pm-8pm" },
 ];
 
 const AVATAR_COLORS = ["#1a7a5e", "#2a9d7f", "#d97706", "#6366f1", "#f43f5e"];
@@ -125,9 +125,9 @@ function fmtTime(iso: string | null): string {
 function timeBlock(iso: string | null): string {
   if (!iso) return "";
   const h = new Date(iso).getHours();
-  if (h < 12) return "Morning (8am–12pm)";
-  if (h < 17) return "Afternoon (12pm–5pm)";
-  return "Evening (5pm–8pm)";
+  if (h < 12) return "Morning (8am-12pm)";
+  if (h < 17) return "Afternoon (12pm-5pm)";
+  return "Evening (5pm-8pm)";
 }
 
 function timeBlockKey(iso: string | null): string {
@@ -461,7 +461,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>
-                  {locationLabel}{coord.request.pickupLocationNote ? ` — ${coord.request.pickupLocationNote}` : ""}
+                  {locationLabel}{coord.request.pickupLocationNote ? `, ${coord.request.pickupLocationNote}` : ""}
                 </div>
                 {locationSuggestion && (
                   <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "#555555", marginTop: 2 }}>
@@ -699,7 +699,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                   <textarea
                     rows={2}
                     maxLength={200}
-                    placeholder="Keep it brief — coordination only"
+                    placeholder="Keep it brief. Coordination only"
                     value={noteText}
                     onChange={(e) => { setNoteText(e.target.value); setNoteError(""); }}
                     style={{

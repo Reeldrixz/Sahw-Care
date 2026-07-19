@@ -94,7 +94,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       data: {
         userId:            donorId,
         type:              "FULFILLMENT_CONFIRMED",
-        message:           `${request.requester.name.split(" ")[0]} confirmed they received your item — thank you! 💛`,
+        message:           `${request.requester.name.split(" ")[0]} confirmed they received your item. Thank you! 💛`,
         link:              "/",
         triggeredByUserId: recipientId,
       },

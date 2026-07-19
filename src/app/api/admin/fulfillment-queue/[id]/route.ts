@@ -130,7 +130,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
               data: {
                 userId:  donorId,
                 type:    "ITEM_DELIVERED",
-                message: `The register you supported is now fully complete — every item has been delivered to the mother. Thank you!`,
+                message: `The register you supported is now fully complete. Every item has been delivered to the mother. Thank you!`,
                 link:    `/registers/${registerId}`,
               },
             });

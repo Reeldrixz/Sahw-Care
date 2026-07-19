@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     if (!funding) return NextResponse.json({ error: "Funding not found" }, { status: 404 });
     if (funding.status !== "CONFIRMED") return NextResponse.json({ error: "Only CONFIRMED fundings can be refunded" }, { status: 400 });
-    if (!funding.stripePaymentIntentId) return NextResponse.json({ error: "No payment intent on record — cannot refund" }, { status: 400 });
+    if (!funding.stripePaymentIntentId) return NextResponse.json({ error: "No payment intent on record. Cannot refund" }, { status: 400 });
 
     const stripe = getStripe();
     await stripe.refunds.create({ payment_intent: funding.stripePaymentIntentId });
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         data: {
           userId: funding.donorId,
           type: "ADMIN_MESSAGE",
-          message: `Your ${amountStr} contribution to "${item.name}" has been refunded. It will appear on your card in 5–10 days.`,
+          message: `Your ${amountStr} contribution to "${item.name}" has been refunded. It will appear on your card in 5 to 10 days.`,
           link: `/registers/${item.registerId}`,
         },
       });

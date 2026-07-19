@@ -8,7 +8,7 @@ const QUICK_MESSAGES: Record<string, string> = {
   IM_HERE:       "I'm here",
   RUNNING_LATE:  "Running a few minutes late",
   ON_MY_WAY:     "On my way",
-  CANT_MAKE_IT:  "I can't make this time — can we reschedule?",
+  CANT_MAKE_IT:  "I can't make this time. Can we reschedule?",
   PICKUP_COMPLETE: "Pickup complete",
 };
 

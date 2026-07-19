@@ -20,7 +20,7 @@ const STEPS = [
   {
     n: "2",
     title: "She lists what she needs",
-    body: "She privately builds a register of specific items for her baby — real essentials, chosen by her.",
+    body: "She privately builds a register of specific items for her baby: real essentials, chosen by her.",
   },
   {
     n: "3",
@@ -132,8 +132,9 @@ export default async function LandingPage() {
             margin: "0 auto 28px",
           }}
         >
-          Kradəl lets anyone, anywhere fund the specific items a mother needs for her baby — purchased and
-          delivered directly to her, with her privacy protected every step of the way.
+          Kradəl lets anyone, from a single donor to a local business, fund the specific items a mother
+          needs for her baby. Each item is purchased and delivered directly to her, with her privacy
+          protected at every step.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link
@@ -238,7 +239,7 @@ export default async function LandingPage() {
             Real items, real homes
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, maxWidth: 560, margin: "0 auto 32px" }}>
-            Every contribution becomes a specific item delivered to a specific family — never a handout,
+            Every contribution becomes a specific item delivered to a specific family. Never a handout,
             always a hand from someone who chose to care.
           </p>
 
@@ -270,6 +271,34 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* ── Care bundles ────────────────────────────────── */}
+      <section style={{ padding: "52px 22px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 700, margin: "0 0 12px", color: INK }}>
+            Care bundles, backed by local businesses
+          </h2>
+          <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, maxWidth: 560, margin: "0 auto 28px" }}>
+            Kradəl also assembles curated care bundles for pregnancy, birth, and the newborn months. Each
+            bundle is delivered free to referred mothers, funded by community business sponsors who stand
+            behind them.
+          </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link
+              href="/bundles"
+              style={{ fontFamily: SANS, fontSize: 15, fontWeight: 800, color: "#fff", background: GREEN, padding: "14px 28px", borderRadius: 26, textDecoration: "none" }}
+            >
+              Explore bundles
+            </Link>
+            <Link
+              href="/partners"
+              style={{ fontFamily: SANS, fontSize: 15, fontWeight: 800, color: GREEN, background: "#fff", border: `1.5px solid ${GREEN}`, padding: "14px 28px", borderRadius: 26, textDecoration: "none" }}
+            >
+              Become a partner
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── Get involved CTA ────────────────────────────── */}
       <section style={{ background: CREAM_DEEP, padding: "52px 22px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
@@ -277,7 +306,7 @@ export default async function LandingPage() {
             A small gift, delivered with dignity
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, margin: "0 0 26px" }}>
-            Join people around the world funding the exact things a mother has asked for — or, if you support
+            Join people around the world funding the exact things a mother has asked for. Or, if you support
             families directly, learn how to connect someone to Kradəl.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>

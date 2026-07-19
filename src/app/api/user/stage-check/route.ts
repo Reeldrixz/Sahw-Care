@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     circleId:     newCircle.id,
     toddler:      isToddler,
     message:      isToddler
-      ? "You're in the Little Steps circle — our most experienced moms!"
+      ? "You're in the Little Steps circle. Our most experienced moms!"
       : `Your circle has updated! Welcome to ${newStageName} 🎉 Your journey continues…`,
   });
 }

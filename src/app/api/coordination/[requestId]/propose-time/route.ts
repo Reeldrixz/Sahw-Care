@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
 
   // Notify the other party
   const otherUserId = user.userId === donorId ? recipientId : donorId;
-  const TB_LABELS: Record<string, string> = { MORNING: "Morning (8am–12pm)", AFTERNOON: "Afternoon (12pm–5pm)", EVENING: "Evening (5pm–8pm)" };
+  const TB_LABELS: Record<string, string> = { MORNING: "Morning (8am-12pm)", AFTERNOON: "Afternoon (12pm-5pm)", EVENING: "Evening (5pm-8pm)" };
   const timeBlockLabel = TB_LABELS[timeBlock] ?? timeBlock;
   prisma.notification.create({
     data: {

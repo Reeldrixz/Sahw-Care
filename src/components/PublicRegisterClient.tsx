@@ -28,13 +28,13 @@ function getStageLine(dueDate: string) {
 function getWhyItMatters(category: string, name: string): string {
   const cat = category.toLowerCase();
   const n = name.toLowerCase();
-  if (cat.includes("diaper") || n.includes("diaper")) return "Newborns go through 8–12 diapers a day — one of the most urgent needs.";
+  if (cat.includes("diaper") || n.includes("diaper")) return "Newborns go through 8 to 12 diapers a day. This is one of the most urgent needs.";
   if (cat.includes("feeding") || n.includes("formula") || n.includes("breast")) return "Reliable feeding equipment is essential for a healthy start.";
-  if (cat.includes("sleep") || n.includes("crib") || n.includes("bassinet") || n.includes("mattress")) return "Safe sleep is critical for newborns — this protects baby every night.";
+  if (cat.includes("sleep") || n.includes("crib") || n.includes("bassinet") || n.includes("mattress")) return "Safe sleep is critical for newborns. This protects baby every night.";
   if (cat.includes("clothing") || n.includes("outfit") || n.includes("clothing")) return "Babies grow fast and need warm, comfortable layers from day one.";
   if (cat.includes("bath") || n.includes("bath")) return "A safe bath setup makes hygiene routines easier.";
   if (cat.includes("health") || n.includes("thermometer")) return "Health essentials on hand give peace of mind.";
-  if (cat.includes("carrier") || n.includes("carrier") || n.includes("stroller") || n.includes("pram")) return "Mobility matters — this keeps baby close while moving around.";
+  if (cat.includes("carrier") || n.includes("carrier") || n.includes("stroller") || n.includes("pram")) return "Mobility matters. This keeps baby close while moving around.";
   return "Every item here was chosen because it makes a real difference in the first weeks.";
 }
 
@@ -95,7 +95,7 @@ export default function PublicRegisterClient({
     const url = typeof window !== "undefined" ? `${window.location.origin}/r/${register.id}` : shareUrl;
     const shareData = {
       title: `${firstName}'s Register on Kradəl`,
-      text: `Help provide real essentials for ${firstName}'s baby — every item is a genuine need.`,
+      text: `Help provide real essentials for ${firstName}'s baby. Every item is a genuine need.`,
       url,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -165,7 +165,7 @@ export default function PublicRegisterClient({
             <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
               {register.intro?.trim()
                 ? register.intro
-                : `Every item on this register is something ${firstName} has identified as a real need — a preparation list for her baby's first weeks, not a wish list. Your contribution goes directly toward purchasing and delivering these items to her.`}
+                : `Every item on this register is something ${firstName} has identified as a real need: a preparation list for her baby's first weeks, not a wish list. Your contribution goes directly toward purchasing and delivering these items to her.`}
             </div>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function PublicRegisterClient({
             {[
               "A frontline partner refers a mother and verifies her need.",
               "She privately lists the specific items she needs for her baby.",
-              "You fund an item — Kradəl purchases it and delivers it to her door.",
+              "You fund an item. Kradəl purchases it and delivers it to her door.",
             ].map((line, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <div style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#e8f5f1", color: "#1a7a5e", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Nunito, sans-serif" }}>{i + 1}</div>
@@ -304,7 +304,7 @@ export default function PublicRegisterClient({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <ShieldCheck size={14} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-              {firstName}&apos;s address and contact details are kept private — Kradəl handles delivery directly.
+              {firstName}&apos;s address and contact details are kept private. Kradəl handles delivery directly.
             </span>
           </div>
         </div>
