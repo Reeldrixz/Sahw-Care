@@ -271,6 +271,34 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* ── Care bundles ────────────────────────────────── */}
+      <section style={{ padding: "52px 22px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: SERIF, fontSize: 28, fontWeight: 700, margin: "0 0 12px", color: INK }}>
+            Care bundles, backed by local businesses
+          </h2>
+          <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, maxWidth: 560, margin: "0 auto 28px" }}>
+            Kradəl also assembles curated care bundles for pregnancy, birth, and the newborn months. Each
+            bundle is delivered free to referred mothers, funded by community business sponsors who stand
+            behind them.
+          </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Link
+              href="/bundles"
+              style={{ fontFamily: SANS, fontSize: 15, fontWeight: 800, color: "#fff", background: GREEN, padding: "14px 28px", borderRadius: 26, textDecoration: "none" }}
+            >
+              Explore bundles
+            </Link>
+            <Link
+              href="/partners"
+              style={{ fontFamily: SANS, fontSize: 15, fontWeight: 800, color: GREEN, background: "#fff", border: `1.5px solid ${GREEN}`, padding: "14px 28px", borderRadius: 26, textDecoration: "none" }}
+            >
+              Become a partner
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── Get involved CTA ────────────────────────────── */}
       <section style={{ background: CREAM_DEEP, padding: "52px 22px" }}>
         <div style={{ maxWidth: 720, margin: "0 auto", textAlign: "center" }}>
