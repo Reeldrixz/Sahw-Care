@@ -92,7 +92,7 @@ export default function RegisterIntroEditor({
           <div style={{ fontSize: 12.5, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{intro}</div>
         ) : (
           <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-            You haven&apos;t added a personal intro yet — donors currently see a default message. Add your own words to tell them, in your voice, what this register means to you.
+            You haven&apos;t added a personal intro yet. Donors currently see a default message. Add your own words to tell them, in your voice, what this register means to you.
           </div>
         )}
       </div>
@@ -104,7 +104,7 @@ export default function RegisterIntroEditor({
     <div style={{ margin: "16px 16px 0", background: "var(--white)", borderRadius: 12, border: "1.5px solid var(--green)", padding: "16px" }}>
       <div style={{ fontSize: 14, fontWeight: 800, fontFamily: "Lora, serif", color: "#1a3a2e", marginBottom: 4 }}>Write your intro</div>
       <div style={{ fontSize: 11.5, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginBottom: 10 }}>
-        Tell donors, in your own words, what this register means to you. You can polish it with a light AI edit — it only fixes grammar and tightens wording, never changes your story. You always have the final say.
+        Tell donors, in your own words, what this register means to you. You can polish it with a light AI edit. It only fixes grammar and tightens wording, never changes your story. You always have the final say.
       </div>
 
       <textarea

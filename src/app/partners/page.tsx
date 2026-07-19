@@ -40,7 +40,7 @@ interface Tier {
 const TIERS: Tier[] = [
   {
     name: "Bronze",
-    price: "$100–250",
+    price: "$100 to $250",
     cadence: "one-off",
     scope: "1 bundle · 1 slot",
     accent: "#b45309",
@@ -48,7 +48,7 @@ const TIERS: Tier[] = [
   },
   {
     name: "Silver",
-    price: "$500–1,250",
+    price: "$500 to $1,250",
     cadence: "one-off",
     scope: "1 bundle · 5 slots",
     accent: "#6b7280",
@@ -56,7 +56,7 @@ const TIERS: Tier[] = [
   },
   {
     name: "Gold",
-    price: "$2,000–2,600",
+    price: "$2,000 to $2,600",
     cadence: "one-off",
     scope: "Up to 3 bundles · 15 slots",
     accent: "#a16207",
@@ -111,7 +111,7 @@ export default function PartnersPage() {
           Local businesses stand behind Kradəl&apos;s mothers
         </h1>
         <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.7, color: MUTED, margin: "0 0 8px" }}>
-          Businesses fund curated care bundles — real essentials for pregnancy, birth, and the newborn months.
+          Businesses fund curated care bundles: real essentials for pregnancy, birth, and the newborn months.
           Mothers receive them completely free, and their applications always stay private. Recognition goes to
           the businesses that make it possible: your name, your story, your community impact.
         </p>
@@ -160,7 +160,7 @@ export default function PartnersPage() {
           <span aria-hidden style={{ fontSize: 18 }}>🧾</span>
           <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.65, color: INK, margin: 0 }}>
             <strong>Full transparency.</strong> Every bundle is funded at the true retail cost of its items plus a
-            7% platform operations fee — itemized, line by line, on your receipt.
+            7% platform operations fee. Everything is itemized, line by line, on your receipt.
           </p>
         </div>
       </section>

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   });
   if (recentCount >= 5) {
     return NextResponse.json({
-      error: "You've submitted several suggestions today — try again tomorrow.",
+      error: "You've submitted several suggestions today. Try again tomorrow.",
     }, { status: 429 });
   }
 

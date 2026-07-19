@@ -79,7 +79,7 @@ export default function CircleIdentityModal({ onDone }: Props) {
                 How do you see yourself?
               </div>
               <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.6, marginBottom: 24 }}>
-                This shows as a small label next to your name in your circle — only visible to other moms. Totally optional.
+                This shows as a small label next to your name in your circle. Only visible to other moms. Totally optional.
               </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
@@ -136,7 +136,7 @@ export default function CircleIdentityModal({ onDone }: Props) {
                 onClick={handleSkip}
                 style={{ width: "100%", marginTop: 14, padding: "10px", background: "none", border: "none", color: "var(--light)", fontSize: 12, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
               >
-                Skip for now — remind me later
+                Skip for now, remind me later
               </button>
             </>
           )}
@@ -148,7 +148,7 @@ export default function CircleIdentityModal({ onDone }: Props) {
                 What should we call you?
               </div>
               <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.6, marginBottom: 24 }}>
-                Your circle name — up to 20 characters. A nickname, first name, or whatever feels right.
+                Your circle name, up to 20 characters. A nickname, first name, or whatever feels right.
               </p>
 
               <input

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   const isFullyVerified = (requester.verificationLevel ?? 0) >= 2;
   if (!isFullyVerified && (!(requester.phoneVerified || requester.emailVerified) || !requester.avatar)) {
     return NextResponse.json({
-      error: "Please complete your profile first — verify your phone or email and add a profile photo.",
+      error: "Please complete your profile first. Verify your phone or email and add a profile photo.",
       code: "LAYER1_INCOMPLETE",
     }, { status: 403 });
   }

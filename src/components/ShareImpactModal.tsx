@@ -19,8 +19,8 @@ interface Props {
 const SHARE_TEXT: Record<ImpactVariant, (name: string, s: ImpactStats) => string> = {
   discover: (n, s) => `I've shared essentials with ${s.mothersSupported} ${s.mothersSupported === 1 ? "mother" : "mothers"} through Kradəl Discover 💛 Every mother deserves support. Join me:`,
   register: (n, s) => `I've helped meet ${s.needsMet} essential ${s.needsMet === 1 ? "need" : "needs"} for mothers through Kradəl Register 💛 Join me:`,
-  combined: (n, s) => `I've supported ${s.mothersSupported} mothers through Kradəl 💛 — ${s.essentialsShared} essentials shared across Discover and Register. Join me:`,
-  none:     ()     => `I just joined Kradəl 💛 — a community helping mothers get the essentials they need. Join us:`,
+  combined: (n, s) => `I've supported ${s.mothersSupported} mothers through Kradəl 💛. ${s.essentialsShared} essentials shared across Discover and Register. Join me:`,
+  none:     ()     => `I just joined Kradəl 💛, a community helping mothers get the essentials they need. Join us:`,
 };
 
 const VARIANT_LABEL: Record<ImpactVariant, string> = {
@@ -207,7 +207,7 @@ export default function ShareImpactModal({ onClose }: Props) {
                 display: "flex", alignItems: "center", gap: 7,
               }}>
                 <Camera size={13} style={{ flexShrink: 0 }} />
-                Download and share directly from your camera roll — works on Instagram, WhatsApp, and Facebook.
+                Download and share directly from your camera roll. Works on Instagram, WhatsApp, and Facebook.
               </div>
 
               {/* Social share buttons */}

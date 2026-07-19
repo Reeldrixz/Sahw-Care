@@ -148,7 +148,7 @@ export default function AccountPage() {
                 </p>
                 {devOtp && (
                   <div style={{ background: "var(--yellow-light)", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 13, color: "#b8860b", fontWeight: 700 }}>
-                    Dev mode — code: <strong>{devOtp}</strong>
+                    Dev mode code: <strong>{devOtp}</strong>
                   </div>
                 )}
                 <div className="form-group">

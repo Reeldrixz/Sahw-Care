@@ -165,7 +165,7 @@ async function handleInquiryEvent(
       data: {
         userId:  user.id,
         type:    "VERIFICATION_APPROVED",
-        message: "Your identity has been verified — you're all set",
+        message: "Your identity has been verified. You're all set",
         link:    "/profile",
       },
     });

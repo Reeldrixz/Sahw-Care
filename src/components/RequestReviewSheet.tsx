@@ -281,7 +281,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                 />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                   <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
-                    Keep it brief — logistics only.
+                    Keep it brief. Logistics only.
                   </span>
                   <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
                     {note.length}/100

@@ -259,7 +259,7 @@ export default function DonateModal({ onClose, onSubmit }: DonateModalProps) {
               <label style={label}>Description</label>
               <textarea
                 style={{ ...focusBorder("desc"), resize: "none", minHeight: 80 }}
-                placeholder="Any details — expiry date, size, brand, reason for donating..."
+                placeholder="Any details: expiry date, size, brand, reason for donating..."
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
                 onFocus={() => setFocused("desc")}
