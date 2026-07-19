@@ -10,6 +10,8 @@ const PUBLIC_PATHS = [
   "/browse",
   // referral landing: a referred mother reaches this while logged out
   "/join",
+  // public community-partners (sponsorship) marketing page
+  "/partners",
   // auth flows that must work for logged-out users
   "/api/auth/login",
   "/api/auth/register",

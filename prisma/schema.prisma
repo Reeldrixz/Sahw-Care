@@ -1430,6 +1430,8 @@ model Bundle {
   targetPriceCad  Int?        // internal/sponsor-facing target price, whole CAD dollars
   slotsPerMonth   Int         @default(10)
   isActive        Boolean     @default(true)
+  sponsorName     String?     // admin-set, manual — public recognition on the card
+  sponsorUrl      String?     // optional link for sponsor recognition (http/https only)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

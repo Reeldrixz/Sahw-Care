@@ -17,6 +17,15 @@ interface BundleItem {
   description: string; contentsMarkdown: string;
   slotsPerMonth: number; slotsUsed: number; slotsRemaining: number;
   itemCount: number;
+  sponsorName?: string | null; sponsorUrl?: string | null;
+}
+
+// Only linkify sponsor URLs that are http(s); never a javascript:/data: sink.
+// (Sponsor text is rendered as JSX and auto-escaped by React.)
+function safeHttpUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const t = url.trim();
+  return /^https?:\/\//i.test(t) ? t : null;
 }
 
 type StageFilter = "ALL" | BundleStage;
@@ -220,15 +229,15 @@ export default function BundlesPage() {
                 }}>
                   Browse Programs
                 </a>
-                <button style={{
-                  flex: 1, padding: "12px 0",
+                <a href="/partners" style={{
+                  flex: 1, padding: "12px 0", textAlign: "center", textDecoration: "none",
                   background: "rgba(255,255,255,0.15)",
                   border: "1.5px solid rgba(255,255,255,0.4)",
                   borderRadius: 12, fontSize: 14, fontWeight: 800,
                   color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif",
                 }}>
                   Become a Sponsor
-                </button>
+                </a>
               </div>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -510,6 +519,29 @@ export default function BundlesPage() {
                         )}
                       </div>
 
+                      {/* Sponsor recognition — quiet line celebrating the business + the bundle.
+                          Never implies a mother owes anything; bundles remain completely free. */}
+                      <div style={{ marginBottom: 12, paddingTop: 10, borderTop: "1px dashed #efeae3" }}>
+                        {b.sponsorName ? (
+                          <div style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                            This month&apos;s {b.name} is made possible by{" "}
+                            {safeHttpUrl(b.sponsorUrl) ? (
+                              <a href={safeHttpUrl(b.sponsorUrl)!} target="_blank" rel="noopener noreferrer"
+                                 style={{ color: th.text, fontWeight: 700, textDecoration: "underline" }}>
+                                {b.sponsorName}
+                              </a>
+                            ) : (
+                              <span style={{ color: th.text, fontWeight: 700 }}>{b.sponsorName}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <a href="/partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
+                            This bundle is open for community sponsorship{" "}
+                            <span style={{ color: th.text, fontWeight: 700 }}>→</span>
+                          </a>
+                        )}
+                      </div>
+
                       {/* Actions */}
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <button
@@ -672,14 +704,15 @@ export default function BundlesPage() {
               ))}
             </div>
 
-            <button style={{
+            <a href="/partners" style={{
+              display: "block", textAlign: "center", textDecoration: "none",
               width: "100%", padding: "11px 0", background: "transparent",
               border: "1.5px solid rgba(255,255,255,0.5)", borderRadius: 12,
               fontSize: 13, fontWeight: 800, color: "white", cursor: "pointer",
               fontFamily: "Nunito, sans-serif",
             }}>
               Learn about CSR benefits →
-            </button>
+            </a>
           </div>
         </div>
 
@@ -695,6 +728,21 @@ export default function BundlesPage() {
                 <div style={{ fontSize: 11, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>{desc}</div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── SPONSORSHIP FRAMING (restrained) ───────────────────────────── */}
+        <div style={{ margin: "12px 16px 0" }}>
+          <div style={{ background: "#f8faf9", border: "1px solid #e0ede8", borderRadius: 14, padding: "18px 20px", textAlign: "center" }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+              Local businesses stand behind these bundles
+            </div>
+            <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 12 }}>
+              Every bundle is fully funded by our community partners — so it reaches a mother completely free.
+            </div>
+            <a href="/partners" style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
+              Meet our partners →
+            </a>
           </div>
         </div>
 

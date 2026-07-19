@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
       targetPriceCad: b.targetPriceCad,
       slotsPerMonth: b.slotsPerMonth,
       isActive: b.isActive,
+      sponsorName: b.sponsorName,
+      sponsorUrl: b.sponsorUrl,
       totalApplications: b._count.applications,
       monthPending: pending,
       monthApproved: approved,
@@ -55,19 +57,38 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ bundles: data });
 }
 
-// PATCH — toggle isActive or update slotsPerMonth
+// PATCH — toggle isActive, update slotsPerMonth, or set/clear sponsor fields.
 export async function PATCH(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { id, isActive, slotsPerMonth } = await req.json();
+  const { id, isActive, slotsPerMonth, sponsorName, sponsorUrl } = await req.json();
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  // Sponsor fields are manual/admin-set. Trim; empty string clears (null).
+  // sponsorUrl must be http(s) so it can never become a javascript:/data: sink.
+  let sponsorNameUpdate: { sponsorName: string | null } | undefined;
+  if (sponsorName !== undefined) {
+    const trimmed = typeof sponsorName === "string" ? sponsorName.trim() : "";
+    sponsorNameUpdate = { sponsorName: trimmed.length ? trimmed : null };
+  }
+
+  let sponsorUrlUpdate: { sponsorUrl: string | null } | undefined;
+  if (sponsorUrl !== undefined) {
+    const trimmed = typeof sponsorUrl === "string" ? sponsorUrl.trim() : "";
+    if (trimmed.length && !/^https?:\/\//i.test(trimmed)) {
+      return NextResponse.json({ error: "Sponsor link must start with http:// or https://" }, { status: 400 });
+    }
+    sponsorUrlUpdate = { sponsorUrl: trimmed.length ? trimmed : null };
+  }
 
   const bundle = await prisma.bundle.update({
     where: { id },
     data: {
       ...(isActive !== undefined && { isActive }),
       ...(slotsPerMonth !== undefined && { slotsPerMonth }),
+      ...sponsorNameUpdate,
+      ...sponsorUrlUpdate,
     },
   });
 
