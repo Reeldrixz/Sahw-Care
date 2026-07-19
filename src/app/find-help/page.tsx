@@ -14,12 +14,12 @@ const SANS = "Nunito, sans-serif";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
 
 export const metadata: Metadata = {
-  title: "Find help — Kradəl",
+  title: "Find help · Kradəl",
   description:
     "A friend thought Kradəl could help. Here are the community partners who can connect a mother to support for her baby.",
   alternates: { canonical: `${APP_URL}/find-help` },
   openGraph: {
-    title: "Find help — Kradəl",
+    title: "Find help · Kradəl",
     description: "Community partners who connect mothers to Kradəl support.",
     url: `${APP_URL}/find-help`,
     siteName: "Kradəl",
@@ -117,11 +117,11 @@ export default async function FindHelpPage({
         </h1>
         {fromOnboarding && (
           <p style={{ fontFamily: SANS, fontSize: 16.5, lineHeight: 1.65, color: GREEN, fontWeight: 700, margin: "0 auto 16px", maxWidth: 560 }}>
-            Support for you and your baby starts with a caring introduction from a partner near you — here&apos;s your next step.
+            Support for you and your baby starts with a caring introduction from a partner near you. Here&apos;s your next step.
           </p>
         )}
         <p style={{ fontFamily: SANS, fontSize: 16.5, lineHeight: 1.65, color: MUTED, margin: "0 auto", maxWidth: 560 }}>
-          Kradəl helps mothers get the specific things they need for their baby — funded by neighbours and
+          Kradəl helps mothers get the specific things they need for their baby, funded by neighbours and
           delivered with dignity. Mothers join through a trusted community partner who offers a warm,
           private introduction. Below are the partners you can reach out to.
         </p>
@@ -205,7 +205,7 @@ export default async function FindHelpPage({
       <section style={{ background: CREAM_DEEP, padding: "40px 22px" }}>
         <div style={{ maxWidth: 620, margin: "0 auto", textAlign: "center" }}>
           <p style={{ fontFamily: SANS, fontSize: 15.5, lineHeight: 1.7, color: MUTED, margin: 0 }}>
-            There&apos;s no form to fill out here and no account to create — you connect through a partner who
+            There&apos;s no form to fill out here and no account to create. You connect through a partner who
             knows your community. They&apos;ll make sure you&apos;re supported every step of the way.
           </p>
         </div>

@@ -101,7 +101,7 @@ function computeStage(user: JourneyUser): StageInfo {
     }
     if (daysLeft > 0) {
       return {
-        label: "Third Trimester — Preparing for Birth",
+        label: "Third Trimester: Preparing for Birth",
         subtitle: "Getting ready for the big day. We're here with you.",
         calendarNote: `${daysLeft} days until your due date`,
       };
@@ -194,16 +194,16 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
     if (daysLeft > 0) {
       return [
         { key: "B03", label: "Third Trimester Preparation Kit", description: "Everything you need as you approach your due date.", actionLabel: "Apply", href: "/bundles" },
-        { key: "B04", label: "Hospital Bag — Mother", description: "Essentials for labour and your hospital stay.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B04", label: "Hospital Bag for Mother", description: "Essentials for labour and your hospital stay.", actionLabel: "Apply", href: "/bundles" },
         { key: "B05", label: "Birth Partner Support Kit", description: "Comfort and tools to help your birth partner support you through labour.", actionLabel: "Apply", href: "/bundles" },
         { key: "reg", label: "Create a register for hospital essentials", description: "Let your community support you with specific items.", actionLabel: "Create", href: "/registers/new" },
       ];
     }
     // labour
     return [
-      { key: "B04", label: "Hospital Bag — Mother", description: "Essentials for labour and your hospital stay.", actionLabel: "Apply", href: "/bundles" },
+      { key: "B04", label: "Hospital Bag for Mother", description: "Essentials for labour and your hospital stay.", actionLabel: "Apply", href: "/bundles" },
       { key: "B05", label: "Birth Partner Support Kit", description: "Comfort and tools to help your birth partner support you through labour.", actionLabel: "Apply", href: "/bundles" },
-      { key: "circles", label: "Connect with other mothers", description: "A community that's been through it — just like you.", actionLabel: "Explore", href: "/circles" },
+      { key: "circles", label: "Connect with other mothers", description: "A community that's been through it. Just like you.", actionLabel: "Explore", href: "/circles" },
     ];
   }
 
@@ -215,7 +215,7 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
       return [
         { key: "B09", label: "Postpartum Recovery Kit", description: "Support for your body and mind in the first weeks.", actionLabel: "Apply", href: "/bundles" },
         { key: "B10", label: "Fourth Trimester Wellness Kit", description: "Self-care and resources to support your mental wellbeing.", actionLabel: "Apply", href: "/bundles" },
-        { key: "B12", label: "Baby Development & Play Kit", description: "Stimulating, developmental toys for babies 0–6 months.", actionLabel: "Apply", href: "/bundles" },
+        { key: "B12", label: "Baby Development & Play Kit", description: "Stimulating, developmental toys for babies 0-6 months.", actionLabel: "Apply", href: "/bundles" },
         { key: "discover", label: "Find postpartum items near you", description: "Browse donated items in your community.", actionLabel: "Browse", href: "/" },
       ];
     }
@@ -265,7 +265,7 @@ const RESOURCES = [
     title: "Postpartum mental health",
     items: [
       { name: "Postpartum Support International (Canada)", url: "https://www.postpartum.net", phone: "1-800-944-4773" },
-      { name: "CAMH — Centre for Addiction and Mental Health", url: "https://www.camh.ca", phone: "1-800-463-2338" },
+      { name: "CAMH (Centre for Addiction and Mental Health)", url: "https://www.camh.ca", phone: "1-800-463-2338" },
       { name: "Crisis Services Canada", url: "https://www.crisisservicescanada.ca", phone: "1-833-456-4566" },
     ],
   },
@@ -275,7 +275,7 @@ const RESOURCES = [
     title: "Breastfeeding support",
     items: [
       { name: "La Leche League Canada", url: "https://www.lllc.ca", phone: "Find local group at lllc.ca" },
-      { name: "Public Health Ontario — Telehealth", url: "https://www.ontario.ca/page/telehealth-ontario", phone: "1-866-797-0000 (24/7 nurse line)" },
+      { name: "Public Health Ontario: Telehealth", url: "https://www.ontario.ca/page/telehealth-ontario", phone: "1-866-797-0000 (24/7 nurse line)" },
     ],
   },
   {
@@ -771,7 +771,7 @@ export default function JourneyPage() {
                     </div>
                   ) : (
                     <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-                      Full this month — check back next month
+                      Full this month. Check back next month
                     </div>
                   )}
                 </div>
