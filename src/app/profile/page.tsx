@@ -163,7 +163,7 @@ function DonorStatusCard() {
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>{label}</div>
           <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
-            {fullyVerified ? "Fully verified donor" : verified ? "Verified donor" : "Unverified — complete verification to unlock more"}
+            {fullyVerified ? "Fully verified donor" : verified ? "Verified donor" : "Unverified. Complete verification to unlock more"}
           </div>
         </div>
         {verified && (
@@ -275,7 +275,7 @@ function ManualReviewStatusCard({ onSubmitSuccess }: { onSubmitSuccess: () => vo
         <Clock size={20} color="#b8860b" style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#b8860b", marginBottom: 2 }}>Under review</div>
-          <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>Your profile is being reviewed by our team. We'll notify you as soon as it's confirmed — this usually takes a short while.</div>
+          <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>Your profile is being reviewed by our team. We'll notify you as soon as it's confirmed. This usually takes a short while.</div>
         </div>
       </div>
     );
@@ -289,7 +289,7 @@ function ManualReviewStatusCard({ onSubmitSuccess }: { onSubmitSuccess: () => vo
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--terra)", marginBottom: 3 }}>Needs another look</div>
           <div style={{ fontSize: 12, color: "var(--terra)", lineHeight: 1.5, marginBottom: 10 }}>
-            {reason ?? "We'd love to take another look — please make sure your contact is verified and your photo is clear, then resubmit."}
+            {reason ?? "We'd love to take another look. Please make sure your contact is verified and your photo is clear, then resubmit."}
           </div>
           {error && <div style={{ fontSize: 12, color: "var(--terra)", fontWeight: 700, marginBottom: 8 }}>{error}</div>}
           <button
@@ -372,7 +372,7 @@ function IdentityVerificationCard() {
         <Clock size={20} color="#b8860b" style={{ flexShrink: 0, marginTop: 1 }} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#b8860b", marginBottom: 2 }}>Verification in progress</div>
-          <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>We&apos;re reviewing your submission — this usually only takes a few minutes. You&apos;ll receive a notification once it&apos;s confirmed.</div>
+          <div style={{ fontSize: 12, color: "#7a5500", lineHeight: 1.5 }}>We&apos;re reviewing your submission. This usually only takes a few minutes. You&apos;ll receive a notification once it&apos;s confirmed.</div>
         </div>
       </div>
     );
@@ -387,7 +387,7 @@ function IdentityVerificationCard() {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: "var(--terra)", marginBottom: 3 }}>Needs another try</div>
           <div style={{ fontSize: 12, color: "var(--terra)", lineHeight: 1.5, marginBottom: 10 }}>
-            We weren&apos;t able to complete your identity verification. Please try again — it only takes a few minutes.
+            We weren&apos;t able to complete your identity verification. Please try again. It only takes a few minutes.
           </div>
           {error && <div style={{ fontSize: 12, color: "var(--terra)", fontWeight: 700, marginBottom: 8 }}>{error}</div>}
           <button
@@ -916,7 +916,7 @@ export default function ProfilePage() {
                 <div>
                   <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 14, color: "#92400e", marginBottom: 4 }}>Account review in progress</div>
                   <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#78350f", lineHeight: 1.55 }}>
-                    We need to confirm a few details before you can receive items or apply for bundles. Our team will be in touch — thank you for your patience.
+                    We need to confirm a few details before you can receive items or apply for bundles. Our team will be in touch. Thank you for your patience.
                   </div>
                 </div>
               </div>
@@ -972,7 +972,7 @@ export default function ProfilePage() {
                       {user.circleContext ? `${user.circleContext} · ` : ""}{user.circleDisplayName?.trim() || user.name.split(" ")[0]}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13, color: "var(--mid)", fontStyle: "italic" }}>Not set — your first name is shown by default</div>
+                    <div style={{ fontSize: 13, color: "var(--mid)", fontStyle: "italic" }}>Not set. Your first name is shown by default</div>
                   )}
                   <button
                     onClick={() => setShowIdentityModal(true)}
@@ -1056,7 +1056,7 @@ export default function ProfilePage() {
               </p>
               {devOtp && (
                 <div style={{ background: "var(--yellow-light)", borderRadius: 10, padding: "8px 14px", marginBottom: 14, fontSize: 13, color: "#b8860b", fontWeight: 700 }}>
-                  Dev mode — code: <strong>{devOtp}</strong>
+                  Dev mode code: <strong>{devOtp}</strong>
                 </div>
               )}
               <div className="form-group">

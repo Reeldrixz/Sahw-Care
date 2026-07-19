@@ -250,7 +250,7 @@ export default function DiscoverPage() {
     if (res.ok) {
       const d = await res.json();
       setPendingRequests((p) => p.filter((r) => r.requestId !== requestId));
-      showToast("Request accepted — recipient has been notified.");
+      showToast("Request accepted. Recipient has been notified.");
       if (d.request?.id) setTimeout(() => router.push(`/coordination/${d.request.id}`), 800);
     } else {
       showToast("Something went wrong");
@@ -296,7 +296,7 @@ export default function DiscoverPage() {
         imageUrl = url;
       } else {
         const upErr = await up.json().catch(() => ({}));
-        showToast((upErr as { error?: string }).error ?? "Photo upload failed — listing saved without photo");
+        showToast((upErr as { error?: string }).error ?? "Photo upload failed. Listing saved without photo");
       }
     }
     const res = await fetch("/api/items", {
@@ -442,7 +442,7 @@ export default function DiscoverPage() {
                 items={toConfirm}
                 onResolved={(reqId, status) => {
                   setToConfirm((p) => p.filter((i) => i.requestId !== reqId));
-                  showToast(status === "VERIFIED" ? "Confirmed received! Thank you." : "Dispute reported — our team will review.");
+                  showToast(status === "VERIFIED" ? "Confirmed received! Thank you." : "Dispute reported. Our team will review.");
                 }}
               />
             </div>
@@ -507,7 +507,7 @@ export default function DiscoverPage() {
                       <div style={{ marginBottom: 12, background: "#e8f5f1", border: "1px solid #1a7a5e", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "flex-start", gap: 10 }}>
                         <Truck size={20} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
                         <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                          This request is for delivery support. The recipient is asking if you can drop the item off near them. They&apos;ve suggested meeting at a <strong>{r.pickupCategoryId ? getCategoryLabel(r.pickupCategoryId) : "public place"}</strong> in their area. Delivery is voluntary — only accept if you can comfortably travel.
+                          This request is for delivery support. The recipient is asking if you can drop the item off near them. They&apos;ve suggested meeting at a <strong>{r.pickupCategoryId ? getCategoryLabel(r.pickupCategoryId) : "public place"}</strong> in their area. Delivery is voluntary. Only accept if you can comfortably travel.
                         </div>
                       </div>
                     )}
@@ -608,7 +608,7 @@ export default function DiscoverPage() {
                   <Lock size={18} color="#b45309" style={{ flexShrink: 0, marginTop: 1 }} />
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: "#92400e" }}>Request limit reached</div>
-                    <div style={{ fontSize: 12, color: "#b45309", marginTop: 2, lineHeight: 1.4 }}>Unlocks in {hoursLeft} hour{hoursLeft === 1 ? "" : "s"} — or sooner when you confirm receipt of pending items.</div>
+                    <div style={{ fontSize: 12, color: "#b45309", marginTop: 2, lineHeight: 1.4 }}>Unlocks in {hoursLeft} hour{hoursLeft === 1 ? "" : "s"}, or sooner when you confirm receipt of pending items.</div>
                   </div>
                 </div>
               );
@@ -629,7 +629,7 @@ export default function DiscoverPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Kradəl Bundles</div>
               <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                12 care programmes — curated essentials delivered free to verified mothers.
+                12 care programmes: curated essentials delivered free to verified mothers.
               </div>
             </div>
             <a href="/bundles" style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap", textDecoration: "none", flexShrink: 0 }}>
@@ -677,7 +677,7 @@ export default function DiscoverPage() {
                     : `No ${selectedCat.display} items near you right now.`}
                 </div>
                 <div style={{ fontSize: 13, color: "#555555", marginBottom: 20, lineHeight: 1.6 }}>
-                  Donors add items regularly — check back soon.
+                  Donors add items regularly. Check back soon.
                 </div>
                 {catIdx !== 0 && (
                   <button
@@ -718,7 +718,7 @@ export default function DiscoverPage() {
             fontSize: 12, color: "#1a1a1a", maxWidth: 220, textAlign: "center",
             lineHeight: 1.5, fontFamily: "Nunito, sans-serif", position: "relative",
           }}>
-            Have something a mother could use? Offer it here — it&apos;s free.
+            Have something a mother could use? Offer it here. It&apos;s free.
             <button
               onClick={(e) => { e.stopPropagation(); dismissTooltip(); }}
               style={{ position: "absolute", top: 6, right: 8, background: "none", border: "none", cursor: "pointer", display: "flex" }}
@@ -780,7 +780,7 @@ export default function DiscoverPage() {
             </div>
             <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 16, fontFamily: "Nunito, sans-serif" }}>This helps us improve matches for everyone.</div>
             {[
-              "Too far — I can't travel to your area",
+              "Too far, I can't travel to your area",
               "Already promised to someone else",
               "Item is no longer available",
               "I'm not a good match for this request",
