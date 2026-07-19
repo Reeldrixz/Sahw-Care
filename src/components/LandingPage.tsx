@@ -132,8 +132,9 @@ export default async function LandingPage() {
             margin: "0 auto 28px",
           }}
         >
-          Kradəl lets anyone, anywhere fund the specific items a mother needs for her baby — purchased and
-          delivered directly to her, with her privacy protected every step of the way.
+          Kradəl lets anyone, from a single donor to a local business, fund the specific items a mother
+          needs for her baby. Each item is purchased and delivered directly to her, with her privacy
+          protected at every step.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link
