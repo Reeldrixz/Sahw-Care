@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 // One-time, server-flagged (betaWelcomeSeenAt) soft banner. Not a modal.
@@ -9,12 +10,25 @@ import { useAuth } from "@/contexts/AuthContext";
 // gate below. Persisted server-side (no localStorage) per hydration lessons.
 export default function BetaWelcomeBanner() {
   const { user, refreshUser } = useAuth();
+  const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
 
   if (!user || user.betaWelcomeSeenAt || hidden) return null;
-  // A new mother's react-joyride tour runs while tourCompletedAt is null —
-  // hold the note until it's done. Donors never take the tour, so they pass.
-  if (user.role === "RECIPIENT" && !user.tourCompletedAt) return null;
+
+  // A new mother's react-joyride tour runs on the register detail page while
+  // tourCompletedAt is null. Donors never take the tour, so they always pass.
+  if (user.role === "RECIPIENT" && !user.tourCompletedAt) {
+    // Never while the tour is on screen.
+    const onTourPage =
+      pathname.startsWith("/registers/") &&
+      !["/registers/new", "/registers/my", "/registers/saved"].includes(pathname);
+    if (onTourPage) return null;
+    // Hold it during her first sitting, but surface it on any later session so
+    // a mother who never finishes the tour still discovers the feedback pill.
+    // createdAt is the "first session" heuristic (well past this on return).
+    const FIRST_SESSION_MS = 60 * 60 * 1000;
+    if (Date.now() - new Date(user.createdAt).getTime() < FIRST_SESSION_MS) return null;
+  }
 
   const dismiss = () => {
     setHidden(true);
