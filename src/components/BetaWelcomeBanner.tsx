@@ -1,0 +1,51 @@
+"use client";
+
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+
+// One-time, server-flagged (betaWelcomeSeenAt) soft banner. Not a modal.
+// Sequencing: donors see it first session; mothers see it only AFTER the
+// register guided tour completes (never during it) — see betaWelcomeSeenAt
+// gate below. Persisted server-side (no localStorage) per hydration lessons.
+export default function BetaWelcomeBanner() {
+  const { user, refreshUser } = useAuth();
+  const [hidden, setHidden] = useState(false);
+
+  if (!user || user.betaWelcomeSeenAt || hidden) return null;
+  // A new mother's react-joyride tour runs while tourCompletedAt is null —
+  // hold the note until it's done. Donors never take the tour, so they pass.
+  if (user.role === "RECIPIENT" && !user.tourCompletedAt) return null;
+
+  const dismiss = () => {
+    setHidden(true);
+    fetch("/api/user/beta-welcome-seen", { method: "POST" })
+      .then(() => refreshUser())
+      .catch(() => { /* flag write is best-effort; local hide already applied */ });
+  };
+
+  return (
+    <div style={{ background: "#e8f5f1", borderBottom: "1px solid #cfe8de" }}>
+      <div style={{
+        maxWidth: 1040, margin: "0 auto", padding: "10px 16px",
+        display: "flex", alignItems: "center", gap: 12,
+        fontFamily: "Nunito, sans-serif",
+      }}>
+        <span aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }}>🌱</span>
+        <p style={{ margin: 0, flex: 1, fontSize: 13, lineHeight: 1.5, color: "#1a5c45" }}>
+          <strong style={{ fontWeight: 800 }}>Kradəl is in beta.</strong> If anything looks broken or confusing,
+          the Feedback button in the corner is always there. Every report genuinely helps us build this right.
+        </p>
+        <button
+          onClick={dismiss}
+          style={{
+            flexShrink: 0, background: "#1a7a5e", color: "white", border: "none",
+            borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 800,
+            cursor: "pointer", fontFamily: "Nunito, sans-serif",
+          }}
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+}

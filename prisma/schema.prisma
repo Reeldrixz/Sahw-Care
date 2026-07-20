@@ -86,6 +86,7 @@ model User {
   // ── cohort / onboarding ──────────────────────────
   onboardingComplete Boolean   @default(false)
   tourCompletedAt    DateTime? // register guided tour seen (finished or skipped); null = not yet
+  betaWelcomeSeenAt  DateTime? // one-time beta welcome note dismissed; null = not yet
   journeyType        String? // "pregnant" | "postpartum" | "donor"
   gender             String    @default("unspecified") // "male" | "female" | "unspecified" — internal only, never shown publicly
   dueDate            DateTime?
