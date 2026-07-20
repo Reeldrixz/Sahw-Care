@@ -46,7 +46,12 @@ export default function BetaFeedbackPill() {
     try { sessionStorage.setItem(SESSION_KEY, "1"); } catch { /* ignore */ }
   };
 
-  const hiddenRoute = pathname.startsWith("/admin") || pathname.startsWith("/report-bug");
+  // Hidden on /admin + /report-bug (redundant), and /coordination (its
+  // full-width bottom action bar would collide with the mobile pill).
+  const hiddenRoute =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/report-bug") ||
+    pathname.startsWith("/coordination");
   if (dismissed || suppressed || inPayment || hiddenRoute) return null;
 
   return (
