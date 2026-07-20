@@ -4,6 +4,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import DesktopNav from "@/components/DesktopNav";
 import OnboardingGate from "@/components/OnboardingGate";
 import SiteFooter from "@/components/SiteFooter";
+import BetaFeedbackPill from "@/components/BetaFeedbackPill";
 
 export const metadata: Metadata = {
   title: "Kradəl \u2014 Free baby & maternal items near you",
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </OnboardingGate>
           <SiteFooter />
+          <BetaFeedbackPill />
         </AuthProvider>
       </body>
     </html>

@@ -24,10 +24,15 @@ function ReportBugForm() {
 
   useEffect(() => {
     const from = searchParams.get("from");
-    if (from) { setPageUrl(from); return; }
-    if (typeof document !== "undefined" && document.referrer && !document.referrer.includes("/report-bug")) {
-      setPageUrl(document.referrer);
+    const context = searchParams.get("context");
+    let base = from ?? "";
+    if (!base && typeof document !== "undefined" && document.referrer && !document.referrer.includes("/report-bug")) {
+      base = document.referrer;
     }
+    // Fold the contextual label (e.g. "after register creation") into the
+    // page/feature field so it reaches the admin email without a schema change.
+    const combined = [base, context].filter(Boolean).join(" · ");
+    if (combined) setPageUrl(combined);
   }, [searchParams]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

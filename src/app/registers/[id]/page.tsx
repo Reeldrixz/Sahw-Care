@@ -10,6 +10,7 @@ import {
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import HowKradelWorks from "@/components/HowKradelWorks";
+import { suppressFeedback } from "@/lib/feedbackSuppress";
 import TrustAndSafety from "@/components/TrustAndSafety";
 import RegisterIntroEditor from "@/components/RegisterIntroEditor";
 import RegisterTour from "@/components/RegisterTour";
@@ -236,6 +237,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       window.history.replaceState({}, "", url.toString());
     }
   }, [register]);
+
+  // Hide the beta feedback pill while the fund panel is open (checkout flow).
+  useEffect(() => {
+    if (!selectedItem) return;
+    return suppressFeedback();
+  }, [selectedItem]);
 
   useEffect(() => {
     fetch("/api/catalog")
