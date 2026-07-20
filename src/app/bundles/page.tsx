@@ -9,6 +9,7 @@ import {
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { canApplyForBundle } from "@/lib/access";
+import { suppressFeedback } from "@/lib/feedbackSuppress";
 
 type BundleStage = "PREGNANCY" | "LABOUR" | "NEWBORN" | "POSTPARTUM";
 
@@ -141,6 +142,13 @@ export default function BundlesPage() {
   }, []);
 
   useEffect(() => { fetchBundles(); }, [fetchBundles]);
+
+  // Hide the beta feedback pill while the apply modal is open (no noise at a
+  // sensitive moment).
+  useEffect(() => {
+    if (!applying) return;
+    return suppressFeedback();
+  }, [applying]);
 
   const visible         = stageFilter === "ALL" ? bundles : bundles.filter((b) => b.stage === stageFilter);
   const totalInProgress = bundles.reduce((s, b) => s + b.slotsUsed, 0);

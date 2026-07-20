@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
       createdAt: true,
       onboardingComplete: true,
       tourCompletedAt: true,
+      betaWelcomeSeenAt: true,
       journeyType: true,
       currentStage: true,
       countryCode: true,
