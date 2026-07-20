@@ -11,6 +11,7 @@ import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import HowKradelWorks from "@/components/HowKradelWorks";
 import { suppressFeedback } from "@/lib/feedbackSuppress";
+import InlineFeedbackNudge from "@/components/InlineFeedbackNudge";
 import TrustAndSafety from "@/components/TrustAndSafety";
 import RegisterIntroEditor from "@/components/RegisterIntroEditor";
 import RegisterTour from "@/components/RegisterTour";
@@ -128,6 +129,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [newItemQty, setNewItemQty]         = useState("1");
   const [newItemNote, setNewItemNote]       = useState("");
   const [toast, setToast]                   = useState<string | null>(null);
+  const [justCreated, setJustCreated]       = useState(false);
+  const [justFunded,  setJustFunded]        = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closingRegister, setClosingRegister] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
@@ -199,6 +202,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     const params = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     if (payment === "success") {
+      setJustFunded(true);
       setToast("Payment confirmed! Kradəl will purchase and deliver this item soon.");
       const url = new URL(window.location.href);
       url.searchParams.delete("payment");
@@ -208,6 +212,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       setToast("Payment cancelled. Your contribution was not processed.");
       const url = new URL(window.location.href);
       url.searchParams.delete("payment");
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (params.get("created") === "1") {
+      setJustCreated(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("created");
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
@@ -509,6 +519,18 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             View full register →
           </a>
         </div>
+
+        {/* ── Contextual beta feedback (created / funded) ── */}
+        {(justCreated || justFunded) && (
+          <div style={{ margin: "16px 16px 0" }}>
+            {justCreated && (
+              <InlineFeedbackNudge context="after register creation" lead="Your register is live." />
+            )}
+            {justFunded && (
+              <InlineFeedbackNudge context="after funding" lead="Thank you for funding." />
+            )}
+          </div>
+        )}
 
         {/* ── Part 3: Emotional context card ─────────────── */}
         {isDonorView && (

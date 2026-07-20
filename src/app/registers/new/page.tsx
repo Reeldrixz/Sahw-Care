@@ -132,7 +132,7 @@ export default function NewRegisterPage() {
         })
       );
 
-      router.push(`/registers/${register.id}`);
+      router.push(`/registers/${register.id}?created=1`);
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Something went wrong");
       setLoading(false);
