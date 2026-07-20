@@ -82,8 +82,8 @@ export default function SupportPage() {
             Help keep the platform running.
           </p>
           <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, color: "#555555", lineHeight: 1.7, margin: 0 }}>
-            Mothers use Kradəl for free. Donors fund specific items. The platform itself — hosting,
-            payment processing, fulfilment time — is funded by people like you who want Kradəl to keep
+            Mothers use Kradəl for free. Donors fund specific items. The platform itself (hosting,
+            payment processing, fulfilment time) is funded by people like you who want Kradəl to keep
             running. Every contribution goes directly to operations.
           </p>
         </div>

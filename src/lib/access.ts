@@ -14,7 +14,7 @@ const HOLD_RESULT: AccessResult = {
   allowed: false,
   code: "ACCOUNT_UNDER_REVIEW",
   message:
-    "We need to confirm a few details before this can continue — we'll be in touch.",
+    "We need to confirm a few details before this can continue. We'll be in touch.",
 };
 
 export function canCreateRegister(user: UserForAccess): AccessResult {
@@ -28,7 +28,7 @@ export function canCreateRegister(user: UserForAccess): AccessResult {
     allowed: false,
     code: "NEEDS_BASELINE_REVIEW",
     message:
-      "To create a Register of Needs, please submit your profile for our team to review first. Head to your profile and tap 'Submit for review' — it usually takes just a short while.",
+      "To create a Register of Needs, please submit your profile for our team to review first. Head to your profile and tap 'Submit for review'. It usually takes just a short while.",
   };
 }
 
@@ -72,7 +72,7 @@ export function canClaimDiscoverItem(
       allowed: false,
       code: "NEEDS_BASELINE_APPROVED",
       message:
-        "Your first item request requires your profile to be approved by our team. Submit for review from your profile — it usually takes a short while.",
+        "Your first item request requires your profile to be approved by our team. Submit for review from your profile. It usually takes a short while.",
     };
   }
 

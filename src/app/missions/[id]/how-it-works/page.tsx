@@ -226,7 +226,7 @@ export default function HowItWorksPage() {
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Mission flow</div>
             {[
               { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
-              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes fills blocks — which Kradel translates into real maternal support." },
+              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes fills blocks, which Kradel translates into real maternal support." },
               { step: "3", label: "Mission completes",       desc: "When 40 blocks are filled, the mission is done." },
               { step: "4", label: "See the real outcome",    desc: "The platform shows what your team's work funded." },
             ].map(({ step, label, desc }) => (
@@ -267,7 +267,7 @@ export default function HowItWorksPage() {
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "16px", marginBottom: 20, border: "1px solid var(--border)", textAlign: "center" }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>💛</div>
             <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.7 }}>
-              This is not a competition. Every team's work matters equally. Missions exist to connect donors around a shared purpose — not to rank them.
+              This is not a competition. Every team's work matters equally. Missions exist to connect donors around a shared purpose. Not to rank them.
             </div>
           </div>
 

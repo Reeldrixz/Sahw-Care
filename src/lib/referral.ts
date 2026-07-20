@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 // Deliberately identical in all failure cases so it never leaks whether a code
 // exists — just points the mother back to her referring organization.
 export const REFERRAL_REJECTION_MESSAGE =
-  "This invitation link can't be used right now. Please reach out to the organization that referred you — they'll be able to help you get set up.";
+  "This invitation link can't be used right now. Please reach out to the organization that referred you. They'll be able to help you get set up.";
 
 // Raised inside a redemption transaction when the atomic single-use consume
 // loses a race (code already used/expired between validation and write).

@@ -46,7 +46,7 @@ export async function sendPasswordResetEmail(opts: {
           </a>
         </div>
         <p style="color:#555;font-size:13px;line-height:1.6">
-          If you didn't request this, you can safely ignore this email — your password won't change.
+          If you didn't request this, you can safely ignore this email. Your password won't change.
         </p>
         <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
       </div>
@@ -70,7 +70,7 @@ export async function sendWelcomeEmail(opts: { name: string; email: string }) {
             Welcome, ${esc(firstName)}.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 16px">
-            Kradəl is a care community where mothers receive support from people who want to help —
+            Kradəl is a care community where mothers receive support from people who want to help:
             essentials, registers, and connections that make the early days a little easier.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 32px">
@@ -144,7 +144,7 @@ export async function sendBundleRequestReceived(opts: {
         <p style="color:#555;line-height:1.6">Hi ${esc(opts.firstName)},</p>
         <p style="color:#555;line-height:1.6">
           Your request for the <strong>${esc(opts.templateName)}</strong> bundle has been received.
-          Our team will review it and get back to you within 1–2 business days.
+          Our team will review it and get back to you within 1 to 2 business days.
         </p>
         <p style="color:#555;line-height:1.6">
           You can track the status of your bundle in the app under <strong>Full Care Bundles</strong>.
@@ -269,7 +269,7 @@ export async function sendBugReportNotification(opts: {
         <h2 style="margin:0 0 16px;color:#1a1a1a">New Bug Report</h2>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
           <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">User</td><td style="padding:8px 0;font-weight:600">${esc(opts.submittedBy)}</td></tr>
-          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td><td style="padding:8px 0">${opts.pageUrl ? `<a href="${esc(opts.pageUrl)}" style="color:#1a7a5e">${esc(opts.pageUrl)}</a>` : "—"}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Page</td><td style="padding:8px 0">${opts.pageUrl ? `<a href="${esc(opts.pageUrl)}" style="color:#1a7a5e">${esc(opts.pageUrl)}</a>` : "N/A"}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Time</td><td style="padding:8px 0">${ts}</td></tr>
         </table>
         <div style="margin-bottom:20px">
@@ -277,7 +277,7 @@ export async function sendBugReportNotification(opts: {
           <div style="background:#f5f5f5;border-radius:8px;padding:14px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#333">${opts.description.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
         </div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">Browser</td><td style="padding:8px 0;font-size:12px;color:#555">${esc(opts.userAgent ?? "—")}</td></tr>
+          <tr><td style="padding:8px 0;color:#6b7280;width:120px;vertical-align:top">Browser</td><td style="padding:8px 0;font-size:12px;color:#555">${esc(opts.userAgent ?? "N/A")}</td></tr>
           <tr><td style="padding:8px 0;color:#6b7280;vertical-align:top">Screenshot</td><td style="padding:8px 0">${opts.screenshotUrl ? `<a href="${opts.screenshotUrl}" style="color:#1a7a5e">View screenshot</a>` : "none"}</td></tr>
         </table>
         <div style="text-align:center;margin-top:24px">

@@ -39,7 +39,7 @@ function StageIconComp({ stageKey, size = 20, color = "white" }: { stageKey: str
 
 const WEEKLY_PROMPTS = [
   "What's the most useful thing someone told you this week?",
-  "What are you proud of yourself for right now — however small?",
+  "What are you proud of yourself for right now, however small?",
   "What do you wish more people talked about openly?",
   "Share a small win from today. Even tiny counts.",
   "What would you tell your pre-pregnancy self?",
@@ -537,7 +537,7 @@ export default function CircleDetailPage() {
               Welcome to your circle
             </div>
             <div style={{ fontSize: 13, color: "#1a5c45", lineHeight: 1.6 }}>
-              You&apos;re now with mothers at exactly your stage. This is a space to share, ask, and be heard — without judgment.
+              You&apos;re now with mothers at exactly your stage. This is a space to share, ask, and be heard. Without judgment.
               Start by introducing yourself, or just read along.
             </div>
             <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 8 }}>
@@ -554,7 +554,7 @@ export default function CircleDetailPage() {
             display: "flex", alignItems: "flex-start", gap: 12,
           }}>
             <div style={{ flex: 1, fontSize: 12, color: "var(--mid)", lineHeight: 1.6 }}>
-              This circle is a space for kindness, honesty, and real support — not for requesting items or donations.
+              This circle is a space for kindness, honesty, and real support. Not for requesting items or donations.
               Posts are reviewed before appearing if they trigger our safety filters.
             </div>
             <button

@@ -875,7 +875,7 @@ export default function ContributorPage() {
                     <CareGrid filledBlocks={filledBlocks} />
                     {filledBlocks >= 37 && filledBlocks < CARE_GOAL && (
                       <div style={{ fontSize: 11, color: C.green, fontFamily: "Nunito, sans-serif", fontStyle: "italic", marginTop: 6 }}>
-                        {(CARE_GOAL - filledBlocks) * blockValue} more essential{(CARE_GOAL - filledBlocks) * blockValue !== 1 ? "s" : ""} to reach Tier {tier + 1} — where each block grows to {blockValue * 2} essentials.
+                        {(CARE_GOAL - filledBlocks) * blockValue} more essential{(CARE_GOAL - filledBlocks) * blockValue !== 1 ? "s" : ""} to reach Tier {tier + 1}, where each block grows to {blockValue * 2} essentials.
                       </div>
                     )}
                   </div>

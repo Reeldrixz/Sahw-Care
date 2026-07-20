@@ -87,7 +87,7 @@ export default function FulfillmentConfirmBanner({ items, onResolved }: Props) {
               }}>
                 {isVerified
                   ? "Thank you for confirming! ✅"
-                  : "Dispute reported — our team will review ⚠️"}
+                  : "Dispute reported. Our team will review ⚠️"}
               </div>
             </div>
           );

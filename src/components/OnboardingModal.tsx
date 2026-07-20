@@ -29,8 +29,8 @@ const BABY_AGE_OPTIONS: { label: string; months: number }[] = [
   { label: "10 months",      months: 10  },
   { label: "11 months",      months: 11  },
   { label: "12 months",      months: 12  },
-  { label: "13–18 months",   months: 15  },
-  { label: "19–24 months",   months: 21  },
+  { label: "13-18 months",   months: 15  },
+  { label: "19-24 months",   months: 21  },
 ];
 
 const now = new Date();
@@ -120,7 +120,7 @@ export default function OnboardingModal({ onComplete }: Props) {
             fontFamily: "Lora, serif", fontSize: 24, fontWeight: 700,
             color: "#1a7a5e", lineHeight: 1.45, margin: "0 0 32px",
           }}>
-            Kradəl is built on compassion and mercy — not convenience.
+            Kradəl is built on compassion and mercy. Not convenience.
           </p>
 
           {/* Middle paragraph */}

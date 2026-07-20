@@ -510,7 +510,7 @@ export default function AdminPage() {
         trustScore: d.user?.trustScore ?? u.trustScore,
       } : u));
       fetchVerif(); // refresh verification queue too
-      setToast("✅ User manually verified — trust bonuses awarded");
+      setToast("✅ User manually verified. Trust bonuses awarded");
     } else {
       setToast("Verification failed");
     }
@@ -527,7 +527,7 @@ export default function AdminPage() {
   };
 
   const placeHold = async (userId: string) => {
-    const reason = window.prompt("Reason for placing this account on hold (required — internal only, not shown to user):");
+    const reason = window.prompt("Reason for placing this account on hold (required, internal only, not shown to user):");
     if (!reason?.trim()) return;
     const res = await fetch(`/api/admin/users/${userId}`, {
       method: "PUT",
@@ -573,7 +573,7 @@ export default function AdminPage() {
     });
     if (res.ok) {
       fetchFlagged();
-      setToast(action === "approve" ? "Post approved — visible in circle" : "Post removed");
+      setToast(action === "approve" ? "Post approved. Visible in circle" : "Post removed");
     }
   };
 
@@ -597,7 +597,7 @@ export default function AdminPage() {
     });
     if (res.ok) {
       fetchVerif(); fetchStats();
-      setToast(action === "approve" ? "✅ Document approved — mother notified!" : "Document rejected with feedback.");
+      setToast(action === "approve" ? "✅ Document approved. Mother notified!" : "Document rejected with feedback.");
     }
   };
 
@@ -610,7 +610,7 @@ export default function AdminPage() {
     });
     if (res.ok) {
       fetchMrQueue();
-      setToast(action === "approve" ? "✅ Profile approved — mother notified!" : "Profile returned with kind feedback.");
+      setToast(action === "approve" ? "✅ Profile approved. Mother notified!" : "Profile returned with kind feedback.");
     }
   };
 
@@ -998,7 +998,7 @@ export default function AdminPage() {
                       {u.docStatus !== "VERIFIED" && (
                         <div>
                           <textarea
-                            placeholder="Rejection message (optional — default will be used if blank)"
+                            placeholder="Rejection message (optional, default will be used if blank)"
                             value={rejectNote[u.id] ?? ""}
                             onChange={(e) => setRejectNote((p) => ({ ...p, [u.id]: e.target.value }))}
                             style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", resize: "vertical", marginBottom: 10, boxSizing: "border-box" }}
@@ -1096,7 +1096,7 @@ export default function AdminPage() {
                     {u.manualReviewStatus === "PENDING" && (
                       <div>
                         <textarea
-                          placeholder="Rejection note (optional — a kind default message is used if left blank)"
+                          placeholder="Rejection note (optional, a kind default message is used if left blank)"
                           value={mrNote[u.id] ?? ""}
                           onChange={(e) => setMrNote((p) => ({ ...p, [u.id]: e.target.value }))}
                           style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 12, fontFamily: "Nunito, sans-serif", resize: "vertical", marginBottom: 10, boxSizing: "border-box" }}
@@ -1418,7 +1418,7 @@ export default function AdminPage() {
                         </div>
 
                         <div style={{ fontSize: 11, color: "var(--mid)", marginTop: 12, textAlign: "right" }}>
-                          Week: {new Date(weeklySummary.weekStart).toLocaleDateString()} – {new Date(weeklySummary.weekEnd).toLocaleDateString()}
+                          Week: {new Date(weeklySummary.weekStart).toLocaleDateString()} to {new Date(weeklySummary.weekEnd).toLocaleDateString()}
                         </div>
                       </>
                     )}
@@ -1891,7 +1891,7 @@ export default function AdminPage() {
                         <div className="form-group">
                           <label className="form-label">Preferred vendor</label>
                           <select className="form-input" value={editingCatalog.preferredVendor ?? ""} onChange={(e) => setEditingCatalog((p) => p ? { ...p, preferredVendor: e.target.value || null } : p)} style={{ fontFamily: "Nunito, sans-serif" }}>
-                            <option value="">— None —</option>
+                            <option value="">None</option>
                             {["Walmart.ca", "Amazon.ca", "Shoppers Drug Mart", "Costco Canada"].map((v) => <option key={v}>{v}</option>)}
                           </select>
                         </div>
@@ -2122,7 +2122,7 @@ export default function AdminPage() {
             {section === "refunds" && (
               <div className="admin-table">
                 <div className="admin-table-header">
-                  <div className="admin-table-title">Confirmed Fundings — Issue Refund</div>
+                  <div className="admin-table-title">Confirmed Fundings: Issue Refund</div>
                 </div>
                 {loading ? (
                   <div className="loading"><div className="spinner" /></div>
@@ -2364,7 +2364,7 @@ export default function AdminPage() {
                                   <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>{app.city}, {app.province}</div>
                                 </div>
                                 <div>
-                                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{app.bundle.code} — {app.bundle.name}</div>
+                                  <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{app.bundle.code}: {app.bundle.name}</div>
                                   <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>{app.bundle.itemCount} items</div>
                                 </div>
                                 <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
@@ -2414,7 +2414,7 @@ export default function AdminPage() {
                                     <div>
                                       <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Application</div>
                                       <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
-                                        <strong style={{ color: "#1a1a1a" }}>Bundle:</strong> {app.bundle.code} — {app.bundle.name} ({app.bundle.itemCount} items)
+                                        <strong style={{ color: "#1a1a1a" }}>Bundle:</strong> {app.bundle.code}: {app.bundle.name} ({app.bundle.itemCount} items)
                                       </div>
                                       <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
                                         <strong style={{ color: "#1a1a1a" }}>Submitted:</strong>{" "}
@@ -2707,7 +2707,7 @@ export default function AdminPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 20, marginBottom: 24 }}>
 
                         <div style={{ background: "white", borderRadius: 16, padding: "20px 16px", border: "1px solid #ede8df" }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: "#1a7a5e", letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 12 }}>Lifetime Reach — Venn</div>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#1a7a5e", letterSpacing: 1.2, textTransform: "uppercase" as const, marginBottom: 12 }}>Lifetime Reach: Venn</div>
                           <svg viewBox="0 0 600 540" width="100%" style={{ display: "block" }}>
                             <circle cx={300} cy={180} r={170} fill="rgba(168,155,217,0.08)" stroke="#a89bd9" strokeWidth={1.8} />
                             <circle cx={200} cy={340} r={170} fill="rgba(212,165,116,0.08)" stroke="#d4a574" strokeWidth={1.8} />

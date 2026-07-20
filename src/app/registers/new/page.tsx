@@ -197,7 +197,7 @@ export default function NewRegisterPage() {
               <>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, marginBottom: 10 }}>One step before creating a Register</div>
                 <p style={{ fontSize: 14, color: "var(--mid)", lineHeight: 1.7, marginBottom: 24 }}>
-                  To create a Register of Needs, please submit your profile for our team to review first. Head to your profile and tap &apos;Submit for review&apos; — it usually takes just a short while.
+                  To create a Register of Needs, please submit your profile for our team to review first. Head to your profile and tap &apos;Submit for review&apos;. It usually takes just a short while.
                 </p>
               </>
             )}

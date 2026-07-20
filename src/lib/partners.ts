@@ -29,7 +29,7 @@ export const REFERRAL_PARTNERS: ReferralPartner[] = [
     whatTheyDo:
       "A frontline community organization supporting expecting and new mothers across Toronto with practical help, referrals, and a caring point of contact.",
     howToReach:
-      "Reach out to their intake team and mention that you'd like to be connected to Kradəl — they'll take it from there.",
+      "Reach out to their intake team and mention that you'd like to be connected to Kradəl. They'll take it from there.",
     email:      "hello@kradel.care",
     website:    "https://sahw-care.vercel.app",
   },

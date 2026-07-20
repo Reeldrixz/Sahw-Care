@@ -69,13 +69,13 @@ function getStageLine(dueDate: string) {
 function getWhyItMatters(category: string, name: string): string {
   const cat = category.toLowerCase();
   const n = name.toLowerCase();
-  if (cat.includes("diaper") || n.includes("diaper")) return "Newborns go through 8–12 diapers a day — this is one of the most urgent needs.";
+  if (cat.includes("diaper") || n.includes("diaper")) return "Newborns go through 8 to 12 diapers a day. This is one of the most urgent needs.";
   if (cat.includes("feeding") || n.includes("formula") || n.includes("breast")) return "Reliable feeding equipment is essential for a healthy start.";
-  if (cat.includes("sleep") || n.includes("crib") || n.includes("bassinet") || n.includes("mattress")) return "Safe sleep is critical for newborns — this protects baby every night.";
+  if (cat.includes("sleep") || n.includes("crib") || n.includes("bassinet") || n.includes("mattress")) return "Safe sleep is critical for newborns. This protects baby every night.";
   if (cat.includes("clothing") || cat.includes("onesie") || n.includes("outfit") || n.includes("clothing")) return "Babies grow fast and need warm, comfortable layers from day one.";
   if (cat.includes("bath") || n.includes("bath")) return "A safe bath setup makes hygiene routines easier for mum and baby.";
   if (cat.includes("health") || n.includes("thermometer") || n.includes("medication")) return "Having health essentials on hand gives mum peace of mind.";
-  if (cat.includes("carrier") || n.includes("carrier") || n.includes("stroller") || n.includes("pram")) return "Mobility matters — this lets mum keep baby close while moving around.";
+  if (cat.includes("carrier") || n.includes("carrier") || n.includes("stroller") || n.includes("pram")) return "Mobility matters. This lets mum keep baby close while moving around.";
   return "Every item on this list was chosen because it will make a real difference in the first weeks.";
 }
 
@@ -175,7 +175,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     const url = `${window.location.origin}/r/${register.id}`;
     const shareData = {
       title: `${fn}'s Register on Kradəl`,
-      text: `Help provide real essentials for ${fn}'s baby — every item is a genuine need.`,
+      text: `Help provide real essentials for ${fn}'s baby. Every item is a genuine need.`,
       url,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -459,7 +459,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     ? [
         { label: "Contribute $5", cents: 500 },
         { label: "Contribute $10", cents: 1000 },
-        { label: `Complete it — ${fmtMoney(remaining)}`, cents: remaining },
+        { label: `Complete it: ${fmtMoney(remaining)}`, cents: remaining },
       ].filter((p, i, arr) => i === arr.findIndex((q) => q.cents === p.cents) && p.cents > 0)
     : [];
 
@@ -543,7 +543,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                 {register.intro?.trim()
                   ? register.intro
-                  : `Every item on this register is something ${firstName} has identified as a real need — not a wish list, but a preparation list for her baby's first weeks. Your contribution goes directly to purchasing and delivering these items to her.`}
+                  : `Every item on this register is something ${firstName} has identified as a real need. Not a wish list, but a preparation list for her baby's first weeks. Your contribution goes directly to purchasing and delivering these items to her.`}
               </div>
             </div>
           </div>
@@ -866,7 +866,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 {selectedCatalogItem && (
                   <div style={{ background: "#e8f5f1", borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#1a7a5e", fontWeight: 700, fontFamily: "Nunito, sans-serif" }}>
-                    Selected: {selectedCatalogItem.name} — {fmtMoney(selectedCatalogItem.standardPriceCents)}
+                    Selected: {selectedCatalogItem.name} ({fmtMoney(selectedCatalogItem.standardPriceCents)})
                   </div>
                 )}
                 <button
@@ -971,7 +971,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 {/* Verified badge line (Section 3) */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 14, fontSize: 12, fontWeight: 600, color: isVerified ? "#1a7a5e" : "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
                   {isVerified && <ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} />}
-                  {isVerified ? `Helping ${firstName} — Verified mother` : `Helping ${firstName}`}
+                  {isVerified ? `Helping ${firstName}, Verified mother` : `Helping ${firstName}`}
                 </div>
 
                 {/* Status badges */}

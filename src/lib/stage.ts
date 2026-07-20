@@ -8,13 +8,13 @@ export type StageKey =
   | "postpartum-13-24";
 
 export const STAGE_META: Record<StageKey, { label: string; description: string }> = {
-  "pregnancy-0-3":    { label: "The Quiet Beginning",  description: "0–3 months pregnant · First trimester"    },
-  "pregnancy-4-6":    { label: "Growing Into It",      description: "4–6 months pregnant · Second trimester"   },
-  "pregnancy-7-9":    { label: "Almost There",         description: "7–9 months pregnant · Third trimester"    },
-  "postpartum-0-3":   { label: "The Golden Hours",     description: "Newborn stage · Baby 0–3 months"          },
-  "postpartum-4-6":   { label: "Finding Your Rhythm",  description: "Infant stage · Baby 4–6 months"           },
-  "postpartum-7-12":  { label: "Into the World",       description: "Infant stage · Baby 7–12 months"          },
-  "postpartum-13-24": { label: "Little Steps",         description: "Toddler stage · Baby 1–2 years"           },
+  "pregnancy-0-3":    { label: "The Quiet Beginning",  description: "0-3 months pregnant · First trimester"    },
+  "pregnancy-4-6":    { label: "Growing Into It",      description: "4-6 months pregnant · Second trimester"   },
+  "pregnancy-7-9":    { label: "Almost There",         description: "7-9 months pregnant · Third trimester"    },
+  "postpartum-0-3":   { label: "The Golden Hours",     description: "Newborn stage · Baby 0-3 months"          },
+  "postpartum-4-6":   { label: "Finding Your Rhythm",  description: "Infant stage · Baby 4-6 months"           },
+  "postpartum-7-12":  { label: "Into the World",       description: "Infant stage · Baby 7-12 months"          },
+  "postpartum-13-24": { label: "Little Steps",         description: "Toddler stage · Baby 1-2 years"           },
 };
 
 /** The 7 cohort circles with their sub-channel definitions. */
@@ -135,17 +135,17 @@ export const STAGE_BULLETS: Partial<Record<StageKey, [StageBullet, StageBullet, 
     { icon: "book-open", title: "Birth-prep support",             description: "Resources on labour signs, birth plans, and what to expect." },
   ],
   "postpartum-0-3": [
-    { icon: "heart",       title: "Welcome to the newborn stage",   description: "A tender, overwhelming, beautiful chapter — your Circle is here with you." },
+    { icon: "heart",       title: "Welcome to the newborn stage",   description: "A tender, overwhelming, beautiful chapter. Your Circle is here with you." },
     { icon: "heart-pulse", title: "Postpartum recovery",            description: "Support for healing your body while caring for a newborn." },
     { icon: "users",       title: "First-weeks community",          description: "Connect with mothers navigating the same sleepless, precious early days." },
   ],
   "postpartum-4-6": [
     { icon: "sprout", title: "Your baby is growing fast",       description: "New skills, milestones, and personality emerging every week." },
-    { icon: "moon",   title: "Sleep, feeding & routine",        description: "Honest conversations about what really works — and what doesn't." },
+    { icon: "moon",   title: "Sleep, feeding & routine",        description: "Honest conversations about what really works, and what doesn't." },
     { icon: "users",  title: "Same-stage mothers",              description: "A Circle of women navigating the same milestones alongside you." },
   ],
   "postpartum-7-12": [
-    { icon: "globe", title: "A more curious baby",             description: "Crawling, standing, first words — this stage is full of wonder." },
+    { icon: "globe", title: "A more curious baby",             description: "Crawling, standing, first words. This stage is full of wonder." },
     { icon: "star",  title: "First-year milestones",           description: "Support for every check-up, meal, and developmental leap." },
     { icon: "users", title: "Approaching toddlerhood",         description: "Mothers who are right there with you, ready to share and support." },
   ],

@@ -115,7 +115,7 @@ export default function ItemModal({ item, onClose, onRequest, requested }: ItemM
               <textarea
                 className="request-note"
                 rows={3}
-                placeholder="Add a note to the donor (optional) — e.g. tell them about your situation..."
+                placeholder="Add a note to the donor (optional), e.g. tell them about your situation..."
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />

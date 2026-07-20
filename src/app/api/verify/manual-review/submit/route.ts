@@ -22,13 +22,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Your profile is already verified." }, { status: 400 });
   }
   if (user.manualReviewStatus === "PENDING") {
-    return NextResponse.json({ error: "Your profile is already under review — we'll be in touch soon." }, { status: 400 });
+    return NextResponse.json({ error: "Your profile is already under review. We'll be in touch soon." }, { status: 400 });
   }
 
   // Prerequisite: OTP-verified phone or email
   if (!user.phoneVerified && !user.emailVerified) {
     return NextResponse.json({
-      error: "Please verify your phone number or email address first — we need a way to reach you.",
+      error: "Please verify your phone number or email address first. We need a way to reach you.",
       missing: "contact",
     }, { status: 422 });
   }

@@ -11,7 +11,7 @@ const BUNDLES = [
     code: "B01",
     name: "First Trimester Essentials",
     stage: "PREGNANCY" as const,
-    description: "Everything a first-time mother needs during her pregnancy journey — vitamins, comfort aids, and reading material to prepare.",
+    description: "Everything a first-time mother needs during her pregnancy journey: vitamins, comfort aids, and reading material to prepare.",
     contentsMarkdown: [
       "- Prenatal multivitamin (90-day supply)",
       "- Pregnancy pillow",
@@ -30,7 +30,7 @@ const BUNDLES = [
     code: "B02",
     name: "Second Trimester Comfort Kit",
     stage: "PREGNANCY" as const,
-    description: "Targeted relief for the physical demands of pregnancy — swollen feet, back pain, and restless nights.",
+    description: "Targeted relief for the physical demands of pregnancy: swollen feet, back pain, and restless nights.",
     contentsMarkdown: [
       "- Compression socks (2 pairs)",
       "- Heating pad (back & belly safe)",
@@ -66,7 +66,7 @@ const BUNDLES = [
   },
   {
     code: "B04",
-    name: "Hospital Bag — Mother",
+    name: "Hospital Bag for Mother",
     stage: "LABOUR" as const,
     description: "Practical items to help mothers feel prepared and comfortable during labour and delivery.",
     contentsMarkdown: [
@@ -129,7 +129,7 @@ const BUNDLES = [
     description: "Help baby and mother get the rest they need with sleep aids and soothing essentials.",
     contentsMarkdown: [
       "- White noise machine",
-      "- Baby sleep sack (0–3 months)",
+      "- Baby sleep sack (0-3 months)",
       "- Swaddle wraps (2-pack)",
       "- Pacifiers (orthodontic, 2-pack)",
       "- Gripe water",
@@ -230,13 +230,13 @@ const BUNDLES = [
     code: "B12",
     name: "Baby Development & Play Kit",
     stage: "NEWBORN" as const,
-    description: "Stimulating and developmental toys for babies aged 0–6 months.",
+    description: "Stimulating and developmental toys for babies aged 0-6 months.",
     contentsMarkdown: [
       "- High-contrast black & white sensory cards",
       "- Soft sensory play mat",
       "- Rattles & teething rings set",
       "- Baby mirror toy",
-      "- Board books (set of 4, 0–6 months)",
+      "- Board books (set of 4, 0-6 months)",
       "- Baby gym / activity arch",
       "- Soft stacking rings",
       "- Crinkle sensory toy",
