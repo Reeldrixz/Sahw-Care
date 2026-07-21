@@ -14,6 +14,7 @@ import Toast from "@/components/Toast";
 import ShareImpactModal from "@/components/ShareImpactModal";
 import VerificationBanner from "@/components/VerificationBanner";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasMotherIntent } from "@/lib/motherIntent";
 import { STAGE_META } from "@/lib/stage";
 import CircleIdentityModal from "@/components/CircleIdentityModal";
 import PhoneSetupSheet from "@/components/PhoneSetupSheet";
@@ -583,11 +584,13 @@ export default function ProfilePage() {
 
   const isAdmin  = user.role === "ADMIN";
   const isDonor  = user.journeyType === "donor";
+  const motherIntent = hasMotherIntent(user); // held-open door: never framed as a donor
+  const realDonor = isDonor && !motherIntent;
   const memberYear = new Date(user.createdAt).getFullYear();
 
   const visibleItems = itemTab === "active" ? myItems.filter(i => i.status === "ACTIVE") : myItems;
 
-  const headerLabel = isAdmin ? "Admin" : isDonor ? "Supporter" : "Community Member";
+  const headerLabel = isAdmin ? "Admin" : realDonor ? "Supporter" : "Community Member";
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
@@ -734,8 +737,24 @@ export default function ProfilePage() {
           </>
         )}
 
+        {/* ════════════ HELD-OPEN DOOR (mother-intent, not yet connected) ══ */}
+        {!isAdmin && motherIntent && (
+          <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+              Your Kradəl account
+            </div>
+            <p style={{ fontSize: 13, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, margin: "0 0 12px" }}>
+              You can browse Kradəl freely. Care bundles and mother features become available once a partner
+              organization connects you.
+            </p>
+            <a href="/find-help" style={{ fontSize: 13, fontWeight: 700, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
+              Find a partner organization near you →
+            </a>
+          </div>
+        )}
+
         {/* ════════════ DONOR VIEW ════════════════════════════════════════ */}
-        {!isAdmin && isDonor && (
+        {!isAdmin && realDonor && (
           <>
             <DonorStatusCard />
             <MissionCard />
