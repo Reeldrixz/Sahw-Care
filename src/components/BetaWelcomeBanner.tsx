@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasMotherIntent } from "@/lib/motherIntent";
 
 // One-time, server-flagged (betaWelcomeSeenAt) soft banner. Not a modal.
 // Sequencing: donors see it first session; mothers see it only AFTER the
@@ -14,6 +15,9 @@ export default function BetaWelcomeBanner() {
   const [hidden, setHidden] = useState(false);
 
   if (!user || user.betaWelcomeSeenAt || hidden) return null;
+  // Don't stack on a mother-intent user's first visit — the open-door panel is
+  // the more important message and gets the stage; the feedback pill remains.
+  if (hasMotherIntent(user)) return null;
 
   // A new mother's react-joyride tour runs on the register detail page while
   // tourCompletedAt is null. Donors never take the tour, so they always pass.

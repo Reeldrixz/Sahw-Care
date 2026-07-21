@@ -20,6 +20,8 @@ import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
 import LocationSelector from "@/components/LocationSelector";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import SearchBar from "@/components/SearchBar";
+import OpenDoorPanel from "@/components/OpenDoorPanel";
+import { hasMotherIntent } from "@/lib/motherIntent";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -407,6 +409,9 @@ export default function DiscoverPage() {
         {/* ── Scrollable body ──────────────────────────────────────────────── */}
         <div className="scroll">
 
+          {/* Held-open door for mother-intent accounts (home surface only) */}
+          <OpenDoorPanel />
+
           {/* No local items notice */}
           {noLocalItems && !search && (
             <div style={{ padding: "8px 16px", fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif", background: "#fafafa", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -708,7 +713,8 @@ export default function DiscoverPage() {
         </div>
       </div>{/* end discover-desktop */}
 
-      {/* ── FAB pill ────────────────────────────────────────────────────────── */}
+      {/* ── FAB pill (hidden for held-open-door accounts; not pushing her to donate) ── */}
+      {!hasMotherIntent(user) && (
       <div style={{ position: "fixed", bottom: 86, left: "50%", transform: "translateX(-50%)", zIndex: 50, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         {/* Tooltip (first-time only) */}
         {!tooltipDismissed && (
@@ -747,6 +753,7 @@ export default function DiscoverPage() {
           Offer an item
         </button>
       </div>
+      )}
 
       <BottomNav />
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} onSubmit={handleDonate} />}
