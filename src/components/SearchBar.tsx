@@ -4,8 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, Loader2, Gift, ClipboardList, Package } from "lucide-react";
 
-const SUGGESTIONS = ["Diapers", "Formula", "Lagos", "Toronto", "Newborn bundle", "Feeding kit", "Maternity"];
-
 const CAT_BG: Record<string, string> = {
   "Feeding": "#e8f5f1", "Diapering": "#fff8ed", "Maternity": "#f5f3ff",
   "Clothing": "#eff6ff", "Hygiene": "#f0fdf4", "Other": "#f5f5f5",
@@ -87,7 +85,9 @@ export default function SearchBar({ value, onChange }: Props) {
     router.push(`/search?q=${encodeURIComponent(value.trim())}`);
   }, [value, router]);
 
-  const showDropdown = focused;
+  // Only open the dropdown once there's a query — no suggestion chips, so an
+  // empty/1-char field must not render an empty dropdown container.
+  const showDropdown = focused && value.length >= 2;
   const hasResults = results && results.total > 0;
   const showEmpty = focused && value.length >= 2 && !searching && results && !hasResults;
 
@@ -138,30 +138,6 @@ export default function SearchBar({ value, onChange }: Props) {
             boxShadow: "0 8px 40px rgba(0,0,0,0.14)", border: "1px solid #e5e7eb",
             maxHeight: "60vh", overflowY: "auto",
           }}>
-
-            {/* Suggestions — shown when input is empty */}
-            {value.length === 0 && (
-              <div style={{ padding: "14px 16px 16px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  Popular searches
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {SUGGESTIONS.map(s => (
-                    <button
-                      key={s}
-                      onClick={() => onChange(s)}
-                      style={{
-                        padding: "6px 14px", borderRadius: 20, border: "1.5px solid #e5e7eb",
-                        background: "#f9fafb", fontSize: 12, fontWeight: 700, color: "#555555",
-                        cursor: "pointer", fontFamily: "Nunito, sans-serif",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Searching spinner (no results yet) */}
             {value.length >= 2 && searching && !results && (
