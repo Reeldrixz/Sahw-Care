@@ -30,6 +30,7 @@ export interface User {
   onboardingComplete: boolean;
   tourCompletedAt: string | null;
   betaWelcomeSeenAt: string | null;
+  motherIntentAt: string | null;
   journeyType: string | null;
   currentStage: string | null;
   countryFlag: string | null;

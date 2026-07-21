@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   // a donor-role account and route them to the partner directory instead.
   const currentUser = await prisma.user.findUnique({
     where:  { id: auth.userId },
-    select: { role: true },
+    select: { role: true, motherIntentAt: true },
   });
 
   if (currentUser?.role !== "RECIPIENT") {
@@ -74,6 +74,10 @@ export async function POST(req: NextRequest) {
       data:  {
         onboardingComplete: true,
         journeyType: "donor",
+        // She picked pregnant/postpartum (the donor branch returned earlier),
+        // so record mother-intent — the "held-open door" flag. Preserve the
+        // original timestamp if already set.
+        motherIntentAt: currentUser?.motherIntentAt ?? new Date(),
         ...(safeGender && { gender: safeGender }),
         subTags: subTags ?? [],
       },
@@ -85,6 +89,7 @@ export async function POST(req: NextRequest) {
         docStatus: true, documentUrl: true, documentType: true, documentNote: true,
         verifiedAt: true, status: true, createdAt: true,
         onboardingComplete: true, journeyType: true, currentStage: true,
+        motherIntentAt: true,
         countryFlag: true, subTags: true, currentCircleId: true,
         _count: { select: { items: true, requests: true } },
       },
