@@ -279,7 +279,7 @@ export default async function LandingPage() {
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, maxWidth: 560, margin: "0 auto 28px" }}>
             Kradəl also assembles curated care bundles for pregnancy, birth, and the newborn months. Each
-            bundle is delivered free to referred mothers, funded by community business sponsors who stand
+            bundle is delivered free to referred mothers, funded by community business partners who stand
             behind them.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
