@@ -61,7 +61,7 @@ const PROVINCES = [
 const FAQS: { q: string; a: string }[] = [
   { q: "Who is eligible for a bundle?", a: "Verified mothers in Canada who are pregnant, have a newborn, or are in the postpartum period. Every application is reviewed by our team to ensure bundles reach those who need them most." },
   { q: "Is this a first-come-first-served system?", a: "No. Applications are reviewed privately by the Kradəl team. Selection considers timing, stage of journey, urgency, verification status, and relevance to the bundle. It is not simply who applies first." },
-  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, sponsors, and CSR partners. No mother ever pays for a bundle. They are fully covered." },
+  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, community partners, and CSR programs. No mother ever pays for a bundle. They are fully covered." },
   { q: "Can I apply for more than one bundle?", a: "One application per monthly cycle. This ensures fairness across all mothers. If your application is not approved, you're welcome to apply to another relevant bundle in the next cycle." },
   { q: "How long does the review take?", a: "Our team reviews applications within 2 to 3 business days. You'll receive a private notification through the platform once a decision has been made." },
 ];
@@ -244,7 +244,7 @@ export default function BundlesPage() {
                   borderRadius: 12, fontSize: 14, fontWeight: 800,
                   color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif",
                 }}>
-                  Become a Sponsor
+                  Become a partner
                 </a>
               </div>
 
@@ -286,7 +286,7 @@ export default function BundlesPage() {
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", background: "#f8faf9", borderRadius: 10, border: "1px solid #e0ede8" }}>
                   <Gift size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ fontSize: 11, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                    <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Funded by Kradəl and our sponsors.</span>
+                    <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Funded by Kradəl and our partners.</span>
                     {" "}Every bundle is fully covered. No cost to any mother.
                   </div>
                 </div>
@@ -544,7 +544,7 @@ export default function BundlesPage() {
                           </div>
                         ) : (
                           <a href="/partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
-                            This bundle is open for community sponsorship{" "}
+                            This bundle is open for a community partner{" "}
                             <span style={{ color: th.text, fontWeight: 700 }}>→</span>
                           </a>
                         )}
@@ -690,17 +690,17 @@ export default function BundlesPage() {
 
           <div className="sponsor-col" style={{ background: "#0f5c45", borderRadius: 16, padding: "24px 20px" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "white", marginBottom: 8 }}>
-              Sponsors Make It Possible
+              Partners Make It Possible
             </div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 20 }}>
-              Every bundle delivered is made possible by the generosity of our sponsors.
+              Every bundle delivered is made possible by the generosity of our partners.
               Join organisations committed to maternal dignity across Canada.
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
               {[
-                { Icon: Gift,      text: "Sponsor a Bundle Cycle" },
-                { Icon: Users,     text: "Sponsor a Community"    },
+                { Icon: Gift,      text: "Fund a Bundle Cycle" },
+                { Icon: Users,     text: "Fund a Community"    },
                 { Icon: Building2, text: "Corporate Partnerships" },
               ].map(({ Icon, text }) => (
                 <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>

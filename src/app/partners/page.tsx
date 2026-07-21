@@ -25,7 +25,7 @@ const CONTACT_HREF = `mailto:${PARTNER_EMAIL}?subject=${encodeURIComponent(
   "Becoming a Kradəl Community Partner",
 )}`;
 
-// ── Sponsorship tiers ─────────────────────────────────────────────────────
+// ── Partner tiers ─────────────────────────────────────────────────────
 interface Tier {
   name: string;
   price: string;
@@ -63,7 +63,7 @@ const TIERS: Tier[] = [
     accentSoft: "#fef9c3",
   },
   {
-    name: "Care Partner",
+    name: "Kradəl Care Partner",
     price: "from $300",
     cadence: "per month",
     scope: "3 bundles · 3 slots / month, recurring",
@@ -119,6 +119,9 @@ export default function PartnersPage() {
 
       {/* ── Tiers ───────────────────────────────────────── */}
       <section style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 22px 8px" }}>
+        <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: MUTED, textAlign: "center", margin: "0 auto 20px", maxWidth: 640 }}>
+          Give once at Bronze, Silver, or Gold, or join as a recurring Kradəl Care Partner.
+        </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 16 }}>
           {TIERS.map((t) => (
             <div key={t.name} style={{
@@ -131,7 +134,7 @@ export default function PartnersPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK }}>{t.name}</span>
                 {t.featured && (
-                  <span style={{ background: t.accentSoft, color: t.accent, fontFamily: SANS, fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>Recurring</span>
+                  <span style={{ background: t.accentSoft, color: t.accent, fontFamily: SANS, fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20 }}>Recurring · Premium</span>
                 )}
               </div>
               <div>
