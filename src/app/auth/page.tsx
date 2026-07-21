@@ -80,7 +80,7 @@ function AuthForm() {
 
         <div className="form-group">
           <label className="form-label">Email or Phone</label>
-          <input className="form-input" placeholder="email@example.com or 08012345678" value={identifier} onChange={(e) => setIdentifier(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
+          <input className="form-input" placeholder="email@example.com or 416-555-0100" value={identifier} onChange={(e) => setIdentifier(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
         </div>
         <div className="form-group">
           <label className="form-label">Password</label>

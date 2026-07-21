@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
               <label className="form-label">Email or Phone</label>
               <input
                 className="form-input"
-                placeholder="email@example.com or 08012345678"
+                placeholder="email@example.com or 416-555-0100"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

@@ -643,7 +643,7 @@ export default function ProfilePage() {
               <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
                 <input
                   value={locationInput} onChange={(e) => setLocationInput(e.target.value)}
-                  placeholder="e.g. Ikeja, Lagos"
+                  placeholder="e.g. Toronto"
                   style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, outline: "none", fontFamily: "Nunito, sans-serif" }}
                 />
                 <button onClick={saveLocation} style={{ padding: "4px 12px", borderRadius: 8, border: "none", background: "rgba(255,255,255,0.25)", color: "white", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>Save</button>

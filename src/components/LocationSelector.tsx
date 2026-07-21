@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MapPin, Navigation, Check, Search, X, ChevronRight } from "lucide-react";
+import { MapPin, Navigation, Check, Search, X } from "lucide-react";
 
 interface City {
   name: string;
@@ -10,8 +10,6 @@ interface City {
 
 const DEFAULT_CITIES: City[] = [
   { name: "Toronto",     country: "Canada"  },
-  { name: "Lagos",       country: "Nigeria" },
-  { name: "Abuja",       country: "Nigeria" },
   { name: "London",      country: "UK"      },
   { name: "New York",    country: "USA"     },
   { name: "Scarborough", country: "Canada"  },
@@ -49,12 +47,6 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.country.toLowerCase().includes(search.toLowerCase())
   );
-
-  const customCity =
-    search.trim() &&
-    !cities.some((c) => c.name.toLowerCase() === search.trim().toLowerCase())
-      ? search.trim()
-      : null;
 
   const doGPS = () => {
     setStep("sheet");
@@ -222,22 +214,6 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
 
         {/* Scrollable city list */}
         <div style={{ flex: 1, overflowY: "auto", padding: "8px 20px 48px" }}>
-          {customCity && (
-            <button
-              onClick={() => handleCitySelect(customCity)}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                width: "100%", padding: "13px 0", background: "none", border: "none",
-                borderBottom: "1px solid #f5f5f5", cursor: "pointer", textAlign: "left",
-              }}
-            >
-              <span style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "#1a7a5e", fontWeight: 700 }}>
-                Use &ldquo;{customCity}&rdquo;
-              </span>
-              <ChevronRight size={14} color="#1a7a5e" />
-            </button>
-          )}
-
           {filteredCities.map((city) => (
             <button
               key={city.name}
@@ -264,9 +240,9 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
             </button>
           ))}
 
-          {filteredCities.length === 0 && !customCity && (
+          {filteredCities.length === 0 && (
             <div style={{ padding: "24px 0", textAlign: "center", fontSize: 13, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
-              No cities found
+              No matching city
             </div>
           )}
         </div>

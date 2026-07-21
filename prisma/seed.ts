@@ -28,7 +28,7 @@ async function main() {
         email: "amara@carecircle.ng",
         password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
-        location: "Ikeja, Lagos",
+        location: "Scarborough, Toronto",
         status: "ACTIVE",
       },
     }),
@@ -40,7 +40,7 @@ async function main() {
         email: "fatima@carecircle.ng",
         password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
-        location: "Lekki, Lagos",
+        location: "North York, Toronto",
         status: "ACTIVE",
       },
     }),
@@ -52,7 +52,7 @@ async function main() {
         email: "grace@carecircle.ng",
         password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
-        location: "Surulere, Lagos",
+        location: "Etobicoke, Toronto",
         status: "ACTIVE",
       },
     }),
@@ -64,7 +64,7 @@ async function main() {
         email: "kemi@carecircle.ng",
         password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
-        location: "Victoria Island, Lagos",
+        location: "Downtown, Toronto",
         status: "ACTIVE",
       },
     }),
@@ -76,7 +76,7 @@ async function main() {
         email: "sandra@carecircle.ng",
         password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
-        location: "Yaba, Lagos",
+        location: "East York, Toronto",
         status: "ACTIVE",
       },
     }),
@@ -88,7 +88,7 @@ async function main() {
         email: "titi@carecircle.ng",
         password: await bcrypt.hash(SEED_PASSWORD, 12),
         role: "DONOR",
-        location: "Gbagada, Lagos",
+        location: "Mississauga, ON",
         status: "ACTIVE",
       },
     }),
@@ -104,7 +104,7 @@ async function main() {
     create: {
       name: "Ngozi Eze", email: "ngozi@carecircle.ng",
       password: await bcrypt.hash(SEED_PASSWORD, 12),
-      role: "RECIPIENT", location: "Agege, Lagos", status: "ACTIVE",
+      role: "RECIPIENT", location: "Brampton, ON", status: "ACTIVE",
     },
   });
   const chioma = await prisma.user.upsert({
@@ -113,7 +113,7 @@ async function main() {
     create: {
       name: "Chioma Obi", email: "chioma@carecircle.ng",
       password: await bcrypt.hash(SEED_PASSWORD, 12),
-      role: "RECIPIENT", location: "Mushin, Lagos", status: "ACTIVE",
+      role: "RECIPIENT", location: "Markham, ON", status: "ACTIVE",
     },
   });
   console.log("✓ Created 2 recipient accounts (Ngozi, Chioma)");
@@ -125,7 +125,7 @@ async function main() {
       category: "Baby Milk",
       condition: "New",
       quantity: "3 cans",
-      location: "Ikeja, Lagos",
+      location: "Scarborough, Toronto",
       description:
         "3 unopened cans of Similac Advance. Baby switched formulas. Expiry June 2026. Absolutely free, just come pick up.",
       urgent: true,
@@ -136,7 +136,7 @@ async function main() {
       category: "Diapers",
       condition: "New",
       quantity: "2 packs",
-      location: "Lekki, Lagos",
+      location: "North York, Toronto",
       description:
         "2 unopened packs of Pampers. Baby grew too fast. Still sealed with receipt.",
       urgent: false,
@@ -147,7 +147,7 @@ async function main() {
       category: "Maternity",
       condition: "New",
       quantity: "4 packs",
-      location: "Surulere, Lagos",
+      location: "Etobicoke, Toronto",
       description:
         "4 packs of post-delivery maternity pads. Overstocked after C-section. Never opened.",
       urgent: false,
@@ -158,7 +158,7 @@ async function main() {
       category: "Clothing",
       condition: "Slightly used",
       quantity: "12 pieces",
-      location: "Victoria Island, Lagos",
+      location: "Downtown, Toronto",
       description:
         "12 gently worn outfits (0-3 months). Washed, ironed, and sorted by type. Mix of onesies and sleepsuits.",
       urgent: false,
@@ -169,7 +169,7 @@ async function main() {
       category: "Accessories",
       condition: "Slightly used",
       quantity: "1 set",
-      location: "Yaba, Lagos",
+      location: "East York, Toronto",
       description:
         "Baby bathtub + wash mitt + Johnson's body wash (half used). Baby outgrew it at 4 months.",
       urgent: false,
@@ -180,7 +180,7 @@ async function main() {
       category: "Maternity",
       condition: "Slightly used",
       quantity: "1 unit",
-      location: "Gbagada, Lagos",
+      location: "Mississauga, ON",
       description:
         "Medela single electric pump. Used for 3 months only. All parts cleaned, sanitized, and tested.",
       urgent: false,

@@ -302,7 +302,7 @@ function SearchPageInner() {
                 Nothing found for &ldquo;{query}&rdquo;
               </div>
               <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 24 }}>
-                Try searching for: diapers, formula, Lagos, feeding kit
+                Try searching for: diapers, formula, feeding kit
               </div>
               <button
                 onClick={() => router.push("/")}

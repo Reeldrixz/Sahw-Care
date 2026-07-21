@@ -228,7 +228,7 @@ export default function NewRegisterPage() {
           </div>
           <div className="form-group">
             <label className="form-label">Your city</label>
-            <input className="form-input" placeholder="e.g. Lagos" value={city} onChange={(e) => setCity(e.target.value)} />
+            <input className="form-input" placeholder="e.g. Toronto" value={city} onChange={(e) => setCity(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Due date</label>
