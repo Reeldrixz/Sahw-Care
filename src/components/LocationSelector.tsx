@@ -33,7 +33,7 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
   const [selectedRadius, setSelectedRadius] = useState(radius);
   const [step, setStep] = useState<Step>("sheet");
   const [gpsLoading, setGpsLoading] = useState(false);
-  const [permDenied, setPermDenied] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/items/cities")
@@ -50,31 +50,39 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
 
   const doGPS = () => {
     setStep("sheet");
+    setGpsError(null);
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
-          );
+          // Reverse-geocode on our own origin (CSP connect-src is 'self' only).
+          const res = await fetch(`/api/geo/reverse?lat=${latitude}&lng=${longitude}`);
+          if (!res.ok) throw new Error("geocode");
           const data = await res.json();
-          const city =
-            data.address?.city ||
-            data.address?.town ||
-            data.address?.village ||
-            data.address?.county;
+          const city: string | null = data.city ?? null;
           if (city) {
+            // GPS always wins over a manual pick; any real city (including a
+            // non-Canadian one) is set, never silently dropped.
             onSelect(city, selectedRadius, true);
             onClose();
+          } else {
+            setGpsError("We couldn't detect your city. Try again, or choose a city.");
           }
-        } catch { /* silently fail */ }
+        } catch {
+          setGpsError("We couldn't detect your city. Try again, or choose a city.");
+        }
         setGpsLoading(false);
       },
-      () => {
+      (err) => {
         setGpsLoading(false);
-        setPermDenied(true);
-      }
+        setGpsError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location access was denied. Choose a city to see nearby items."
+            : "We couldn't get your location. Try again, or choose a city.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   };
 
@@ -170,14 +178,14 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
 
           {!setByGPS && <div style={{ marginBottom: 4 }} />}
 
-          {/* Permission denied notice */}
-          {permDenied && (
+          {/* GPS error notice — denied / unavailable / geocode failed */}
+          {gpsError && (
             <div style={{
               padding: "10px 12px", background: "#fff8e1", borderRadius: 8,
               marginBottom: 12, marginTop: 14, fontSize: 12, color: "#92400e",
               fontFamily: "Nunito, sans-serif", lineHeight: 1.5,
             }}>
-              Location access was denied. Choose a city to see nearby items.
+              {gpsError}
             </div>
           )}
 
