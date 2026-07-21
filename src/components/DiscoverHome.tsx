@@ -20,6 +20,7 @@ import FulfillmentStatusBadge from "@/components/FulfillmentStatusBadge";
 import LocationSelector from "@/components/LocationSelector";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import SearchBar from "@/components/SearchBar";
+import OpenDoorPanel from "@/components/OpenDoorPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -406,6 +407,9 @@ export default function DiscoverPage() {
 
         {/* ── Scrollable body ──────────────────────────────────────────────── */}
         <div className="scroll">
+
+          {/* Held-open door for mother-intent accounts (home surface only) */}
+          <OpenDoorPanel />
 
           {/* No local items notice */}
           {noLocalItems && !search && (
