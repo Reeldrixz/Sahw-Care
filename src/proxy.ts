@@ -25,6 +25,8 @@ const PUBLIC_PATHS = [
   // public data APIs
   "/api/items",
   "/api/users",
+  // server-side reverse geocode for the location picker (rate-limited)
+  "/api/geo/reverse",
   "/api/webhooks",
   // cron endpoints: routable by Vercel Cron (no user session); each route
   // enforces CRON_SECRET itself (fail-closed) as the security boundary.
