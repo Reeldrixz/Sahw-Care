@@ -7,13 +7,12 @@ import { useState, useEffect, useRef } from "react";
 interface CountryOption {
   flag: string;
   name: string;
-  code: string; // e.g. "+234"
+  code: string; // e.g. "+1"
 }
 
 const COUNTRIES: CountryOption[] = [
-  { flag: "🇳🇬", name: "Nigeria",          code: "+234" },
-  { flag: "🇺🇸", name: "United States",    code: "+1"   },
   { flag: "🇨🇦", name: "Canada",           code: "+1"   },
+  { flag: "🇺🇸", name: "United States",    code: "+1"   },
   { flag: "🇬🇧", name: "United Kingdom",   code: "+44"  },
   { flag: "🇬🇭", name: "Ghana",            code: "+233" },
   { flag: "🇰🇪", name: "Kenya",            code: "+254" },

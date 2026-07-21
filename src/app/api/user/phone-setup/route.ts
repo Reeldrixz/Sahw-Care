@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/user/phone-setup
  *
- * Step 1 — send code:  { phone: "+2348012345678" }
- * Step 2 — verify:     { phone: "+2348012345678", code: "123456" }
+ * Step 1 — send code:  { phone: "+14165550100" }
+ * Step 2 — verify:     { phone: "+14165550100", code: "123456" }
  */
 export async function POST(req: NextRequest) {
   const token = await getTokenFromRequest(req);

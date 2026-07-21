@@ -10,8 +10,6 @@ interface City {
 
 const DEFAULT_CITIES: City[] = [
   { name: "Toronto",     country: "Canada"  },
-  { name: "Lagos",       country: "Nigeria" },
-  { name: "Abuja",       country: "Nigeria" },
   { name: "London",      country: "UK"      },
   { name: "New York",    country: "USA"     },
   { name: "Scarborough", country: "Canada"  },
