@@ -511,7 +511,7 @@ export default function MyMissionPage() {
 
               <div className="mc-aff">
                 <div className="mc-aff-heart">💜</div>
-                <div>Every action brings us closer to supporting more moms.</div>
+                <div>Every action helps another mother receive essential care.</div>
               </div>
 
               <div className="mc-share">Share your link. Every new member helps Kradel reach one more mother.</div>
