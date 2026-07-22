@@ -220,7 +220,10 @@ export default function HowItWorksPage() {
 
           {/* Mission flow */}
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Mission flow</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Mission flow</div>
+            <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 16 }}>
+              Every action matters. Whether you share, donate, or fulfil a request, your contribution moves the mission forward. No one has to do all of it.
+            </div>
             {[
               { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
               { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, and Kradel turns it into verified maternal care." },

@@ -659,6 +659,9 @@ export default function MyMissionPage() {
           {/* How It Works */}
           <div className="how-it-works">
             <h2 className="hiw-title">HOW IT WORKS</h2>
+            <p style={{ fontSize: 13, color: C.muted, fontFamily: "Nunito, sans-serif", lineHeight: 1.6, textAlign: "center", maxWidth: 520, margin: "0 auto 18px" }}>
+              Every action matters. Whether you share, donate, or fulfil a request, your contribution moves the mission forward. No one has to do all of it.
+            </p>
             <div className="hiw-steps">
               <div className="hiw-step">
                 <div className="hiw-step-head">
