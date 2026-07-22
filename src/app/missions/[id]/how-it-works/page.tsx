@@ -110,7 +110,7 @@ export default function HowItWorksPage() {
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>What is a mission?</div>
             <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.7 }}>
-              A mission is a monthly collective challenge. You join a team of 5 partners. Together, your actions fill a shared progress bar toward 40 essentials. When it's full, the platform translates every one into a real outcome for mothers in need.
+              A mission is a monthly collective challenge. You join a team of 5 partners. Together, your actions fill a shared progress bar toward 40 essentials. As your team works together, Kradel turns those actions into verified maternal care.
             </div>
           </div>
 
@@ -223,7 +223,7 @@ export default function HowItWorksPage() {
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Mission flow</div>
             {[
               { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
-              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, which Kradel translates into real maternal support." },
+              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, and Kradel turns it into verified maternal care." },
               { step: "3", label: "Mission completes",       desc: "When the shared goal is reached, the mission is done." },
               { step: "4", label: "See the real outcome",    desc: "The platform shows what your team's work funded." },
             ].map(({ step, label, desc }) => (
