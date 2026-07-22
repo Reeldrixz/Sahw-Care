@@ -60,7 +60,7 @@ function MissionCard() {
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a7a5e", marginBottom: 2 }}>Join a mission</div>
             <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", opacity: 0.85 }}>
-              Team up with 5 donors. Fill 40 blocks. Fund real outcomes for mothers.
+              Team up with 5 partners toward one shared goal: 40 essentials for mothers.
             </div>
           </div>
           <ChevronRight size={20} color="#9ca3af" />
@@ -83,7 +83,7 @@ function MissionCard() {
         <div>
           <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>{mission.name}</div>
           <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-            {team.totalBlocks}/{mission.goalBlocks} blocks · {pct}%
+            Mission progress · {team.totalBlocks}/{mission.goalBlocks} essentials
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
