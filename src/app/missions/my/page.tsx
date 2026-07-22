@@ -485,7 +485,7 @@ export default function MyMissionPage() {
               <div className="mc-stats">
                 <div className="mc-stat">
                   <div className="mc-stat-num">{myStats.clicks}</div>
-                  <div className="mc-stat-label">Clicks</div>
+                  <div className="mc-stat-label">Visits</div>
                   <svg className="mc-stat-icon" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
                     <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
@@ -511,7 +511,7 @@ export default function MyMissionPage() {
 
               <div className="mc-aff">
                 <div className="mc-aff-heart">💜</div>
-                <div>Every action brings us closer to supporting more moms.</div>
+                <div>Every action helps another mother receive essential care.</div>
               </div>
 
               <div className="mc-share">Share your link. Every new member helps Kradel reach one more mother.</div>
@@ -537,8 +537,8 @@ export default function MyMissionPage() {
               <div className="hbf-row">
                 <div className="hbf-swatch" style={{ background: C.blockClick }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Link clicked</div>
-                  <div className="hbf-desc">Someone clicks your shared Kradel link.</div>
+                  <div className="hbf-title">Mission visit</div>
+                  <div className="hbf-desc">Someone visits Kradel through your shared link.</div>
                 </div>
               </div>
               <div className="hbf-row">
@@ -562,7 +562,7 @@ export default function MyMissionPage() {
               <div className="hbf-row" style={{ borderBottom: "none" }}>
                 <div className="hbf-swatch" style={{ background: C.blockDonation }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Mom received essentials</div>
+                  <div className="hbf-title">Support delivered</div>
                   <div className="hbf-desc">A request is fulfilled, listing completed, or bundle delivered.</div>
                 </div>
               </div>
@@ -659,14 +659,17 @@ export default function MyMissionPage() {
           {/* How It Works */}
           <div className="how-it-works">
             <h2 className="hiw-title">HOW IT WORKS</h2>
+            <p style={{ fontSize: 13, color: C.muted, fontFamily: "Nunito, sans-serif", lineHeight: 1.6, textAlign: "center", maxWidth: 520, margin: "0 auto 18px" }}>
+              Every action matters. Whether you share, donate, or fulfil a request, your contribution moves the mission forward. No one has to do all of it.
+            </p>
             <div className="hiw-steps">
               <div className="hiw-step">
                 <div className="hiw-step-head">
                   <div className="hiw-num">1</div>
-                  <div className="hiw-step-name">Someone clicks your link</div>
+                  <div className="hiw-step-name">Someone visits your link</div>
                 </div>
                 <div className="hiw-icon-wrap">✈️</div>
-                <div className="hiw-desc">You share on social media. They click.</div>
+                <div className="hiw-desc">You share on social media. They visit.</div>
                 <StepMiniGrid completed={0} activity={0} clicks={1} />
                 <div className="hiw-blocks-label">+1 block</div>
               </div>

@@ -110,7 +110,7 @@ export default function HowItWorksPage() {
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>What is a mission?</div>
             <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.7 }}>
-              A mission is a monthly collective challenge. You join a team of 5 partners. Together, your actions fill a shared progress bar toward 40 essentials. When it's full, the platform translates every one into a real outcome for mothers in need.
+              A mission is a monthly collective challenge. You join a team of 5 partners. Together, your actions fill a shared progress bar toward 40 essentials. As your team works together, Kradel turns those actions into verified maternal care.
             </div>
           </div>
 
@@ -169,7 +169,7 @@ export default function HowItWorksPage() {
                   { color: BLOCK_COLORS.completed, label: "Fulfilled" },
                   { color: BLOCK_COLORS.activity,  label: "Activity" },
                   { color: BLOCK_COLORS.signup,    label: "Sign-up" },
-                  { color: BLOCK_COLORS.click,     label: "Click" },
+                  { color: BLOCK_COLORS.click,     label: "Visit" },
                   { color: BLOCK_COLORS.empty,     label: "Unfilled" },
                 ] as const).map(({ color, label }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -187,7 +187,7 @@ export default function HowItWorksPage() {
 
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6 }}>AWARENESS</div>
             {[
-              { icon: "🔗", title: "Link clicked",    action: "Someone clicks your shared Kradel link." },
+              { icon: "🔗", title: "Mission visit",    action: "Someone visits Kradel through your shared link." },
               { icon: "👤", title: "Account created", action: "They sign up through your link." },
             ].map(({ icon, title, action }) => (
               <div key={title} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
@@ -212,7 +212,7 @@ export default function HowItWorksPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>💚</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Mom received essentials</div>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Support delivered</div>
                 <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>A request is fulfilled, listing completed, or bundle delivered.</div>
               </div>
             </div>
@@ -220,10 +220,13 @@ export default function HowItWorksPage() {
 
           {/* Mission flow */}
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Mission flow</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Mission flow</div>
+            <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 16 }}>
+              Every action matters. Whether you share, donate, or fulfil a request, your contribution moves the mission forward. No one has to do all of it.
+            </div>
             {[
               { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
-              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, which Kradel translates into real maternal support." },
+              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, and Kradel turns it into verified maternal care." },
               { step: "3", label: "Mission completes",       desc: "When the shared goal is reached, the mission is done." },
               { step: "4", label: "See the real outcome",    desc: "The platform shows what your team's work funded." },
             ].map(({ step, label, desc }) => (

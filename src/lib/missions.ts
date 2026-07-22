@@ -35,9 +35,9 @@ const LABELS: Record<ActionType, string> = {
   signup:              "A new member joined Kradel through your link.",
   listing_posted:      "A new item was listed on Discover through someone you brought in.",
   register_committed:  "A donation was committed toward a mom's register request.",
-  listing_completed:   "A mom received [category] essentials through your link.",
-  register_fulfilled:  "A mom received a [category] donation through your link.",
-  bundle_delivered:    "A mom received [itemName] · [stage].",
+  listing_completed:   "Support delivered: [category] essentials, through your link.",
+  register_fulfilled:  "Support delivered: a [category] donation, through your link.",
+  bundle_delivered:    "Support delivered: [itemName] · [stage].",
 };
 
 // When a completion fires, look for and upgrade the matching intent action
