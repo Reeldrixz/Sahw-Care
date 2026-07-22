@@ -63,16 +63,6 @@ export default function CreatorDashboard() {
       <p style={{ fontFamily: SANS, fontSize: 14, color: INK, lineHeight: 1.65, margin: "0 0 16px" }}>
         Together, the people you brought in have helped provide maternity essentials to <strong>{d.mothersSupported.toLocaleString()}</strong> {d.mothersSupported === 1 ? "mother" : "mothers"} this month.
       </p>
-
-      {/* Privacy guardrail: deliberately prominent, not a footnote. */}
-      <div style={{ background: "#fff8e1", border: "1px solid #f5d98a", borderRadius: 12, padding: "12px 14px" }}>
-        <div style={{ fontFamily: SANS, fontSize: 13, fontWeight: 800, color: "#92400e", marginBottom: 3 }}>
-          Your dashboard is private.
-        </div>
-        <div style={{ fontFamily: SANS, fontSize: 13, color: "#92400e", lineHeight: 1.6 }}>
-          These numbers are for you. Please don&rsquo;t post them publicly as proof of helping specific mothers (see the Creator Code of Conduct).
-        </div>
-      </div>
     </div>
   );
 }
