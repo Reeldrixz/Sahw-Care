@@ -423,7 +423,7 @@ export default function MyMissionPage() {
           <div className="page-header" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
             <div>
               <h1 className="h-title">
-                YOUR MISSION
+                THIS MONTH&rsquo;S MISSION
                 <svg viewBox="0 0 24 24">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
@@ -447,7 +447,7 @@ export default function MyMissionPage() {
                 <div className="mc-top-left">
                   <div className="mc-avatar">{meInitial}</div>
                   <div>
-                    <div className="mc-progress-label">Your Mission Progress</div>
+                    <div className="mc-progress-label">Mission Progress</div>
                     <div className="mc-progress-date">{dateRange}</div>
                   </div>
                 </div>
@@ -470,6 +470,18 @@ export default function MyMissionPage() {
 
               <MissionMosaic completed={mosaicCompleted} activity={mosaicActivity} signups={mosaicSignups} clicks={mosaicClicks} total={goal} />
 
+              {/* Shared mission total — the primary readout */}
+              <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.25, marginTop: 4 }}>
+                {team.totalBlocks}/{goal} essentials
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2, marginBottom: 14 }}>
+                {Math.min(5, partners.length + 1)} of 5 partners working together
+              </div>
+
+              {/* Individual stats — secondary, framed as equal recognition */}
+              <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+                Your part. Every part counts the same.
+              </div>
               <div className="mc-stats">
                 <div className="mc-stat">
                   <div className="mc-stat-num">{myStats.clicks}</div>
@@ -519,7 +531,7 @@ export default function MyMissionPage() {
 
             {/* === Col 2: How Bar Fills + Total Impact === */}
             <div className="info-card">
-              <div className="ic-title">HOW YOUR BAR FILLS</div>
+              <div className="ic-title">HOW YOUR MISSION CREATES IMPACT</div>
 
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: C.muted, textTransform: "uppercase", marginBottom: 6 }}>AWARENESS</div>
               <div className="hbf-row">
@@ -527,7 +539,6 @@ export default function MyMissionPage() {
                 <div className="hbf-content">
                   <div className="hbf-title">Link clicked</div>
                   <div className="hbf-desc">Someone clicks your shared Kradel link.</div>
-                  <div className="hbf-blocks">+1 block</div>
                 </div>
               </div>
               <div className="hbf-row">
@@ -535,7 +546,6 @@ export default function MyMissionPage() {
                 <div className="hbf-content">
                   <div className="hbf-title">Account created</div>
                   <div className="hbf-desc">They sign up through your link.</div>
-                  <div className="hbf-blocks">+2 blocks</div>
                 </div>
               </div>
 
@@ -545,7 +555,6 @@ export default function MyMissionPage() {
                 <div className="hbf-content">
                   <div className="hbf-title">Item listed or register committed</div>
                   <div className="hbf-desc">They list an item to donate or commit to a register.</div>
-                  <div className="hbf-blocks">+2 blocks</div>
                 </div>
               </div>
 
@@ -555,13 +564,12 @@ export default function MyMissionPage() {
                 <div className="hbf-content">
                   <div className="hbf-title">Mom received essentials</div>
                   <div className="hbf-desc">A request is fulfilled, listing completed, or bundle delivered.</div>
-                  <div className="hbf-blocks">+4 blocks</div>
                 </div>
               </div>
 
               <div className="total-impact">
                 <div className="ti-icon">👥</div>
-                <div className="ti-label">TOTAL IMPACT THIS MONTH</div>
+                <div className="ti-label">WHAT THIS MISSION DELIVERED</div>
                 <div className="ti-stats">
                   <div className="ti-stat">
                     <div className="ti-stat-num">{impact.moms}</div>
@@ -576,13 +584,13 @@ export default function MyMissionPage() {
                     <div className="ti-stat-label">Cities<br/>Reached</div>
                   </div>
                 </div>
-                <div className="ti-tagline">Together, we care. <span className="ti-tagline-heart">💜</span></div>
+                <div className="ti-tagline">Thank you to every mission partner who made this possible. <span className="ti-tagline-heart">💜</span></div>
               </div>
             </div>
 
             {/* === Col 3: Mission Partners === */}
             <div className="info-card partners-card">
-              <div className="ic-title">OTHER MISSION PARTNERS</div>
+              <div className="ic-title">YOUR MISSION PARTNERS</div>
               <div className="ic-subtitle">People supporting the same mission this month.</div>
 
               {partners.length === 0 ? (
@@ -595,9 +603,8 @@ export default function MyMissionPage() {
                     <div className="partner-avatar">{p.initial}</div>
                     <div className="partner-info">
                       <div className="partner-name">{p.name}</div>
-                      <div className="partner-goal">Goal: {p.goal} essentials</div>
+                      <div className="partner-goal">Working toward the shared goal</div>
                     </div>
-                    <div className="partner-count">{p.blocks} / {p.goal}</div>
                   </div>
                   <PartnerGrid completed={p.completed} activity={p.activity} signups={p.signups} clicks={p.clicks} />
                   <div className="partner-stats">
@@ -637,13 +644,12 @@ export default function MyMissionPage() {
                 </div>
                 <div>{partners.length} friends. 1 mission.<br/>More love. More impact.</div>
               </div>
-              <div style={{ marginTop: 10, fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 12, color: "#6d5acd", lineHeight: 1.6, opacity: 0.85 }}>
-                See how your team&rsquo;s care adds up in your{" "}
+              <div style={{ marginTop: 10 }}>
                 <button
                   onClick={() => router.push("/profile/contributor")}
-                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 12, color: "#6d5acd", textDecoration: "underline", fontWeight: 600 }}
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 12, color: "#6d5acd", textDecoration: "underline", fontWeight: 600, lineHeight: 1.6, opacity: 0.85 }}
                 >
-                  Contributor Profile →
+                  See how your team&rsquo;s care adds up →
                 </button>
               </div>
             </div>
@@ -696,12 +702,12 @@ export default function MyMissionPage() {
               <div className="hiw-step">
                 <div className="hiw-step-head">
                   <div className="hiw-num">4</div>
-                  <div className="hiw-step-name">Mission complete!</div>
+                  <div className="hiw-step-name">Mission complete</div>
                 </div>
                 <div className="hiw-icon-wrap">🎉</div>
-                <div className="hiw-desc">Together, you reached your monthly goal.</div>
+                <div className="hiw-desc">Together, this month&rsquo;s goal was reached.</div>
                 <StepMiniGrid completed={13} activity={8} clicks={5} />
-                <div className="hiw-blocks-label">Goal Achieved 💜</div>
+                <div className="hiw-blocks-label">Mission complete 💜</div>
               </div>
             </div>
           </div>

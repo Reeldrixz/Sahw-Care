@@ -110,7 +110,7 @@ export default function HowItWorksPage() {
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 10 }}>What is a mission?</div>
             <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.7 }}>
-              A mission is a monthly collective challenge. You join a team of 5 donors. Together, your actions fill a 40-block progress bar. When it's full, the platform translates every block into a real outcome for mothers in need.
+              A mission is a monthly collective challenge. You join a team of 5 partners. Together, your actions fill a shared progress bar toward 40 essentials. When it's full, the platform translates every one into a real outcome for mothers in need.
             </div>
           </div>
 
@@ -140,7 +140,7 @@ export default function HowItWorksPage() {
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 4 }}>40 essentials for mothers this month</div>
             <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 14 }}>
-              Each block your team fills represents real maternal care delivered.
+              Every step your team takes is real maternal care delivered.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 5, marginBottom: 16 }}>
               {demoBlocks.map((type, i) => (
@@ -157,7 +157,7 @@ export default function HowItWorksPage() {
 
             {/* Stacked progress bar */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>How blocks stack</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>How mission progress adds up</div>
               <div style={{ display: "flex", height: 14, borderRadius: 7, overflow: "hidden", background: "#e8e4de" }}>
                 <div style={{ width: "20%", background: BLOCK_COLORS.completed, borderRadius: "7px 0 0 7px" }} />
                 <div style={{ width: "20%", background: BLOCK_COLORS.activity  }} />
@@ -166,10 +166,10 @@ export default function HowItWorksPage() {
               </div>
               <div style={{ display: "flex", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
                 {([
-                  { color: BLOCK_COLORS.completed, label: "Fulfilled (+4)" },
-                  { color: BLOCK_COLORS.activity,  label: "Activity (+2)" },
-                  { color: BLOCK_COLORS.signup,    label: "Sign-up (+2)" },
-                  { color: BLOCK_COLORS.click,     label: "Click (+1)" },
+                  { color: BLOCK_COLORS.completed, label: "Fulfilled" },
+                  { color: BLOCK_COLORS.activity,  label: "Activity" },
+                  { color: BLOCK_COLORS.signup,    label: "Sign-up" },
+                  { color: BLOCK_COLORS.click,     label: "Click" },
                   { color: BLOCK_COLORS.empty,     label: "Unfilled" },
                 ] as const).map(({ color, label }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -183,20 +183,19 @@ export default function HowItWorksPage() {
 
           {/* How the bar fills */}
           <div style={{ background: "var(--white)", borderRadius: 16, padding: "18px 16px", marginBottom: 14, border: "1px solid var(--border)" }}>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>What fills the bar</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>How your mission creates impact</div>
 
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6 }}>AWARENESS</div>
             {[
-              { icon: "🔗", title: "Link clicked",    action: "Someone clicks your shared Kradel link.",  blocks: "+1 block",  color: BLOCK_COLORS.click   },
-              { icon: "👤", title: "Account created", action: "They sign up through your link.",           blocks: "+2 blocks", color: BLOCK_COLORS.signup  },
-            ].map(({ icon, title, action, blocks, color }) => (
+              { icon: "🔗", title: "Link clicked",    action: "Someone clicks your shared Kradel link." },
+              { icon: "👤", title: "Account created", action: "They sign up through your link." },
+            ].map(({ icon, title, action }) => (
               <div key={title} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>{title}</div>
                   <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>{action}</div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color, flexShrink: 0 }}>{blocks}</div>
               </div>
             ))}
 
@@ -207,7 +206,6 @@ export default function HowItWorksPage() {
                 <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Item listed or register committed</div>
                 <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>They list an item to donate or commit to a register.</div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: BLOCK_COLORS.activity, flexShrink: 0 }}>+2 blocks</div>
             </div>
 
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6, marginTop: 14 }}>OUTCOME</div>
@@ -217,7 +215,6 @@ export default function HowItWorksPage() {
                 <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Mom received essentials</div>
                 <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>A request is fulfilled, listing completed, or bundle delivered.</div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, fontFamily: "Nunito, sans-serif", color: BLOCK_COLORS.completed, flexShrink: 0 }}>+4 blocks</div>
             </div>
           </div>
 
@@ -226,8 +223,8 @@ export default function HowItWorksPage() {
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Mission flow</div>
             {[
               { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
-              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes fills blocks, which Kradel translates into real maternal support." },
-              { step: "3", label: "Mission completes",       desc: "When 40 blocks are filled, the mission is done." },
+              { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, which Kradel translates into real maternal support." },
+              { step: "3", label: "Mission completes",       desc: "When the shared goal is reached, the mission is done." },
               { step: "4", label: "See the real outcome",    desc: "The platform shows what your team's work funded." },
             ].map(({ step, label, desc }) => (
               <div key={step} style={{ display: "flex", gap: 12, marginBottom: 14 }}>
@@ -246,7 +243,7 @@ export default function HowItWorksPage() {
           <div style={{ background: "linear-gradient(135deg, #1a7a5e 0%, #22a37c 100%)", borderRadius: 16, padding: "18px 16px", marginBottom: 14 }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "white", marginBottom: 8 }}>When the mission completes</div>
             <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "rgba(255,255,255,0.9)", lineHeight: 1.7, marginBottom: 14 }}>
-              40 blocks translates into real outcomes. Your team will see exactly what happened because of their effort.
+              Your mission&rsquo;s progress translates into real outcomes. The whole team sees exactly what the mission made possible.
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
               {[
