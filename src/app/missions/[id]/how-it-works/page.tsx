@@ -169,7 +169,7 @@ export default function HowItWorksPage() {
                   { color: BLOCK_COLORS.completed, label: "Fulfilled" },
                   { color: BLOCK_COLORS.activity,  label: "Activity" },
                   { color: BLOCK_COLORS.signup,    label: "Sign-up" },
-                  { color: BLOCK_COLORS.click,     label: "Click" },
+                  { color: BLOCK_COLORS.click,     label: "Visit" },
                   { color: BLOCK_COLORS.empty,     label: "Unfilled" },
                 ] as const).map(({ color, label }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -187,7 +187,7 @@ export default function HowItWorksPage() {
 
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "1px", color: "#8a8a8a", textTransform: "uppercase", marginBottom: 6 }}>AWARENESS</div>
             {[
-              { icon: "🔗", title: "Link clicked",    action: "Someone clicks your shared Kradel link." },
+              { icon: "🔗", title: "Mission visit",    action: "Someone visits Kradel through your shared link." },
               { icon: "👤", title: "Account created", action: "They sign up through your link." },
             ].map(({ icon, title, action }) => (
               <div key={title} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
