@@ -12,6 +12,9 @@ const PUBLIC_PATHS = [
   "/join",
   // public community-partners (sponsorship) marketing page
   "/partners",
+  // public Impact Creator program page (+ public link-visit counter)
+  "/creators",
+  "/api/creators/visit",
   // auth flows that must work for logged-out users
   "/api/auth/login",
   "/api/auth/register",

@@ -17,6 +17,24 @@ function AuthForm() {
   const redirectTo = rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
     ? rawRedirect
     : "/";
+  // Impact Creator flow: carry a creator's link code through signup (sets
+  // attribution once), and route a would-be creator to the onboarding page.
+  const creatorRef = searchParams.get("creatorRef");
+  const wantsCreator = searchParams.get("intent") === "creator";
+  const postAuthDest = wantsCreator ? "/creators?intent=creator" : redirectTo;
+
+  const attributeIfNeeded = useCallback(async () => {
+    if (!creatorRef) return;
+    try {
+      await fetch("/api/creators/attribute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ref: creatorRef }),
+      });
+    } catch {
+      /* attribution is best-effort; never block the user's sign-in */
+    }
+  }, [creatorRef]);
   const [name, setName] = useState("");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -25,19 +43,20 @@ function AuthForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) router.push(redirectTo);
-  }, [user, router, redirectTo]);
+    if (user) router.push(postAuthDest);
+  }, [user, router, postAuthDest]);
 
   const handleSocialSuccess = useCallback(async () => {
     setError("");
     setLoading(true);
     try {
       await refreshUser();
-      router.push(redirectTo);
+      await attributeIfNeeded();
+      router.push(postAuthDest);
     } finally {
       setLoading(false);
     }
-  }, [refreshUser, router, redirectTo]);
+  }, [refreshUser, attributeIfNeeded, router, postAuthDest]);
 
   const handleSubmit = async () => {
     setError("");
@@ -52,7 +71,8 @@ function AuthForm() {
       } else {
         await register(name, identifier, password);
       }
-      router.push(redirectTo);
+      await attributeIfNeeded();
+      router.push(postAuthDest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
