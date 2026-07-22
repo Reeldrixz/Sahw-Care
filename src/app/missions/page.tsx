@@ -68,7 +68,7 @@ function MissionsContent() {
           <div style={{ background: "#e8f5f1", borderRadius: 14, padding: "14px 16px", marginBottom: 20 }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a7a5e", marginBottom: 4 }}>How missions work</div>
             <div style={{ fontSize: 13, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-              Join a team of 5 donors. Every action your team takes (sharing, listing, donating) fills 40 blocks. When the mission completes, the platform translates that into real outcomes for mothers.
+              Join a team of 5 partners. Every action your team takes (sharing, listing, donating) works toward a shared goal of 40 essentials for mothers. When the mission completes, the platform translates that into real outcomes for mothers.
             </div>
           </div>
 
