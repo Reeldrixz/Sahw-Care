@@ -31,6 +31,9 @@ export interface User {
   tourCompletedAt: string | null;
   betaWelcomeSeenAt: string | null;
   motherIntentAt: string | null;
+  isCreator: boolean;
+  creatorReferralCode: string | null;
+  creatorCodeAcceptedAt: string | null;
   journeyType: string | null;
   currentStage: string | null;
   countryFlag: string | null;
