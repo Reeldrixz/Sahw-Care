@@ -562,7 +562,7 @@ export default function MyMissionPage() {
               <div className="hbf-row" style={{ borderBottom: "none" }}>
                 <div className="hbf-swatch" style={{ background: C.blockDonation }} />
                 <div className="hbf-content">
-                  <div className="hbf-title">Mom received essentials</div>
+                  <div className="hbf-title">Support delivered</div>
                   <div className="hbf-desc">A request is fulfilled, listing completed, or bundle delivered.</div>
                 </div>
               </div>

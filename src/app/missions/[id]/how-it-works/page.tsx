@@ -212,7 +212,7 @@ export default function HowItWorksPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>💚</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Mom received essentials</div>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Support delivered</div>
                 <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>A request is fulfilled, listing completed, or bundle delivered.</div>
               </div>
             </div>
