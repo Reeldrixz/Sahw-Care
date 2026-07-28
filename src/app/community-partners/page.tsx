@@ -138,7 +138,7 @@ function EmptyState() {
       </h2>
       <p style={{ fontFamily: SANS, fontSize: 15.5, lineHeight: 1.7, color: MUTED, margin: "0 0 10px" }}>
         The Community Partner Program is how local businesses fund the specific register items
-        mothers need — real essentials for pregnancy, birth, and the newborn months. Every
+        mothers need: real essentials for pregnancy, birth, and the newborn months. Every
         contribution maps to actual items, delivered directly to a family.
       </p>
       <p style={{ fontFamily: SANS, fontSize: 15.5, lineHeight: 1.7, color: MUTED, margin: "0 0 24px" }}>
