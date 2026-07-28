@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&addressdetails=1`,
       {
         headers: {
-          "User-Agent": "Kradel/1.0 (https://sahw-care.vercel.app; contact partners@kradel.care)",
+          "User-Agent": "Kradel/1.0 (https://sahw-care.vercel.app; contact partner@kradel.care)",
           "Accept": "application/json",
         },
         // Don't let a slow upstream hang the request.

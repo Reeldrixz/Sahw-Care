@@ -290,7 +290,7 @@ export default async function LandingPage() {
               Explore bundles
             </Link>
             <Link
-              href="/partners"
+              href="/community-partners"
               style={{ fontFamily: SANS, fontSize: 15, fontWeight: 800, color: GREEN, background: "#fff", border: `1.5px solid ${GREEN}`, padding: "14px 28px", borderRadius: 26, textDecoration: "none" }}
             >
               Become a partner
@@ -344,7 +344,7 @@ export default async function LandingPage() {
           </div>
           <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, margin: "18px 0 0" }}>
             Are you a business?{" "}
-            <Link href="/partners" style={{ color: GREEN, fontWeight: 800, textDecoration: "none" }}>
+            <Link href="/community-partners" style={{ color: GREEN, fontWeight: 800, textDecoration: "none" }}>
               Partner with us →
             </Link>
           </p>
@@ -359,7 +359,7 @@ export default async function LandingPage() {
         </p>
         <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
           <Link href="/find-help" style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: GREEN, textDecoration: "none" }}>Need support?</Link>
-          <Link href="/partners" style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: GREEN, textDecoration: "none" }}>Community Partners</Link>
+          <Link href="/community-partners" style={{ fontFamily: SANS, fontSize: 13, fontWeight: 700, color: GREEN, textDecoration: "none" }}>Local business? Become a Community Partner</Link>
         </div>
       </footer>
     </main>

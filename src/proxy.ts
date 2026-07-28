@@ -10,8 +10,9 @@ const PUBLIC_PATHS = [
   "/browse",
   // referral landing: a referred mother reaches this while logged out
   "/join",
-  // public community-partners (sponsorship) marketing page
-  "/partners",
+  // public Community Partner directory + per-business profile pages.
+  // Must stay public: in-store QR codes point at these, no auth.
+  "/community-partners",
   // public Impact Creator program page (+ public link-visit counter)
   "/creators",
   "/api/creators/visit",

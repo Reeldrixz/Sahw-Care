@@ -237,14 +237,14 @@ export default function BundlesPage() {
                 }}>
                   Browse Programs
                 </a>
-                <a href="/partners" style={{
+                <a href="/community-partners" style={{
                   flex: 1, padding: "12px 0", textAlign: "center", textDecoration: "none",
                   background: "rgba(255,255,255,0.15)",
                   border: "1.5px solid rgba(255,255,255,0.4)",
                   borderRadius: 12, fontSize: 14, fontWeight: 800,
                   color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif",
                 }}>
-                  Become a partner
+                  Become a Community Partner
                 </a>
               </div>
 
@@ -543,7 +543,7 @@ export default function BundlesPage() {
                             )}
                           </div>
                         ) : (
-                          <a href="/partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
+                          <a href="/community-partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
                             This bundle is open for a community partner{" "}
                             <span style={{ color: th.text, fontWeight: 700 }}>→</span>
                           </a>
@@ -712,14 +712,14 @@ export default function BundlesPage() {
               ))}
             </div>
 
-            <a href="/partners" style={{
+            <a href="/community-partners" style={{
               display: "block", textAlign: "center", textDecoration: "none",
               width: "100%", padding: "11px 0", background: "transparent",
               border: "1.5px solid rgba(255,255,255,0.5)", borderRadius: 12,
               fontSize: 13, fontWeight: 800, color: "white", cursor: "pointer",
               fontFamily: "Nunito, sans-serif",
             }}>
-              Learn about CSR benefits →
+              Meet our Community Partners →
             </a>
           </div>
         </div>
@@ -748,8 +748,8 @@ export default function BundlesPage() {
             <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 12 }}>
               Every bundle is fully funded by our community partners, so it reaches a mother completely free.
             </div>
-            <a href="/partners" style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
-              Meet our partners →
+            <a href="/community-partners" style={{ fontSize: 13, fontWeight: 800, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
+              Meet our Community Partners →
             </a>
           </div>
         </div>
