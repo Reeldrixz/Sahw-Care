@@ -313,6 +313,16 @@ export default function BundlesPage() {
           </div>
         </div>
 
+        {/* Donor framing: honest context for non-recipients. Bundles are a
+            showcase they can browse, not a program being distributed today. */}
+        {!loading && !isRecipient && (
+          <div style={{ margin: "12px 16px 0", padding: "14px 16px", background: "#faf6ee", borderRadius: 12, border: "1px solid #ece4d3" }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 14, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.6 }}>
+              Care bundles are complete starter kits for mothers, a program we&apos;re building toward as Kradel grows.
+            </div>
+          </div>
+        )}
+
         {/* How it works strip */}
         <div style={{ margin: "12px 16px", padding: "14px 16px", background: "#e8f5f1", borderRadius: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
@@ -406,7 +416,7 @@ export default function BundlesPage() {
                 return (
                   <div
                     key={b.id}
-                    className={`bundle-card${isDisabled ? " disabled-card" : ""}`}
+                    className={`bundle-card${hasOtherActive ? " disabled-card" : ""}`}
                     style={{ border: `1px solid ${isMyApplication ? "#1a7a5e" : th.cardBorder}`, position: "relative" }}
                   >
                     {/* Image area */}
@@ -567,25 +577,35 @@ export default function BundlesPage() {
                             style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "0.2s" }} />
                         </button>
                         <div style={{ flex: 1 }}>
-                          <button
-                            disabled={!btnClickable}
-                            onClick={() => btnClickable && openApply(b)}
-                            style={btnStyle}
-                          >
-                            {btnLabel}
-                          </button>
-                          {!isRecipient && (
-                            <div style={{ fontSize: 10, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
-                              For mothers who need this support
+                          {!isRecipient ? (
+                            // Donors and logged-out visitors: a calm statement, not a
+                            // disabled control. Bundles are a showcase for them.
+                            <div style={{
+                              padding: "10px 0", borderRadius: 10,
+                              fontSize: 12, fontWeight: 800,
+                              fontFamily: "Nunito, sans-serif", textAlign: "center",
+                              background: th.pillBg, color: th.pillText,
+                            }}>
+                              Available for mothers in need
                             </div>
-                          )}
-                          {bundleBlocked && (
-                            <div style={{ fontSize: 10, fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
-                              {bundleHeld
-                                ? <span style={{ color: "#92400e" }}>We need to confirm a few details. We'll be in touch.</span>
-                                : <a href="/profile" style={{ color: "#1a7a5e", fontWeight: 700, textDecoration: "underline" }}>Verify your identity on your profile →</a>
-                              }
-                            </div>
+                          ) : (
+                            <>
+                              <button
+                                disabled={!btnClickable}
+                                onClick={() => btnClickable && openApply(b)}
+                                style={btnStyle}
+                              >
+                                {btnLabel}
+                              </button>
+                              {bundleBlocked && (
+                                <div style={{ fontSize: 10, fontFamily: "Nunito, sans-serif", textAlign: "center", marginTop: 4 }}>
+                                  {bundleHeld
+                                    ? <span style={{ color: "#92400e" }}>We need to confirm a few details. We'll be in touch.</span>
+                                    : <a href="/profile" style={{ color: "#1a7a5e", fontWeight: 700, textDecoration: "underline" }}>Verify your identity on your profile →</a>
+                                  }
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
