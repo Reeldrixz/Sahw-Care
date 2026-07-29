@@ -47,19 +47,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async redirects() {
-    return [
-      // The tiered sponsorship page was retired; the Community Partner
-      // directory replaces it. 301 so bookmarks, in-store QR codes, and any
-      // external links land on the new canonical route. `statusCode: 301`
-      // (not `permanent: true`, which Next emits as 308) to match spec.
-      {
-        source: "/partners",
-        destination: "/community-partners",
-        statusCode: 301,
-      },
-    ];
-  },
 };
 
 export default nextConfig;

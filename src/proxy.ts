@@ -13,6 +13,8 @@ const PUBLIC_PATHS = [
   // public Community Partner directory + per-business profile pages.
   // Must stay public: in-store QR codes point at these, no auth.
   "/community-partners",
+  // public tiered sponsorship / "become a partner" marketing page
+  "/partners",
   // public Impact Creator program page (+ public link-visit counter)
   "/creators",
   "/api/creators/visit",

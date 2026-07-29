@@ -237,7 +237,7 @@ export default function BundlesPage() {
                 }}>
                   Browse Programs
                 </a>
-                <a href="/community-partners" style={{
+                <a href="/partners" style={{
                   flex: 1, padding: "12px 0", textAlign: "center", textDecoration: "none",
                   background: "rgba(255,255,255,0.15)",
                   border: "1.5px solid rgba(255,255,255,0.4)",
@@ -553,7 +553,7 @@ export default function BundlesPage() {
                             )}
                           </div>
                         ) : (
-                          <a href="/community-partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
+                          <a href="/partners" style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", textDecoration: "none", display: "inline-block" }}>
                             This bundle is open for a community partner{" "}
                             <span style={{ color: th.text, fontWeight: 700 }}>→</span>
                           </a>
