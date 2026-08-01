@@ -10,12 +10,13 @@
  * the target month when the original day does not exist there.
  */
 export function addOneMonth(date: Date): Date {
+  // UTC methods so the result is deterministic regardless of server timezone.
   const d = new Date(date);
-  const day = d.getDate();
-  d.setDate(1);                 // avoid rollover while changing month
-  d.setMonth(d.getMonth() + 1);
-  const lastDayOfTargetMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDayOfTargetMonth));
+  const day = d.getUTCDate();
+  d.setUTCDate(1);                        // avoid rollover while changing month
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  const lastDayOfTargetMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDayOfTargetMonth));
   return d;
 }
 
@@ -40,7 +41,8 @@ export function monthlyCooldown(lastApprovedAt: Date | null | undefined): {
   };
 }
 
-/** Warm, human date for cooldown messages, e.g. "January 28, 2026". */
+/** Warm, human date for cooldown messages, e.g. "January 28, 2026". Formatted
+ *  in UTC to match the UTC-based cooldown computation. */
 export function formatCooldownDate(date: Date): string {
-  return date.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+  return date.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 }

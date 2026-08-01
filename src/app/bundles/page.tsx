@@ -147,9 +147,10 @@ export default function BundlesPage() {
     setLoading(false);
   }, []);
 
-  // Warm date formatter for the cooldown banner (matches server wording).
+  // Warm date formatter for the cooldown banner (UTC to match the server's
+  // UTC-based cooldown dates).
   const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+    new Date(iso).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   const inBundleCooldown = !!bundleCooldownUntil;
 
   useEffect(() => { fetchBundles(); }, [fetchBundles]);
