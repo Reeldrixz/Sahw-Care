@@ -103,10 +103,12 @@ interface ApplyForm {
   fullName: string; phone: string; email: string; city: string; province: string;
   dueDate: string; babyDob: string; story: string;
   streetAddress: string; unit: string; postalCode: string;
+  disclaimerAcknowledged: boolean;
 }
 const EMPTY_FORM: ApplyForm = {
   fullName: "", phone: "", email: "", city: "", province: "",
   dueDate: "", babyDob: "", story: "", streetAddress: "", unit: "", postalCode: "",
+  disclaimerAcknowledged: false,
 };
 
 const MOST_POPULAR = "B06";
@@ -903,7 +905,20 @@ export default function BundlesPage() {
                   </div>
                 )}
 
-                <button type="submit" disabled={submitting} style={{ width: "100%", padding: "14px", background: submitting ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, color: "white", cursor: submitting ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>
+                {/* Required safety acknowledgment — gentle, supportive gate. */}
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#f8faf9", border: "1px solid #e0ede8", borderRadius: 10, padding: "12px 14px", marginBottom: 16, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={form.disclaimerAcknowledged}
+                    onChange={(e) => setForm((f) => ({ ...f, disclaimerAcknowledged: e.target.checked }))}
+                    style={{ flexShrink: 0, marginTop: 2, width: 16, height: 16, accentColor: "#1a7a5e", cursor: "pointer" }}
+                  />
+                  <span style={{ fontSize: 12.5, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                    I understand these items are general support and that I should check with my healthcare provider about anything I consume or apply during pregnancy or while breastfeeding.
+                  </span>
+                </label>
+
+                <button type="submit" disabled={submitting || !form.disclaimerAcknowledged} style={{ width: "100%", padding: "14px", background: (submitting || !form.disclaimerAcknowledged) ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, color: "white", cursor: (submitting || !form.disclaimerAcknowledged) ? "not-allowed" : "pointer", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>
                   {submitting ? "Submitting…" : "Submit application"}
                 </button>
                 <div style={{ fontSize: 11, color: "#9ca3af", textAlign: "center", fontFamily: "Nunito, sans-serif", paddingBottom: 8 }}>

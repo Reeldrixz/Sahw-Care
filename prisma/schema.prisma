@@ -1463,6 +1463,10 @@ model BundleApplication {
   streetAddress String
   unit          String?
   postalCode    String
+  // Safety acknowledgment: mother confirmed at apply time that she should check
+  // consumable/body-applied items with her healthcare provider. Nullable so
+  // historical rows (pre-feature) stay valid.
+  disclaimerAcknowledgedAt DateTime?
   // Status
   status      BundleApplicationStatus @default(PENDING)
   adminNote   String?

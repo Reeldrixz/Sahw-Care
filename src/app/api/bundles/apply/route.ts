@@ -12,10 +12,16 @@ export async function POST(req: NextRequest) {
     bundleId, fullName, phone, email, city, province,
     dueDate, babyDob, story,
     streetAddress, unit, postalCode,
+    disclaimerAcknowledged,
   } = body;
 
   if (!bundleId || !fullName || !phone || !city || !province || !story || !streetAddress || !postalCode) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Safety acknowledgment is required before an application can be submitted.
+  if (!disclaimerAcknowledged) {
+    return NextResponse.json({ error: "Please confirm the healthcare provider acknowledgment before submitting." }, { status: 400 });
   }
 
   // Auth + role guard — must be a logged-in RECIPIENT
@@ -102,6 +108,7 @@ export async function POST(req: NextRequest) {
       unit:          unit?.trim() || null,
       postalCode:    postalCode.trim(),
       userId:        currentUser.userId,
+      disclaimerAcknowledgedAt: new Date(),
     },
   });
 
