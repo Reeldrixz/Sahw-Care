@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,21 @@ export async function POST(req: NextRequest) {
   });
   if (applicant?.role !== "RECIPIENT") {
     return NextResponse.json({ error: "Only verified mothers can request formula support." }, { status: 403 });
+  }
+
+  // Monthly receipt cooldown on its OWN clock, independent of bundles: keyed off
+  // the last APPROVED formula request (reviewedAt). Pending/declined never count.
+  const lastApprovedFormula = await prisma.formulaRequest.findFirst({
+    where:   { userId: currentUser.userId, status: "APPROVED" },
+    orderBy: { reviewedAt: "desc" },
+    select:  { reviewedAt: true },
+  });
+  const formulaCooldown = monthlyCooldown(lastApprovedFormula?.reviewedAt ?? null);
+  if (formulaCooldown.active && formulaCooldown.lastApprovedAt && formulaCooldown.nextEligibleAt) {
+    return NextResponse.json({
+      error: `Your last formula support was approved on ${formatCooldownDate(formulaCooldown.lastApprovedAt)}. To help us support as many babies as possible, formula is provided about a month at a time, so you can request again from ${formatCooldownDate(formulaCooldown.nextEligibleAt)}.`,
+      code:  "FORMULA_MONTHLY_COOLDOWN",
+    }, { status: 409 });
   }
 
   // Rate limit per account: a few requests per day is plenty for a genuine need.

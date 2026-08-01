@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 import FormulaSupportForm from "./FormulaSupportForm";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,17 @@ export default async function FormulaSupportPage() {
     : null;
   const isRecipient = account?.role === "RECIPIENT";
 
+  // Formula receipt cooldown (own clock, independent of bundles): keyed off the
+  // last APPROVED formula request. Pending/declined never start the clock.
+  const lastApprovedFormula = isRecipient && currentUser
+    ? await prisma.formulaRequest.findFirst({
+        where:   { userId: currentUser.userId, status: "APPROVED" },
+        orderBy: { reviewedAt: "desc" },
+        select:  { reviewedAt: true },
+      })
+    : null;
+  const formulaCooldown = monthlyCooldown(lastApprovedFormula?.reviewedAt ?? null);
+
   return (
     <main style={{ background: "var(--bg, #faf7f2)", minHeight: "100vh", fontFamily: SANS }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px 64px" }}>
@@ -38,7 +50,16 @@ export default async function FormulaSupportPage() {
           ← Back to bundles
         </Link>
 
-        {isRecipient ? (
+        {isRecipient && formulaCooldown.active && formulaCooldown.lastApprovedAt && formulaCooldown.nextEligibleAt ? (
+          <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
+            <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
+              You&apos;re set for this month
+            </h1>
+            <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: 0 }}>
+              Your last formula support was approved on <strong style={{ color: INK }}>{formatCooldownDate(formulaCooldown.lastApprovedAt)}</strong>. To help us support as many babies as possible, formula is provided about a month at a time, so you can request again from <strong style={{ color: INK }}>{formatCooldownDate(formulaCooldown.nextEligibleAt)}</strong>.
+            </p>
+          </div>
+        ) : isRecipient ? (
           <>
             <h1 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: INK, margin: "18px 0 10px" }}>
               Request help with infant formula

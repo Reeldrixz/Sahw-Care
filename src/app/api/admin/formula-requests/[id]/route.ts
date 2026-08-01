@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,30 @@ export async function PATCH(
   const valid = ["PENDING", "APPROVED", "DECLINED"];
   if (status && !valid.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  // Belt-and-suspenders monthly cooldown: don't let an admin approve a second
+  // formula allocation for the same mother within a month of a prior approval.
+  // Independent of the bundle clock (queries FormulaRequest only).
+  if (status === "APPROVED") {
+    const target = await prisma.formulaRequest.findUnique({
+      where:  { id },
+      select: { userId: true },
+    });
+    if (target?.userId) {
+      const priorApproved = await prisma.formulaRequest.findFirst({
+        where:   { userId: target.userId, status: "APPROVED", id: { not: id } },
+        orderBy: { reviewedAt: "desc" },
+        select:  { reviewedAt: true },
+      });
+      const cd = monthlyCooldown(priorApproved?.reviewedAt ?? null);
+      if (cd.active && cd.lastApprovedAt && cd.nextEligibleAt) {
+        return NextResponse.json({
+          error: `This mother's formula support was approved on ${formatCooldownDate(cd.lastApprovedAt)}. Formula is provided about a month at a time, so she is next eligible from ${formatCooldownDate(cd.nextEligibleAt)}.`,
+          code:  "FORMULA_MONTHLY_COOLDOWN",
+        }, { status: 409 });
+      }
+    }
   }
 
   const updated = await prisma.formulaRequest.update({
