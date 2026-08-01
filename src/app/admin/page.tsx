@@ -106,7 +106,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "register-suggestions" | "impact";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "formula-requests" | "register-suggestions" | "impact";
 
 interface LifetimeImpact {
   firstActionDate: string | null;
@@ -165,6 +165,34 @@ interface BundleApplicationAdmin {
   currentStage: string | null;
   lifetimeApproved: number;
   daysSince: number;
+}
+
+interface FormulaRequestAdmin {
+  id: string;
+  formulaBrand: string; formulaType: string; formulaStage: string;
+  babyDob: string; note: string | null;
+  breastfeedingResourcesRequested: boolean;
+  status: string; adminNote: string | null; reviewedAt: string | null;
+  createdAt: string;
+  mother: { id: string; name: string; email: string | null; location: string | null };
+}
+
+// Human-readable baby age from DOB. Surfaced next to the requested formula stage
+// so an admin can spot a mismatch (e.g. a Stage 3 request for a 2-week-old).
+function babyAgeLabel(dobStr: string): string {
+  const dob = new Date(dobStr);
+  if (Number.isNaN(dob.getTime())) return "unknown age";
+  const now = new Date();
+  let months = (now.getFullYear() - dob.getFullYear()) * 12 + (now.getMonth() - dob.getMonth());
+  if (now.getDate() < dob.getDate()) months -= 1;
+  if (months < 0) return "not yet born";
+  if (months < 1) {
+    const weeks = Math.floor((now.getTime() - dob.getTime()) / (7 * 86400000));
+    return weeks <= 0 ? "under 1 week old" : `${weeks} week${weeks === 1 ? "" : "s"} old`;
+  }
+  if (months < 24) return `${months} month${months === 1 ? "" : "s"} old`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? "" : "s"} old`;
 }
 
 
@@ -312,6 +340,14 @@ export default function AdminPage() {
   const [sponsorNameDraft,      setSponsorNameDraft]      = useState("");
   const [sponsorUrlDraft,       setSponsorUrlDraft]       = useState("");
   const [sponsorSaveError,      setSponsorSaveError]      = useState<string | null>(null);
+
+  // Formula support requests state (BETA request-intake; human review only)
+  const [formulaReqs,        setFormulaReqs]        = useState<FormulaRequestAdmin[]>([]);
+  const [formulaReqsLoading, setFormulaReqsLoading] = useState(false);
+  const [formulaReqsFilter,  setFormulaReqsFilter]  = useState<"PENDING" | "APPROVED" | "DECLINED">("PENDING");
+  const [formulaReqsTotal,   setFormulaReqsTotal]   = useState(0);
+  const [formulaNoteMap,     setFormulaNoteMap]     = useState<Record<string, string>>({});
+  const [expandedFormulaId,  setExpandedFormulaId]  = useState<string | null>(null);
 
   // Fulfillments state
   const [fulfillments,      setFulfillments]      = useState<AdminFulfillment[]>([]);
@@ -481,6 +517,31 @@ export default function AdminPage() {
     if (r.ok) {
       setBundleApps((prev) => prev.filter((a) => a.id !== id));
       setToast(`Application ${status.toLowerCase()}`);
+    }
+  };
+
+  const fetchFormulaReqs = useCallback(async (status: string) => {
+    setFormulaReqsLoading(true);
+    const r = await fetch(`/api/admin/formula-requests?status=${status}&limit=50`);
+    if (r.ok) { const d = await r.json(); setFormulaReqs(d.requests ?? []); setFormulaReqsTotal(d.total ?? 0); }
+    setFormulaReqsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (section === "formula-requests") fetchFormulaReqs(formulaReqsFilter);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, fetchFormulaReqs]);
+
+  const reviewFormulaReq = async (id: string, status: string) => {
+    const note = formulaNoteMap[id] ?? "";
+    const r = await fetch(`/api/admin/formula-requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, adminNote: note || undefined }),
+    });
+    if (r.ok) {
+      setFormulaReqs((prev) => prev.filter((a) => a.id !== id));
+      setToast(`Formula request ${status.toLowerCase()}`);
     }
   };
 
@@ -661,6 +722,7 @@ export default function AdminPage() {
     ["coordination",   "📍 Coordination"],
     ["refunds",        "💳 Refunds"],
     ["bundle-apps",    `📬 Bundle Apps${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0) > 0 ? ` (${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0)})` : ""}`],
+    ["formula-requests", "🍼 Formula Requests"],
     ["register-suggestions", `💡 Suggestions${suggestions.filter(s => s.status === "pending").length > 0 ? ` (${suggestions.filter(s => s.status === "pending").length})` : ""}`],
     ["impact",               "📈 Impact"],
   ];
@@ -2483,6 +2545,163 @@ export default function AdminPage() {
                         })}
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── FORMULA REQUESTS ─────────────────────────────────────── */}
+            {section === "formula-requests" && (
+              <div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 6, color: "var(--ink)" }}>
+                  Formula Requests
+                </div>
+                <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 20, lineHeight: 1.6, maxWidth: 720 }}>
+                  BETA request intake for mothers whose babies are already formula-fed. Review each one individually.
+                  Check the baby&apos;s age against the requested stage before deciding. No supply is promised or
+                  automated here.
+                </div>
+
+                {/* Status filter */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {(["PENDING", "APPROVED", "DECLINED"] as const).map((s) => (
+                    <button key={s} onClick={() => { setFormulaReqsFilter(s); fetchFormulaReqs(s); setExpandedFormulaId(null); }}
+                      style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px solid " + (formulaReqsFilter === s ? "#1a7a5e" : "#e0e0e0"), background: formulaReqsFilter === s ? "#1a7a5e" : "white", color: formulaReqsFilter === s ? "white" : "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      {s.charAt(0) + s.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                  <span style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af", fontFamily: "Nunito, sans-serif", alignSelf: "center" }}>
+                    {formulaReqsTotal} total
+                  </span>
+                </div>
+
+                {formulaReqsLoading ? <div className="loading"><div className="spinner" /></div> : formulaReqs.length === 0 ? (
+                  <div style={{ padding: "40px 0", textAlign: "center", color: "#555", fontSize: 14, fontFamily: "Nunito, sans-serif" }}>
+                    No {formulaReqsFilter.toLowerCase()} formula requests.
+                  </div>
+                ) : (
+                  <div style={{ border: "1px solid #e0e0e0", borderRadius: 12, overflow: "hidden" }}>
+                    {/* Column header */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 2fr 1.4fr 90px 24px", gap: 12, padding: "9px 16px", background: "#f9f9f9", borderBottom: "1px solid #e0e0e0", fontSize: 11, fontWeight: 800, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      <span>Mother</span><span>Formula</span><span>Baby age / stage</span><span>Applied</span><span />
+                    </div>
+
+                    {formulaReqs.map((rq, idx) => {
+                      const isExpanded = expandedFormulaId === rq.id;
+                      const age = babyAgeLabel(rq.babyDob);
+                      return (
+                        <div key={rq.id} style={{ borderBottom: idx < formulaReqs.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                          {/* ── Row ── */}
+                          <div
+                            onClick={() => setExpandedFormulaId(isExpanded ? null : rq.id)}
+                            style={{ display: "grid", gridTemplateColumns: "1.6fr 2fr 1.4fr 90px 24px", gap: 12, padding: "12px 16px", alignItems: "center", cursor: "pointer", background: isExpanded ? "#fafafa" : "white" }}
+                          >
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{rq.mother.name}</div>
+                              {rq.mother.location && <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>{rq.mother.location}</div>}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{rq.formulaBrand} {rq.formulaType}</div>
+                              <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>Stage: {rq.formulaStage}</div>
+                            </div>
+                            {/* Baby age next to requested stage so a mismatch is visible */}
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{age}</div>
+                              <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>for {rq.formulaStage}</div>
+                            </div>
+                            <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
+                              {new Date(rq.createdAt).toLocaleDateString("en-CA", { month: "short", day: "numeric" })}
+                            </div>
+                            <div style={{ fontSize: 13, color: "#ccc", textAlign: "center" }}>{isExpanded ? "▲" : "▼"}</div>
+                          </div>
+
+                          {/* ── Detail panel ── */}
+                          {isExpanded && (
+                            <div style={{ background: "#fafafa", borderTop: "1px solid #e8e8e8", padding: "20px 20px 24px" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 16 }}>
+                                <div>
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Mother</div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", marginBottom: 3, fontFamily: "Nunito, sans-serif" }}>{rq.mother.name}</div>
+                                  {rq.mother.email && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>{rq.mother.email}</div>}
+                                  {rq.mother.location && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>{rq.mother.location}</div>}
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Requested formula</div>
+                                  <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                    <strong style={{ color: "#1a1a1a" }}>Brand:</strong> {rq.formulaBrand}
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                    <strong style={{ color: "#1a1a1a" }}>Type:</strong> {rq.formulaType}
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
+                                    <strong style={{ color: "#1a1a1a" }}>Stage:</strong> {rq.formulaStage}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Safety check: baby age vs requested stage, side by side */}
+                              <div style={{ display: "flex", gap: 12, alignItems: "center", background: "white", border: "1px solid #e0e0e0", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+                                <div>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: "Nunito, sans-serif" }}>Baby age</div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{age}</div>
+                                  <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>DOB {new Date(rq.babyDob).toLocaleDateString("en-CA")}</div>
+                                </div>
+                                <div style={{ fontSize: 18, color: "#ccc" }}>vs</div>
+                                <div>
+                                  <div style={{ fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: "Nunito, sans-serif" }}>Requested stage</div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{rq.formulaStage}</div>
+                                  <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>confirm this suits the age</div>
+                                </div>
+                              </div>
+
+                              {rq.note && (
+                                <div style={{ marginBottom: 14 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Note from mother</div>
+                                  <div style={{ fontSize: 13, color: "#333", lineHeight: 1.7, background: "white", padding: "12px 14px", borderRadius: 8, border: "1px solid #e0e0e0", fontFamily: "Nunito, sans-serif" }}>
+                                    {rq.note}
+                                  </div>
+                                </div>
+                              )}
+
+                              {rq.breastfeedingResourcesRequested && (
+                                <div style={{ fontSize: 12, color: "#1a7a5e", fontWeight: 700, fontFamily: "Nunito, sans-serif", marginBottom: 14 }}>
+                                  Mother also asked for breastfeeding support information.
+                                </div>
+                              )}
+
+                              {rq.status === "PENDING" && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                  <textarea
+                                    placeholder="Admin note (optional, max 200 chars)…"
+                                    maxLength={200}
+                                    value={formulaNoteMap[rq.id] ?? ""}
+                                    onChange={(e) => setFormulaNoteMap((m) => ({ ...m, [rq.id]: e.target.value }))}
+                                    rows={2}
+                                    style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const }}
+                                  />
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    <button onClick={() => reviewFormulaReq(rq.id, "APPROVED")}
+                                      style={{ flex: 1, padding: "10px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                      Approve for follow-up
+                                    </button>
+                                    <button onClick={() => reviewFormulaReq(rq.id, "DECLINED")}
+                                      style={{ flex: 1, padding: "10px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                      Decline
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                              {rq.status !== "PENDING" && rq.adminNote && (
+                                <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
+                                  <strong style={{ color: "#1a1a1a" }}>Admin note:</strong> {rq.adminNote}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
