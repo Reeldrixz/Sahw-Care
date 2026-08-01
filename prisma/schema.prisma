@@ -182,6 +182,7 @@ model User {
   itemFundings         RegisterItemFunding[]
   supportContributions SupportContribution[]
   bundleApplications   BundleApplication[]
+  formulaRequests      FormulaRequest[]
 
   totalFundedCents Int @default(0)
   fundingCount     Int @default(0)
@@ -1487,6 +1488,50 @@ model BundleApplication {
   @@index([bundleId])
   @@index([status])
   @@index([userId])
+}
+
+// ==================== FORMULA SUPPORT REQUESTS ====================
+// BETA-safe request intake, NOT an automated entitlement or a promise of
+// supply. A verified mother (RECIPIENT) whose baby is ALREADY formula-fed asks
+// for help affording the exact formula her baby uses. Every row is reviewed by
+// a human in admin; nothing here auto-approves or auto-fulfils.
+
+enum FormulaRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+model FormulaRequest {
+  id     String @id @default(cuid())
+  userId String
+  // Exact formula the baby ALREADY uses. Free-text and required so we fulfil
+  // the same product, never a substitute (switching formula can harm a baby).
+  formulaBrand String
+  formulaType  String // type / variant
+  formulaStage String
+  // Baby DOB confirms a real infant and lets admin catch a DOB-vs-stage
+  // mismatch (e.g. Stage 3 requested for a 2-week-old).
+  babyDob DateTime
+  note    String?
+  // Safety confirmation captured at submit time ("formula-fed infant currently
+  // in my care").
+  confirmedFormulaFedAt DateTime
+  // Optional: mother asked to hear about breastfeeding support too (WHO code:
+  // support breastfeeding, do not assume formula-first).
+  breastfeedingResourcesRequested Boolean @default(false)
+
+  status     FormulaRequestStatus @default(PENDING)
+  adminNote  String?
+  reviewedAt DateTime?
+  reviewedBy String? // admin userId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
 }
 
 // ==================== PROFILE SNAPSHOTS ====================
