@@ -75,8 +75,8 @@ export default function FormulaSupportForm() {
         </div>
         <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 8 }}>Request received</div>
         <p style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.7, maxWidth: 400, margin: "0 auto" }}>
-          Our team will review it individually and follow up with you. During our beta, availability is limited and we
-          cannot promise supply, but we will be in touch.
+          Our team will review it individually and follow up with you. Formula support depends on available funding, so
+          we cannot guarantee every request, but we will be in touch.
         </p>
       </div>
     );
@@ -130,8 +130,8 @@ export default function FormulaSupportForm() {
 
       {/* Honest expectations, kept directly above the button */}
       <div style={{ fontSize: 12, color: "#6b7280", fontFamily: SANS, lineHeight: 1.6, marginBottom: 12 }}>
-        Formula requests are reviewed individually by our team. During our beta, availability is limited and support is
-        not guaranteed. We will follow up with you about next steps.
+        Formula requests are reviewed individually by our team. Formula support depends on available funding, so we
+        cannot guarantee every request, but we will follow up with you about next steps.
       </div>
 
       <button type="submit" disabled={submitting || !canSubmit} style={{ width: "100%", padding: "14px", background: (submitting || !canSubmit) ? "#9ca3af" : GREEN, border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, color: "white", cursor: (submitting || !canSubmit) ? "not-allowed" : "pointer", fontFamily: SANS }}>

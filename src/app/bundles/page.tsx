@@ -338,7 +338,9 @@ export default function BundlesPage() {
         </div>
 
         {/* Formula support: mother-facing request intake. Breastfeeding-neutral;
-            honest beta note kept adjacent to the CTA so it is not skipped. */}
+            honest funding-dependent note kept adjacent to the CTA so it is not
+            skipped. Support can never be guaranteed (funding-dependent), so this
+            uses no beta-conditional phrasing. */}
         {!loading && isRecipient && (
           <div style={{ margin: "12px 16px", padding: "16px 18px", background: "white", borderRadius: 12, border: "1px solid #e8e8e8" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
@@ -352,7 +354,7 @@ export default function BundlesPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
               <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.55 }}>
-                During our beta, availability is limited and support is not guaranteed, but we will follow up with you.
+                Formula support depends on available funding, so we cannot guarantee every request, but we review each one individually and will follow up with you.
               </div>
               <a href="/bundles/formula-support" style={{ display: "inline-block", padding: "10px 20px", background: "#1a7a5e", borderRadius: 10, fontSize: 13, fontWeight: 800, color: "white", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
                 Request formula support →
