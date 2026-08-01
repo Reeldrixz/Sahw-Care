@@ -127,6 +127,8 @@ export default function BundlesPage() {
   const [submitted,                  setSubmitted]                  = useState(false);
   const [error,                      setError]                      = useState<string | null>(null);
   const [openFaq,                    setOpenFaq]                    = useState<number | null>(null);
+  const [bundleCooldownUntil,        setBundleCooldownUntil]        = useState<string | null>(null);
+  const [bundleLastApprovedAt,       setBundleLastApprovedAt]       = useState<string | null>(null);
 
   const { user } = useAuth();
 
@@ -139,9 +141,16 @@ export default function BundlesPage() {
       setMyActiveApplicationBundleId(d.myActiveApplicationBundleId ?? null);
       setMyLifetimeApproved(d.myLifetimeApproved ?? 0);
       setIsRecipient(d.isRecipient ?? false);
+      setBundleCooldownUntil(d.bundleCooldownUntil ?? null);
+      setBundleLastApprovedAt(d.bundleLastApprovedAt ?? null);
     }
     setLoading(false);
   }, []);
+
+  // Warm date formatter for the cooldown banner (matches server wording).
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+  const inBundleCooldown = !!bundleCooldownUntil;
 
   useEffect(() => { fetchBundles(); }, [fetchBundles]);
 
@@ -378,8 +387,20 @@ export default function BundlesPage() {
           </div>
         ) : (
           <>
+            {/* Monthly receipt cooldown notice: warm, dignity-first (here's why
+                + when you're welcome back), shown when she received a bundle
+                within the last month. */}
+            {inBundleCooldown && bundleLastApprovedAt && bundleCooldownUntil && (
+              <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#e8f5f1", borderRadius: 12, border: "1px solid #c3e6cb", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <CheckCircle size={16} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                  You received a bundle on <strong style={{ fontWeight: 800 }}>{fmtDate(bundleLastApprovedAt)}</strong>. So support can reach as many mothers as possible, each mother receives one bundle a month. You&apos;re welcome to apply again from <strong style={{ fontWeight: 800 }}>{fmtDate(bundleCooldownUntil)}</strong>.
+                </div>
+              </div>
+            )}
+
             {/* Active application notice */}
-            {myActiveApplicationBundleId && (
+            {!inBundleCooldown && myActiveApplicationBundleId && (
               <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <AlertCircle size={16} color="#b45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
                 <div style={{ fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
@@ -419,13 +440,15 @@ export default function BundlesPage() {
                   ? "Identity verification required"
                   : isMyApplication
                   ? "Application submitted ✓"
+                  : inBundleCooldown
+                  ? "One bundle a month"
                   : hasOtherActive
                   ? "Another application active"
                   : full
                   ? "Intake closed"
                   : "Apply for support →";
 
-                const btnClickable = isRecipient && !bundleBlocked && !isMyApplication && !hasOtherActive && !full;
+                const btnClickable = isRecipient && !bundleBlocked && !isMyApplication && !inBundleCooldown && !hasOtherActive && !full;
 
                 const btnStyle: React.CSSProperties = {
                   flex: 1, padding: "10px 0",
@@ -434,10 +457,10 @@ export default function BundlesPage() {
                   fontFamily: "Nunito, sans-serif",
                   cursor: btnClickable ? "pointer" : "default",
                   background: isMyApplication ? "#e8f5f1"
-                    : (isDisabled || bundleBlocked || full) ? "#f0f0f0"
+                    : (isDisabled || bundleBlocked || full || inBundleCooldown) ? "#f0f0f0"
                     : th.text,
                   color: isMyApplication ? "#1a7a5e"
-                    : (isDisabled || bundleBlocked || full) ? "#9ca3af"
+                    : (isDisabled || bundleBlocked || full || inBundleCooldown) ? "#9ca3af"
                     : "white",
                 };
 

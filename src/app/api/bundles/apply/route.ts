@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canApplyForBundle } from "@/lib/access";
+import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: "You have completed the Kradəl Bundles programme (9 bundles received). Thank you for letting us support your journey.",
     }, { status: 400 });
+  }
+
+  // Monthly receipt cooldown: one bundle per month, keyed off the last approval
+  // /receipt (reviewedAt of an APPROVED/DELIVERED row), independent of formula.
+  const lastApprovedBundle = await prisma.bundleApplication.findFirst({
+    where:   { userId: currentUser.userId, status: { in: ["APPROVED", "DELIVERED"] } },
+    orderBy: { reviewedAt: "desc" },
+    select:  { reviewedAt: true },
+  });
+  const bundleCooldown = monthlyCooldown(lastApprovedBundle?.reviewedAt ?? null);
+  if (bundleCooldown.active && bundleCooldown.lastApprovedAt && bundleCooldown.nextEligibleAt) {
+    return NextResponse.json({
+      error: `You received a bundle on ${formatCooldownDate(bundleCooldown.lastApprovedAt)}. So support can reach as many mothers as possible, each mother receives one bundle a month. You're welcome to apply again from ${formatCooldownDate(bundleCooldown.nextEligibleAt)}.`,
+      code:  "BUNDLE_MONTHLY_COOLDOWN",
+    }, { status: 409 });
   }
 
   // One active application per cycle

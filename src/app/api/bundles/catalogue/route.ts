@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { monthlyCooldown } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,11 @@ export async function GET(_req: NextRequest) {
   let myActiveApplicationBundleId: string | null = null;
   let myLifetimeApproved = 0;
   let isRecipient = false;
+  let bundleCooldownUntil: string | null = null;
+  let bundleLastApprovedAt: string | null = null;
 
   if (currentUser) {
-    const [existing, lifetimeCount, userRecord] = await Promise.all([
+    const [existing, lifetimeCount, userRecord, lastApprovedBundle] = await Promise.all([
       prisma.bundleApplication.findFirst({
         where: {
           userId: currentUser.userId,
@@ -53,10 +56,22 @@ export async function GET(_req: NextRequest) {
         where:  { id: currentUser.userId },
         select: { role: true },
       }),
+      prisma.bundleApplication.findFirst({
+        where:   { userId: currentUser.userId, status: { in: ["APPROVED", "DELIVERED"] } },
+        orderBy: { reviewedAt: "desc" },
+        select:  { reviewedAt: true },
+      }),
     ]);
     myActiveApplicationBundleId = existing?.bundleId ?? null;
     myLifetimeApproved = lifetimeCount;
     isRecipient = userRecord?.role === "RECIPIENT";
+
+    // Monthly receipt cooldown (keyed off last approval, independent of formula).
+    const cd = monthlyCooldown(lastApprovedBundle?.reviewedAt ?? null);
+    if (cd.active) {
+      bundleCooldownUntil  = cd.nextEligibleAt?.toISOString() ?? null;
+      bundleLastApprovedAt = cd.lastApprovedAt?.toISOString() ?? null;
+    }
   }
 
   const data = bundles.map((b) => ({
@@ -74,5 +89,5 @@ export async function GET(_req: NextRequest) {
     sponsorUrl:       b.sponsorUrl,
   }));
 
-  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved, isRecipient });
+  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved, isRecipient, bundleCooldownUntil, bundleLastApprovedAt });
 }

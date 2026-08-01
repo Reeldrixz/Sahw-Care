@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getResend } from "@/lib/resend";
+import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,30 @@ export async function PATCH(
   const valid = ["PENDING", "APPROVED", "REJECTED", "WAITLISTED", "DELIVERED"];
   if (status && !valid.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  // Belt-and-suspenders monthly cooldown: don't let an admin approve a second
+  // bundle for the same mother within a month of a prior approval/receipt.
+  // Keyed off reviewedAt of another APPROVED/DELIVERED row (this row excluded).
+  if (status === "APPROVED") {
+    const target = await prisma.bundleApplication.findUnique({
+      where:  { id },
+      select: { userId: true },
+    });
+    if (target?.userId) {
+      const priorApproved = await prisma.bundleApplication.findFirst({
+        where:   { userId: target.userId, status: { in: ["APPROVED", "DELIVERED"] }, id: { not: id } },
+        orderBy: { reviewedAt: "desc" },
+        select:  { reviewedAt: true },
+      });
+      const cd = monthlyCooldown(priorApproved?.reviewedAt ?? null);
+      if (cd.active && cd.lastApprovedAt && cd.nextEligibleAt) {
+        return NextResponse.json({
+          error: `This mother received a bundle on ${formatCooldownDate(cd.lastApprovedAt)}. Bundles are spaced to one per month, so she is next eligible from ${formatCooldownDate(cd.nextEligibleAt)}.`,
+          code:  "BUNDLE_MONTHLY_COOLDOWN",
+        }, { status: 409 });
+      }
+    }
   }
 
   const application = await prisma.bundleApplication.update({
