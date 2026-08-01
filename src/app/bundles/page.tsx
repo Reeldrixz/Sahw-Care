@@ -620,6 +620,10 @@ export default function BundlesPage() {
                         <ul style={{ margin: 0, paddingLeft: 16, listStyle: "disc", fontSize: 12, color: "#444", fontFamily: "Nunito, sans-serif", lineHeight: 1.7 }}>
                           {parseMd(b.contentsMarkdown)}
                         </ul>
+                        {/* Gentle, informational suitability note. Not a warning. */}
+                        <p style={{ margin: "12px 0 0", fontSize: 11, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                          Bundle items are provided as general maternity and baby support. Please check with your healthcare provider before using anything you consume or apply during pregnancy or while breastfeeding.
+                        </p>
                       </div>
                     )}
                   </div>
