@@ -337,6 +337,30 @@ export default function BundlesPage() {
           </div>
         </div>
 
+        {/* Formula support: mother-facing request intake. Breastfeeding-neutral;
+            honest beta note kept adjacent to the CTA so it is not skipped. */}
+        {!loading && isRecipient && (
+          <div style={{ margin: "12px 16px", padding: "16px 18px", background: "white", borderRadius: 12, border: "1px solid #e8e8e8" }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
+              Support for formula-feeding families
+            </div>
+            <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 14 }}>
+              If your baby is already formula-fed and affording formula has become hard, you can ask us for help.
+              Tell us the exact formula your baby uses, and our team will review your request individually. Because
+              changing a baby&apos;s formula can upset their tummy, we only ever help with the same formula your baby
+              already has.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
+              <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.55 }}>
+                During our beta, availability is limited and support is not guaranteed, but we will follow up with you.
+              </div>
+              <a href="/bundles/formula-support" style={{ display: "inline-block", padding: "10px 20px", background: "#1a7a5e", borderRadius: 10, fontSize: 13, fontWeight: 800, color: "white", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
+                Request formula support →
+              </a>
+            </div>
+          </div>
+        )}
+
         {myLifetimeApproved >= 9 ? (
           /* ── PROGRAMME COMPLETION BANNER ─────────────────────────────── */
           <div id="bundle-grid" style={{ margin: "16px", padding: "40px 24px", background: "white", borderRadius: 16, border: "1px solid #c3e6cb", textAlign: "center" }}>
