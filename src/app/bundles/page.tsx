@@ -695,7 +695,7 @@ export default function BundlesPage() {
                   cursor: "pointer", fontFamily: "Nunito, sans-serif",
                 }}
               >
-                View all 12 support programs →
+                View all {bundles.length} support programs →
               </button>
             </div>
           )}

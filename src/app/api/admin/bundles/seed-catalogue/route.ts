@@ -4,8 +4,12 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Target item counts: B01–B04=8, B05=7, B06/B07/B08/B12=10, B09=7, B10=8, B11=14
-// Internal price bands (never shown to mothers): $100 Essentials, $175 Core, $250 Complete
+// 9 live bundles: B01, B02, B03, B04, B06, B07, B08, B09, B12.
+// Retired (active:false, hidden from mothers, records kept): B05, B10, B11.
+// Item counts (live): B01=7, B02=6, B03=6, B04=7, B06=10, B07=7, B08=8, B09=6, B12=7.
+// Internal price bands (never shown to mothers): $100 Essentials, $175 Core, $250 Complete.
+// NOTE: B08's stored band may not match its real ~$200 cost after the pump was
+// cut; price-band redraw is a separate deliberate pass (intentionally not done here).
 const BUNDLES = [
   {
     code: "B01",
@@ -85,6 +89,7 @@ const BUNDLES = [
   },
   {
     code: "B05",
+    active: false, // Retired: off-mission (serves partner, not mother). Hidden from mothers; record kept.
     name: "Birth Partner Support Kit",
     stage: "LABOUR" as const,
     description: "Tools and comforts to help a birth partner provide meaningful support during labour.",
@@ -184,6 +189,7 @@ const BUNDLES = [
   },
   {
     code: "B10",
+    active: false, // Retired: informational/digital filler, not material support. Hidden from mothers; record kept.
     name: "Fourth Trimester Wellness Kit",
     stage: "POSTPARTUM" as const,
     description: "Resources and self-care items to support maternal mental health in the fourth trimester.",
@@ -203,6 +209,7 @@ const BUNDLES = [
   },
   {
     code: "B11",
+    active: false, // Retired: supplement-based, violates no-supplement rule. Hidden from mothers; record kept.
     name: "Maternal Nutrition & Recovery Bundle",
     stage: "POSTPARTUM" as const,
     description: "Nutritional support for recovery and breastfeeding in the months after birth.",
@@ -266,6 +273,10 @@ export async function POST(req: NextRequest) {
         estimatedValue: b.estimatedValue,
         priceBand: b.priceBand,
         targetPriceCad: b.targetPriceCad,
+        // Seed is authoritative for active state: a re-seed enforces the flag
+        // above (retired bundles stay hidden). Manual admin pause/unpause is
+        // overridden on re-seed by design.
+        isActive: b.active ?? true,
       },
       create: {
         code: b.code,
@@ -277,7 +288,7 @@ export async function POST(req: NextRequest) {
         priceBand: b.priceBand,
         targetPriceCad: b.targetPriceCad,
         slotsPerMonth: 10,
-        isActive: true,
+        isActive: b.active ?? true,
       },
     });
     results.push({ code: bundle.code, name: bundle.name, itemCount });
