@@ -106,7 +106,7 @@ interface WeeklySummary {
   topRequestedCategories: { category: string; count: number }[];
 }
 
-type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "formula-requests" | "register-suggestions" | "impact";
+type Section = "overview" | "users" | "listings" | "reports" | "trust" | "verification" | "circles" | "abuse" | "fulfillments" | "register-queue" | "catalog" | "coordination" | "approvals" | "refunds" | "bundle-apps" | "formula-requests" | "reflections" | "register-suggestions" | "impact";
 
 interface LifetimeImpact {
   firstActionDate: string | null;
@@ -175,6 +175,15 @@ interface FormulaRequestAdmin {
   status: string; adminNote: string | null; reviewedAt: string | null;
   createdAt: string;
   mother: { id: string; name: string; email: string | null; location: string | null };
+}
+
+interface ReflectionAdmin {
+  id: string; title: string; body: string; stageKey: string; stageLabel: string;
+  status: string;
+  aiFlagNonReflective: boolean; aiFlagCrisis: boolean; aiNote: string | null;
+  rejectionCategory: string | null; rejectionNote: string | null;
+  createdAt: string; reviewedAt: string | null;
+  author: { id: string; name: string; email: string | null };
 }
 
 // Human-readable baby age from DOB. Surfaced next to the requested formula stage
@@ -348,6 +357,13 @@ export default function AdminPage() {
   const [formulaReqsTotal,   setFormulaReqsTotal]   = useState(0);
   const [formulaNoteMap,     setFormulaNoteMap]     = useState<Record<string, string>>({});
   const [expandedFormulaId,  setExpandedFormulaId]  = useState<string | null>(null);
+
+  // Reflections review state (mother-only long-form; admin-only identity)
+  const [reflections,        setReflections]        = useState<ReflectionAdmin[]>([]);
+  const [reflectionsLoading, setReflectionsLoading] = useState(false);
+  const [reflectionsFilter,  setReflectionsFilter]  = useState<"PENDING" | "PUBLISHED" | "REJECTED">("PENDING");
+  const [reflectionNoteMap,  setReflectionNoteMap]  = useState<Record<string, string>>({});
+  const [expandedReflectionId, setExpandedReflectionId] = useState<string | null>(null);
 
   // Fulfillments state
   const [fulfillments,      setFulfillments]      = useState<AdminFulfillment[]>([]);
@@ -545,6 +561,31 @@ export default function AdminPage() {
     }
   };
 
+  const fetchReflections = useCallback(async (status: string) => {
+    setReflectionsLoading(true);
+    const r = await fetch(`/api/admin/reflections?status=${status}&limit=50`);
+    if (r.ok) { const d = await r.json(); setReflections(d.reflections ?? []); }
+    setReflectionsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (section === "reflections") fetchReflections(reflectionsFilter);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, fetchReflections]);
+
+  const reviewReflection = async (id: string, action: "approve" | "reject", rejectionCategory?: "CRISIS" | "NON_CRISIS") => {
+    const note = reflectionNoteMap[id] ?? "";
+    const r = await fetch(`/api/admin/reflections/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, rejectionCategory, rejectionNote: note || undefined }),
+    });
+    if (r.ok) {
+      setReflections((prev) => prev.filter((x) => x.id !== id));
+      setToast(action === "approve" ? "Reflection published" : `Reflection declined (${rejectionCategory === "CRISIS" ? "crisis" : "non-crisis"})`);
+    }
+  };
+
   const updateUserStatus = async (userId: string, status: string) => {
     const res = await fetch(`/api/admin/users/${userId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
     if (res.ok) { setUsers((p) => p.map((u) => u.id === userId ? { ...u, status } : u)); setToast(`User ${status.toLowerCase()}`); }
@@ -723,6 +764,7 @@ export default function AdminPage() {
     ["refunds",        "💳 Refunds"],
     ["bundle-apps",    `📬 Bundle Apps${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0) > 0 ? ` (${bundleAppCatalogue.reduce((s, b) => s + b.monthPending, 0)})` : ""}`],
     ["formula-requests", "🍼 Formula Requests"],
+    ["reflections",      `📓 Reflections${reflections.filter(r => r.status === "PENDING").length > 0 ? ` (${reflections.filter(r => r.status === "PENDING").length})` : ""}`],
     ["register-suggestions", `💡 Suggestions${suggestions.filter(s => s.status === "pending").length > 0 ? ` (${suggestions.filter(s => s.status === "pending").length})` : ""}`],
     ["impact",               "📈 Impact"],
   ];
@@ -2695,6 +2737,114 @@ export default function AdminPage() {
                               {rq.status !== "PENDING" && rq.adminNote && (
                                 <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
                                   <strong style={{ color: "#1a1a1a" }}>Admin note:</strong> {rq.adminNote}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── REFLECTIONS ──────────────────────────────────────────── */}
+            {section === "reflections" && (
+              <div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 6, color: "var(--ink)" }}>
+                  Reflections
+                </div>
+                <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 20, lineHeight: 1.6, maxWidth: 760 }}>
+                  Mother-only long-form posts, awaiting review. Nothing publishes without your approval. AI flags are
+                  advisory. A crisis-flagged post is shown first and, if declined, must be declined as <strong>Crisis</strong>
+                  {" "}so the mother receives the supportive message with support resources. Author identity here is for
+                  moderation and crisis outreach only and must never leave this admin view.
+                </div>
+
+                {/* Status filter */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  {(["PENDING", "PUBLISHED", "REJECTED"] as const).map((s) => (
+                    <button key={s} onClick={() => { setReflectionsFilter(s); fetchReflections(s); setExpandedReflectionId(null); }}
+                      style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px solid " + (reflectionsFilter === s ? "#1a7a5e" : "#e0e0e0"), background: reflectionsFilter === s ? "#1a7a5e" : "white", color: reflectionsFilter === s ? "white" : "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      {s.charAt(0) + s.slice(1).toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+
+                {reflectionsLoading ? <div className="loading"><div className="spinner" /></div> : reflections.length === 0 ? (
+                  <div style={{ padding: "40px 0", textAlign: "center", color: "#555", fontSize: 14, fontFamily: "Nunito, sans-serif" }}>
+                    No {reflectionsFilter.toLowerCase()} reflections.
+                  </div>
+                ) : (
+                  <div style={{ border: "1px solid #e0e0e0", borderRadius: 12, overflow: "hidden" }}>
+                    {reflections.map((r, idx) => {
+                      const open = expandedReflectionId === r.id;
+                      return (
+                        <div key={r.id} style={{ borderBottom: idx < reflections.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                          {/* Row */}
+                          <div
+                            onClick={() => setExpandedReflectionId(open ? null : r.id)}
+                            style={{ display: "grid", gridTemplateColumns: "2.4fr 1.4fr 130px 24px", gap: 12, padding: "12px 16px", alignItems: "center", cursor: "pointer", background: open ? "#fafafa" : "white" }}
+                          >
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{r.title}</div>
+                              <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginTop: 1 }}>
+                                {r.author.name}{r.author.email ? ` · ${r.author.email}` : ""}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>{r.stageLabel}</div>
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                              {r.aiFlagCrisis && <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", background: "#fdecea", color: "#c0392b" }}>Crisis?</span>}
+                              {r.aiFlagNonReflective && <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", background: "#fff8ed", color: "#b45309" }}>Off-topic?</span>}
+                              {!r.aiFlagCrisis && !r.aiFlagNonReflective && <span style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>clean</span>}
+                            </div>
+                            <div style={{ fontSize: 13, color: "#ccc", textAlign: "center" }}>{open ? "▲" : "▼"}</div>
+                          </div>
+
+                          {/* Detail */}
+                          {open && (
+                            <div style={{ background: "#fafafa", borderTop: "1px solid #e8e8e8", padding: "18px 20px 22px" }}>
+                              {r.aiNote && (
+                                <div style={{ fontSize: 12, color: "#8a6d3b", background: "#fcf3d9", border: "1px solid #f0e0b0", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                                  <strong>AI note (advisory):</strong> {r.aiNote}
+                                </div>
+                              )}
+                              <div style={{ fontSize: 14, color: "#333", lineHeight: 1.8, background: "white", padding: "16px 18px", borderRadius: 10, border: "1px solid #e0e0e0", fontFamily: "Nunito, sans-serif", whiteSpace: "pre-wrap", marginBottom: 16 }}>
+                                <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 8, color: "#1a1a1a" }}>{r.title}</div>
+                                {r.body}
+                              </div>
+
+                              {r.status === "PENDING" ? (
+                                <>
+                                  <textarea
+                                    placeholder="Internal note (optional, never shown to the mother)…"
+                                    maxLength={500}
+                                    value={reflectionNoteMap[r.id] ?? ""}
+                                    onChange={(e) => setReflectionNoteMap((m) => ({ ...m, [r.id]: e.target.value }))}
+                                    rows={2}
+                                    style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const, marginBottom: 10 }}
+                                  />
+                                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    <button onClick={() => reviewReflection(r.id, "approve")}
+                                      style={{ flex: "1 1 140px", padding: "10px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                      Approve &amp; publish
+                                    </button>
+                                    <button onClick={() => reviewReflection(r.id, "reject", "NON_CRISIS")}
+                                      style={{ flex: "1 1 140px", padding: "10px", background: "#fff8ed", border: "1.5px solid #d97706", borderRadius: 8, color: "#b45309", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                      Decline (non-crisis)
+                                    </button>
+                                    <button onClick={() => reviewReflection(r.id, "reject", "CRISIS")}
+                                      style={{ flex: "1 1 140px", padding: "10px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                      Decline (crisis, sends support)
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
+                                <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
+                                  <strong style={{ color: "#1a1a1a" }}>Status:</strong> {r.status}
+                                  {r.rejectionCategory ? ` · ${r.rejectionCategory}` : ""}
+                                  {r.rejectionNote ? ` · note: ${r.rejectionNote}` : ""}
                                 </div>
                               )}
                             </div>
