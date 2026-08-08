@@ -14,7 +14,7 @@ import BottomNav from "@/components/BottomNav";
 import {
   HeartPulse, Heart, Smile, Star, LayoutGrid,
   Users, Lightbulb, BookOpen, HandHeart, HelpCircle, Trophy, Target,
-  X, Shield,
+  X, Shield, PenLine,
   type LucideIcon,
 } from "lucide-react";
 
@@ -399,6 +399,21 @@ export default function CircleDetailPage() {
               title="All circles"
             >
               <LayoutGrid size={18} color="white" />
+            </button>
+          </div>
+
+          {/* Cohort / Reflections toggle */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <span
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 20, background: "white", color: "#0d3d2e", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800 }}
+            >
+              <Users size={14} strokeWidth={2} /> Cohort
+            </span>
+            <button
+              onClick={() => router.push(`/circles/${circleId}/reflections`)}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 20, background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)", color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+            >
+              <PenLine size={14} strokeWidth={2} /> Reflections
             </button>
           </div>
 
