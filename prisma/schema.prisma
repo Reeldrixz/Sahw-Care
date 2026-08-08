@@ -183,6 +183,7 @@ model User {
   supportContributions SupportContribution[]
   bundleApplications   BundleApplication[]
   formulaRequests      FormulaRequest[]
+  reflections          Reflection[]
 
   totalFundedCents Int @default(0)
   fundingCount     Int @default(0)
@@ -1531,6 +1532,52 @@ model FormulaRequest {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([status])
+}
+
+// ==================== REFLECTIONS ====================
+// Mother-only long-form writing space inside Circles, grouped by stage. Every
+// reflection is reviewed by an admin before it can publish (default PENDING).
+// SAFETY: reflections and their authors must NEVER be exposed on any donor,
+// partner, public, or shareable surface. Peer-facing reads expose FIRST NAME /
+// chosen display name ONLY (never full name, email, or userId). Only the
+// admin review queue (requireAdmin) may see author identity, and only to
+// moderate and to reach out in a crisis.
+
+enum ReflectionStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model Reflection {
+  id       String           @id @default(cuid())
+  authorId String
+  stageKey String           // StageKey snapshot at write time (e.g. "postpartum-0-3")
+  title    String
+  body     String           @db.Text // long-form
+  status   ReflectionStatus @default(PENDING)
+
+  // AI-assist flags — advisory only; never auto-publish or auto-reject.
+  aiFlagNonReflective Boolean @default(false)
+  aiFlagCrisis        Boolean @default(false)
+  aiNote              String?
+
+  // Admin review
+  reviewedAt        DateTime?
+  reviewedBy        String?
+  rejectionCategory String?   // "CRISIS" | "NON_CRISIS" — drives the warm message shown to the mother
+  rejectionNote     String?   // internal admin note; never shown raw to the mother
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([stageKey, status])
+  @@index([authorId])
   @@index([status])
 }
 
