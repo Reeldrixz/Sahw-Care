@@ -130,7 +130,8 @@ export default function BundlesPage() {
   const [bundleCooldownUntil,        setBundleCooldownUntil]        = useState<string | null>(null);
   const [bundleLastApprovedAt,       setBundleLastApprovedAt]       = useState<string | null>(null);
 
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const isRecipientUser = user?.role === "RECIPIENT";
 
   const fetchBundles = useCallback(async () => {
     setLoading(true);
@@ -153,7 +154,12 @@ export default function BundlesPage() {
     new Date(iso).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   const inBundleCooldown = !!bundleCooldownUntil;
 
-  useEffect(() => { fetchBundles(); }, [fetchBundles]);
+  // Only recipient mothers load the catalogue. Everyone else sees the
+  // "coming soon" layer, so we never ship them the bundle list.
+  useEffect(() => {
+    if (authLoading || !isRecipientUser) return;
+    fetchBundles();
+  }, [authLoading, isRecipientUser, fetchBundles]);
 
   // Hide the beta feedback pill while the apply modal is open (no noise at a
   // sensitive moment).
@@ -194,6 +200,48 @@ export default function BundlesPage() {
 
   const isPregnancy     = applying?.stage === "PREGNANCY";
   const isNewbornOrPost = applying?.stage === "NEWBORN" || applying?.stage === "POSTPARTUM";
+
+  // ── Visibility gate (Piece 1) ───────────────────────────────────────
+  // Only recipient mothers see the bundles catalogue. Everyone else
+  // (visitors, donors, admins-as-viewers) gets a calm "coming soon" layer.
+  // A future phase subdivides recipients by batch; keep this additive.
+  if (authLoading) {
+    return (
+      <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+        <div className="loading" style={{ minHeight: "60vh" }}><div className="spinner" /></div>
+        <BottomNav />
+      </div>
+    );
+  }
+
+  if (!isRecipientUser) {
+    return (
+      <div style={{ background: "var(--bg)", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 20px" }}>
+          <div style={{ maxWidth: 460, width: "100%", background: "white", borderRadius: 20, border: "1px solid #e8e8e8", padding: "40px 28px", textAlign: "center", boxShadow: "0 4px 24px rgba(0,0,0,0.05)" }}>
+            <div style={{ width: 68, height: 68, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+              <Package size={30} color="#1a7a5e" strokeWidth={1.5} />
+            </div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 24, fontWeight: 700, color: "#1a1a1a", marginBottom: 12, lineHeight: 1.25 }}>
+              Care bundles are coming soon
+            </div>
+            <div style={{ fontSize: 14, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 24 }}>
+              We&apos;re preparing curated care bundles for mothers across Canada — fully funded and delivered free. They&apos;re not open just yet. As Kradel grows, we&apos;ll welcome mothers in, one community at a time.
+            </div>
+            <div style={{ paddingTop: 20, borderTop: "1px solid #f0f0f0" }}>
+              <div style={{ fontSize: 13, color: "#666", fontFamily: "Nunito, sans-serif", marginBottom: 10 }}>
+                Want to help make them possible?
+              </div>
+              <a href="/partners" style={{ display: "inline-block", padding: "11px 24px", background: "#1a7a5e", borderRadius: 12, fontSize: 14, fontWeight: 800, color: "white", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
+                Become a Community Partner →
+              </a>
+            </div>
+          </div>
+        </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
