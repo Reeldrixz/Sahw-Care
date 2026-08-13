@@ -157,7 +157,7 @@ const PRICE_BAND_META: Record<PriceBand, { label: string; bg: string; color: str
 interface BundleApplicationAdmin {
   id: string; bundleId: string; fullName: string; phone: string;
   city: string; province: string; dueDate: string | null; babyDob: string | null;
-  story: string; streetAddress: string; unit: string | null; postalCode: string;
+  streetAddress: string; unit: string | null; postalCode: string;
   status: string; adminNote: string | null; reviewedAt: string | null;
   createdAt: string;
   bundle: { id: string; code: string; name: string; stage: string; itemCount: number };
@@ -2542,14 +2542,6 @@ export default function AdminPage() {
                                       )}
                                       {app.dueDate && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}><strong style={{ color: "#1a1a1a" }}>Due date:</strong> {new Date(app.dueDate).toLocaleDateString("en-CA")}</div>}
                                       {app.babyDob && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}><strong style={{ color: "#1a1a1a" }}>Baby DOB:</strong> {new Date(app.babyDob).toLocaleDateString("en-CA")}</div>}
-                                    </div>
-                                  </div>
-
-                                  {/* Story */}
-                                  <div style={{ marginBottom: 14 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>Story</div>
-                                    <div style={{ fontSize: 13, color: "#333", lineHeight: 1.7, background: "white", padding: "12px 14px", borderRadius: 8, border: "1px solid #e0e0e0", fontFamily: "Nunito, sans-serif" }}>
-                                      {app.story}
                                     </div>
                                   </div>
 

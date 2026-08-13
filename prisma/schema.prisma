@@ -1463,7 +1463,7 @@ model BundleApplication {
   province    String
   dueDate     DateTime?
   babyDob     DateTime?
-  story       String
+  story       String?   // deprecated: free-text "Your situation" field removed from the flow; kept nullable for historical rows
   // Delivery address
   streetAddress String
   unit          String?

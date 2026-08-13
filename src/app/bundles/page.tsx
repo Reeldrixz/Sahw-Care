@@ -60,14 +60,14 @@ const PROVINCES = [
 
 const FAQS: { q: string; a: string }[] = [
   { q: "Who is eligible for a bundle?", a: "Verified mothers in Canada who are pregnant, have a newborn, or are in the postpartum period. Every application is reviewed by our team to ensure bundles reach those who need them most." },
-  { q: "Is this a first-come-first-served system?", a: "No. Applications are reviewed privately by the Kradəl team. Selection considers timing, stage of journey, urgency, verification status, and relevance to the bundle. It is not simply who applies first." },
+  { q: "Is this a first-come-first-served system?", a: "No. Every application is read privately and carefully by the Kradel team. It is not simply who applies first." },
   { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, community partners, and CSR programs. No mother ever pays for a bundle. They are fully covered." },
-  { q: "Can I apply for more than one bundle?", a: "One application per monthly cycle. This ensures fairness across all mothers. If your application is not approved, you're welcome to apply to another relevant bundle in the next cycle." },
-  { q: "How long does the review take?", a: "Our team reviews applications within 2 to 3 business days. You'll receive a private notification through the platform once a decision has been made." },
+  { q: "Can I apply for more than one bundle?", a: "You can have one open application at a time. Once it's delivered, or if you withdraw it or it closes, you're welcome to apply for another bundle." },
+  { q: "How long does the review take?", a: "Fulfillment can take up to 90 days, depending on available resources. If we aren't able to review your application within that time, it will close and you're welcome to reapply, with priority for having waited. We'll notify you privately once your application is approved." },
 ];
 
 const JOURNEY_STEPS = [
-  { label: "Application",     detail: "Submit a short form sharing your stage and situation." },
+  { label: "Application",     detail: "Submit a short form sharing your stage." },
   { label: "Private Review",  detail: "Our team reviews every application carefully and privately." },
   { label: "Bundle Prepared", detail: "Kradəl sources and packs your curated essentials." },
   { label: "Delivered",       detail: "Your bundle is shipped directly to your door, free." },
@@ -77,7 +77,7 @@ const JOURNEY_STEPS = [
 const TRUST_PRINCIPLES = [
   { Icon: Heart,       label: "Dignity First",             desc: "Every mother is treated with care and respect. No public competition, no pressure." },
   { Icon: CheckCircle, label: "Quality Guaranteed",        desc: "Only vetted, high-quality products are included in every bundle." },
-  { Icon: Shield,      label: "Reviewed Fairly",           desc: "Applications are matched by our team based on stage, urgency, and need. Not speed." },
+  { Icon: Shield,      label: "Reviewed Fairly",           desc: "Every application is read privately and carefully, never ranked by who applies first." },
   { Icon: Lock,        label: "Privacy Protected",         desc: "Personal information is never shared, published, or visible to other users." },
 ];
 
@@ -101,13 +101,13 @@ function parseMd(md: string): React.ReactNode[] {
 
 interface ApplyForm {
   fullName: string; phone: string; email: string; city: string; province: string;
-  dueDate: string; babyDob: string; story: string;
+  dueDate: string; babyDob: string;
   streetAddress: string; unit: string; postalCode: string;
   disclaimerAcknowledged: boolean;
 }
 const EMPTY_FORM: ApplyForm = {
   fullName: "", phone: "", email: "", city: "", province: "",
-  dueDate: "", babyDob: "", story: "", streetAddress: "", unit: "", postalCode: "",
+  dueDate: "", babyDob: "", streetAddress: "", unit: "", postalCode: "",
   disclaimerAcknowledged: false,
 };
 
@@ -408,7 +408,7 @@ export default function BundlesPage() {
           </div>
           <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
             Browse the programs below and apply for the one that matches your stage. Applications are reviewed
-            privately by the Kradəl team. Selection is based on stage, urgency, and relevance, not first-come-first-served.
+            privately by the Kradel team, and we read every one carefully.
             Approved bundles are packed and delivered directly to you, completely free.
           </div>
         </div>
@@ -832,8 +832,7 @@ export default function BundlesPage() {
               Applications are reviewed privately
             </div>
             <div style={{ fontSize: 12, color: "#666", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-              Selection is not first-come-first-served. Our team reviews every application privately
-              to ensure fair and relevant support. We consider your stage, urgency, and verification status.
+              Your application is reviewed privately by our team, and we read every one carefully. Fulfillment can take up to 90 days depending on available resources. If we aren&apos;t able to review your application within that time, it will close and you&apos;re welcome to reapply, with priority for having waited. We&apos;ll get in touch once your application is approved.
             </div>
           </div>
         </div>
@@ -1007,7 +1006,7 @@ export default function BundlesPage() {
                   Thank you for applying for the <strong>{applying.name}</strong>.
                 </div>
                 <div style={{ fontSize: 12, color: "#888", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, maxWidth: 340, margin: "0 auto 24px" }}>
-                  Our team will review your application privately. You&apos;ll receive a notification within 2 to 3 business days. This is not a first-come-first-served process. Every application is read carefully.
+                  Your application is reviewed privately by our team, and we read every one carefully. Fulfillment can take up to 90 days depending on available resources. If we aren&apos;t able to review your application within that time, it will close and you&apos;re welcome to reapply, with priority for having waited. We&apos;ll get in touch once your application is approved.
                 </div>
                 <button onClick={closeApply} style={{ padding: "12px 32px", background: "#1a7a5e", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>Done</button>
               </div>
@@ -1017,7 +1016,7 @@ export default function BundlesPage() {
                 <div style={{ background: "#e8f5f1", borderRadius: 10, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 8, alignItems: "flex-start" }}>
                   <Shield size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
                   <div style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                    Your application is reviewed privately by our team. Selection is based on stage, urgency, and relevance. Not speed of submission.
+                    Your application is reviewed privately by our team, and we read every one carefully. Fulfillment can take up to 90 days depending on available resources.
                   </div>
                 </div>
 
@@ -1044,15 +1043,6 @@ export default function BundlesPage() {
                   </div>
                   {isPregnancy && (<><label style={labelStyle}>Due date (approximate)</label><input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} style={inputStyle} /></>)}
                   {isNewbornOrPost && (<><label style={labelStyle}>Baby&apos;s date of birth</label><input type="date" value={form.babyDob} onChange={(e) => setForm((f) => ({ ...f, babyDob: e.target.value }))} style={inputStyle} /></>)}
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>Your situation *</div>
-                  <div style={{ fontSize: 11, color: "#555555", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>
-                    Tell us a little about your situation and why this bundle would support you (100 to 500 characters).
-                  </div>
-                  <textarea required minLength={100} maxLength={500} value={form.story} onChange={(e) => setForm((f) => ({ ...f, story: e.target.value }))} placeholder="Share a bit about your journey…" rows={4} style={{ ...inputStyle, resize: "vertical", minHeight: 90 }} />
-                  <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textAlign: "right" }}>{form.story.length}/500</div>
                 </div>
 
                 <div style={{ marginBottom: 20 }}>

@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
 
   const {
     bundleId, fullName, phone, email, city, province,
-    dueDate, babyDob, story,
+    dueDate, babyDob,
     streetAddress, unit, postalCode,
     disclaimerAcknowledged,
   } = body;
 
-  if (!bundleId || !fullName || !phone || !city || !province || !story || !streetAddress || !postalCode) {
+  if (!bundleId || !fullName || !phone || !city || !province || !streetAddress || !postalCode) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -125,7 +125,6 @@ export async function POST(req: NextRequest) {
       province:      province.trim(),
       dueDate:       dueDate ? new Date(dueDate) : null,
       babyDob:       babyDob ? new Date(babyDob) : null,
-      story:         story.trim(),
       streetAddress: streetAddress.trim(),
       unit:          unit?.trim() || null,
       postalCode:    postalCode.trim(),

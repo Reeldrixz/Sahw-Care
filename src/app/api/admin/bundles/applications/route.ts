@@ -96,7 +96,6 @@ export async function GET(req: NextRequest) {
       province:      a.province,
       dueDate:       a.dueDate,
       babyDob:       a.babyDob,
-      story:         a.story,
       streetAddress: a.streetAddress,
       unit:          a.unit,
       postalCode:    a.postalCode,
