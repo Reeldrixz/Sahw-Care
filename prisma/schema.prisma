@@ -183,6 +183,7 @@ model User {
   supportContributions SupportContribution[]
   bundleApplications   BundleApplication[]
   formulaRequests      FormulaRequest[]
+  formulaEpisodes      FormulaEpisode[]
   reflections          Reflection[]
 
   totalFundedCents Int @default(0)
@@ -1536,6 +1537,105 @@ model FormulaRequest {
 
   @@index([userId])
   @@index([status])
+}
+
+// ==================== FORMULA EPISODES (6-month admission) ====================
+// A mother is ADMITTED once to the formula programme (approval = admission) and
+// then receives formula for 6 consecutive months with NO monthly re-application.
+// Each of the 6 months is a FormulaDelivery, admin-fulfilled (never auto-shipped).
+// Admission is capacity-gated (FormulaCapacityConfig) so we never commit to 6
+// months we cannot fund. The capacity gate is a FUNDING-honesty guard, never a
+// tool to ration who receives needed formula.
+
+enum FormulaEpisodeStatus {
+  ACTIVE     // admitted, within the 6-month window
+  COMPLETED  // all 6 months delivered / window finished
+  ENDED      // ended early (funding shortfall, unreachable, baby off formula, …)
+}
+
+enum FormulaDeliveryStatus {
+  SCHEDULED  // planned month, not yet due
+  DUE        // its month has arrived; awaiting admin fulfilment
+  FULFILLED  // formula actually sent this month
+  CANCELLED  // episode ended before this month was fulfilled
+}
+
+model FormulaEpisode {
+  id     String @id @default(cuid())
+  userId String
+
+  // Soft link to the originating FormulaRequest (no relation — matches the
+  // usedByUserId/currentCircleId soft-FK style — so FormulaRequest stays untouched).
+  originatingRequestId String?
+
+  // Formula spec snapshot at admission. formulaStage is mutable mid-episode for
+  // stage-for-growth ONLY (Stage 1 -> 2 as the baby ages), never an arbitrary
+  // brand/line/substitute switch. babyDob snapshot supports age-vs-stage checks.
+  formulaBrand String
+  formulaType  String
+  formulaStage String
+  babyDob      DateTime?
+
+  status      FormulaEpisodeStatus @default(ACTIVE)
+  monthsTotal Int                  @default(6)
+
+  startedAt        DateTime  @default(now()) // admission date
+  admittedByAdminId String?
+
+  // Early-end (before month 6): reason is required at the API layer.
+  endedAt        DateTime?
+  endReason      String?
+  endedByAdminId String?
+
+  adminNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id])
+  deliveries FormulaDelivery[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model FormulaDelivery {
+  id        String @id @default(cuid())
+  episodeId String
+
+  monthIndex   Int                   // 1..6
+  status       FormulaDeliveryStatus @default(SCHEDULED)
+  scheduledFor DateTime              // admission + (monthIndex - 1) months
+
+  fulfilledAt        DateTime?
+  fulfilledByAdminId String?
+  // Stage actually fulfilled this month — captures stage-for-growth history as
+  // the baby ages across the 6 months.
+  formulaStageAtFulfilment String?
+  note                     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  episode FormulaEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([episodeId, monthIndex])
+  @@index([episodeId])
+  @@index([status])
+}
+
+// Singleton capacity config. maxActiveEpisodes = admin-set slot capacity;
+// committed formula-months are computed LIVE from ACTIVE episodes, never stored
+// here (a denormalised counter would drift). Default 0 fails closed: no
+// admission is possible until capacity is deliberately raised.
+model FormulaCapacityConfig {
+  id                String   @id @default("singleton")
+  maxActiveEpisodes Int      @default(0)
+  note              String?
+  updatedByAdminId  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 // ==================== REFLECTIONS ====================
