@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest) {
   ]);
 
   let myActiveApplicationBundleId: string | null = null;
-  let myLifetimeApproved = 0;
+  let myLifetimeDelivered = 0;
   let isRecipient = false;
   let bundleCooldownUntil: string | null = null;
   let bundleLastApprovedAt: string | null = null;
@@ -46,10 +46,12 @@ export async function GET(_req: NextRequest) {
         },
         select: { bundleId: true },
       }),
+      // "X of 12 received" counter — only DELIVERED bundles count (the cap's
+      // in-flight-APPROVED guard lives in the apply route, not this counter).
       prisma.bundleApplication.count({
         where: {
           userId: currentUser.userId,
-          status: { in: ["APPROVED", "DELIVERED"] },
+          status: "DELIVERED",
         },
       }),
       prisma.user.findUnique({
@@ -63,7 +65,7 @@ export async function GET(_req: NextRequest) {
       }),
     ]);
     myActiveApplicationBundleId = existing?.bundleId ?? null;
-    myLifetimeApproved = lifetimeCount;
+    myLifetimeDelivered = lifetimeCount;
     isRecipient = userRecord?.role === "RECIPIENT";
 
     // Monthly receipt cooldown (keyed off last approval, independent of formula).
@@ -89,5 +91,5 @@ export async function GET(_req: NextRequest) {
     sponsorUrl:       b.sponsorUrl,
   }));
 
-  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeApproved, isRecipient, bundleCooldownUntil, bundleLastApprovedAt });
+  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeDelivered, isRecipient, bundleCooldownUntil, bundleLastApprovedAt });
 }

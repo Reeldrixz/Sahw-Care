@@ -37,18 +37,20 @@ export async function GET(req: NextRequest) {
   const linkedUserIds  = applications.map(a => a.userId).filter((id): id is string => !!id);
   const unlinkedPhones = applications.filter(a => !a.userId).map(a => a.phone);
 
+  // Lifetime bundles received = DELIVERED only (matches the 12-cap counter the
+  // mother sees), not APPROVED.
   const [userIdCounts, phoneCounts] = await Promise.all([
     linkedUserIds.length > 0
       ? prisma.bundleApplication.groupBy({
           by: ["userId"],
-          where: { status: "APPROVED", userId: { in: linkedUserIds } },
+          where: { status: "DELIVERED", userId: { in: linkedUserIds } },
           _count: { id: true },
         })
       : Promise.resolve([]),
     unlinkedPhones.length > 0
       ? prisma.bundleApplication.groupBy({
           by: ["phone"],
-          where: { status: "APPROVED", phone: { in: unlinkedPhones }, userId: null },
+          where: { status: "DELIVERED", phone: { in: unlinkedPhones }, userId: null },
           _count: { id: true },
         })
       : Promise.resolve([]),
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
   const now = Date.now();
   const data = applications.map(a => {
     const itemCount = a.bundle.contentsMarkdown.split("\n").filter(l => l.startsWith("- ")).length;
-    const lifetimeApproved = a.userId
+    const lifetimeDelivered = a.userId
       ? (userIdCountMap.get(a.userId) ?? 0)
       : (phoneCountMap.get(a.phone) ?? 0);
     const daysSince = Math.floor((now - new Date(a.createdAt).getTime()) / 86400000);
@@ -91,7 +93,7 @@ export async function GET(req: NextRequest) {
       },
       userEmail:        a.user?.email        ?? null,
       currentStage:     a.user?.currentStage ?? null,
-      lifetimeApproved,
+      lifetimeDelivered,
       daysSince,
     };
   });

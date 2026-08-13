@@ -116,7 +116,7 @@ const MOST_POPULAR = "B06";
 export default function BundlesPage() {
   const [bundles,                    setBundles]                    = useState<BundleItem[]>([]);
   const [myActiveApplicationBundleId, setMyActiveApplicationBundleId] = useState<string | null>(null);
-  const [myLifetimeApproved,         setMyLifetimeApproved]         = useState(0);
+  const [myLifetimeDelivered,        setMyLifetimeDelivered]        = useState(0);
   const [isRecipient,                setIsRecipient]                = useState(false);
   const [loading,                    setLoading]                    = useState(true);
   const [stageFilter,                setStageFilter]                = useState<StageFilter>("ALL");
@@ -140,7 +140,7 @@ export default function BundlesPage() {
       const d = await r.json();
       setBundles(d.bundles ?? []);
       setMyActiveApplicationBundleId(d.myActiveApplicationBundleId ?? null);
-      setMyLifetimeApproved(d.myLifetimeApproved ?? 0);
+      setMyLifetimeDelivered(d.myLifetimeDelivered ?? 0);
       setIsRecipient(d.isRecipient ?? false);
       setBundleCooldownUntil(d.bundleCooldownUntil ?? null);
       setBundleLastApprovedAt(d.bundleLastApprovedAt ?? null);
@@ -421,14 +421,14 @@ export default function BundlesPage() {
           </div>
         )}
 
-        {myLifetimeApproved >= 9 ? (
+        {myLifetimeDelivered >= 12 ? (
           /* ── PROGRAMME COMPLETION BANNER ─────────────────────────────── */
           <div id="bundle-grid" style={{ margin: "16px", padding: "40px 24px", background: "white", borderRadius: 16, border: "1px solid #c3e6cb", textAlign: "center" }}>
             <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
               <CheckCircle size={28} color="#1a7a5e" strokeWidth={1.75} />
             </div>
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
-              You&apos;ve received 9 Kradəl bundles: the full programme.
+              You&apos;ve received all 12 Kradel bundles — the full programme.
             </div>
             <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7 }}>
               Thank you for allowing us to support your journey.
@@ -436,6 +436,24 @@ export default function BundlesPage() {
           </div>
         ) : (
           <>
+            {/* Lifetime progress: "X of 12 received". DELIVERED-only count from
+                the catalogue API. Recipient-only; hidden at 0 (reads cold). */}
+            {isRecipient && myLifetimeDelivered > 0 && (
+              <div style={{ margin: "0 16px 12px", padding: "14px 16px", background: "white", borderRadius: 12, border: "1px solid #c3e6cb" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>
+                    You&apos;ve received <span style={{ color: "#1a7a5e" }}>{myLifetimeDelivered} of 12</span> bundles
+                  </div>
+                </div>
+                <div style={{ height: 8, borderRadius: 20, background: "#e8f5f1", overflow: "hidden" }}>
+                  <div style={{ width: `${(myLifetimeDelivered / 12) * 100}%`, height: "100%", borderRadius: 20, background: "#1a7a5e", transition: "width 0.3s ease" }} />
+                </div>
+                <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.55, marginTop: 8 }}>
+                  Kradel bundles are yours up to twelve times — apply whenever you need the next one.
+                </div>
+              </div>
+            )}
+
             {/* Monthly receipt cooldown notice: warm, dignity-first (here's why
                 + when you're welcome back), shown when she received a bundle
                 within the last month. */}

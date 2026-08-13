@@ -163,7 +163,7 @@ interface BundleApplicationAdmin {
   bundle: { id: string; code: string; name: string; stage: string; itemCount: number };
   userEmail: string | null;
   currentStage: string | null;
-  lifetimeApproved: number;
+  lifetimeDelivered: number;
   daysSince: number;
 }
 
@@ -2527,8 +2527,8 @@ export default function AdminPage() {
                                       </div>
                                       <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
                                         <strong style={{ color: "#1a1a1a" }}>Lifetime bundles received:</strong>{" "}
-                                        <span style={{ fontWeight: 700, color: app.lifetimeApproved > 0 ? "#1a7a5e" : "#9ca3af" }}>
-                                          {app.lifetimeApproved} approved
+                                        <span style={{ fontWeight: 700, color: app.lifetimeDelivered > 0 ? "#1a7a5e" : "#9ca3af" }}>
+                                          {app.lifetimeDelivered} of 12 delivered
                                         </span>
                                       </div>
                                       {app.dueDate && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}><strong style={{ color: "#1a1a1a" }}>Due date:</strong> {new Date(app.dueDate).toLocaleDateString("en-CA")}</div>}

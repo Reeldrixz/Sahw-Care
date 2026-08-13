@@ -57,13 +57,17 @@ export async function POST(req: NextRequest) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  // 9-bundle lifetime cap
+  // 12-bundle lifetime cap. Only DELIVERED bundles permanently consume one of
+  // the twelve, but the cap is enforced against DELIVERED + in-flight APPROVED
+  // (approved, not yet delivered) so deliveries lagging behind approvals can
+  // never overshoot 12. An approved application that later expires without
+  // delivering (Piece B) releases its in-flight reservation.
   const lifetimeCount = await prisma.bundleApplication.count({
     where: { userId: currentUser.userId, status: { in: ["APPROVED", "DELIVERED"] } },
   });
-  if (lifetimeCount >= 9) {
+  if (lifetimeCount >= 12) {
     return NextResponse.json({
-      error: "You have completed the Kradəl Bundles programme (9 bundles received). Thank you for letting us support your journey.",
+      error: "You've received all 12 Kradel bundles — the full programme. Thank you for letting us support your journey.",
     }, { status: 400 });
   }
 
