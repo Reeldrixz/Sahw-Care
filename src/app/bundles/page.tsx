@@ -115,8 +115,10 @@ const MOST_POPULAR = "B06";
 
 export default function BundlesPage() {
   const [bundles,                    setBundles]                    = useState<BundleItem[]>([]);
-  const [myActiveApplicationBundleId, setMyActiveApplicationBundleId] = useState<string | null>(null);
+  const [myActiveApplication,        setMyActiveApplication]        = useState<{ id: string; bundleId: string; status: string } | null>(null);
   const [myLifetimeDelivered,        setMyLifetimeDelivered]        = useState(0);
+  const [withdrawing,                setWithdrawing]                = useState(false);
+  const [withdrawNotice,             setWithdrawNotice]             = useState<string | null>(null);
   const [isRecipient,                setIsRecipient]                = useState(false);
   const [loading,                    setLoading]                    = useState(true);
   const [stageFilter,                setStageFilter]                = useState<StageFilter>("ALL");
@@ -139,7 +141,7 @@ export default function BundlesPage() {
     if (r.ok) {
       const d = await r.json();
       setBundles(d.bundles ?? []);
-      setMyActiveApplicationBundleId(d.myActiveApplicationBundleId ?? null);
+      setMyActiveApplication(d.myActiveApplication ?? null);
       setMyLifetimeDelivered(d.myLifetimeDelivered ?? 0);
       setIsRecipient(d.isRecipient ?? false);
       setBundleCooldownUntil(d.bundleCooldownUntil ?? null);
@@ -147,6 +149,22 @@ export default function BundlesPage() {
     }
     setLoading(false);
   }, []);
+
+  // Mother withdraws her own PENDING application (self-service, no penalty).
+  const handleWithdraw = async (bundleName: string) => {
+    if (!myActiveApplication || withdrawing) return;
+    if (!window.confirm(`Withdraw your ${bundleName} application? This frees you up to apply for a different bundle. There's no penalty and you can apply again anytime.`)) return;
+    setWithdrawing(true);
+    try {
+      const r = await fetch(`/api/bundles/applications/${myActiveApplication.id}/withdraw`, { method: "POST" });
+      if (r.ok) {
+        setWithdrawNotice("Your application has been withdrawn. You can apply for another bundle whenever you're ready.");
+        await fetchBundles();
+      }
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   // Warm date formatter for the cooldown banner (UTC to match the server's
   // UTC-based cooldown dates).
@@ -171,7 +189,7 @@ export default function BundlesPage() {
   const visible         = stageFilter === "ALL" ? bundles : bundles.filter((b) => b.stage === stageFilter);
   const totalInProgress = bundles.reduce((s, b) => s + b.slotsUsed, 0);
 
-  const openApply  = (b: BundleItem) => { setApplying(b); setForm(EMPTY_FORM); setSubmitted(false); setError(null); };
+  const openApply  = (b: BundleItem) => { setApplying(b); setForm(EMPTY_FORM); setSubmitted(false); setError(null); setWithdrawNotice(null); };
   const closeApply = () => { setApplying(null); setForm(EMPTY_FORM); setSubmitted(false); setError(null); };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -466,16 +484,51 @@ export default function BundlesPage() {
               </div>
             )}
 
-            {/* Active application notice */}
-            {!inBundleCooldown && myActiveApplicationBundleId && (
-              <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <AlertCircle size={16} color="#b45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
-                <div style={{ fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                  <strong style={{ fontWeight: 800 }}>You have an active application this cycle.</strong>
-                  {" "}Other bundles are paused while your application is under review. If it is not approved, you may apply to a different program next cycle.
+            {/* Withdraw success notice (shown after she withdraws). */}
+            {withdrawNotice && (
+              <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#e8f5f1", borderRadius: 12, border: "1px solid #c3e6cb", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <CheckCircle size={16} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                  {withdrawNotice}
                 </div>
               </div>
             )}
+
+            {/* Active application notice — one open application at a time.
+                PENDING: she may withdraw to free herself. APPROVED: in progress,
+                no withdraw (an admin releases it if it can't be delivered). */}
+            {myActiveApplication && (() => {
+              const activeBundle = bundles.find((b) => b.id === myActiveApplication.bundleId);
+              const activeName = activeBundle?.name ?? "bundle";
+              if (myActiveApplication.status === "APPROVED") {
+                return (
+                  <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#e8f5f1", borderRadius: 12, border: "1px solid #c3e6cb", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle size={16} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div style={{ fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                      Your {activeName} application is approved, and we&apos;re preparing it now.
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div style={{ margin: "0 16px 12px", padding: "12px 16px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <AlertCircle size={16} color="#b45309" strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div style={{ fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                    <strong style={{ fontWeight: 800 }}>You have an application under review.</strong>
+                    {" "}While it&apos;s open, other bundles are paused. You can withdraw it below if you&apos;d rather apply for a different bundle.
+                    <div style={{ marginTop: 10 }}>
+                      <button
+                        onClick={() => handleWithdraw(activeName)}
+                        disabled={withdrawing}
+                        style={{ padding: "8px 16px", background: "white", border: "1.5px solid #d97706", borderRadius: 8, fontSize: 12, fontWeight: 800, color: "#b45309", cursor: withdrawing ? "default" : "pointer", fontFamily: "Nunito, sans-serif", opacity: withdrawing ? 0.6 : 1 }}
+                      >
+                        {withdrawing ? "Withdrawing…" : "Withdraw application"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
         {/* ── BUNDLE GRID ────────────────────────────────────────────────── */}
         <div id="bundle-grid" style={{ padding: "0 16px 8px" }}>
@@ -493,8 +546,8 @@ export default function BundlesPage() {
                 const popular = b.code === MOST_POPULAR;
                 const isOpen  = expanded === b.id;
 
-                const isMyApplication  = b.id === myActiveApplicationBundleId;
-                const hasOtherActive   = !!myActiveApplicationBundleId && !isMyApplication;
+                const isMyApplication  = b.id === myActiveApplication?.bundleId;
+                const hasOtherActive   = !!myActiveApplication && !isMyApplication;
                 const bundleAccess     = isRecipient && user ? canApplyForBundle(user) : null;
                 const bundleBlocked    = !!bundleAccess && !bundleAccess.allowed;
                 const bundleHeld       = bundleAccess?.code === "ACCOUNT_UNDER_REVIEW";

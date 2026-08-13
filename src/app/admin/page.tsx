@@ -164,6 +164,7 @@ interface BundleApplicationAdmin {
   userEmail: string | null;
   currentStage: string | null;
   lifetimeDelivered: number;
+  priorExpiredCount: number;
   daysSince: number;
 }
 
@@ -340,7 +341,7 @@ export default function AdminPage() {
   const [bundleAppCatalogueLoading, setBundleAppCatalogueLoading] = useState(false);
   const [bundleApps,            setBundleApps]            = useState<BundleApplicationAdmin[]>([]);
   const [bundleAppsLoading,     setBundleAppsLoading]     = useState(false);
-  const [bundleAppsFilter,      setBundleAppsFilter]      = useState<"PENDING" | "APPROVED" | "REJECTED" | "WAITLISTED">("PENDING");
+  const [bundleAppsFilter,      setBundleAppsFilter]      = useState<"PENDING" | "APPROVED" | "DELIVERED" | "WAITLISTED" | "REJECTED" | "EXPIRED" | "CANCELLED" | "RELEASED">("PENDING");
   const [bundleAppsView,        setBundleAppsView]        = useState<"catalogue" | "applications">("catalogue");
   const [bundleAppsTotal,       setBundleAppsTotal]       = useState(0);
   const [appNoteMap,            setAppNoteMap]            = useState<Record<string, string>>({});
@@ -2427,7 +2428,7 @@ export default function AdminPage() {
                   <div>
                     {/* Status filter */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                      {(["PENDING", "APPROVED", "REJECTED", "WAITLISTED"] as const).map((s) => (
+                      {(["PENDING", "APPROVED", "DELIVERED", "WAITLISTED", "REJECTED", "EXPIRED", "CANCELLED", "RELEASED"] as const).map((s) => (
                         <button key={s} onClick={() => { setBundleAppsFilter(s); fetchBundleApps(s); setExpandedAppId(null); }}
                           style={{ padding: "7px 14px", borderRadius: 20, border: "1.5px solid " + (bundleAppsFilter === s ? "#1a7a5e" : "#e0e0e0"), background: bundleAppsFilter === s ? "#1a7a5e" : "white", color: bundleAppsFilter === s ? "white" : "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                           {s.charAt(0) + s.slice(1).toLowerCase()}
@@ -2452,8 +2453,11 @@ export default function AdminPage() {
                         {bundleApps.map((app, idx) => {
                           const isExpanded = expandedAppId === app.id;
                           const sc = app.status === "APPROVED"   ? { bg: "#e8f5f1", color: "#1a7a5e"  }
+                                   : app.status === "DELIVERED"  ? { bg: "#d4edda", color: "#15803d"  }
                                    : app.status === "REJECTED"   ? { bg: "#fdecea", color: "#c0392b"  }
                                    : app.status === "WAITLISTED" ? { bg: "#fff8ed", color: "#d97706"  }
+                                   : app.status === "RELEASED"   ? { bg: "#fef3c7", color: "#b45309"  }
+                                   : (app.status === "EXPIRED" || app.status === "CANCELLED") ? { bg: "#f3f4f6", color: "#6b7280" }
                                    :                               { bg: "#f5f5f5", color: "#555"     };
                           return (
                             <div key={app.id} style={{ borderBottom: idx < bundleApps.length - 1 ? "1px solid #f0f0f0" : "none" }}>
@@ -2531,6 +2535,11 @@ export default function AdminPage() {
                                           {app.lifetimeDelivered} of 12 delivered
                                         </span>
                                       </div>
+                                      {app.status === "PENDING" && app.priorExpiredCount > 0 && (
+                                        <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 4, padding: "3px 10px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 20, fontSize: 11, fontWeight: 800, color: "#b45309", fontFamily: "Nunito, sans-serif" }}>
+                                          Priority · reapplied after a prior wait
+                                        </div>
+                                      )}
                                       {app.dueDate && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}><strong style={{ color: "#1a1a1a" }}>Due date:</strong> {new Date(app.dueDate).toLocaleDateString("en-CA")}</div>}
                                       {app.babyDob && <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}><strong style={{ color: "#1a1a1a" }}>Baby DOB:</strong> {new Date(app.babyDob).toLocaleDateString("en-CA")}</div>}
                                     </div>
@@ -2576,6 +2585,35 @@ export default function AdminPage() {
                                         <button onClick={() => reviewBundleApp(app.id, "REJECTED")}
                                           style={{ flex: 1, padding: "10px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
                                           Reject
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Approved: mark delivered (turns the mother's X-of-12 clock)
+                                      or release if it genuinely can't be delivered (note required). */}
+                                  {app.status === "APPROVED" && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                      <textarea
+                                        placeholder="Reason (required), e.g. item unavailable or mother unreachable"
+                                        maxLength={200}
+                                        value={appNoteMap[app.id] ?? ""}
+                                        onChange={(e) => setAppNoteMap((m) => ({ ...m, [app.id]: e.target.value }))}
+                                        rows={2}
+                                        style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const }}
+                                      />
+                                      <div style={{ display: "flex", gap: 8 }}>
+                                        <button onClick={() => reviewBundleApp(app.id, "DELIVERED")}
+                                          style={{ flex: 1, padding: "10px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                          Mark delivered
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            if (!(appNoteMap[app.id] ?? "").trim()) { setToast("A reason is required to release an approved application."); return; }
+                                            reviewBundleApp(app.id, "RELEASED");
+                                          }}
+                                          style={{ flex: 1, padding: "10px", background: "#fef3c7", border: "1.5px solid #b45309", borderRadius: 8, color: "#b45309", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
+                                          Release (couldn&apos;t deliver)
                                         </button>
                                       </div>
                                     </div>

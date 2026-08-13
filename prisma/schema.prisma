@@ -1428,6 +1428,9 @@ enum BundleApplicationStatus {
   REJECTED
   WAITLISTED
   DELIVERED
+  EXPIRED   // auto: PENDING left un-reviewed for 90 days (mother reapplies with priority)
+  CANCELLED // mother self-withdrew her own PENDING application
+  RELEASED  // admin released an APPROVED application that couldn't be delivered
 }
 
 model Bundle {

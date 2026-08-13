@@ -38,8 +38,9 @@ export async function GET(req: NextRequest) {
   const unlinkedPhones = applications.filter(a => !a.userId).map(a => a.phone);
 
   // Lifetime bundles received = DELIVERED only (matches the 12-cap counter the
-  // mother sees), not APPROVED.
-  const [userIdCounts, phoneCounts] = await Promise.all([
+  // mother sees), not APPROVED. priorExpired = prior PENDING applications that
+  // auto-expired un-reviewed — surfaced as a reapply-priority signal.
+  const [userIdCounts, phoneCounts, userIdExpired, phoneExpired] = await Promise.all([
     linkedUserIds.length > 0
       ? prisma.bundleApplication.groupBy({
           by: ["userId"],
@@ -54,10 +55,26 @@ export async function GET(req: NextRequest) {
           _count: { id: true },
         })
       : Promise.resolve([]),
+    linkedUserIds.length > 0
+      ? prisma.bundleApplication.groupBy({
+          by: ["userId"],
+          where: { status: "EXPIRED", userId: { in: linkedUserIds } },
+          _count: { id: true },
+        })
+      : Promise.resolve([]),
+    unlinkedPhones.length > 0
+      ? prisma.bundleApplication.groupBy({
+          by: ["phone"],
+          where: { status: "EXPIRED", phone: { in: unlinkedPhones }, userId: null },
+          _count: { id: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const userIdCountMap = new Map(userIdCounts.map(r => [r.userId as string, r._count.id]));
   const phoneCountMap  = new Map(phoneCounts.map(r => [r.phone, r._count.id]));
+  const userIdExpiredMap = new Map(userIdExpired.map(r => [r.userId as string, r._count.id]));
+  const phoneExpiredMap  = new Map(phoneExpired.map(r => [r.phone, r._count.id]));
 
   const now = Date.now();
   const data = applications.map(a => {
@@ -65,6 +82,9 @@ export async function GET(req: NextRequest) {
     const lifetimeDelivered = a.userId
       ? (userIdCountMap.get(a.userId) ?? 0)
       : (phoneCountMap.get(a.phone) ?? 0);
+    const priorExpiredCount = a.userId
+      ? (userIdExpiredMap.get(a.userId) ?? 0)
+      : (phoneExpiredMap.get(a.phone) ?? 0);
     const daysSince = Math.floor((now - new Date(a.createdAt).getTime()) / 86400000);
 
     return {
@@ -94,9 +114,17 @@ export async function GET(req: NextRequest) {
       userEmail:        a.user?.email        ?? null,
       currentStage:     a.user?.currentStage ?? null,
       lifetimeDelivered,
+      priorExpiredCount,
       daysSince,
     };
   });
+
+  // Float reapply-priority applicants to the top of the fetched page. Page-
+  // scoped only (an accepted beta limitation), then oldest-first within a tier.
+  data.sort((x, y) =>
+    y.priorExpiredCount - x.priorExpiredCount ||
+    new Date(x.createdAt).getTime() - new Date(y.createdAt).getTime()
+  );
 
   return NextResponse.json({ applications: data, total });
 }

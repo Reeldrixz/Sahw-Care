@@ -4,6 +4,7 @@
     { "path": "/api/cron/weekly-abuse",      "schedule": "0 0 * * 0" },
     { "path": "/api/cron/auto-confirm",      "schedule": "0 2 * * *" },
     { "path": "/api/cron/redact-addresses",  "schedule": "0 3 * * *" },
-    { "path": "/api/cron/address-timeout",   "schedule": "0 4 * * *" }
+    { "path": "/api/cron/address-timeout",   "schedule": "0 4 * * *" },
+    { "path": "/api/cron/bundle-pending-expiry", "schedule": "0 5 * * *" }
   ]
 }

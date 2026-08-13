@@ -86,18 +86,20 @@ export async function POST(req: NextRequest) {
     }, { status: 409 });
   }
 
-  // One active application per cycle
+  // One open application at a time: any PENDING or APPROVED application blocks
+  // a new one (no calendar-month window). She frees herself by withdrawing a
+  // PENDING, or it auto-expires after 90 days; an APPROVED clears when it is
+  // delivered or released.
   const existing = await prisma.bundleApplication.findFirst({
     where: {
-      userId:    currentUser.userId,
-      status:    { in: ["PENDING", "APPROVED"] },
-      createdAt: { gte: monthStart, lt: monthEnd },
+      userId: currentUser.userId,
+      status: { in: ["PENDING", "APPROVED"] },
     },
     select: { id: true },
   });
   if (existing) {
     return NextResponse.json({
-      error: "You already have an active application this cycle. If your application is not approved, you may apply to another bundle next cycle.",
+      error: "You have an open application under review. You can withdraw it below if you'd like to apply for a different bundle, or wait for a decision.",
     }, { status: 409 });
   }
 

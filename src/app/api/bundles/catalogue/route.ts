@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest) {
     getCurrentUser().catch(() => null),
   ]);
 
-  let myActiveApplicationBundleId: string | null = null;
+  let myActiveApplication: { id: string; bundleId: string; status: string } | null = null;
   let myLifetimeDelivered = 0;
   let isRecipient = false;
   let bundleCooldownUntil: string | null = null;
@@ -38,13 +38,14 @@ export async function GET(_req: NextRequest) {
 
   if (currentUser) {
     const [existing, lifetimeCount, userRecord, lastApprovedBundle] = await Promise.all([
+      // Her one open application (any PENDING or APPROVED), if any. Status lets
+      // the page decide whether to offer "Withdraw" (PENDING only).
       prisma.bundleApplication.findFirst({
         where: {
           userId: currentUser.userId,
           status: { in: ["PENDING", "APPROVED"] },
-          createdAt: { gte: monthStart, lt: monthEnd },
         },
-        select: { bundleId: true },
+        select: { id: true, bundleId: true, status: true },
       }),
       // "X of 12 received" counter — only DELIVERED bundles count (the cap's
       // in-flight-APPROVED guard lives in the apply route, not this counter).
@@ -64,7 +65,7 @@ export async function GET(_req: NextRequest) {
         select:  { reviewedAt: true },
       }),
     ]);
-    myActiveApplicationBundleId = existing?.bundleId ?? null;
+    myActiveApplication = existing ? { id: existing.id, bundleId: existing.bundleId, status: existing.status } : null;
     myLifetimeDelivered = lifetimeCount;
     isRecipient = userRecord?.role === "RECIPIENT";
 
@@ -91,5 +92,5 @@ export async function GET(_req: NextRequest) {
     sponsorUrl:       b.sponsorUrl,
   }));
 
-  return NextResponse.json({ bundles: data, myActiveApplicationBundleId, myLifetimeDelivered, isRecipient, bundleCooldownUntil, bundleLastApprovedAt });
+  return NextResponse.json({ bundles: data, myActiveApplication, myLifetimeDelivered, isRecipient, bundleCooldownUntil, bundleLastApprovedAt });
 }

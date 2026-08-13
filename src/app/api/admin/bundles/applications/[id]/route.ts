@@ -26,9 +26,17 @@ export async function PATCH(
   const { id } = await params;
   const { status, adminNote } = await req.json();
 
-  const valid = ["PENDING", "APPROVED", "REJECTED", "WAITLISTED", "DELIVERED"];
+  // RELEASED = admin releases an APPROVED application that can't be delivered.
+  // EXPIRED (cron) and CANCELLED (mother self-withdraw) are set elsewhere, not
+  // via this manual admin endpoint.
+  const valid = ["PENDING", "APPROVED", "REJECTED", "WAITLISTED", "DELIVERED", "RELEASED"];
   if (status && !valid.includes(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  // Releasing requires a reason (item unavailable, mother unreachable, …).
+  if (status === "RELEASED" && !(typeof adminNote === "string" && adminNote.trim())) {
+    return NextResponse.json({ error: "A reason is required to release an approved application." }, { status: 400 });
   }
 
   // Belt-and-suspenders monthly cooldown: don't let an admin approve a second
@@ -63,6 +71,9 @@ export async function PATCH(
         reviewedAt: new Date(),
         reviewedBy: admin.userId,
       }),
+      // Stamp the delivery time so the mother's "X of 12 received" counter and
+      // the admin "Delivered" date are backed by a real timestamp.
+      ...(status === "DELIVERED" && { deliveredAt: new Date() }),
       ...(adminNote !== undefined && { adminNote }),
     },
     include: {
@@ -144,6 +155,24 @@ export async function PATCH(
         "Your Kradəl Bundle has been delivered",
         fullName,
         `Your <strong>${bundleName}</strong> has been delivered. We hope it helps.`
+      ).catch((err) => console.error("[bundle email]", err));
+    }
+  } else if (status === "RELEASED") {
+    if (userId) {
+      prisma.notification.create({
+        data: {
+          userId,
+          type:    "BUNDLE_UPDATE",
+          message: `We're very sorry. We weren't able to complete your ${bundleName} this time. This doesn't count against you in any way, and you're welcome to apply again whenever you're ready.`,
+          link:    "/bundles",
+        },
+      }).catch(() => {});
+    } else if (email) {
+      sendBundleEmail(
+        email,
+        "An update on your Kradəl Bundle",
+        fullName,
+        `We're very sorry. We weren't able to complete your <strong>${bundleName}</strong> this time. This doesn't count against you in any way, and you're welcome to apply again whenever you're ready.`
       ).catch((err) => console.error("[bundle email]", err));
     }
   }
