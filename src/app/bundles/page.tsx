@@ -226,7 +226,7 @@ export default function BundlesPage() {
               Care bundles are coming soon
             </div>
             <div style={{ fontSize: 14, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 24 }}>
-              We&apos;re preparing curated care bundles for mothers across Canada — fully funded and delivered free. They&apos;re not open just yet. As Kradel grows, we&apos;ll welcome mothers in, one community at a time.
+              We&apos;re preparing curated care bundles for mothers across Canada, fully funded and delivered free. They&apos;re not open just yet. As Kradel grows, we&apos;ll welcome mothers in, one community at a time.
             </div>
             <div style={{ paddingTop: 20, borderTop: "1px solid #f0f0f0" }}>
               <div style={{ fontSize: 13, color: "#666", fontFamily: "Nunito, sans-serif", marginBottom: 10 }}>
