@@ -1548,9 +1548,10 @@ model FormulaRequest {
 // tool to ration who receives needed formula.
 
 enum FormulaEpisodeStatus {
-  ACTIVE     // admitted, within the 6-month window
-  COMPLETED  // all 6 months delivered / window finished
-  ENDED      // ended early (funding shortfall, unreachable, baby off formula, …)
+  AWAITING_CONFIRMATION // admitted; reserves capacity until the mother confirms the exact product (14-day window)
+  ACTIVE                // confirmed; within the 6-month window
+  COMPLETED             // all 6 months delivered / window finished
+  ENDED                 // ended early (funding shortfall, unreachable, baby off formula, confirmation timeout, …)
 }
 
 enum FormulaDeliveryStatus {
@@ -1574,13 +1575,29 @@ model FormulaEpisode {
   formulaBrand String
   formulaType  String
   formulaStage String
+  // Physical form (powder / ready-to-feed / concentrate). Admin-set at admission
+  // because intake doesn't capture it yet; the mother confirms it as a safety net.
+  formulaForm  String?
   babyDob      DateTime?
 
+  // Default stays ACTIVE for legacy safety, but admission ALWAYS creates episodes
+  // as AWAITING_CONFIRMATION explicitly (no code path relies on this default).
   status      FormulaEpisodeStatus @default(ACTIVE)
   monthsTotal Int                  @default(6)
 
   startedAt        DateTime  @default(now()) // admission date
   admittedByAdminId String?
+
+  // Confirmation gate: while AWAITING_CONFIRMATION the episode reserves capacity
+  // but is not yet ACTIVE. The mother must confirm the exact product within the
+  // window (confirmationDeadline). Correction fields hold her "something's wrong"
+  // flag; reminder timestamps make the day-7 / day-12 nudges idempotent.
+  confirmationDeadline  DateTime?
+  confirmedAt           DateTime?
+  correctionNote        String?
+  correctionRequestedAt DateTime?
+  reminder7SentAt       DateTime?
+  reminder12SentAt      DateTime?
 
   // Early-end (before month 6): reason is required at the API layer.
   endedAt        DateTime?

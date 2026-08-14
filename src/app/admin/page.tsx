@@ -360,7 +360,7 @@ export default function AdminPage() {
   const [expandedFormulaId,  setExpandedFormulaId]  = useState<string | null>(null);
 
   // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
-  const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; committedMonths: number; availableSlots: number } | null>(null);
+  const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; awaitingEpisodes: number; occupiedSlots: number; committedMonths: number; availableSlots: number } | null>(null);
   const [formulaCapacityLoading, setFormulaCapacityLoading] = useState(false);
   const [capacityInput,          setCapacityInput]          = useState("");
   const [savingCapacity,         setSavingCapacity]         = useState(false);
@@ -2686,6 +2686,7 @@ export default function AdminPage() {
                         {[
                           { label: "Capacity (max active)", value: formulaCapacity.maxActiveEpisodes, tone: "#1a1a1a" },
                           { label: "Active episodes",       value: formulaCapacity.activeEpisodes,    tone: "#1a1a1a" },
+                          { label: "Awaiting confirmation", value: formulaCapacity.awaitingEpisodes,  tone: "#b45309" },
                           { label: "Committed months",      value: formulaCapacity.committedMonths,   tone: "#b45309" },
                           { label: "Available slots",       value: formulaCapacity.availableSlots,    tone: formulaCapacity.availableSlots > 0 ? "#1a7a5e" : "#c0392b" },
                         ].map((t) => (
@@ -2721,9 +2722,9 @@ export default function AdminPage() {
                         </button>
                       </div>
 
-                      {Number(capacityInput) >= 0 && Number.isInteger(Number(capacityInput)) && Number(capacityInput) < formulaCapacity.activeEpisodes && (
+                      {Number(capacityInput) >= 0 && Number.isInteger(Number(capacityInput)) && Number(capacityInput) < formulaCapacity.occupiedSlots && (
                         <div style={{ fontSize: 11.5, color: "#b45309", fontFamily: "Nunito, sans-serif", marginTop: 8, lineHeight: 1.5 }}>
-                          This is below the {formulaCapacity.activeEpisodes} active episode{formulaCapacity.activeEpisodes === 1 ? "" : "s"} already running. That is allowed and never ends an episode early; it only blocks new admissions until active drops below the cap.
+                          This is below the {formulaCapacity.occupiedSlots} episode{formulaCapacity.occupiedSlots === 1 ? "" : "s"} already running or awaiting confirmation. That is allowed and never ends an episode early; it only blocks new admissions until occupied drops below the cap.
                         </div>
                       )}
                     </>

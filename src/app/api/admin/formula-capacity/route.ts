@@ -7,27 +7,40 @@ export const dynamic = "force-dynamic";
 const SINGLETON_ID = "singleton";
 
 // Live-computed capacity snapshot. Nothing here is denormalised: the config row
-// stores ONLY the admin-set slot cap; active-episode count and committed
-// formula-months are counted fresh every read.
+// stores ONLY the admin-set slot cap; every other figure is counted fresh.
+//
+// An AWAITING_CONFIRMATION episode (admitted but not yet confirmed) RESERVES a
+// slot and its full 6 months, so occupancy = ACTIVE + AWAITING_CONFIRMATION.
+// That prevents over-admission while a mother is still confirming. Its deliveries
+// don't exist until she confirms, so its committed months come from monthsTotal.
 async function capacitySnapshot() {
-  const [config, activeEpisodes, committedMonths] = await Promise.all([
+  const [config, activeEpisodes, awaitingEpisodes, activeRemaining, awaitingAgg] = await Promise.all([
     prisma.formulaCapacityConfig.findUnique({ where: { id: SINGLETON_ID } }),
     prisma.formulaEpisode.count({ where: { status: "ACTIVE" } }),
-    // Remaining (un-fulfilled, un-cancelled) months across ACTIVE episodes =
-    // the programme's committed future formula obligation.
+    prisma.formulaEpisode.count({ where: { status: "AWAITING_CONFIRMATION" } }),
+    // Remaining (un-fulfilled, un-cancelled) months across ACTIVE episodes.
     prisma.formulaDelivery.count({
       where: { status: { in: ["SCHEDULED", "DUE"] }, episode: { status: "ACTIVE" } },
+    }),
+    // Reserved months for awaiting episodes (deliveries not created yet).
+    prisma.formulaEpisode.aggregate({
+      where: { status: "AWAITING_CONFIRMATION" },
+      _sum:  { monthsTotal: true },
     }),
   ]);
 
   // Fails closed: no config row (or never set) means 0 capacity = no admission.
   const maxActiveEpisodes = config?.maxActiveEpisodes ?? 0;
+  const occupiedSlots = activeEpisodes + awaitingEpisodes;
+  const committedMonths = activeRemaining + (awaitingAgg._sum.monthsTotal ?? 0);
 
   return {
     maxActiveEpisodes,
     activeEpisodes,
+    awaitingEpisodes,
+    occupiedSlots,
     committedMonths,
-    availableSlots: maxActiveEpisodes - activeEpisodes,
+    availableSlots: maxActiveEpisodes - occupiedSlots,
   };
 }
 
