@@ -359,6 +359,12 @@ export default function AdminPage() {
   const [formulaNoteMap,     setFormulaNoteMap]     = useState<Record<string, string>>({});
   const [expandedFormulaId,  setExpandedFormulaId]  = useState<string | null>(null);
 
+  // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
+  const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; committedMonths: number; availableSlots: number } | null>(null);
+  const [formulaCapacityLoading, setFormulaCapacityLoading] = useState(false);
+  const [capacityInput,          setCapacityInput]          = useState("");
+  const [savingCapacity,         setSavingCapacity]         = useState(false);
+
   // Reflections review state (mother-only long-form; admin-only identity)
   const [reflections,        setReflections]        = useState<ReflectionAdmin[]>([]);
   const [reflectionsLoading, setReflectionsLoading] = useState(false);
@@ -544,10 +550,35 @@ export default function AdminPage() {
     setFormulaReqsLoading(false);
   }, []);
 
+  const fetchFormulaCapacity = useCallback(async () => {
+    setFormulaCapacityLoading(true);
+    const r = await fetch("/api/admin/formula-capacity");
+    if (r.ok) {
+      const d = await r.json();
+      setFormulaCapacity(d);
+      setCapacityInput(String(d.maxActiveEpisodes ?? 0));
+    }
+    setFormulaCapacityLoading(false);
+  }, []);
+
+  const saveFormulaCapacity = async () => {
+    const value = Number(capacityInput);
+    if (!Number.isInteger(value) || value < 0) { setToast("Enter a non-negative whole number."); return; }
+    setSavingCapacity(true);
+    const r = await fetch("/api/admin/formula-capacity", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maxActiveEpisodes: value }),
+    });
+    if (r.ok) { const d = await r.json(); setFormulaCapacity(d); setCapacityInput(String(d.maxActiveEpisodes)); setToast("Formula capacity updated"); }
+    else { const d = await r.json().catch(() => ({})); setToast(d.error ?? "Could not update capacity"); }
+    setSavingCapacity(false);
+  };
+
   useEffect(() => {
-    if (section === "formula-requests") fetchFormulaReqs(formulaReqsFilter);
+    if (section === "formula-requests") { fetchFormulaReqs(formulaReqsFilter); fetchFormulaCapacity(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, fetchFormulaReqs]);
+  }, [section, fetchFormulaReqs, fetchFormulaCapacity]);
 
   const reviewFormulaReq = async (id: string, status: string) => {
     const note = formulaNoteMap[id] ?? "";
@@ -2632,6 +2663,71 @@ export default function AdminPage() {
                   BETA request intake for mothers whose babies are already formula-fed. Review each one individually.
                   Check the baby&apos;s age against the requested stage before deciding. No supply is promised or
                   automated here.
+                </div>
+
+                {/* ── Formula capacity ledger (D/F2) ──────────────────────────
+                    Slot-gated admission headroom + live committed-months liability.
+                    All figures computed server-side; nothing denormalised. */}
+                <div style={{ border: "1px solid #e0ede8", background: "#f8faf9", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>
+                      Formula capacity (6-month episodes)
+                    </div>
+                    <div style={{ fontSize: 11, color: "#6b7280", fontFamily: "Nunito, sans-serif" }}>
+                      Live figures. Admission (D/F3) will be gated on available slots.
+                    </div>
+                  </div>
+
+                  {formulaCapacityLoading && !formulaCapacity ? (
+                    <div style={{ fontSize: 12, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>Loading…</div>
+                  ) : formulaCapacity ? (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10, marginBottom: 14 }}>
+                        {[
+                          { label: "Capacity (max active)", value: formulaCapacity.maxActiveEpisodes, tone: "#1a1a1a" },
+                          { label: "Active episodes",       value: formulaCapacity.activeEpisodes,    tone: "#1a1a1a" },
+                          { label: "Committed months",      value: formulaCapacity.committedMonths,   tone: "#b45309" },
+                          { label: "Available slots",       value: formulaCapacity.availableSlots,    tone: formulaCapacity.availableSlots > 0 ? "#1a7a5e" : "#c0392b" },
+                        ].map((t) => (
+                          <div key={t.label} style={{ background: "white", border: "1px solid #e0e0e0", borderRadius: 10, padding: "10px 12px" }}>
+                            <div style={{ fontSize: 22, fontWeight: 900, color: t.tone, fontFamily: "Nunito, sans-serif", lineHeight: 1 }}>{t.value}</div>
+                            <div style={{ fontSize: 10.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginTop: 5 }}>{t.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {formulaCapacity.maxActiveEpisodes === 0 && (
+                        <div style={{ fontSize: 11.5, color: "#b45309", fontFamily: "Nunito, sans-serif", marginBottom: 10, lineHeight: 1.5 }}>
+                          Capacity is 0, so no mother can be admitted. Set it once funding is confirmed for the full 6 months.
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>Set capacity (max active episodes)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={capacityInput}
+                          onChange={(e) => setCapacityInput(e.target.value)}
+                          style={{ width: 90, padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 13 }}
+                        />
+                        <button
+                          onClick={saveFormulaCapacity}
+                          disabled={savingCapacity}
+                          style={{ padding: "8px 16px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 800, cursor: savingCapacity ? "default" : "pointer", opacity: savingCapacity ? 0.6 : 1 }}
+                        >
+                          {savingCapacity ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+
+                      {Number(capacityInput) >= 0 && Number.isInteger(Number(capacityInput)) && Number(capacityInput) < formulaCapacity.activeEpisodes && (
+                        <div style={{ fontSize: 11.5, color: "#b45309", fontFamily: "Nunito, sans-serif", marginTop: 8, lineHeight: 1.5 }}>
+                          This is below the {formulaCapacity.activeEpisodes} active episode{formulaCapacity.activeEpisodes === 1 ? "" : "s"} already running. That is allowed and never ends an episode early; it only blocks new admissions until active drops below the cap.
+                        </div>
+                      )}
+                    </>
+                  ) : null}
                 </div>
 
                 {/* Status filter */}
