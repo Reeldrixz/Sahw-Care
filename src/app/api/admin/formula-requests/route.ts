@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "asc" },
       take: limit,
       skip: offset,
-      include: { user: { select: { id: true, name: true, email: true, location: true } } },
+      include: { user: { select: { id: true, name: true, email: true, phone: true, location: true } } },
     }),
     prisma.formulaRequest.count({ where }),
   ]);
@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
       id:       r.user.id,
       name:     r.user.name,
       email:    r.user.email,
+      phone:    r.user.phone,
       location: r.user.location,
     },
   }));

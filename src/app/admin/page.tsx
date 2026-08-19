@@ -175,7 +175,7 @@ interface FormulaRequestAdmin {
   breastfeedingResourcesRequested: boolean;
   status: string; adminNote: string | null; reviewedAt: string | null;
   createdAt: string;
-  mother: { id: string; name: string; email: string | null; location: string | null };
+  mother: { id: string; name: string; email: string | null; phone: string | null; location: string | null };
 }
 
 interface ReflectionAdmin {
@@ -358,6 +358,9 @@ export default function AdminPage() {
   const [formulaReqsTotal,   setFormulaReqsTotal]   = useState(0);
   const [formulaNoteMap,     setFormulaNoteMap]     = useState<Record<string, string>>({});
   const [expandedFormulaId,  setExpandedFormulaId]  = useState<string | null>(null);
+  // D/F3b admission: per-request editable spec + form, and the in-flight admit id.
+  const [admitFormMap,       setAdmitFormMap]       = useState<Record<string, { formulaBrand?: string; formulaType?: string; formulaStage?: string; formulaForm: string }>>({});
+  const [admittingId,        setAdmittingId]        = useState<string | null>(null);
 
   // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
   const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; awaitingEpisodes: number; occupiedSlots: number; committedMonths: number; availableSlots: number } | null>(null);
@@ -591,6 +594,38 @@ export default function AdminPage() {
       setFormulaReqs((prev) => prev.filter((a) => a.id !== id));
       setToast(`Formula request ${status.toLowerCase()}`);
     }
+  };
+
+  // D/F3b: admit a mother to the 6-month formula programme (creates an
+  // AWAITING_CONFIRMATION episode; she must then confirm the exact product).
+  const admitFormula = async (rq: FormulaRequestAdmin) => {
+    const form = admitFormMap[rq.id] ?? { formulaForm: "" };
+    const brand = (form.formulaBrand ?? rq.formulaBrand).trim();
+    const type  = (form.formulaType  ?? rq.formulaType).trim();
+    const stage = (form.formulaStage ?? rq.formulaStage).trim();
+    if (!form.formulaForm) { setToast("Choose the formula form before admitting."); return; }
+    setAdmittingId(rq.id);
+    const r = await fetch(`/api/admin/formula-requests/${rq.id}/admit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        formulaBrand: brand, formulaType: type, formulaStage: stage,
+        formulaForm: form.formulaForm,
+        adminNote: (formulaNoteMap[rq.id] ?? "").trim() || undefined,
+      }),
+    });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setFormulaReqs((prev) => prev.filter((a) => a.id !== rq.id));
+      fetchFormulaCapacity();
+      setToast(d.hasEmail
+        ? "Admitted for 6 months. She'll be asked to confirm her baby's formula."
+        : "Admitted. No email on file, so follow up with her directly so she confirms in time.");
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not admit. Please try again.");
+    }
+    setAdmittingId(null);
   };
 
   const fetchReflections = useCallback(async (status: string) => {
@@ -2838,8 +2873,40 @@ export default function AdminPage() {
                                 </div>
                               )}
 
-                              {rq.status === "PENDING" && (
+                              {rq.status === "PENDING" && (() => {
+                                const admitForm = admitFormMap[rq.id] ?? { formulaForm: "" };
+                                const noSlots   = !!formulaCapacity && formulaCapacity.availableSlots <= 0;
+                                const noEmail   = !rq.mother.email;
+                                const setField  = (k: "formulaBrand" | "formulaType" | "formulaStage" | "formulaForm", v: string) =>
+                                  setAdmitFormMap((m) => {
+                                    const base = m[rq.id] ?? { formulaForm: "" };
+                                    return { ...m, [rq.id]: { ...base, [k]: v } };
+                                  });
+                                return (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                  {/* No-email warning: she is reachable in-app only until SMS. */}
+                                  {noEmail && (
+                                    <div style={{ background: "#fff8ed", border: "1.5px solid #d97706", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.55 }}>
+                                      <strong>No email on file.</strong> She&apos;ll be reachable in-app only until SMS is enabled, so she won&apos;t get email reminders. If you admit her, add her to direct admin follow-up so her 14-day confirmation window doesn&apos;t lapse unseen.
+                                      {rq.mother.phone && <div style={{ marginTop: 3 }}>Phone on file: <strong>{rq.mother.phone}</strong></div>}
+                                    </div>
+                                  )}
+
+                                  {/* Exact product the 6-month commitment will provide. Pre-filled
+                                      from her request; admin confirms/corrects, then SHE confirms. */}
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: "Nunito, sans-serif" }}>Product to provide (she will confirm)</div>
+                                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                    <input value={admitForm.formulaBrand ?? rq.formulaBrand} onChange={(e) => setField("formulaBrand", e.target.value)} placeholder="Brand" style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                                    <input value={admitForm.formulaType ?? rq.formulaType} onChange={(e) => setField("formulaType", e.target.value)} placeholder="Type / line" style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                                    <input value={admitForm.formulaStage ?? rq.formulaStage} onChange={(e) => setField("formulaStage", e.target.value)} placeholder="Stage" style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                                    <select value={admitForm.formulaForm} onChange={(e) => setField("formulaForm", e.target.value)} style={{ padding: "8px 10px", border: `1.5px solid ${admitForm.formulaForm ? "#e0e0e0" : "#d97706"}`, borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, background: "white" }}>
+                                      <option value="">Form…</option>
+                                      <option value="Powder">Powder</option>
+                                      <option value="Ready-to-feed">Ready-to-feed</option>
+                                      <option value="Concentrate">Concentrate</option>
+                                    </select>
+                                  </div>
+
                                   <textarea
                                     placeholder="Admin note (optional, max 200 chars)…"
                                     maxLength={200}
@@ -2848,10 +2915,19 @@ export default function AdminPage() {
                                     rows={2}
                                     style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const }}
                                   />
+
+                                  {noSlots && (
+                                    <div style={{ fontSize: 11.5, color: "#c0392b", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                                      No formula slots available. Raise capacity above to admit.
+                                    </div>
+                                  )}
+
                                   <div style={{ display: "flex", gap: 8 }}>
-                                    <button onClick={() => reviewFormulaReq(rq.id, "APPROVED")}
-                                      style={{ flex: 1, padding: "10px", background: "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
-                                      Approve for follow-up
+                                    <button
+                                      onClick={() => admitFormula(rq)}
+                                      disabled={noSlots || admittingId === rq.id}
+                                      style={{ flex: 1, padding: "10px", background: (noSlots || admittingId === rq.id) ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: (noSlots || admittingId === rq.id) ? "not-allowed" : "pointer" }}>
+                                      {admittingId === rq.id ? "Admitting…" : "Admit for 6 months"}
                                     </button>
                                     <button onClick={() => reviewFormulaReq(rq.id, "DECLINED")}
                                       style={{ flex: 1, padding: "10px", background: "#fdecea", border: "1.5px solid #c0392b", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 800, cursor: "pointer" }}>
@@ -2859,7 +2935,8 @@ export default function AdminPage() {
                                     </button>
                                   </div>
                                 </div>
-                              )}
+                                );
+                              })()}
 
                               {rq.status !== "PENDING" && rq.adminNote && (
                                 <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
