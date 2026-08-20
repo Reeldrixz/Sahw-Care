@@ -7,6 +7,7 @@
     { "path": "/api/cron/address-timeout",   "schedule": "0 4 * * *" },
     { "path": "/api/cron/bundle-pending-expiry", "schedule": "0 5 * * *" },
     { "path": "/api/cron/formula-confirmation",  "schedule": "0 6 * * *" },
-    { "path": "/api/cron/formula-stage-reminder", "schedule": "0 7 * * *" }
+    { "path": "/api/cron/formula-stage-reminder", "schedule": "0 7 * * *" },
+    { "path": "/api/cron/formula-delivery-due",   "schedule": "0 8 * * *" }
   ]
 }
