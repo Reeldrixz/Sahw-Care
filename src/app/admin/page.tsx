@@ -178,11 +178,18 @@ interface FormulaRequestAdmin {
   mother: { id: string; name: string; email: string | null; phone: string | null; location: string | null };
 }
 
+interface FormulaDeliveryAdmin {
+  monthIndex: number; status: string; scheduledFor: string;
+  fulfilledAt: string | null; formulaStageAtFulfilment: string | null; note: string | null;
+}
+
 interface FormulaEpisodeAdmin {
   id: string; status: string;
   formulaBrand: string; formulaType: string; formulaStage: string; formulaForm: string | null;
+  monthsTotal: number;
   confirmationDeadline: string | null; correctionNote: string | null; correctionRequestedAt: string | null;
-  startedAt: string;
+  startedAt: string; confirmedAt: string | null; completedAt: string | null;
+  fulfilledCount: number; deliveries: FormulaDeliveryAdmin[];
   mother: { id: string; name: string; email: string | null; phone: string | null };
 }
 
@@ -373,6 +380,10 @@ export default function AdminPage() {
   const [formulaEpisodes,    setFormulaEpisodes]    = useState<FormulaEpisodeAdmin[]>([]);
   const [episodeEditMap,     setEpisodeEditMap]     = useState<Record<string, { formulaBrand: string; formulaType: string; formulaStage: string; formulaForm: string }>>({});
   const [savingEpisodeId,    setSavingEpisodeId]    = useState<string | null>(null);
+  // D/F4c: ACTIVE episodes with per-month deliveries, for delivery marking.
+  const [activeEpisodes,     setActiveEpisodes]     = useState<FormulaEpisodeAdmin[]>([]);
+  const [deliveryNoteMap,    setDeliveryNoteMap]    = useState<Record<string, string>>({});
+  const [fulfillingKey,      setFulfillingKey]      = useState<string | null>(null);
 
   // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
   const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; awaitingEpisodes: number; occupiedSlots: number; committedMonths: number; availableSlots: number } | null>(null);
@@ -596,10 +607,16 @@ export default function AdminPage() {
     if (r.ok) { const d = await r.json(); setFormulaEpisodes(d.episodes ?? []); }
   }, []);
 
+  // D/F4c: ACTIVE episodes with per-month deliveries, for delivery marking.
+  const fetchActiveEpisodes = useCallback(async () => {
+    const r = await fetch("/api/admin/formula-episodes?status=ACTIVE");
+    if (r.ok) { const d = await r.json(); setActiveEpisodes(d.episodes ?? []); }
+  }, []);
+
   useEffect(() => {
-    if (section === "formula-requests") { fetchFormulaReqs(formulaReqsFilter); fetchFormulaCapacity(); fetchFormulaEpisodes(); }
+    if (section === "formula-requests") { fetchFormulaReqs(formulaReqsFilter); fetchFormulaCapacity(); fetchFormulaEpisodes(); fetchActiveEpisodes(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, fetchFormulaReqs, fetchFormulaCapacity, fetchFormulaEpisodes]);
+  }, [section, fetchFormulaReqs, fetchFormulaCapacity, fetchFormulaEpisodes, fetchActiveEpisodes]);
 
   const reviewFormulaReq = async (id: string, status: string) => {
     const note = formulaNoteMap[id] ?? "";
@@ -666,6 +683,30 @@ export default function AdminPage() {
       setToast(d.error ?? "Could not update. Please try again.");
     }
     setSavingEpisodeId(null);
+  };
+
+  // D/F4c: mark one month's delivery fulfilled. The 6th fulfilment completes the
+  // episode server-side, so on completion we drop it from the active list.
+  const fulfillDelivery = async (ep: FormulaEpisodeAdmin, monthIndex: number) => {
+    const key = `${ep.id}:${monthIndex}`;
+    setFulfillingKey(key);
+    const note = (deliveryNoteMap[key] ?? "").trim();
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/deliveries/${monthIndex}/fulfill`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(note ? { note } : {}),
+    });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setDeliveryNoteMap((m) => { const next = { ...m }; delete next[key]; return next; });
+      setToast(d.episodeCompleted ? "Episode complete — all 6 months delivered." : `Month ${monthIndex} marked fulfilled`);
+      fetchActiveEpisodes();
+      fetchFormulaCapacity();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not mark this month fulfilled. Please try again.");
+    }
+    setFulfillingKey(null);
   };
 
   const fetchReflections = useCallback(async (status: string) => {
@@ -2858,6 +2899,79 @@ export default function AdminPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* D/F4c: ACTIVE episodes — per-month delivery marking */}
+                {activeEpisodes.length > 0 && (
+                  <div style={{ border: "1px solid #e0ede8", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                      Active episodes ({activeEpisodes.length})
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginBottom: 14, lineHeight: 1.5 }}>
+                      Confirmed mothers inside their 6-month window. Mark each month fulfilled as you send it — the 6th fulfilment completes the episode automatically.
+                    </div>
+                    {activeEpisodes.map((ep) => (
+                      <div key={ep.id} style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 2, flexWrap: "wrap" }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{ep.mother.name}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
+                            {ep.mother.email ? ep.mother.email : (ep.mother.phone ? `${ep.mother.phone} (no email)` : "no email")}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginBottom: 10 }}>
+                          {ep.formulaBrand} {ep.formulaType} · Stage {ep.formulaStage}{ep.formulaForm ? ` · ${ep.formulaForm}` : ""}
+                          {" · "}<strong style={{ color: "#1a7a5e" }}>{ep.fulfilledCount} of {ep.monthsTotal} months fulfilled</strong>
+                        </div>
+
+                        <div style={{ display: "grid", gap: 6 }}>
+                          {ep.deliveries.map((d) => {
+                            const key = `${ep.id}:${d.monthIndex}`;
+                            const isFulfilled = d.status === "FULFILLED";
+                            const isCancelled = d.status === "CANCELLED";
+                            const badge = isFulfilled
+                              ? { bg: "#eafaf3", fg: "#1a7a5e", label: "Fulfilled" }
+                              : isCancelled
+                                ? { bg: "#f3f4f6", fg: "#9ca3af", label: "Cancelled" }
+                                : d.status === "DUE"
+                                  ? { bg: "#fff8ed", fg: "#b45309", label: "Due" }
+                                  : { bg: "#f3f4f6", fg: "#6b7280", label: "Scheduled" };
+                            return (
+                              <div key={d.monthIndex} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fafbfa", border: "1px solid #eef2f0", borderRadius: 8, padding: "8px 10px" }}>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", minWidth: 58 }}>Month {d.monthIndex}</span>
+                                <span title={d.status === "DUE" ? "This month's date has arrived. You can fulfil any unfulfilled month, though — this is just a reminder." : undefined}
+                                  style={{ fontSize: 10.5, fontWeight: 800, color: badge.fg, background: badge.bg, borderRadius: 20, padding: "2px 9px", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                                  {badge.label}
+                                </span>
+                                <span style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
+                                  {isFulfilled
+                                    ? `sent ${d.fulfilledAt ? new Date(d.fulfilledAt).toLocaleDateString("en-CA") : "—"}${d.formulaStageAtFulfilment ? ` · Stage ${d.formulaStageAtFulfilment}` : ""}`
+                                    : `due ${new Date(d.scheduledFor).toLocaleDateString("en-CA")}`}
+                                </span>
+                                {isFulfilled && d.note && (
+                                  <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "Nunito, sans-serif", fontStyle: "italic" }}>“{d.note}”</span>
+                                )}
+                                {!isFulfilled && !isCancelled && (
+                                  <div style={{ display: "flex", gap: 6, marginLeft: "auto", alignItems: "center" }}>
+                                    <input
+                                      value={deliveryNoteMap[key] ?? ""}
+                                      onChange={(e) => setDeliveryNoteMap((m) => ({ ...m, [key]: e.target.value }))}
+                                      placeholder="Note (optional)"
+                                      style={{ padding: "6px 9px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 11.5, width: 150 }} />
+                                    <button
+                                      onClick={() => fulfillDelivery(ep, d.monthIndex)}
+                                      disabled={fulfillingKey === key}
+                                      style={{ padding: "6px 13px", background: fulfillingKey === key ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 800, cursor: fulfillingKey === key ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                      {fulfillingKey === key ? "Marking…" : "Mark fulfilled"}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 

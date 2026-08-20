@@ -1606,6 +1606,11 @@ model FormulaEpisode {
   pendingFormulaStage     String?
   pendingStageRequestedAt DateTime?
 
+  // Natural completion: stamped when the 6th delivery is fulfilled (completion is
+  // at 6 fulfillments, not 6 calendar months — delays can push the finish date
+  // past the 6-month mark, so this records when it actually finished).
+  completedAt DateTime?
+
   // Early-end (before month 6): reason is required at the API layer.
   endedAt        DateTime?
   endReason      String?
