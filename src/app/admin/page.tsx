@@ -388,6 +388,10 @@ export default function AdminPage() {
   // D/F4d: propose a stage-for-growth change per active episode.
   const [stageInputMap,      setStageInputMap]      = useState<Record<string, string>>({});
   const [proposingId,        setProposingId]        = useState<string | null>(null);
+  // Early-end: humane mid-episode exit (internal reason required).
+  const [endOpenId,          setEndOpenId]          = useState<string | null>(null);
+  const [endReasonMap,       setEndReasonMap]       = useState<Record<string, string>>({});
+  const [endingId,           setEndingId]           = useState<string | null>(null);
 
   // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
   const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; awaitingEpisodes: number; occupiedSlots: number; committedMonths: number; availableSlots: number } | null>(null);
@@ -733,6 +737,30 @@ export default function AdminPage() {
       setToast(d.error ?? "Could not propose the stage change. Please try again.");
     }
     setProposingId(null);
+  };
+
+  // Early-end: end an ACTIVE episode with a required internal reason. She gets a
+  // warm no-fault note; the reason stays admin-only.
+  const endEpisode = async (ep: FormulaEpisodeAdmin) => {
+    const reason = (endReasonMap[ep.id] ?? "").trim();
+    if (!reason) { setToast("Add an internal reason before ending."); return; }
+    setEndingId(ep.id);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/end`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (r.ok) {
+      setEndReasonMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
+      setEndOpenId(null);
+      setToast("Formula support ended. She's been sent a kind note.");
+      fetchActiveEpisodes();
+      fetchFormulaCapacity();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not end this episode. Please try again.");
+    }
+    setEndingId(null);
   };
 
   const fetchReflections = useCallback(async (status: string) => {
@@ -3026,6 +3054,47 @@ export default function AdminPage() {
                                 </button>
                               </div>
                             </>
+                          )}
+                        </div>
+
+                        {/* Early-end: humane mid-episode exit */}
+                        <div style={{ marginTop: 10 }}>
+                          {endOpenId === ep.id ? (
+                            <div style={{ background: "#fcfbfa", border: "1px solid #eee0e0", borderRadius: 8, padding: "10px 12px" }}>
+                              <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginBottom: 8, lineHeight: 1.5 }}>
+                                Ends her 6-month support now, cancels the remaining months, and frees the slot. She gets a warm, no-fault note — your reason stays internal.
+                              </div>
+                              <label style={{ fontSize: 11.5, fontWeight: 800, color: "#6b7280", fontFamily: "Nunito, sans-serif" }}>
+                                Reason (internal — she won&apos;t see this)
+                              </label>
+                              <textarea
+                                value={endReasonMap[ep.id] ?? ""}
+                                onChange={(e) => setEndReasonMap((m) => ({ ...m, [ep.id]: e.target.value }))}
+                                rows={2}
+                                maxLength={1000}
+                                placeholder="e.g. baby weaned off formula / unreachable for 3 weeks / funding lapsed"
+                                style={{ width: "100%", marginTop: 4, padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", minHeight: 52, boxSizing: "border-box" }} />
+                              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                <button
+                                  onClick={() => endEpisode(ep)}
+                                  disabled={endingId === ep.id}
+                                  style={{ padding: "8px 14px", background: endingId === ep.id ? "#9ca3af" : "#c0392b", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 800, cursor: endingId === ep.id ? "default" : "pointer" }}>
+                                  {endingId === ep.id ? "Ending…" : "End this episode"}
+                                </button>
+                                <button
+                                  onClick={() => { setEndOpenId(null); setEndReasonMap((m) => { const n = { ...m }; delete n[ep.id]; return n; }); }}
+                                  disabled={endingId === ep.id}
+                                  style={{ padding: "8px 14px", background: "white", border: "1.5px solid #e0e0e0", borderRadius: 8, color: "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setEndOpenId(ep.id)}
+                              style={{ padding: "6px 12px", background: "white", border: "1.5px solid #eadcdc", borderRadius: 8, color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>
+                              End support early
+                            </button>
                           )}
                         </div>
                       </div>
