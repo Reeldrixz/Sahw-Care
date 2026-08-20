@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const {
-    formulaBrand, formulaType, formulaStage,
+    formulaBrand, formulaType, formulaStage, formulaForm,
     babyDob, note,
     confirmedFormulaFed, breastfeedingResourcesRequested,
   } = body;
@@ -62,9 +62,16 @@ export async function POST(req: NextRequest) {
   const brand = typeof formulaBrand === "string" ? formulaBrand.trim() : "";
   const type  = typeof formulaType  === "string" ? formulaType.trim()  : "";
   const stage = typeof formulaStage === "string" ? formulaStage.trim() : "";
+  const form  = typeof formulaForm  === "string" ? formulaForm.trim()  : "";
 
   if (!brand || !type || !stage) {
     return NextResponse.json({ error: "Please tell us your baby's formula brand, type, and stage." }, { status: 400 });
+  }
+
+  // Form is required and must be one of the three known forms.
+  const VALID_FORMS = ["Powder", "Ready-to-feed", "Concentrate"];
+  if (!VALID_FORMS.includes(form)) {
+    return NextResponse.json({ error: "Please choose the form your baby's formula comes in." }, { status: 400 });
   }
 
   // The safety confirmation is required.
@@ -87,6 +94,7 @@ export async function POST(req: NextRequest) {
       formulaBrand: brand,
       formulaType:  type,
       formulaStage: stage,
+      formulaForm:  form,
       babyDob:      dob,
       note:         typeof note === "string" && note.trim() ? note.trim() : null,
       confirmedFormulaFedAt: new Date(),

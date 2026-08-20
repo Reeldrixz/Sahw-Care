@@ -170,7 +170,7 @@ interface BundleApplicationAdmin {
 
 interface FormulaRequestAdmin {
   id: string;
-  formulaBrand: string; formulaType: string; formulaStage: string;
+  formulaBrand: string; formulaType: string; formulaStage: string; formulaForm: string | null;
   babyDob: string; note: string | null;
   breastfeedingResourcesRequested: boolean;
   status: string; adminNote: string | null; reviewedAt: string | null;
@@ -642,7 +642,7 @@ export default function AdminPage() {
   // D/F3b: admit a mother to the 6-month formula programme (creates an
   // AWAITING_CONFIRMATION episode; she must then confirm the exact product).
   const admitFormula = async (rq: FormulaRequestAdmin) => {
-    const form = admitFormMap[rq.id] ?? { formulaForm: "" };
+    const form = admitFormMap[rq.id] ?? { formulaForm: rq.formulaForm ?? "" };
     const brand = (form.formulaBrand ?? rq.formulaBrand).trim();
     const type  = (form.formulaType  ?? rq.formulaType).trim();
     const stage = (form.formulaStage ?? rq.formulaStage).trim();
@@ -3176,6 +3176,9 @@ export default function AdminPage() {
                                   <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
                                     <strong style={{ color: "#1a1a1a" }}>Stage:</strong> {rq.formulaStage}
                                   </div>
+                                  <div style={{ fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif" }}>
+                                    <strong style={{ color: "#1a1a1a" }}>Form:</strong> {rq.formulaForm ?? "—"}
+                                  </div>
                                 </div>
                               </div>
 
@@ -3210,12 +3213,12 @@ export default function AdminPage() {
                               )}
 
                               {rq.status === "PENDING" && (() => {
-                                const admitForm = admitFormMap[rq.id] ?? { formulaForm: "" };
+                                const admitForm = admitFormMap[rq.id] ?? { formulaForm: rq.formulaForm ?? "" };
                                 const noSlots   = !!formulaCapacity && formulaCapacity.availableSlots <= 0;
                                 const noEmail   = !rq.mother.email;
                                 const setField  = (k: "formulaBrand" | "formulaType" | "formulaStage" | "formulaForm", v: string) =>
                                   setAdmitFormMap((m) => {
-                                    const base = m[rq.id] ?? { formulaForm: "" };
+                                    const base = m[rq.id] ?? { formulaForm: rq.formulaForm ?? "" };
                                     return { ...m, [rq.id]: { ...base, [k]: v } };
                                   });
                                 return (

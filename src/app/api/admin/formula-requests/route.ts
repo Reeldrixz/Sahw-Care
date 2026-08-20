@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
     formulaBrand: r.formulaBrand,
     formulaType:  r.formulaType,
     formulaStage: r.formulaStage,
+    formulaForm:  r.formulaForm,
     babyDob:      r.babyDob,
     note:         r.note,
     breastfeedingResourcesRequested: r.breastfeedingResourcesRequested,

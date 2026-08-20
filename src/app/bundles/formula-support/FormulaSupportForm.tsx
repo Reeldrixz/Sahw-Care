@@ -19,10 +19,13 @@ const inputStyle: React.CSSProperties = {
   fontFamily: SANS, background: "white", boxSizing: "border-box", outline: "none",
 };
 
+const FORMULA_FORMS = ["Powder", "Ready-to-feed", "Concentrate"] as const;
+
 interface FormState {
   formulaBrand: string;
   formulaType: string;
   formulaStage: string;
+  formulaForm: string;
   babyDob: string;
   note: string;
   confirmedFormulaFed: boolean;
@@ -30,7 +33,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
-  formulaBrand: "", formulaType: "", formulaStage: "",
+  formulaBrand: "", formulaType: "", formulaStage: "", formulaForm: "",
   babyDob: "", note: "",
   confirmedFormulaFed: false, breastfeedingResourcesRequested: false,
 };
@@ -43,7 +46,7 @@ export default function FormulaSupportForm() {
 
   const canSubmit =
     !!form.formulaBrand.trim() && !!form.formulaType.trim() &&
-    !!form.formulaStage.trim() && !!form.babyDob && form.confirmedFormulaFed;
+    !!form.formulaStage.trim() && !!form.formulaForm && !!form.babyDob && form.confirmedFormulaFed;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +99,15 @@ export default function FormulaSupportForm() {
 
       <label style={labelStyle}>Stage *</label>
       <input required value={form.formulaStage} onChange={(e) => setForm((f) => ({ ...f, formulaStage: e.target.value }))} placeholder="e.g. Stage 1, 0 to 6 months" style={inputStyle} />
+
+      <label style={labelStyle}>Formula form</label>
+      <select required value={form.formulaForm} onChange={(e) => setForm((f) => ({ ...f, formulaForm: e.target.value }))} style={{ ...inputStyle, marginBottom: 6, appearance: "auto" }}>
+        <option value="" disabled>Choose one…</option>
+        {FORMULA_FORMS.map((ff) => <option key={ff} value={ff}>{ff}</option>)}
+      </select>
+      <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: SANS, margin: "0 0 16px" }}>
+        How your baby&apos;s formula comes — check the packaging if you&apos;re unsure.
+      </div>
 
       <label style={labelStyle}>Baby&apos;s date of birth *</label>
       <input required type="date" value={form.babyDob} onChange={(e) => setForm((f) => ({ ...f, babyDob: e.target.value }))} style={{ ...inputStyle, maxWidth: 220 }} />

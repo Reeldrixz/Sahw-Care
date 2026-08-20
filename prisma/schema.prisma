@@ -1515,6 +1515,11 @@ model FormulaRequest {
   formulaBrand String
   formulaType  String // type / variant
   formulaStage String
+  // Form she selects at intake (Powder / Ready-to-feed / Concentrate). Nullable:
+  // historical requests predate this field. Admission defaults to her choice but
+  // the admin still confirms the form, and she re-confirms the product (two
+  // safety layers).
+  formulaForm  String?
   // Baby DOB confirms a real infant and lets admin catch a DOB-vs-stage
   // mismatch (e.g. Stage 3 requested for a 2-week-old).
   babyDob DateTime
