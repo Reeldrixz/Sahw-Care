@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 import FormulaSupportForm from "./FormulaSupportForm";
 import FormulaConfirmCard from "./FormulaConfirmCard";
+import FormulaProgressCard from "./FormulaProgressCard";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,15 @@ export default async function FormulaSupportPage() {
     ? await prisma.formulaEpisode.findFirst({
         where:   { userId: currentUser.userId, status: { in: ["AWAITING_CONFIRMATION", "ACTIVE"] } },
         orderBy: { startedAt: "desc" },
-        select:  { id: true, status: true, formulaBrand: true, formulaType: true, formulaStage: true, formulaForm: true },
+        select:  {
+          id: true, status: true,
+          formulaBrand: true, formulaType: true, formulaStage: true, formulaForm: true,
+          monthsTotal: true,
+          deliveries: {
+            orderBy: { monthIndex: "asc" },
+            select:  { monthIndex: true, status: true, scheduledFor: true, fulfilledAt: true },
+          },
+        },
       })
     : null;
 
@@ -73,15 +82,29 @@ export default async function FormulaSupportPage() {
             formulaForm={episode.formulaForm}
           />
         ) : isRecipient && episode?.status === "ACTIVE" ? (
-          // Minimal active acknowledgment. The rich "Month X of 6" view is D/F4.
-          <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
-            <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
-              Your formula support is active
-            </h1>
-            <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: 0 }}>
-              We&apos;ll prepare your formula each month. We aim for every month, though occasionally one may be delayed, and you won&apos;t need to reapply.
-            </p>
-          </div>
+          <>
+            {/* D/F4d: pending-stage re-confirmation card mounts here */}
+            {episode.deliveries.length > 0 ? (
+              <FormulaProgressCard
+                formulaBrand={episode.formulaBrand}
+                formulaType={episode.formulaType}
+                formulaStage={episode.formulaStage}
+                formulaForm={episode.formulaForm}
+                monthsTotal={episode.monthsTotal}
+                deliveries={episode.deliveries}
+              />
+            ) : (
+              // Fallback: active but no deliveries yet (shouldn't happen post-confirm).
+              <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
+                <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
+                  Your formula support is active
+                </h1>
+                <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: 0 }}>
+                  We&apos;ll prepare your formula each month. We aim for every month, though occasionally one may be delayed, and you won&apos;t need to reapply.
+                </p>
+              </div>
+            )}
+          </>
         ) : isRecipient && formulaCooldown.active && formulaCooldown.lastApprovedAt && formulaCooldown.nextEligibleAt ? (
           <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
