@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 import FormulaSupportForm from "./FormulaSupportForm";
+import FormulaConfirmCard from "./FormulaConfirmCard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,21 @@ export default async function FormulaSupportPage() {
     : null;
   const isRecipient = account?.role === "RECIPIENT";
 
+  // Episode takes precedence over everything below. Admission flips her request
+  // to APPROVED, which would otherwise trip the legacy cooldown branch and hide
+  // the confirmation card, so the episode is the source of truth here. At most
+  // one AWAITING_CONFIRMATION or ACTIVE episode exists (enforced at admission).
+  const episode = isRecipient && currentUser
+    ? await prisma.formulaEpisode.findFirst({
+        where:   { userId: currentUser.userId, status: { in: ["AWAITING_CONFIRMATION", "ACTIVE"] } },
+        orderBy: { startedAt: "desc" },
+        select:  { id: true, status: true, formulaBrand: true, formulaType: true, formulaStage: true, formulaForm: true },
+      })
+    : null;
+
   // Formula receipt cooldown (own clock, independent of bundles): keyed off the
   // last APPROVED formula request. Pending/declined never start the clock.
+  // Only relevant to mothers who were never admitted to an episode.
   const lastApprovedFormula = isRecipient && currentUser
     ? await prisma.formulaRequest.findFirst({
         where:   { userId: currentUser.userId, status: "APPROVED" },
@@ -50,7 +64,25 @@ export default async function FormulaSupportPage() {
           ← Back to bundles
         </Link>
 
-        {isRecipient && formulaCooldown.active && formulaCooldown.lastApprovedAt && formulaCooldown.nextEligibleAt ? (
+        {isRecipient && episode?.status === "AWAITING_CONFIRMATION" ? (
+          <FormulaConfirmCard
+            episodeId={episode.id}
+            formulaBrand={episode.formulaBrand}
+            formulaType={episode.formulaType}
+            formulaStage={episode.formulaStage}
+            formulaForm={episode.formulaForm}
+          />
+        ) : isRecipient && episode?.status === "ACTIVE" ? (
+          // Minimal active acknowledgment. The rich "Month X of 6" view is D/F4.
+          <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
+            <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
+              Your formula support is active
+            </h1>
+            <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: 0 }}>
+              We&apos;ll prepare your formula each month. We aim for every month, though occasionally one may be delayed, and you won&apos;t need to reapply.
+            </p>
+          </div>
+        ) : isRecipient && formulaCooldown.active && formulaCooldown.lastApprovedAt && formulaCooldown.nextEligibleAt ? (
           <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
               You&apos;re set for this month

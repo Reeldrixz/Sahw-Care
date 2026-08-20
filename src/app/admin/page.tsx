@@ -178,6 +178,14 @@ interface FormulaRequestAdmin {
   mother: { id: string; name: string; email: string | null; phone: string | null; location: string | null };
 }
 
+interface FormulaEpisodeAdmin {
+  id: string; status: string;
+  formulaBrand: string; formulaType: string; formulaStage: string; formulaForm: string | null;
+  confirmationDeadline: string | null; correctionNote: string | null; correctionRequestedAt: string | null;
+  startedAt: string;
+  mother: { id: string; name: string; email: string | null; phone: string | null };
+}
+
 interface ReflectionAdmin {
   id: string; title: string; body: string; stageKey: string; stageLabel: string;
   status: string;
@@ -361,6 +369,10 @@ export default function AdminPage() {
   // D/F3b admission: per-request editable spec + form, and the in-flight admit id.
   const [admitFormMap,       setAdmitFormMap]       = useState<Record<string, { formulaBrand?: string; formulaType?: string; formulaStage?: string; formulaForm: string }>>({});
   const [admittingId,        setAdmittingId]        = useState<string | null>(null);
+  // D/F3c: episodes awaiting confirmation (to resolve flagged corrections).
+  const [formulaEpisodes,    setFormulaEpisodes]    = useState<FormulaEpisodeAdmin[]>([]);
+  const [episodeEditMap,     setEpisodeEditMap]     = useState<Record<string, { formulaBrand: string; formulaType: string; formulaStage: string; formulaForm: string }>>({});
+  const [savingEpisodeId,    setSavingEpisodeId]    = useState<string | null>(null);
 
   // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
   const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; awaitingEpisodes: number; occupiedSlots: number; committedMonths: number; availableSlots: number } | null>(null);
@@ -578,10 +590,16 @@ export default function AdminPage() {
     setSavingCapacity(false);
   };
 
+  // D/F3c: awaiting-confirmation episodes (so a flagged correction can be fixed).
+  const fetchFormulaEpisodes = useCallback(async () => {
+    const r = await fetch("/api/admin/formula-episodes?status=AWAITING_CONFIRMATION");
+    if (r.ok) { const d = await r.json(); setFormulaEpisodes(d.episodes ?? []); }
+  }, []);
+
   useEffect(() => {
-    if (section === "formula-requests") { fetchFormulaReqs(formulaReqsFilter); fetchFormulaCapacity(); }
+    if (section === "formula-requests") { fetchFormulaReqs(formulaReqsFilter); fetchFormulaCapacity(); fetchFormulaEpisodes(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, fetchFormulaReqs, fetchFormulaCapacity]);
+  }, [section, fetchFormulaReqs, fetchFormulaCapacity, fetchFormulaEpisodes]);
 
   const reviewFormulaReq = async (id: string, status: string) => {
     const note = formulaNoteMap[id] ?? "";
@@ -626,6 +644,28 @@ export default function AdminPage() {
       setToast(d.error ?? "Could not admit. Please try again.");
     }
     setAdmittingId(null);
+  };
+
+  const saveEpisodeSpec = async (ep: FormulaEpisodeAdmin) => {
+    const edit = episodeEditMap[ep.id] ?? { formulaBrand: ep.formulaBrand, formulaType: ep.formulaType, formulaStage: ep.formulaStage, formulaForm: ep.formulaForm ?? "" };
+    if (!edit.formulaBrand.trim() || !edit.formulaType.trim() || !edit.formulaStage.trim() || !edit.formulaForm) {
+      setToast("Brand, type, stage, and form are all required."); return;
+    }
+    setSavingEpisodeId(ep.id);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formulaBrand: edit.formulaBrand.trim(), formulaType: edit.formulaType.trim(), formulaStage: edit.formulaStage.trim(), formulaForm: edit.formulaForm }),
+    });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.specChanged ? "Updated. She's been asked to confirm again." : "Saved. No spec change.");
+      fetchFormulaEpisodes();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not update. Please try again.");
+    }
+    setSavingEpisodeId(null);
   };
 
   const fetchReflections = useCallback(async (status: string) => {
@@ -2765,6 +2805,61 @@ export default function AdminPage() {
                     </>
                   ) : null}
                 </div>
+
+                {/* ── Awaiting confirmation (D/F3c) ───────────────────────────
+                    Admitted mothers who haven't confirmed yet. A correction flag
+                    means she said the product is wrong; fix the spec and Save to
+                    reset her confirmation window and re-ask her to confirm. */}
+                {formulaEpisodes.length > 0 && (
+                  <div style={{ border: "1px solid #e0ede8", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                      Awaiting confirmation ({formulaEpisodes.length})
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginBottom: 14, lineHeight: 1.5 }}>
+                      These mothers were admitted and still need to confirm their baby&apos;s exact formula. If one flagged a correction, fix the details and save to re-ask her.
+                    </div>
+                    {formulaEpisodes.map((ep) => {
+                      const edit = episodeEditMap[ep.id] ?? { formulaBrand: ep.formulaBrand, formulaType: ep.formulaType, formulaStage: ep.formulaStage, formulaForm: ep.formulaForm ?? "" };
+                      const setF = (k: "formulaBrand" | "formulaType" | "formulaStage" | "formulaForm", v: string) =>
+                        setEpisodeEditMap((m) => ({ ...m, [ep.id]: { ...edit, [k]: v } }));
+                      return (
+                        <div key={ep.id} style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{ep.mother.name}</div>
+                            <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
+                              {ep.mother.email ? ep.mother.email : (ep.mother.phone ? `${ep.mother.phone} (no email)` : "no email")}
+                              {ep.confirmationDeadline && ` · confirm by ${new Date(ep.confirmationDeadline).toLocaleDateString("en-CA")}`}
+                            </div>
+                          </div>
+
+                          {ep.correctionNote && (
+                            <div style={{ background: "#fff8ed", border: "1.5px solid #d97706", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", marginBottom: 10, lineHeight: 1.5 }}>
+                              <strong>She flagged a correction:</strong> {ep.correctionNote}
+                            </div>
+                          )}
+
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                            <input value={edit.formulaBrand} onChange={(e) => setF("formulaBrand", e.target.value)} placeholder="Brand" style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                            <input value={edit.formulaType} onChange={(e) => setF("formulaType", e.target.value)} placeholder="Type / line" style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                            <input value={edit.formulaStage} onChange={(e) => setF("formulaStage", e.target.value)} placeholder="Stage" style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                            <select value={edit.formulaForm} onChange={(e) => setF("formulaForm", e.target.value)} style={{ padding: "8px 10px", border: `1.5px solid ${edit.formulaForm ? "#e0e0e0" : "#d97706"}`, borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, background: "white" }}>
+                              <option value="">Form…</option>
+                              <option value="Powder">Powder</option>
+                              <option value="Ready-to-feed">Ready-to-feed</option>
+                              <option value="Concentrate">Concentrate</option>
+                            </select>
+                          </div>
+                          <button
+                            onClick={() => saveEpisodeSpec(ep)}
+                            disabled={savingEpisodeId === ep.id}
+                            style={{ padding: "8px 16px", background: savingEpisodeId === ep.id ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 800, cursor: savingEpisodeId === ep.id ? "default" : "pointer" }}>
+                            {savingEpisodeId === ep.id ? "Saving…" : "Save and re-ask her to confirm"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Status filter */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
