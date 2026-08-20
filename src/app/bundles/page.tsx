@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   Package, X, CheckCircle, Box, Sparkles,
   ChevronDown, ChevronRight, Gift, Heart, Users, Truck,
-  Shield, Lock, Building2, Clock, AlertCircle,
+  Shield, Lock, Building2, Clock, AlertCircle, Milk,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -373,6 +373,64 @@ export default function BundlesPage() {
           </div>
         </div>
 
+        {/* ── CHOOSE YOUR SUPPORT (Piece E.1) ────────────────────────────────
+            The post-approval decision point: two paths with the honest
+            explanation for each. The formula 6-month caveat renders HERE,
+            before she commits — not only post-admission. Framing gate, not a
+            hard lock: the paths aren't mutually exclusive. Recipient-only. */}
+        {!loading && isRecipient && (
+          <div style={{ margin: "16px 16px 4px" }}>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
+              Choose your support
+            </div>
+            <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 14 }}>
+              Two ways we can help. You&apos;re welcome to explore both, and come back anytime.
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+
+              {/* Bundle Kits */}
+              <div style={{ flex: "1 1 260px", background: "white", border: "1px solid #c3e6cb", borderRadius: 14, padding: "20px 20px 18px", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Package size={20} color="#1a7a5e" strokeWidth={1.75} />
+                  </div>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Bundle Kits</div>
+                </div>
+                <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 16, flex: 1 }}>
+                  Curated newborn and maternity essentials, delivered free. You can receive up to 12 bundles over your journey, one at a time. Each application is reviewed privately and can take up to 90 days.
+                </div>
+                <button
+                  onClick={() => document.getElementById("bundle-grid")?.scrollIntoView({ behavior: "smooth" })}
+                  style={{ width: "100%", textAlign: "center", padding: "11px 0", background: "#1a7a5e", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 800, color: "white", fontFamily: "Nunito, sans-serif", cursor: "pointer" }}>
+                  Browse bundle kits →
+                </button>
+              </div>
+
+              {/* Formula Support */}
+              <div style={{ flex: "1 1 260px", background: "white", border: "1px solid #e8e8e8", borderRadius: 14, padding: "20px 20px 18px", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Milk size={20} color="#1a7a5e" strokeWidth={1.75} />
+                  </div>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Formula Support</div>
+                </div>
+                <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 10 }}>
+                  If your baby is already on formula and you qualify, we provide six months of your baby&apos;s exact formula, one month at a time.
+                </div>
+                <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 16, background: "#f8faf9", border: "1px solid #e0ede8", borderRadius: 8, padding: "10px 12px", flex: 1 }}>
+                  We aim to send every month, though we can&apos;t guarantee an uninterrupted schedule. You won&apos;t need to reapply.
+                </div>
+                <a
+                  href="/bundles/formula-support"
+                  style={{ display: "block", width: "100%", boxSizing: "border-box", textAlign: "center", padding: "11px 0", background: "#1a7a5e", borderRadius: 10, fontSize: 13, fontWeight: 800, color: "white", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
+                  Request formula support →
+                </a>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         {/* ── STICKY FILTER TABS ─────────────────────────────────────────── */}
         <div style={{ background: "var(--white)", borderBottom: "1px solid var(--border)", padding: "14px 16px 0", position: "sticky", top: 0, zIndex: 10 }}>
           <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none" }}>
@@ -413,31 +471,9 @@ export default function BundlesPage() {
           </div>
         </div>
 
-        {/* Formula support: mother-facing request intake. Breastfeeding-neutral;
-            honest funding-dependent note kept adjacent to the CTA so it is not
-            skipped. Support can never be guaranteed (funding-dependent), so this
-            uses no beta-conditional phrasing. */}
-        {!loading && isRecipient && (
-          <div style={{ margin: "12px 16px", padding: "16px 18px", background: "white", borderRadius: 12, border: "1px solid #e8e8e8" }}>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
-              Support for formula-feeding families
-            </div>
-            <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 14 }}>
-              If your baby is already formula-fed and affording formula has become hard, you can ask us for help.
-              Tell us the exact formula your baby uses, and our team will review your request individually. Because
-              changing a baby&apos;s formula can upset their tummy, we only ever help with the same formula your baby
-              already has.
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.55 }}>
-                Formula support depends on available funding, so we cannot guarantee every request, but we review each one individually and will follow up with you.
-              </div>
-              <a href="/bundles/formula-support" style={{ display: "inline-block", padding: "10px 20px", background: "#1a7a5e", borderRadius: 10, fontSize: 13, fontWeight: 800, color: "white", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
-                Request formula support →
-              </a>
-            </div>
-          </div>
-        )}
+        {/* Formula-support path now lives in the "Choose your support" decision
+            gate above (Piece E.1), where its honest 6-month caveat renders
+            before she commits. */}
 
         {myLifetimeDelivered >= 12 ? (
           /* ── PROGRAMME COMPLETION BANNER ─────────────────────────────── */
