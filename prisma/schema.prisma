@@ -1599,6 +1599,13 @@ model FormulaEpisode {
   reminder7SentAt       DateTime?
   reminder12SentAt      DateTime?
 
+  // Stage-for-growth (mid-episode). Admin proposes a new stage ONLY (Stage 1->2
+  // as the baby ages); the mother re-confirms before it applies to future
+  // fulfillments. formulaStage is the live spec; pending* holds the proposal.
+  // Brand/type/form are NEVER changed this way (never switch a baby's product).
+  pendingFormulaStage     String?
+  pendingStageRequestedAt DateTime?
+
   // Early-end (before month 6): reason is required at the API layer.
   endedAt        DateTime?
   endReason      String?
