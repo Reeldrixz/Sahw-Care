@@ -1605,6 +1605,11 @@ model FormulaEpisode {
   // Brand/type/form are NEVER changed this way (never switch a baby's product).
   pendingFormulaStage     String?
   pendingStageRequestedAt DateTime?
+  // One gentle nudge ~7 days after a proposal if she hasn't re-confirmed. There
+  // is NO hard timeout: the safe default is the current stage keeps shipping, so
+  // an unconfirmed proposal simply waits. Guards the reminder to fire once;
+  // reset to null on every (re-)proposal and cleared when the proposal resolves.
+  pendingStageReminderSentAt DateTime?
 
   // Natural completion: stamped when the 6th delivery is fulfilled (completion is
   // at 6 fulfillments, not 6 calendar months — delays can push the finish date

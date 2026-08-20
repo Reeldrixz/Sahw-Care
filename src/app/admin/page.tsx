@@ -189,6 +189,7 @@ interface FormulaEpisodeAdmin {
   monthsTotal: number;
   confirmationDeadline: string | null; correctionNote: string | null; correctionRequestedAt: string | null;
   startedAt: string; confirmedAt: string | null; completedAt: string | null;
+  pendingFormulaStage: string | null; pendingStageRequestedAt: string | null;
   fulfilledCount: number; deliveries: FormulaDeliveryAdmin[];
   mother: { id: string; name: string; email: string | null; phone: string | null };
 }
@@ -384,6 +385,9 @@ export default function AdminPage() {
   const [activeEpisodes,     setActiveEpisodes]     = useState<FormulaEpisodeAdmin[]>([]);
   const [deliveryNoteMap,    setDeliveryNoteMap]    = useState<Record<string, string>>({});
   const [fulfillingKey,      setFulfillingKey]      = useState<string | null>(null);
+  // D/F4d: propose a stage-for-growth change per active episode.
+  const [stageInputMap,      setStageInputMap]      = useState<Record<string, string>>({});
+  const [proposingId,        setProposingId]        = useState<string | null>(null);
 
   // Formula 6-month capacity ledger (D/F2). All figures live-computed server-side.
   const [formulaCapacity,        setFormulaCapacity]        = useState<{ maxActiveEpisodes: number; activeEpisodes: number; awaitingEpisodes: number; occupiedSlots: number; committedMonths: number; availableSlots: number } | null>(null);
@@ -707,6 +711,28 @@ export default function AdminPage() {
       setToast(d.error ?? "Could not mark this month fulfilled. Please try again.");
     }
     setFulfillingKey(null);
+  };
+
+  // D/F4d: propose a stage change (stage only). She re-confirms before it applies.
+  const proposeStage = async (ep: FormulaEpisodeAdmin) => {
+    const stage = (stageInputMap[ep.id] ?? "").trim();
+    if (!stage) { setToast("Enter the new stage first."); return; }
+    if (stage === ep.formulaStage) { setToast("That's already her current stage."); return; }
+    setProposingId(ep.id);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/propose-stage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formulaStage: stage }),
+    });
+    if (r.ok) {
+      setStageInputMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
+      setToast("Stage change proposed. She'll be asked to confirm.");
+      fetchActiveEpisodes();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not propose the stage change. Please try again.");
+    }
+    setProposingId(null);
   };
 
   const fetchReflections = useCallback(async (status: string) => {
@@ -2969,6 +2995,38 @@ export default function AdminPage() {
                               </div>
                             );
                           })}
+                        </div>
+
+                        {/* D/F4d: propose a stage-for-growth change (stage only) */}
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #eef2f0" }}>
+                          {ep.pendingFormulaStage ? (
+                            <div style={{ fontSize: 12, color: "#b45309", fontFamily: "Nunito, sans-serif", background: "#fff8ed", border: "1px solid #fde8c8", borderRadius: 8, padding: "8px 12px", lineHeight: 1.5 }}>
+                              Awaiting her re-confirmation — <strong>Stage {ep.pendingFormulaStage}</strong> proposed
+                              {ep.pendingStageRequestedAt ? ` ${new Date(ep.pendingStageRequestedAt).toLocaleDateString("en-CA")}` : ""}.
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ fontSize: 11.5, fontWeight: 800, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginBottom: 2 }}>
+                                Propose a stage change (as the baby grows)
+                              </div>
+                              <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>
+                                Stage only — brand, type, and form never change. She&apos;ll re-confirm before it applies.
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <input
+                                  value={stageInputMap[ep.id] ?? ""}
+                                  onChange={(e) => setStageInputMap((m) => ({ ...m, [ep.id]: e.target.value }))}
+                                  placeholder="New stage (e.g. Stage 2)"
+                                  style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, minWidth: 170 }} />
+                                <button
+                                  onClick={() => proposeStage(ep)}
+                                  disabled={proposingId === ep.id}
+                                  style={{ padding: "8px 14px", background: proposingId === ep.id ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 800, cursor: proposingId === ep.id ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                  {proposingId === ep.id ? "Proposing…" : "Propose stage change"}
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}

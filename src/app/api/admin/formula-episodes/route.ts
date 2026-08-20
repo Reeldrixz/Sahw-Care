@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
     startedAt:             e.startedAt,
     confirmedAt:           e.confirmedAt,
     completedAt:           e.completedAt,
+    pendingFormulaStage:     e.pendingFormulaStage,
+    pendingStageRequestedAt: e.pendingStageRequestedAt,
     fulfilledCount:        e.deliveries.filter((d) => d.status === "FULFILLED").length,
     deliveries:            e.deliveries,
     mother: { id: e.user.id, name: e.user.name, email: e.user.email, phone: e.user.phone },

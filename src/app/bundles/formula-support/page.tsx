@@ -6,6 +6,7 @@ import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 import FormulaSupportForm from "./FormulaSupportForm";
 import FormulaConfirmCard from "./FormulaConfirmCard";
 import FormulaProgressCard from "./FormulaProgressCard";
+import FormulaStageChangeCard from "./FormulaStageChangeCard";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export default async function FormulaSupportPage() {
           id: true, status: true,
           formulaBrand: true, formulaType: true, formulaStage: true, formulaForm: true,
           monthsTotal: true,
+          pendingFormulaStage: true,
           deliveries: {
             orderBy: { monthIndex: "asc" },
             select:  { monthIndex: true, status: true, scheduledFor: true, fulfilledAt: true },
@@ -83,7 +85,15 @@ export default async function FormulaSupportPage() {
           />
         ) : isRecipient && episode?.status === "ACTIVE" ? (
           <>
-            {/* D/F4d: pending-stage re-confirmation card mounts here */}
+            {/* D/F4d: pending-stage re-confirmation card — shown above the
+                progress view whenever a stage change awaits her confirmation. */}
+            {episode.pendingFormulaStage && (
+              <FormulaStageChangeCard
+                episodeId={episode.id}
+                currentStage={episode.formulaStage}
+                proposedStage={episode.pendingFormulaStage}
+              />
+            )}
             {episode.deliveries.length > 0 ? (
               <FormulaProgressCard
                 formulaBrand={episode.formulaBrand}
