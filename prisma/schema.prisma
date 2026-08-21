@@ -1616,6 +1616,44 @@ model FormulaEpisode {
   // reset to null on every (re-)proposal and cleared when the proposal resolves.
   pendingStageReminderSentAt DateTime?
 
+  // ── Confirmed purchasing link ──────────────────────────────────────────────
+  // The admin's monthly purchasing tool. Because months 2-6 reuse the SAME
+  // product, the link lives on the episode, not the delivery. A wrong link means
+  // the wrong formula bought every month, so purchaseUrlConfirmedAt is the ONLY
+  // safe-to-purchase signal: no confirmation, no purchase (enforced server-side,
+  // never merely a disabled button). Full amazon.ca / amazon.com URLs only —
+  // shorteners are rejected so the stored link stays auditable and the admin can
+  // eyeball the domain and product before sending it to her.
+  purchaseUrl             String?
+  purchaseUrlSetAt        DateTime?
+  purchaseUrlSetByAdminId String?
+  purchaseUrlSentAt       DateTime? // admin clicked Approve -> sent to her
+  purchaseUrlConfirmedAt  DateTime? // SHE confirmed -> safe to purchase
+  purchaseUrlDeclinedAt   DateTime? // she flagged it wrong
+  purchaseUrlDeclineNote  String?
+
+  // Her blocking-reminder cadence (day 3/7/14/21, cap 4). Reminders stop the
+  // moment she confirms OR declines — once she has flagged a problem the ball is
+  // in the admin's court and nagging her would be wrong.
+  purchaseUrlReminderCount  Int       @default(0)
+  purchaseUrlReminderSentAt DateTime?
+
+  // Admin escalation markers. There is deliberately NO "purchase anyway"
+  // override, so human follow-up is the only mitigation for a blocked month —
+  // which means the system must actively push admins rather than rely on a
+  // banner being noticed. Idempotent: one alert, one day-7 escalation, never
+  // daily spam. Both reset whenever the link is re-set or confirmed.
+  blockedAdminNotifiedAt  DateTime?
+  blockedAdminEscalatedAt DateTime?
+
+  // Proposed replacement link, used ONLY with a stage bump (combined ask: she
+  // confirms the new stage and its product together). The live confirmed link
+  // stays purchasable throughout, so declining changes nothing and she keeps
+  // receiving her current stage. An outright CORRECTION never uses this — it
+  // overwrites purchaseUrl and invalidates confirmation immediately, because a
+  // known-wrong link must never remain purchasable.
+  pendingPurchaseUrl String?
+
   // Natural completion: stamped when the 6th delivery is fulfilled (completion is
   // at 6 fulfillments, not 6 calendar months — delays can push the finish date
   // past the 6-month mark, so this records when it actually finished).
@@ -1646,6 +1684,14 @@ model FormulaDelivery {
   monthIndex   Int                   // 1..6
   status       FormulaDeliveryStatus @default(SCHEDULED)
   scheduledFor DateTime              // admission + (monthIndex - 1) months
+
+  // Purchase step: the admin buys from the mother-confirmed link, then completes
+  // the month. purchasedAt gates Complete (you cannot fulfil what you never
+  // bought), and purchaseUrlAtPurchase snapshots the EXACT link bought from —
+  // the audit trail for what was actually sent, mirroring formulaStageAtFulfilment.
+  purchasedAt           DateTime?
+  purchasedByAdminId    String?
+  purchaseUrlAtPurchase String?
 
   fulfilledAt        DateTime?
   fulfilledByAdminId String?
