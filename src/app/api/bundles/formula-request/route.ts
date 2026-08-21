@@ -23,6 +23,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Only verified mothers can request formula support." }, { status: 403 });
   }
 
+  // One-and-done gate (authoritative — checked before the monthly cooldown so it
+  // gives the definitive answer). Formula is a one-time, six-month program:
+  //  - COMPLETED  -> she received her full 6 months; barred for life.
+  //  - ACTIVE / AWAITING_CONFIRMATION -> a commitment is already in flight.
+  // An ENDED-early episode is NOT here: she didn't get her 6 months, so she may
+  // request again. One query covers both live-episode and completed cases.
+  const priorEpisode = await prisma.formulaEpisode.findFirst({
+    where:   { userId: currentUser.userId, status: { in: ["AWAITING_CONFIRMATION", "ACTIVE", "COMPLETED"] } },
+    orderBy: { startedAt: "desc" },
+    select:  { status: true },
+  });
+  if (priorEpisode?.status === "COMPLETED") {
+    return NextResponse.json({
+      error: "Your 6 months of formula support are already complete. Formula is a one-time, six-month program — but your Circle, Register, and Discover are all still here for you.",
+      code:  "FORMULA_ALREADY_COMPLETED",
+    }, { status: 409 });
+  }
+  if (priorEpisode) {
+    return NextResponse.json({
+      error: "You already have formula support in progress. You'll see its status on your formula support page.",
+      code:  "FORMULA_IN_PROGRESS",
+    }, { status: 409 });
+  }
+
   // Monthly receipt cooldown on its OWN clock, independent of bundles: keyed off
   // the last APPROVED formula request (reviewedAt). Pending/declined never count.
   const lastApprovedFormula = await prisma.formulaRequest.findFirst({

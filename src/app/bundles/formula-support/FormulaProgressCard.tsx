@@ -139,7 +139,7 @@ export default function FormulaProgressCard({ formulaBrand, formulaType, formula
 
         {/* Honest caveat */}
         <p style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.7, margin: "18px 0 0" }}>
-          Formula support provides your baby&apos;s formula for six months. We aim for every month, but can&apos;t always guarantee an uninterrupted schedule. You won&apos;t need to reapply.
+          Formula support provides your baby&apos;s formula for six months — a one-time program with a clear end. We aim for every month, but can&apos;t always guarantee an uninterrupted schedule.
         </p>
       </div>
     </div>

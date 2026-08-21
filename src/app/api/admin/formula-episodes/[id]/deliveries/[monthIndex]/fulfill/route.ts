@@ -104,16 +104,18 @@ export async function POST(
       data: {
         userId:  episode.userId,
         type:    "BUNDLE_UPDATE",
-        message: "Your 6 months of formula support are complete. 💛 Every month has been sent. You don't need to do anything more — and if anything changes for you and your baby, you can always reach out.",
-        link:    "/bundles/formula-support",
+        // Leads with belonging (Circle) then the other supports; links to her
+        // community, not the formula page she's now graduated from.
+        message: "Your 6 months of formula support are complete. 💛 You're still part of the Kradel community — your Circle, your Register, and Discover are all here whenever you need them.",
+        link:    "/circles",
       },
     }).catch(() => {});
     if (mother?.email) {
       getResend().emails.send({
         from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
         to:      mother.email,
-        subject: "Your Kradel formula support is complete",
-        html:    `<p>Hi ${mother.name},</p><p>Your 6 months of formula support are now complete — every month has been sent. It's been our privilege to walk this stretch with you and your baby. You don't need to reapply for anything, and if your circumstances change, you can always reach out to us.</p><p>With warmth,<br/>The Kradel Team</p>`,
+        subject: "Your formula support is complete — and you're still part of Kradel",
+        html:    `<p>Hi ${mother.name},</p><p>Your 6 months of formula support are now complete — every month has been sent. It's been our privilege to walk this stretch with you and your baby.</p><p>Formula support is a one-time, six-month program, and it comes to a close here — but your place in Kradel doesn't. Your Circle is still yours: your stage community, the mothers you've met, and your Reflections. So are your Register and Discover, here whenever you need them.</p><p>Thank you for letting us be part of your journey. You're always welcome here.</p><p>With warmth,<br/>The Kradel Team</p>`,
       }).catch((err) => console.error("[formula complete email]", err));
     }
   } else {

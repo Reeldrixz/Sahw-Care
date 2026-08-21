@@ -84,7 +84,7 @@ export async function POST(
     data: {
       userId:  currentUser.userId,
       type:    "BUNDLE_UPDATE",
-      message: "Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed, and you won't need to reapply.",
+      message: "Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed.",
       link:    "/bundles/formula-support",
     },
   }).catch(() => {});
@@ -93,7 +93,7 @@ export async function POST(
       from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
       to:      mother.email,
       subject: "Your Kradel formula support is active",
-      html:    `<p>Hi ${mother.name},</p><p>Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed, and you won't need to reapply.</p><p>The Kradel Team</p>`,
+      html:    `<p>Hi ${mother.name},</p><p>Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed.</p><p>The Kradel Team</p>`,
     }).catch((err) => console.error("[formula confirm email]", err));
   }
 

@@ -59,6 +59,17 @@ export default async function FormulaSupportPage() {
   // Formula receipt cooldown (own clock, independent of bundles): keyed off the
   // last APPROVED formula request. Pending/declined never start the clock.
   // Only relevant to mothers who were never admitted to an episode.
+  // One-and-done: a mother who COMPLETED her 6 months sees a warm, final
+  // completion state instead of the request form. COMPLETED only — an
+  // ENDED-early episode doesn't count (she can still be admitted again).
+  const completedEpisode = isRecipient && currentUser
+    ? await prisma.formulaEpisode.findFirst({
+        where:   { userId: currentUser.userId, status: "COMPLETED" },
+        orderBy: { completedAt: "desc" },
+        select:  { id: true, completedAt: true },
+      })
+    : null;
+
   const lastApprovedFormula = isRecipient && currentUser
     ? await prisma.formulaRequest.findFirst({
         where:   { userId: currentUser.userId, status: "APPROVED" },
@@ -110,11 +121,36 @@ export default async function FormulaSupportPage() {
                   Your formula support is active
                 </h1>
                 <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: 0 }}>
-                  We&apos;ll prepare your formula each month. We aim for every month, though occasionally one may be delayed, and you won&apos;t need to reapply.
+                  We&apos;ll prepare your formula each month. We aim for every month, though occasionally one may be delayed.
                 </p>
               </div>
             )}
           </>
+        ) : isRecipient && completedEpisode ? (
+          // One-and-done completion state. Warm and final; leads with belonging
+          // (Circle) then the other supports. Never the request form.
+          <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
+            <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>
+              Your formula support is complete
+            </h1>
+            <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: "0 0 12px" }}>
+              Your 6 months of formula support are complete{completedEpisode.completedAt ? ` — completed on ${formatCooldownDate(completedEpisode.completedAt)}` : ""}. 💛 Every month was sent. Formula support is a one-time, six-month program, and yours is now finished.
+            </p>
+            <p style={{ fontFamily: SANS, fontSize: 14, color: MUTED, lineHeight: 1.7, margin: "0 0 18px" }}>
+              You&apos;re still fully part of the Kradel community. Your Circle — your stage cohort, your Reflections, and the mothers alongside you — is always here. So are your Register and Discover, whenever you need them.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <Link href="/circles" style={{ display: "inline-block", padding: "11px 18px", background: GREEN, borderRadius: 10, fontSize: 13, fontWeight: 800, color: "white", fontFamily: SANS, textDecoration: "none" }}>
+                Go to your Circle →
+              </Link>
+              <Link href="/registers" style={{ display: "inline-block", padding: "11px 18px", background: "white", border: "1.5px solid #c3e6cb", borderRadius: 10, fontSize: 13, fontWeight: 800, color: GREEN, fontFamily: SANS, textDecoration: "none" }}>
+                Your Register
+              </Link>
+              <Link href="/browse" style={{ display: "inline-block", padding: "11px 18px", background: "white", border: "1.5px solid #c3e6cb", borderRadius: 10, fontSize: 13, fontWeight: 800, color: GREEN, fontFamily: SANS, textDecoration: "none" }}>
+                Explore Discover
+              </Link>
+            </div>
+          </div>
         ) : isRecipient && formulaCooldown.active && formulaCooldown.lastApprovedAt && formulaCooldown.nextEligibleAt ? (
           <div style={{ background: "#e8f5f1", border: "1px solid #c3e6cb", borderRadius: 14, padding: "28px 24px", marginTop: 20 }}>
             <h1 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: INK, margin: "0 0 10px" }}>

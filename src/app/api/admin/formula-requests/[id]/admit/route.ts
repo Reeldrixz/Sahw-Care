@@ -74,6 +74,17 @@ export async function POST(
         throw new Error("ALREADY_IN_EPISODE");
       }
 
+      // One-and-done (belt-and-suspenders with the mother's request path): a
+      // mother who already COMPLETED her 6 months is barred for life. COMPLETED
+      // only — an ENDED-early episode does not bar re-admission.
+      const priorCompleted = await tx.formulaEpisode.findFirst({
+        where:  { userId: request.userId, status: "COMPLETED" },
+        select: { id: true },
+      });
+      if (priorCompleted) {
+        throw new Error("ALREADY_COMPLETED");
+      }
+
       const episode = await tx.formulaEpisode.create({
         data: {
           userId:               request.userId,
@@ -108,6 +119,9 @@ export async function POST(
     }
     if (msg === "ALREADY_IN_EPISODE") {
       return NextResponse.json({ error: "This mother already has an active or awaiting formula episode.", code: "ALREADY_IN_EPISODE" }, { status: 409 });
+    }
+    if (msg === "ALREADY_COMPLETED") {
+      return NextResponse.json({ error: "This mother has already completed a 6-month formula episode. Formula is one-and-done (one completed episode per mother), so she can't be admitted again.", code: "ALREADY_COMPLETED" }, { status: 409 });
     }
     console.error("[formula admit]", e);
     return NextResponse.json({ error: "Could not admit. Please try again." }, { status: 500 });

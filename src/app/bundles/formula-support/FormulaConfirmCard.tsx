@@ -57,7 +57,7 @@ export default function FormulaConfirmCard({ episodeId, formulaBrand, formulaTyp
         </div>
         <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 8 }}>Your formula support is active</div>
         <p style={{ fontSize: 14, color: MUTED, fontFamily: SANS, lineHeight: 1.7, maxWidth: 420, margin: "0 auto" }}>
-          Thank you. Your formula support is now active. We&apos;re preparing your first month now. We aim for every month, though occasionally one may be delayed, and you won&apos;t need to reapply.
+          Thank you. Your formula support is now active. We&apos;re preparing your first month now. We aim for every month, though occasionally one may be delayed.
         </p>
       </div>
     );
@@ -108,7 +108,7 @@ export default function FormulaConfirmCard({ episodeId, formulaBrand, formulaTyp
 
       {/* Honest caveat */}
       <p style={{ fontSize: 13, color: MUTED, fontFamily: SANS, lineHeight: 1.7, marginBottom: 20 }}>
-        Formula support provides your baby&apos;s formula for six months. We aim for every month, but can&apos;t always guarantee an uninterrupted schedule. You won&apos;t need to reapply.
+        Formula support provides your baby&apos;s formula for six months — a one-time program with a clear end. We aim for every month, but can&apos;t always guarantee an uninterrupted schedule.
       </p>
 
       {error && (

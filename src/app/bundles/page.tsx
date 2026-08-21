@@ -427,10 +427,10 @@ export default function BundlesPage() {
                   <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Formula Support</div>
                 </div>
                 <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 10 }}>
-                  If your baby is already on formula and you qualify, we provide six months of your baby&apos;s exact formula, one month at a time.
+                  If your baby is already on formula and you qualify, we provide six months of your baby&apos;s exact formula, one month at a time — a one-time, six-month program with a clear end.
                 </div>
                 <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 16, background: "#f8faf9", border: "1px solid #e0ede8", borderRadius: 8, padding: "10px 12px", flex: 1 }}>
-                  We aim to send every month, though we can&apos;t guarantee an uninterrupted schedule. You won&apos;t need to reapply.
+                  We aim to send every month, though we can&apos;t guarantee an uninterrupted schedule.
                 </div>
                 <a
                   href="/bundles/formula-support"
