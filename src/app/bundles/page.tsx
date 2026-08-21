@@ -137,17 +137,26 @@ export default function BundlesPage() {
 
   const fetchBundles = useCallback(async () => {
     setLoading(true);
-    const r = await fetch("/api/bundles/catalogue");
-    if (r.ok) {
-      const d = await r.json();
-      setBundles(d.bundles ?? []);
-      setMyActiveApplication(d.myActiveApplication ?? null);
-      setMyLifetimeDelivered(d.myLifetimeDelivered ?? 0);
-      setIsRecipient(d.isRecipient ?? false);
-      setBundleCooldownUntil(d.bundleCooldownUntil ?? null);
-      setBundleLastApprovedAt(d.bundleLastApprovedAt ?? null);
+    try {
+      // no-store: this response is per-session (isRecipient, cooldowns, "X of 12"
+      // all key off the auth cookie). Without it the browser can serve a stale
+      // cached body — e.g. one captured before the session was recognised
+      // (isRecipient:false) — leaving recipient chrome hidden until a later
+      // request busts the cache. Matches AuthContext's /api/auth/me fetch.
+      const r = await fetch("/api/bundles/catalogue", { cache: "no-store" });
+      if (r.ok) {
+        const d = await r.json();
+        setBundles(d.bundles ?? []);
+        setMyActiveApplication(d.myActiveApplication ?? null);
+        setMyLifetimeDelivered(d.myLifetimeDelivered ?? 0);
+        setIsRecipient(d.isRecipient ?? false);
+        setBundleCooldownUntil(d.bundleCooldownUntil ?? null);
+        setBundleLastApprovedAt(d.bundleLastApprovedAt ?? null);
+      }
+    } finally {
+      // Always clear loading — a thrown fetch must never leave the page stuck.
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   // Mother withdraws her own PENDING application (self-service, no penalty).
@@ -377,8 +386,11 @@ export default function BundlesPage() {
             The post-approval decision point: two paths with the honest
             explanation for each. The formula 6-month caveat renders HERE,
             before she commits — not only post-admission. Framing gate, not a
-            hard lock: the paths aren't mutually exclusive. Recipient-only. */}
-        {!loading && isRecipient && (
+            hard lock: the paths aren't mutually exclusive. Recipient-only.
+            Keyed on isRecipientUser (auth role) — which is already guaranteed
+            true in this branch — NOT the catalogue payload's isRecipient, so the
+            gate can't be hidden by a stale/slow/failed catalogue fetch. */}
+        {isRecipientUser && (
           <div style={{ margin: "16px 16px 4px" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 4 }}>
               Choose your support
