@@ -17,7 +17,7 @@ const STEPS = [
   {
     icon: ShoppingBag,
     title: "3. We purchase\nwith care",
-    desc: "Kradəl buys the item using your contribution.",
+    desc: "Kradel buys the item using your contribution.",
   },
   {
     icon: Truck,
@@ -30,7 +30,7 @@ export default function HowKradelWorks() {
   return (
     <div style={{ padding: "24px 0" }}>
       <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 20, color: "var(--ink)" }}>
-        How Kradəl works
+        How Kradel works
       </div>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 4 }}>
         {STEPS.map((step, i) => {

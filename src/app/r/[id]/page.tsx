@@ -10,9 +10,9 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const register = await fetchPublicRegister(id);
-  if (!register) return { title: "Register not found · Kradəl" };
+  if (!register) return { title: "Register not found · Kradel" };
 
-  const title = `${register.firstName}'s Register · Kradəl`;
+  const title = `${register.firstName}'s Register · Kradel`;
   const description = `Help provide real essentials for ${register.firstName}'s baby. Every item is a genuine need, delivered directly to her.`;
   const url = `${APP_URL}/r/${register.id}`;
 
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       title,
       description,
       url,
-      siteName: "Kradəl",
+      siteName: "Kradel",
       type: "website",
     },
     twitter: {

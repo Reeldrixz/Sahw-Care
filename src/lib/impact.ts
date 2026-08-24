@@ -19,9 +19,9 @@ const RANKS = [
   { min: 1,  max: 2,   label: "Caring Heart",     emoji: "💛", next: "Village Helper"   },
   { min: 3,  max: 5,   label: "Village Helper",   emoji: "🤝", next: "Community Pillar" },
   { min: 6,  max: 10,  label: "Community Pillar", emoji: "🏛️", next: "Guardian Angel"   },
-  { min: 11, max: 20,  label: "Guardian Angel",   emoji: "👼", next: "Kradəl Champion"  },
-  { min: 21, max: 50,  label: "Kradəl Champion",  emoji: "🌟", next: "Kradəl Legend"    },
-  { min: 51, max: Infinity, label: "Kradəl Legend", emoji: "🏆", next: null              },
+  { min: 11, max: 20,  label: "Guardian Angel",   emoji: "👼", next: "Kradel Champion"  },
+  { min: 21, max: 50,  label: "Kradel Champion",  emoji: "🌟", next: "Kradel Legend"    },
+  { min: 51, max: Infinity, label: "Kradel Legend", emoji: "🏆", next: null              },
 ];
 
 export function getRank(donations: number): RankInfo {

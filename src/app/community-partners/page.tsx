@@ -25,15 +25,15 @@ const BECOME_HREF = `mailto:${PARTNER_EMAIL}?subject=${encodeURIComponent(
 )}`;
 
 export const metadata: Metadata = {
-  title: "Community Partners · Kradəl",
+  title: "Community Partners · Kradel",
   description:
-    "Local businesses creating measurable impact through Kradəl by funding the specific register items mothers need.",
+    "Local businesses creating measurable impact through Kradel by funding the specific register items mothers need.",
   alternates: { canonical: `${APP_URL}/community-partners` },
   openGraph: {
-    title: "Community Partners · Kradəl",
-    description: "Local businesses creating measurable impact through Kradəl.",
+    title: "Community Partners · Kradel",
+    description: "Local businesses creating measurable impact through Kradel.",
     url: `${APP_URL}/community-partners`,
-    siteName: "Kradəl",
+    siteName: "Kradel",
     type: "website",
   },
 };
@@ -188,7 +188,7 @@ export default function CommunityPartnersPage() {
         }}
       >
         <Link href="/" style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK, textDecoration: "none" }}>
-          Kradəl
+          Kradel
         </Link>
         <Link href="/" style={{ fontFamily: SANS, fontSize: 14, fontWeight: 700, color: GREEN, textDecoration: "none" }}>
           ← Home
@@ -215,7 +215,7 @@ export default function CommunityPartnersPage() {
           Community Partners
         </span>
         <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 700, lineHeight: 1.2, margin: "0 0 16px", color: INK }}>
-          Businesses creating measurable impact through Kradəl
+          Businesses creating measurable impact through Kradel
         </h1>
         <p style={{ fontFamily: SANS, fontSize: 16.5, lineHeight: 1.65, color: MUTED, margin: "0 auto", maxWidth: 580 }}>
           Community Partners are local businesses that fund the specific register items mothers ask
@@ -250,14 +250,14 @@ export default function CommunityPartnersPage() {
             href="/#how-it-works"
             style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, color: GREEN, textDecoration: "none" }}
           >
-            See how Kradəl works →
+            See how Kradel works →
           </Link>
         </div>
       </section>
 
       {/* ── Footer ──────────────────────────────────────── */}
       <footer style={{ padding: "30px 22px 40px", textAlign: "center" }}>
-        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradəl</div>
+        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradel</div>
         <p style={{ fontFamily: SANS, fontSize: 13, color: MUTED, margin: 0 }}>
           Maternal &amp; baby care, delivered with dignity.
         </p>

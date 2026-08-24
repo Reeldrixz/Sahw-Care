@@ -17,10 +17,10 @@ interface Props {
 }
 
 const SHARE_TEXT: Record<ImpactVariant, (name: string, s: ImpactStats) => string> = {
-  discover: (n, s) => `I've shared essentials with ${s.mothersSupported} ${s.mothersSupported === 1 ? "mother" : "mothers"} through Kradəl Discover 💛 Every mother deserves support. Join me:`,
-  register: (n, s) => `I've helped meet ${s.needsMet} essential ${s.needsMet === 1 ? "need" : "needs"} for mothers through Kradəl Register 💛 Join me:`,
-  combined: (n, s) => `I've supported ${s.mothersSupported} mothers through Kradəl 💛. ${s.essentialsShared} essentials shared across Discover and Register. Join me:`,
-  none:     ()     => `I just joined Kradəl 💛, a community helping mothers get the essentials they need. Join us:`,
+  discover: (n, s) => `I've shared essentials with ${s.mothersSupported} ${s.mothersSupported === 1 ? "mother" : "mothers"} through Kradel Discover 💛 Every mother deserves support. Join me:`,
+  register: (n, s) => `I've helped meet ${s.needsMet} essential ${s.needsMet === 1 ? "need" : "needs"} for mothers through Kradel Register 💛 Join me:`,
+  combined: (n, s) => `I've supported ${s.mothersSupported} mothers through Kradel 💛. ${s.essentialsShared} essentials shared across Discover and Register. Join me:`,
+  none:     ()     => `I just joined Kradel 💛, a community helping mothers get the essentials they need. Join us:`,
 };
 
 const VARIANT_LABEL: Record<ImpactVariant, string> = {

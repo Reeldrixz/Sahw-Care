@@ -58,7 +58,7 @@ export default function CreatorsClient() {
 
   const shareMessage = useMemo(() => {
     const link = myLink ?? `${origin}/creators`;
-    return `Kradəl helps mothers get the baby and maternity essentials they need, with dignity and privacy. If it speaks to you, take a look at what this community is building and consider supporting or sharing it: ${link}`;
+    return `Kradel helps mothers get the baby and maternity essentials they need, with dignity and privacy. If it speaks to you, take a look at what this community is building and consider supporting or sharing it: ${link}`;
   }, [myLink, origin]);
 
   const copy = async (text: string, which: "link" | "message") => {
@@ -91,7 +91,7 @@ export default function CreatorsClient() {
             Use your voice to grow a kinder mission.
           </h1>
           <p style={{ fontFamily: SANS, fontSize: 16, color: MUTED, lineHeight: 1.65, margin: "14px auto 0", maxWidth: 560 }}>
-            Impact Creators help more people discover Kradəl. This is about awareness, not pressure. You share the mission honestly, and more mothers get to find the support they need.
+            Impact Creators help more people discover Kradel. This is about awareness, not pressure. You share the mission honestly, and more mothers get to find the support they need.
           </p>
         </header>
 
@@ -99,14 +99,14 @@ export default function CreatorsClient() {
         {invited && (
           <div style={{ ...card, background: GREEN_SOFT, borderColor: "#cfe9e0", marginBottom: 22 }}>
             <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>
-              Someone shared Kradəl with you.
+              Someone shared Kradel with you.
             </div>
             <p style={{ fontFamily: SANS, fontSize: 15, color: INK, lineHeight: 1.6, margin: "0 0 14px" }}>
-              Kradəl connects mothers with free baby and maternity essentials, privately and with dignity. You&rsquo;re welcome to join the mission, whether you want to support it or you need support yourself.
+              Kradel connects mothers with free baby and maternity essentials, privately and with dignity. You&rsquo;re welcome to join the mission, whether you want to support it or you need support yourself.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               <Link href={joinHref} style={{ fontFamily: SANS, fontSize: 15, fontWeight: 700, color: "#fff", background: GREEN, borderRadius: 999, padding: "11px 22px", textDecoration: "none" }}>
-                Join Kradəl
+                Join Kradel
               </Link>
               <Link href="/" style={{ fontFamily: SANS, fontSize: 15, fontWeight: 700, color: GREEN, background: "#fff", border: `1px solid ${GREEN}`, borderRadius: 999, padding: "11px 22px", textDecoration: "none" }}>
                 Looking for support? Find help
@@ -119,7 +119,7 @@ export default function CreatorsClient() {
         <section style={{ ...card, marginBottom: 18 }}>
           <h2 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK, margin: "0 0 10px" }}>What an Impact Creator does</h2>
           <p style={{ fontFamily: SANS, fontSize: 15, color: INK, lineHeight: 1.7, margin: 0 }}>
-            You talk about the mission and let people know this platform exists. You encourage others to support it or to share it further. That&rsquo;s it. There are no quotas, no leaderboards, and no gamification. The goal is simply that more people know Kradəl is here.
+            You talk about the mission and let people know this platform exists. You encourage others to support it or to share it further. That&rsquo;s it. There are no quotas, no leaderboards, and no gamification. The goal is simply that more people know Kradel is here.
           </p>
         </section>
 
@@ -129,8 +129,8 @@ export default function CreatorsClient() {
           <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 14 }}>
             {[
               ["Accept the Code of Conduct", "A short set of dignity rules that protect the mothers and babies this mission serves."],
-              ["Get your creator link", "You receive a personal link to Kradəl that you can share anywhere."],
-              ["Share the mission", "People who discover Kradəl through you become part of the same community."],
+              ["Get your creator link", "You receive a personal link to Kradel that you can share anywhere."],
+              ["Share the mission", "People who discover Kradel through you become part of the same community."],
             ].map(([t, d], i) => (
               <li key={t} style={{ display: "flex", gap: 14 }}>
                 <span style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 999, background: GREEN_SOFT, color: GREEN, fontFamily: SANS, fontWeight: 800, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
@@ -143,7 +143,7 @@ export default function CreatorsClient() {
           </ol>
           <div style={{ background: GREEN_SOFT, borderRadius: 12, padding: "13px 15px", marginTop: 18 }}>
             <p style={{ fontFamily: SANS, fontSize: 14, color: INK, lineHeight: 1.6, margin: 0 }}>
-              Kradəl is early. Your reach helps us grow, and creators who join now are the first to help shape how this works.
+              Kradel is early. Your reach helps us grow, and creators who join now are the first to help shape how this works.
             </p>
           </div>
         </section>

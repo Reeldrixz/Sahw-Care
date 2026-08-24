@@ -34,10 +34,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const partner = getCommunityPartner(slug);
-  if (!partner) return { title: "Community Partner · Kradəl" };
+  if (!partner) return { title: "Community Partner · Kradel" };
 
   const title = `${partner.name} — Community Care Partner`;
-  const description = `${partner.name} is a Kradəl Community Care Partner in ${partner.area}, funding register items for families since ${partner.joinedDate}.`;
+  const description = `${partner.name} is a Kradel Community Care Partner in ${partner.area}, funding register items for families since ${partner.joinedDate}.`;
   const url = `${APP_URL}/community-partners/${partner.slug}`;
 
   return {
@@ -48,7 +48,7 @@ export async function generateMetadata({
       title,
       description,
       url,
-      siteName: "Kradəl",
+      siteName: "Kradel",
       type: "profile",
     },
   };
@@ -96,7 +96,7 @@ export default async function CommunityPartnerProfile({
         }}
       >
         <Link href="/" style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK, textDecoration: "none" }}>
-          Kradəl
+          Kradel
         </Link>
         <Link
           href="/community-partners"
@@ -251,14 +251,14 @@ export default async function CommunityPartnerProfile({
             href="/#how-it-works"
             style={{ fontFamily: SANS, fontSize: 14, fontWeight: 800, color: GREEN, textDecoration: "none" }}
           >
-            How Kradəl works →
+            How Kradel works →
           </Link>
         </div>
       </section>
 
       {/* ── Footer ──────────────────────────────────────── */}
       <footer style={{ padding: "34px 22px 44px", textAlign: "center" }}>
-        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradəl</div>
+        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradel</div>
         <p style={{ fontFamily: SANS, fontSize: 13, color: MUTED, margin: 0 }}>
           Maternal &amp; baby care, delivered with dignity.
         </p>

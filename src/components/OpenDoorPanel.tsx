@@ -52,7 +52,7 @@ export default function OpenDoorPanel() {
           Welcome. Whenever you&apos;re ready, there&apos;s a way in.
         </div>
         <p style={{ fontSize: 13, color: "#3d7a62", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, margin: "0 0 14px" }}>
-          Kradəl works through trusted partner organizations. If one has referred you, enter your code to get connected.
+          Kradel works through trusted partner organizations. If one has referred you, enter your code to get connected.
         </p>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>

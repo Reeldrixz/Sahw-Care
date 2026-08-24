@@ -281,7 +281,7 @@ export default function LocationSelector({ currentCity, setByGPS, radius, onSele
               Allow location access?
             </div>
             <div style={{ fontSize: 13, color: "#555555", lineHeight: 1.6, marginBottom: 24, fontFamily: "Nunito, sans-serif" }}>
-              Kradəl uses your location to show items near you. Your exact location is never stored or shared.
+              Kradel uses your location to show items near you. Your exact location is never stored or shared.
             </div>
             <button
               onClick={doGPS}

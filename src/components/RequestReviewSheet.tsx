@@ -201,7 +201,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                 {item.title}
               </div>
               <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified donor" : "Shared by a Kradəl member"} · {item.location.split(",")[0]}
+                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified donor" : "Shared by a Kradel member"} · {item.location.split(",")[0]}
               </div>
             </div>
             {item.urgent && (
@@ -316,7 +316,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                   }}>
                     <ShieldCheck size={20} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
                     <div style={{ fontSize: 13, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-                      Delivery support depends on the donor&apos;s availability. If they can, they&apos;ll personally drop the item off near you. Kradəl doesn&apos;t operate delivery.
+                      Delivery support depends on the donor&apos;s availability. If they can, they&apos;ll personally drop the item off near you. Kradel doesn&apos;t operate delivery.
                     </div>
                   </div>
                 )}
@@ -474,7 +474,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <ShieldCheck size={12} color="var(--mid)" strokeWidth={1.75} />
                       <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                        For safety, keep all coordination inside Kradəl.
+                        For safety, keep all coordination inside Kradel.
                       </span>
                     </div>
                   </div>

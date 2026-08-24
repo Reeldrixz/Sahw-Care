@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
           currency: "cad",
           unit_amount: amountCents,
           product_data: {
-            name: "Support Kradəl operations",
-            description: "Helps fund hosting, payment processing, and fulfilment for Kradəl Care.",
+            name: "Support Kradel operations",
+            description: "Helps fund hosting, payment processing, and fulfilment for Kradel Care.",
           },
         },
       }],

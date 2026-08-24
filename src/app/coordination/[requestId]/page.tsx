@@ -49,7 +49,7 @@ const STATUS_LABELS: Record<string, string> = {
   DELIVERED:         "Item handed over. Please confirm",
   CONFIRMED:         "Pickup complete ✓",
   CANCELLED:         "Coordination cancelled",
-  REPORTED:          "Under review by Kradəl team",
+  REPORTED:          "Under review by Kradel team",
 };
 
 const QUICK_MSG_LABELS: Record<string, string> = {
@@ -326,7 +326,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   const sendNote = async () => {
     if (!noteText.trim()) return;
     if (containsContactInfo(noteText)) {
-      setNoteError("Please keep contact details inside Kradəl only.");
+      setNoteError("Please keep contact details inside Kradel only.");
       return;
     }
     if (noteText.trim().length > 200) {
@@ -444,7 +444,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
                   <X size={16} color="#9ca3af" />
                 </button>
               </div>
-              {["Meet in a busy, public area", "Bring a friend if you can", "Let someone know where you're going", "Keep all coordination inside Kradəl"].map((tip) => (
+              {["Meet in a busy, public area", "Bring a friend if you can", "Let someone know where you're going", "Keep all coordination inside Kradel"].map((tip) => (
                 <div key={tip} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <CheckCircle size={12} color="#d97706" />
                   <span style={{ fontSize: 12, fontFamily: "Nunito, sans-serif", color: "#92400e" }}>{tip}</span>
@@ -688,7 +688,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0 4px" }}>
               <ShieldCheck size={13} color="#1a7a5e" strokeWidth={1.75} />
               <span style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}>
-                For safety, keep all coordination inside Kradəl.
+                For safety, keep all coordination inside Kradel.
               </span>
             </div>
 
@@ -749,7 +749,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
             <CheckCircle size={40} color="#1a7a5e" style={{ marginBottom: 12 }} />
             <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Pickup complete ✓</div>
             <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-              This coordination is complete. Thank you for using Kradəl safely.
+              This coordination is complete. Thank you for using Kradel safely.
             </div>
           </div>
         )}

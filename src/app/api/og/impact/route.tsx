@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
-  const name = searchParams.get("name") ?? "A Kradəl Donor";
+  const name = searchParams.get("name") ?? "A Kradel Donor";
 
   let donations = 0, families = 0, babiesFed = 0;
   let rankLabel = "New Giver", rankEmoji = "🌱";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   // Headline copy varies by milestone
   const headline =
-    donations === 0 ? "Just joined Kradəl 💛" :
+    donations === 0 ? "Just joined Kradel 💛" :
     donations === 1 ? "Made their first donation!" :
     families === 1 ? `Helped 1 family in need` :
     `Helped ${families} families`;

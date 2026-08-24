@@ -1888,7 +1888,7 @@ enum ReferralCodeStatus {
   REVOKED
 }
 
-// A partner organization that refers mothers into Kradəl during the beta.
+// A partner organization that refers mothers into Kradel during the beta.
 // NOTE: distinct from the hardcoded public directory type `ReferralPartner`
 // in src/lib/partners.ts (that one lists orgs on /find-help; this one issues
 // single-use referral codes). Same name, unrelated concept.

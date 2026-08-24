@@ -132,7 +132,7 @@ export default async function LandingPage() {
             margin: "0 auto 28px",
           }}
         >
-          Kradəl lets anyone, from a single donor to a local business, fund the specific items a mother
+          Kradel lets anyone, from a single donor to a local business, fund the specific items a mother
           needs for her baby. Each item is purchased and delivered directly to her, with her privacy
           protected at every step.
         </p>
@@ -278,7 +278,7 @@ export default async function LandingPage() {
             Care bundles, backed by local businesses
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, maxWidth: 560, margin: "0 auto 28px" }}>
-            Kradəl also assembles curated care bundles for pregnancy, birth, and the newborn months. Each
+            Kradel also assembles curated care bundles for pregnancy, birth, and the newborn months. Each
             bundle is delivered free to referred mothers, funded by community business partners who stand
             behind them.
           </p>
@@ -307,7 +307,7 @@ export default async function LandingPage() {
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 16, lineHeight: 1.6, color: MUTED, margin: "0 0 26px" }}>
             Join people around the world funding the exact things a mother has asked for. Or, if you support
-            families directly, learn how to connect someone to Kradəl.
+            families directly, learn how to connect someone to Kradel.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Link

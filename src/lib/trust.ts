@@ -128,8 +128,8 @@ function categoryIncrement(cat: Category, delta: number) {
 
 async function fireMilestoneNotif(userId: string, prev: number, next: number): Promise<void> {
   const milestones = [
-    { t: 85, msg: "You have priority access to Kradəl support programmes.", link: "/bundles" },
-    { t: 70, msg: "You're an established Kradəl member. You'll receive faster support reviews.", link: "/profile" },
+    { t: 85, msg: "You have priority access to Kradel support programmes.", link: "/bundles" },
+    { t: 70, msg: "You're an established Kradel member. You'll receive faster support reviews.", link: "/profile" },
     { t: 25, msg: "Your account is now verified. You can create registers and apply for bundles.", link: "/registers" },
   ];
   for (const { t, msg, link } of milestones) {
@@ -454,7 +454,7 @@ export async function awardImpactPoints(
     prisma.notification.create({
       data: {
         userId, type: "DONOR_LEVEL_UP",
-        message: "Thank you for supporting mothers on Kradəl.",
+        message: "Thank you for supporting mothers on Kradel.",
         link: "/profile",
       },
     }).catch(() => {});

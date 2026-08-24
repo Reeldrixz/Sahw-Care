@@ -50,7 +50,7 @@ export default function SettingsPage() {
         { icon: Shield,      label: "Privacy",         sub: "Data and privacy settings",    path: null },
         { icon: HelpCircle,  label: "Help & Support",  sub: "Get help or contact us",       path: null },
         { icon: Bug,         label: "Report a bug",    sub: "Something broken? Let us know", path: `/report-bug?from=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "/profile/settings")}` },
-        { icon: Info,        label: "About Kradəl",    sub: "Version, terms & policies",    path: null },
+        { icon: Info,        label: "About Kradel",    sub: "Version, terms & policies",    path: null },
       ],
     },
   ];

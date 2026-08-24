@@ -93,7 +93,7 @@ const VARIANTS: Record<ImpactVariant, VariantConfig> = {
   },
 
   none: {
-    channelPill: "Kradəl Care",
+    channelPill: "Kradel Care",
     channelIcon: <Leaf size={11} color={GREEN} />,
     hero:        <>Starting your{"\n"}care journey {heartInline}</>,
     narrative1:  "Complete your first Discover listing or Register commitment to build your impact story.",
@@ -156,7 +156,7 @@ const ImpactCard = forwardRef<HTMLDivElement, Props>(function ImpactCard(
         {/* Header row: wordmark + "every act" pill */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 7, position: "relative", zIndex: 1 }}>
           <div>
-            <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN, lineHeight: 1 }}>Kradəl</div>
+            <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: GREEN, lineHeight: 1 }}>Kradel</div>
             <div style={{ fontSize: 9, color: GREEN_MUTED, fontWeight: 600, marginTop: 2 }}>Impact Story</div>
           </div>
           <div style={{

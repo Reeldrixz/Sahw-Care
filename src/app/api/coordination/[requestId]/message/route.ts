@@ -114,7 +114,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     }).catch(() => {});
 
     return NextResponse.json({
-      error: "Please keep contact details inside Kradəl only.",
+      error: "Please keep contact details inside Kradel only.",
       code: "CONTACT_INFO_DETECTED",
     }, { status: 400 });
   }

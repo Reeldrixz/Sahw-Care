@@ -22,7 +22,7 @@ export default function SupportPage() {
     const params  = new URLSearchParams(window.location.search);
     const payment = params.get("payment");
     if (payment === "success") {
-      setToast("Thank you for supporting Kradəl!");
+      setToast("Thank you for supporting Kradel!");
       const url = new URL(window.location.href);
       url.searchParams.delete("payment");
       window.history.replaceState({}, "", url.toString());
@@ -70,7 +70,7 @@ export default function SupportPage() {
     <div style={{ background: "var(--bg)", minHeight: "100vh", paddingBottom: 80 }}>
       <div className="browse-header">
         <div className="browse-title" style={{ fontFamily: "Lora, serif", fontSize: 28, fontWeight: 700 }}>
-          Support Kradəl
+          Support Kradel
         </div>
       </div>
 
@@ -82,8 +82,8 @@ export default function SupportPage() {
             Help keep the platform running.
           </p>
           <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, color: "#555555", lineHeight: 1.7, margin: 0 }}>
-            Mothers use Kradəl for free. Donors fund specific items. The platform itself (hosting,
-            payment processing, fulfilment time) is funded by people like you who want Kradəl to keep
+            Mothers use Kradel for free. Donors fund specific items. The platform itself (hosting,
+            payment processing, fulfilment time) is funded by people like you who want Kradel to keep
             running. Every contribution goes directly to operations.
           </p>
         </div>

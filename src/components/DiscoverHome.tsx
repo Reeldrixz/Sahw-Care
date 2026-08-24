@@ -632,7 +632,7 @@ export default function DiscoverPage() {
               <Gift size={20} color="#1a7a5e" strokeWidth={1.75} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Kradəl Bundles</div>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 2 }}>Kradel Bundles</div>
               <div style={{ fontSize: 13, color: "#555555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
                 12 care programmes: curated essentials delivered free to verified mothers.
               </div>

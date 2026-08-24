@@ -131,9 +131,9 @@ export default function JoinPage() {
         <div style={welcomeBadge}><ShieldCheck size={24} color="#1a7a5e" strokeWidth={1.75} /></div>
         <div style={{ fontFamily: "Lora, serif", fontSize: 21, fontWeight: 700, color: "#1a1a1a", marginBottom: 10 }}>You&apos;re already set up</div>
         <div style={{ fontSize: 14, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.7, marginBottom: 24 }}>
-          Your account is ready to go. Head back to Kradəl to continue.
+          Your account is ready to go. Head back to Kradel to continue.
         </div>
-        <button onClick={() => router.push("/")} style={btnPrimary}>Continue to Kradəl →</button>
+        <button onClick={() => router.push("/")} style={btnPrimary}>Continue to Kradel →</button>
       </div>,
     );
   }
@@ -143,7 +143,7 @@ export default function JoinPage() {
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <div style={welcomeBadge}><Heart size={24} color="#1a7a5e" strokeWidth={1.75} fill="#1a7a5e" /></div>
         <div style={{ fontFamily: "Lora, serif", fontSize: 23, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
-          Welcome to Kradəl
+          Welcome to Kradel
         </div>
         <div style={{ fontSize: 14, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 700, marginBottom: 6 }}>
           {invitedBy}

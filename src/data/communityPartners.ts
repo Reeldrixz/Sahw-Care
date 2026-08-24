@@ -1,5 +1,5 @@
 // Community Partners — the public directory of local BUSINESSES that fund
-// register items for mothers on Kradəl.
+// register items for mothers on Kradel.
 //
 // ─────────────────────────────────────────────────────────────────────────
 // DO NOT CONFUSE with referral partners in `src/lib/partners.ts`. Those are

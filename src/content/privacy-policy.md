@@ -17,7 +17,7 @@ How we collect, use, and protect your information.
 
 ## 1. About this policy
 
-Kradəl Care ("Kradəl," "we," "us," or "our") is a Canadian platform that connects people who want to support new and expecting mothers with the mothers themselves. We take your privacy seriously and operate on the principle that the less data we hold, the safer everyone is. This policy explains, in plain language, what personal information we collect, why we collect it, how we use it, who we share it with, and what choices you have.
+Kradel Care ("Kradel," "we," "us," or "our") is a Canadian platform that connects people who want to support new and expecting mothers with the mothers themselves. We take your privacy seriously and operate on the principle that the less data we hold, the safer everyone is. This policy explains, in plain language, what personal information we collect, why we collect it, how we use it, who we share it with, and what choices you have.
 
 We are based in Canada and operate under the Personal Information Protection and Electronic Documents Act (PIPEDA). If you live in Quebec, additional rights may apply to you under Quebec's Law 25; we do our best to honour these as well, but please contact us if you have specific questions.
 
@@ -36,13 +36,13 @@ If you ever have a privacy question, want to access information we hold about yo
 
 ---
 
-## 2. How Kradəl works (the financial model)
+## 2. How Kradel works (the financial model)
 
-Before we describe what data we collect, you should understand how money flows through Kradəl. This is the foundation that everything else depends on. We believe this should be clear before you contribute anything, and clear before you sign up as a mother.
+Before we describe what data we collect, you should understand how money flows through Kradel. This is the foundation that everything else depends on. We believe this should be clear before you contribute anything, and clear before you sign up as a mother.
 
 ### 2.1 Three contribution lanes
 
-Kradəl has three distinct ways money flows into the platform. Each is clearly labeled when you contribute, so you always know what your money is doing.
+Kradel has three distinct ways money flows into the platform. Each is clearly labeled when you contribute, so you always know what your money is doing.
 
 **Lane 1: Fund a specific item on a register**
 
@@ -50,20 +50,20 @@ When a mother creates a register, she lists items she needs. Donors browse those
 
 When you contribute toward an item:
 
-- Kradəl receives your contribution via Stripe (our payment processor).
-- Kradəl uses your contribution to purchase the item, currently from Amazon Canada Business at bulk pricing when available.
+- Kradel receives your contribution via Stripe (our payment processor).
+- Kradel uses your contribution to purchase the item, currently from Amazon Canada Business at bulk pricing when available.
 - The item ships to the mother at the address she selected.
-- If we paid less than the market price (because of bulk-purchasing discounts), the surplus goes 100% into the Bundles fund (described in section 2.2). Kradəl does not retain any of this surplus as profit.
+- If we paid less than the market price (because of bulk-purchasing discounts), the surplus goes 100% into the Bundles fund (described in section 2.2). Kradel does not retain any of this surplus as profit.
 
-We are committed to this disclosure: any difference between what you contribute and what we actually pay funds bundles for other mothers on Kradəl, not Kradəl's operations or profit.
+We are committed to this disclosure: any difference between what you contribute and what we actually pay funds bundles for other mothers on Kradel, not Kradel's operations or profit.
 
-**Lane 2: Support Kradəl directly**
+**Lane 2: Support Kradel directly**
 
-Running a platform has real costs: payment processing fees, hosting, fulfilment time, and the day-to-day work of keeping things operating. Some donors want to contribute specifically to keep Kradəl running. There is a separate "Support Kradəl" contribution flow for this purpose.
+Running a platform has real costs: payment processing fees, hosting, fulfilment time, and the day-to-day work of keeping things operating. Some donors want to contribute specifically to keep Kradel running. There is a separate "Support Kradel" contribution flow for this purpose.
 
 Contributions made through this lane:
 
-- Are clearly labeled as supporting Kradəl's operations, not a specific mother's items or bundles.
+- Are clearly labeled as supporting Kradel's operations, not a specific mother's items or bundles.
 - Fund our hosting, Stripe fees, fulfilment time, and the platform's continued operation.
 - Do not buy items for any specific mother. They keep the platform running.
 
@@ -71,35 +71,35 @@ This is a separate choice from contributing to a specific mother's register. The
 
 **Lane 3: Sponsorships**
 
-We work with corporate sponsors, foundations, and larger individual supporters who fund Kradəl at scale. Sponsorship arrangements are case-by-case and may fund Bundles inventory, operations, or specific initiatives. All sponsorship terms are agreed to in writing with each sponsor.
+We work with corporate sponsors, foundations, and larger individual supporters who fund Kradel at scale. Sponsorship arrangements are case-by-case and may fund Bundles inventory, operations, or specific initiatives. All sponsorship terms are agreed to in writing with each sponsor.
 
 ### 2.2 The Bundles program
 
-Kradəl runs a program called Bundles, where pre-curated sets of essential items are sent to mothers on the platform whose needs aren't being met through the regular donation flow.
+Kradel runs a program called Bundles, where pre-curated sets of essential items are sent to mothers on the platform whose needs aren't being met through the regular donation flow.
 
 Bundles are funded by:
 
-- Surplus from item contributions (when Kradəl pays less than market price for an item, 100% of the difference goes here).
+- Surplus from item contributions (when Kradel pays less than market price for an item, 100% of the difference goes here).
 - Sponsor contributions explicitly designated for Bundles.
 
-Bundles are NOT funded by Kradəl's own profit (we don't take any from item contributions in v1) or by your direct "Support Kradəl" contributions (those fund operations only).
+Bundles are NOT funded by Kradel's own profit (we don't take any from item contributions in v1) or by your direct "Support Kradel" contributions (those fund operations only).
 
 **How Bundles work**
 
 - Pre-curated by stage: Pregnancy bundle, Newborn (0-3 months) bundle, Postpartum recovery bundle. Each contains 4 to 6 items from our catalogue.
-- Recipient selection is automatic. An algorithm selects mothers from a hybrid pool: mothers with active registers whose high-need items have been unfunded for a long time, AND mothers signed up on Kradəl who don't have a register yet.
+- Recipient selection is automatic. An algorithm selects mothers from a hybrid pool: mothers with active registers whose high-need items have been unfunded for a long time, AND mothers signed up on Kradel who don't have a register yet.
 - Each mother receives at most one bundle. The algorithm doesn't repeat selections until all eligible mothers have received one and a new round begins.
 - Recipients are notified, asked to confirm shipping address (per the same address-handling rules as registers, see section 5), and the bundle is shipped from Amazon Business or another vendor.
-- Bundles are attributed as "Funded by Kradəl supporters". No individual donor names are attached, since bundles are funded by accumulated surplus from many contributions.
+- Bundles are attributed as "Funded by Kradel supporters". No individual donor names are attached, since bundles are funded by accumulated surplus from many contributions.
 
-### 2.3 What Kradəl does and does not earn
+### 2.3 What Kradel does and does not earn
 
 We want this to be as clear as possible:
 
-- Kradəl earns NO profit from item contributions in v1. The full difference between what you contribute and what we pay for an item goes to Bundles.
-- Kradəl receives "Support Kradəl" contributions, which fund our operations. None of this money buys items for mothers.
-- Kradəl receives sponsorship revenue, used per each sponsor's agreed-upon designation.
-- Kradəl is a sole proprietorship operated by one person. The operator does not draw profit in v1; operations costs are covered by Lane 2 and Lane 3 revenue.
+- Kradel earns NO profit from item contributions in v1. The full difference between what you contribute and what we pay for an item goes to Bundles.
+- Kradel receives "Support Kradel" contributions, which fund our operations. None of this money buys items for mothers.
+- Kradel receives sponsorship revenue, used per each sponsor's agreed-upon designation.
+- Kradel is a sole proprietorship operated by one person. The operator does not draw profit in v1; operations costs are covered by Lane 2 and Lane 3 revenue.
 
 We may publish an annual transparency report showing total contributions received per lane, items procured and delivered, bundles distributed, and operations expenses. We commit to this transparency.
 
@@ -130,7 +130,7 @@ We collect different types of information depending on whether you are a mother 
 
 **Donors (when you contribute or share items)**
 
-- Payment information for register contributions and Support Kradəl contributions, processed by Stripe (see section 3.5)
+- Payment information for register contributions and Support Kradel contributions, processed by Stripe (see section 3.5)
 - For peer-to-peer item sharing on Discover: a description and photos of items you offer
 - Coordination messages you send to mothers about handoff logistics
 
@@ -138,11 +138,11 @@ We collect different types of information depending on whether you are a mother 
 
 - Your device type, browser, and operating system
 - Approximate location based on your IP address (city-level only)
-- Pages you visit on Kradəl and how you navigate between them
+- Pages you visit on Kradel and how you navigate between them
 - Date and time of your visits
 - If you grant precise location permission, your device's GPS coordinates (only used to suggest nearby items, not stored)
 
-We do not use third-party advertising tracking. We do not sell your data. We do not show ads on Kradəl.
+We do not use third-party advertising tracking. We do not sell your data. We do not show ads on Kradel.
 
 ### 3.3 Information from other people
 
@@ -165,7 +165,7 @@ We use these documents only to verify your identity. We do not use them for adve
 
 ### 3.5 Payment information
 
-When you contribute through any of our three lanes (item funding, Support Kradəl, or sponsorship), payments are processed by Stripe. We do not see, store, or have access to your full credit card number, CVV, or expiration date. Stripe is PCI DSS compliant and handles all sensitive payment data.
+When you contribute through any of our three lanes (item funding, Support Kradel, or sponsorship), payments are processed by Stripe. We do not see, store, or have access to your full credit card number, CVV, or expiration date. Stripe is PCI DSS compliant and handles all sensitive payment data.
 
 We do receive from Stripe:
 
@@ -193,7 +193,7 @@ We use the information we collect for specific, limited purposes. We do not use 
 
 ### 4.2 To fulfil orders for the Registers feature
 
-When a donor contributes money to a mother's register, Kradəl purchases the item (currently via Amazon Canada Business) and ships it directly to the mother. To do this, we need:
+When a donor contributes money to a mother's register, Kradel purchases the item (currently via Amazon Canada Business) and ships it directly to the mother. To do this, we need:
 
 - The mother's chosen delivery address (described in detail in section 5)
 - Item information (what to buy, what brand)
@@ -222,7 +222,7 @@ Bundle recipient selection is automated. An algorithm picks based on signup rece
 
 - Send you account notifications (a donor contributed to your register, your item shipped, a bundle is on its way, etc.)
 - Reply to your support messages
-- Send you important updates about Kradəl, such as policy changes or major service changes
+- Send you important updates about Kradel, such as policy changes or major service changes
 - With your separate consent, send you occasional marketing or program updates (you can unsubscribe anytime)
 
 ### 4.6 To improve the platform
@@ -237,7 +237,7 @@ When we use data for product improvement, we work with aggregated, anonymized in
 
 - Respond to lawful requests from courts and government agencies
 - Investigate fraud, suspected illegal activity, or violations of our terms
-- Protect the rights, property, or safety of Kradəl, our users, or others
+- Protect the rights, property, or safety of Kradel, our users, or others
 - Maintain financial records as required by Canadian tax law
 
 ---
@@ -270,7 +270,7 @@ You may decline a bundle if offered. There is no penalty or impact on your eligi
 
 ### 5.3 Donors never see your address
 
-We want to be very clear: donors never see your delivery address. Not the street, not the postal code, not the city. Donors see your first name, your general city (which you choose to display), and what items you need. The shipping logistics are handled entirely by Kradəl.
+We want to be very clear: donors never see your delivery address. Not the street, not the postal code, not the city. Donors see your first name, your general city (which you choose to display), and what items you need. The shipping logistics are handled entirely by Kradel.
 
 This is enforced at multiple levels of our system: in our database queries, in our application code, and in the way our software is structured. It is not just a promise. It is built into how the platform works.
 
@@ -287,12 +287,12 @@ We never validate that the address belongs to you. We never ask for ID matching.
 
 Your choice is final.
 
-### 5.5 Who sees your address inside Kradəl
+### 5.5 Who sees your address inside Kradel
 
 The only people who see your full address are:
 
 - You: when you set or update it, and on your own register's settings page so you can verify what is on file
-- The Kradəl operator (one person, the platform's founder): only when an item you've funded is being prepared for purchase, and only on the operational dashboard used to place orders
+- The Kradel operator (one person, the platform's founder): only when an item you've funded is being prepared for purchase, and only on the operational dashboard used to place orders
 - The shipping carrier: when they actually deliver the package
 
 That is the complete list. No advertising partners. No data brokers. No analytics services. No machine learning training. No other team members.
@@ -324,7 +324,7 @@ Important privacy notes about Discover:
 - Pickups happen at public locations only: community centres, libraries, coffee shops, parks, and so on. Never at anyone's home.
 - We do not collect home addresses for Discover. There is no place to enter one.
 - Mothers and donors see each other's first name and the agreed pickup location only.
-- Coordination messages happen inside Kradəl and are visible to operators for safety review when reports are filed.
+- Coordination messages happen inside Kradel and are visible to operators for safety review when reports are filed.
 
 If you participate in Discover, your privacy works differently than on Registers. Read this section together with section 5 to understand the full picture.
 
@@ -365,11 +365,11 @@ When we receive a legal request for user data, we review it carefully. We push b
 
 ### 7.4 Sponsors
 
-When we partner with sponsors, we may share aggregate, anonymized information about platform impact (e.g., "In Q3, X bundles were distributed and Y mothers received items through registers"). We do not share individual user data with sponsors. Sponsors fund Kradəl; they do not get access to people on Kradəl.
+When we partner with sponsors, we may share aggregate, anonymized information about platform impact (e.g., "In Q3, X bundles were distributed and Y mothers received items through registers"). We do not share individual user data with sponsors. Sponsors fund Kradel; they do not get access to people on Kradel.
 
 ### 7.5 Business changes
 
-If Kradəl is ever acquired, merged, or restructured, your information may be transferred to the new owner. We would notify users of any such change and ensure the new owner agrees to honour this privacy policy or an equivalent one. You would have the option to delete your account before any transfer takes effect.
+If Kradel is ever acquired, merged, or restructured, your information may be transferred to the new owner. We would notify users of any such change and ensure the new owner agrees to honour this privacy policy or an equivalent one. You would have the option to delete your account before any transfer takes effect.
 
 ---
 
@@ -437,7 +437,7 @@ No system is perfect. If we ever experience a data breach involving your persona
 
 ### 9.1 Things you can do
 
-- Use a strong, unique password for your Kradəl account
+- Use a strong, unique password for your Kradel account
 - Don't share your login credentials
 - Log out of shared devices
 - Tell us right away if you suspect your account has been compromised
@@ -466,7 +466,7 @@ We don't keep information longer than we need to. Different types of data have d
 
 ## 11. International transfers
 
-Kradəl is based in Canada and primarily serves users in Canada. Some of our service providers are located in the United States or other countries. When your information is processed outside Canada, it is subject to the laws of those countries, which may differ from Canadian privacy laws.
+Kradel is based in Canada and primarily serves users in Canada. Some of our service providers are located in the United States or other countries. When your information is processed outside Canada, it is subject to the laws of those countries, which may differ from Canadian privacy laws.
 
 Specifically:
 
@@ -482,9 +482,9 @@ We rely on these providers' contractual privacy commitments and standard data pr
 
 ## 12. Children
 
-Kradəl is intended for adults (18 and over). We do not knowingly collect personal information from children under 18. If you believe a child has provided us with personal information, please contact us and we will delete it.
+Kradel is intended for adults (18 and over). We do not knowingly collect personal information from children under 18. If you believe a child has provided us with personal information, please contact us and we will delete it.
 
-Mothers using Kradəl are typically expecting or new parents and are themselves adults. The platform supports their needs but is not designed for or marketed to minors.
+Mothers using Kradel are typically expecting or new parents and are themselves adults. The platform supports their needs but is not designed for or marketed to minors.
 
 ---
 

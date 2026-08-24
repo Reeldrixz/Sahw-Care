@@ -55,7 +55,7 @@ export default function JourneyPage() {
 
       <div style={{ padding: "16px" }}>
         <p style={{ fontSize: 13, color: "var(--mid)", lineHeight: 1.6, marginBottom: 16 }}>
-          You can both donate and receive support. Choosing your journey sets your primary experience on Kradəl.
+          You can both donate and receive support. Choosing your journey sets your primary experience on Kradel.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

@@ -8,8 +8,8 @@ import { Hash } from "lucide-react";
 import PrivacyToc from "./PrivacyToc";
 
 export const metadata = {
-  title: "Privacy Policy | Kradəl Care",
-  description: "How Kradəl Care collects, uses, and protects your information.",
+  title: "Privacy Policy | Kradel Care",
+  description: "How Kradel Care collects, uses, and protects your information.",
 };
 
 function slugify(text: string): string {

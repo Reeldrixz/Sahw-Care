@@ -11,7 +11,7 @@ async function sendBundleEmail(to: string, subject: string, fullName: string, bo
     from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
     to,
     subject,
-    html:    `<p>Hi ${fullName},</p><p>${body}</p><p>The Kradəl Team</p>`,
+    html:    `<p>Hi ${fullName},</p><p>${body}</p><p>The Kradel Team</p>`,
   });
   if (error) throw new Error(`Resend error: ${error.message}`);
 }
@@ -97,7 +97,7 @@ export async function PATCH(
     } else if (email) {
       sendBundleEmail(
         email,
-        "Your Kradəl Bundle has been approved",
+        "Your Kradel Bundle has been approved",
         fullName,
         `Your application for <strong>${bundleName}</strong> has been approved. We'll prepare and ship your bundle shortly.`
       ).catch((err) => console.error("[bundle email]", err));
@@ -116,7 +116,7 @@ export async function PATCH(
     } else if (email) {
       sendBundleEmail(
         email,
-        "Update on your Kradəl Bundle application",
+        "Update on your Kradel Bundle application",
         fullName,
         `Your application for <strong>${bundleName}</strong> was not approved this month. ${reasonClause}You're welcome to apply again next month.`
       ).catch((err) => console.error("[bundle email]", err));
@@ -134,7 +134,7 @@ export async function PATCH(
     } else if (email) {
       sendBundleEmail(
         email,
-        "You're on the Kradəl Bundle waitlist",
+        "You're on the Kradel Bundle waitlist",
         fullName,
         `Your application for <strong>${bundleName}</strong> is on the waitlist. We'll be in touch when a slot becomes available.`
       ).catch((err) => console.error("[bundle email]", err));
@@ -152,7 +152,7 @@ export async function PATCH(
     } else if (email) {
       sendBundleEmail(
         email,
-        "Your Kradəl Bundle has been delivered",
+        "Your Kradel Bundle has been delivered",
         fullName,
         `Your <strong>${bundleName}</strong> has been delivered. We hope it helps.`
       ).catch((err) => console.error("[bundle email]", err));
@@ -170,7 +170,7 @@ export async function PATCH(
     } else if (email) {
       sendBundleEmail(
         email,
-        "An update on your Kradəl Bundle",
+        "An update on your Kradel Bundle",
         fullName,
         `We're very sorry. We weren't able to complete your <strong>${bundleName}</strong> this time. This doesn't count against you in any way, and you're welcome to apply again whenever you're ready.`
       ).catch((err) => console.error("[bundle email]", err));

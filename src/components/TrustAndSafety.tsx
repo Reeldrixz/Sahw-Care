@@ -11,7 +11,7 @@ const COLUMNS = [
   },
   {
     icon: Package,
-    title: "Kradəl Delivers",
+    title: "Kradel Delivers",
     desc: "We handle purchasing and delivery. Donors never share addresses.",
   },
   {
@@ -22,7 +22,7 @@ const COLUMNS = [
 ];
 
 // Only rendered on register surfaces (/registers and /registers/[id]).
-// The "donors never share addresses" copy is accurate there because Kradəl
+// The "donors never share addresses" copy is accurate there because Kradel
 // handles all purchasing and delivery. Do NOT add this component to Discover
 // surfaces where donors arrange their own delivery — the copy would be wrong.
 export default function TrustAndSafety() {
@@ -77,7 +77,7 @@ export default function TrustAndSafety() {
           }}
         >
           <Heart size={14} strokeWidth={1.75} />
-          Support Kradəl →
+          Support Kradel →
         </Link>
       </div>
     </div>

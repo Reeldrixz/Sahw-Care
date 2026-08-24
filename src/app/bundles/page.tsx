@@ -61,7 +61,7 @@ const PROVINCES = [
 const FAQS: { q: string; a: string }[] = [
   { q: "Who is eligible for a bundle?", a: "Verified mothers in Canada who are pregnant, have a newborn, or are in the postpartum period. Every application is reviewed by our team to ensure bundles reach those who need them most." },
   { q: "Is this a first-come-first-served system?", a: "No. Every application is read privately and carefully by the Kradel team. It is not simply who applies first." },
-  { q: "Where does funding come from?", a: "Kradəl Bundles are funded through platform operations, community partners, and CSR programs. No mother ever pays for a bundle. They are fully covered." },
+  { q: "Where does funding come from?", a: "Kradel Bundles are funded through platform operations, community partners, and CSR programs. No mother ever pays for a bundle. They are fully covered." },
   { q: "Can I apply for more than one bundle?", a: "You can have one open application at a time. Once it's delivered, or if you withdraw it or it closes, you're welcome to apply for another bundle." },
   { q: "How long does the review take?", a: "Fulfillment can take up to 90 days, depending on available resources. If we aren't able to review your application within that time, it will close and you're welcome to reapply, with priority for having waited. We'll notify you privately once your application is approved." },
 ];
@@ -69,9 +69,9 @@ const FAQS: { q: string; a: string }[] = [
 const JOURNEY_STEPS = [
   { label: "Application",     detail: "Submit a short form sharing your stage." },
   { label: "Private Review",  detail: "Our team reviews every application carefully and privately." },
-  { label: "Bundle Prepared", detail: "Kradəl sources and packs your curated essentials." },
+  { label: "Bundle Prepared", detail: "Kradel sources and packs your curated essentials." },
   { label: "Delivered",       detail: "Your bundle is shipped directly to your door, free." },
-  { label: "Ongoing Support", detail: "You're welcomed into the Kradəl community." },
+  { label: "Ongoing Support", detail: "You're welcomed into the Kradel community." },
 ];
 
 const TRUST_PRINCIPLES = [
@@ -303,13 +303,13 @@ export default function BundlesPage() {
 
             <div className="hero-left">
               <div style={{ fontFamily: "Lora, serif", fontSize: 30, fontWeight: 700, color: "white", marginBottom: 8, lineHeight: 1.2 }}>
-                Kradəl Bundles
+                Kradel Bundles
               </div>
               <div style={{ fontSize: 17, color: "rgba(255,255,255,0.9)", fontFamily: "Nunito, sans-serif", fontWeight: 700, marginBottom: 10 }}>
                 Curated essentials. Delivered with dignity.
               </div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", fontFamily: "Nunito, sans-serif", lineHeight: 1.65, marginBottom: 24 }}>
-                Each month, Kradəl assembles carefully curated care bundles for mothers across Canada. They are
+                Each month, Kradel assembles carefully curated care bundles for mothers across Canada. They are
                 fully funded and delivered free of charge. Each bundle is a structured care program,
                 reviewed and matched privately by our team.
               </div>
@@ -373,7 +373,7 @@ export default function BundlesPage() {
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "10px 12px", background: "#f8faf9", borderRadius: 10, border: "1px solid #e0ede8" }}>
                   <Gift size={14} color="#1a7a5e" strokeWidth={2} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ fontSize: 11, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                    <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Funded by Kradəl and our partners.</span>
+                    <span style={{ fontWeight: 800, color: "#1a7a5e" }}>Funded by Kradel and our partners.</span>
                     {" "}Every bundle is fully covered. No cost to any mother.
                   </div>
                 </div>
@@ -925,7 +925,7 @@ export default function BundlesPage() {
             <div style={{ padding: "10px 14px", background: "#fafafa", borderRadius: 10, border: "1px solid #e8e8e8", display: "flex", alignItems: "flex-start", gap: 8 }}>
               <Lock size={13} color="#9ca3af" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontSize: 11, color: "#888", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, fontStyle: "italic" }}>
-                The matching and review process is always private. No mother&apos;s application is visible to anyone outside the Kradəl team.
+                The matching and review process is always private. No mother&apos;s application is visible to anyone outside the Kradel team.
               </div>
             </div>
           </div>
@@ -1036,7 +1036,7 @@ export default function BundlesPage() {
               <div>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>Apply for {applying.name}</div>
                 <div style={{ fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif" }}>
-                  Reviewed privately by the Kradəl team
+                  Reviewed privately by the Kradel team
                 </div>
               </div>
               <button onClick={closeApply} style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}>

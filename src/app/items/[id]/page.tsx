@@ -341,7 +341,7 @@ export default function ItemDetailPage() {
             onClick={(e) => { e.stopPropagation(); setShowVerifSheet(true); }}
             style={{ background: "#e8f5f1", border: "none", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 800, color: "#1a7a5e", cursor: "pointer", fontFamily: "Nunito, sans-serif", flexShrink: 0 }}
           >
-            ✓ Kradəl verified
+            ✓ Kradel verified
           </button>
         )}
         <div className="donor-arrow">›</div>
@@ -467,7 +467,7 @@ export default function ItemDetailPage() {
               <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a1a1a", textAlign: "center" }}>What does verified mean?</div>
             </div>
             {[
-              "This donor's identity has been reviewed by the Kradəl team.",
+              "This donor's identity has been reviewed by the Kradel team.",
               "They have completed phone and email verification.",
               "Their listing has passed our basic review process.",
             ].map((text, i) => (

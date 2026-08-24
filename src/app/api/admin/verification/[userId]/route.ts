@@ -28,7 +28,7 @@ export async function PUT(
     return NextResponse.json({ error: "action must be approve or reject" }, { status: 400 });
   }
 
-  const APPROVE_NOTE = "Your document has been verified. Welcome to Kradəl! You can now create your Register of Needs. 💛";
+  const APPROVE_NOTE = "Your document has been verified. Welcome to Kradel! You can now create your Register of Needs. 💛";
   const DEFAULT_REJECT = "We weren't able to verify this document. Please upload a clearer photo or a different document (hospital letter, scan, birth certificate, or immunisation card).";
 
   const user = await prisma.user.update({

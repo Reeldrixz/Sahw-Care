@@ -174,7 +174,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     const fn = register.creator.name.split(" ")[0];
     const url = `${window.location.origin}/r/${register.id}`;
     const shareData = {
-      title: `${fn}'s Register on Kradəl`,
+      title: `${fn}'s Register on Kradel`,
       text: `Help provide real essentials for ${fn}'s baby. Every item is a genuine need.`,
       url,
     };
@@ -203,7 +203,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     const payment = params.get("payment");
     if (payment === "success") {
       setJustFunded(true);
-      setToast("Payment confirmed! Kradəl will purchase and deliver this item soon.");
+      setToast("Payment confirmed! Kradel will purchase and deliver this item soon.");
       const url = new URL(window.location.href);
       url.searchParams.delete("payment");
       url.searchParams.delete("item");
@@ -931,11 +931,11 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   Thank you!
                 </div>
                 <div style={{ fontSize: 14, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 20 }}>
-                  Your {fmtMoney(fundedAmount)} contribution to <strong>{selectedItem.name}</strong> has been recorded. Kradəl will purchase and deliver this item to {firstName}.
+                  Your {fmtMoney(fundedAmount)} contribution to <strong>{selectedItem.name}</strong> has been recorded. Kradel will purchase and deliver this item to {firstName}.
                 </div>
                 {selectedItem.totalFundedCents + fundedAmount >= selectedItem.standardPriceCents ? (
                   <div style={{ background: "#e8f5f1", borderRadius: 12, padding: "12px 14px", marginBottom: 20, fontSize: 13, color: "#1a7a5e", fontWeight: 600, fontFamily: "Nunito, sans-serif" }}>
-                    This item is now fully funded. Kradəl will fulfill it soon.
+                    This item is now fully funded. Kradel will fulfill it soon.
                   </div>
                 ) : null}
                 <button
@@ -982,7 +982,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 )}
                 {(selectedItem.fundingStatus === "IN_FULFILLMENT" || selectedItem.fundingStatus === "FULLY_FUNDED") && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: "#fff8e6", color: "#d97706", fontFamily: "Nunito, sans-serif", marginBottom: 12 }}>
-                    <Package size={11} strokeWidth={2.5} /> Being fulfilled by Kradəl
+                    <Package size={11} strokeWidth={2.5} /> Being fulfilled by Kradel
                   </span>
                 )}
 
@@ -1153,7 +1153,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 {selectedItem.fundingStatus === "IN_FULFILLMENT" && (
                   <div style={{ background: "#fff8e6", borderRadius: 12, padding: "12px 14px", marginBottom: 12, fontSize: 13, color: "#7a5500", fontFamily: "Nunito, sans-serif", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
                     <Package size={16} color="#d97706" />
-                    Kradəl is processing this item for delivery.
+                    Kradel is processing this item for delivery.
                   </div>
                 )}
 

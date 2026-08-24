@@ -161,7 +161,7 @@ function computeStage(user: JourneyUser): StageInfo {
 
   return {
     label: "Your Support Journey",
-    subtitle: "You're part of the Kradəl community. We're here for you.",
+    subtitle: "You're part of the Kradel community. We're here for you.",
     calendarNote: "",
   };
 }
@@ -747,7 +747,7 @@ export default function JourneyPage() {
             );
           })}
           <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 10, color: "#9ca3af", marginTop: 10, lineHeight: 1.5 }}>
-            These are external resources. Kradəl is not affiliated with any of these organizations.
+            These are external resources. Kradel is not affiliated with any of these organizations.
           </div>
         </div>
 

@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     );
     if (!res.ok) return NextResponse.json({ error: "Geocode failed." }, { status: 502 });
     const data = await res.json();
-    // Return whatever real city the coords map to — including cities Kradəl
+    // Return whatever real city the coords map to — including cities Kradel
     // doesn't operate in yet (a donor can be anywhere). Never silently drop it.
     const city: string | null =
       data.address?.city ||

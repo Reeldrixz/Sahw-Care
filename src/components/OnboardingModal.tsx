@@ -120,7 +120,7 @@ export default function OnboardingModal({ onComplete }: Props) {
             fontFamily: "Lora, serif", fontSize: 24, fontWeight: 700,
             color: "#1a7a5e", lineHeight: 1.45, margin: "0 0 32px",
           }}>
-            Kradəl is built on compassion and mercy. Not convenience.
+            Kradel is built on compassion and mercy. Not convenience.
           </p>
 
           {/* Middle paragraph */}
@@ -207,10 +207,10 @@ export default function OnboardingModal({ onComplete }: Props) {
               {/* ── Step 0: Role ──────────────────────────────────────────── */}
               <div style={{ minWidth: "100%", padding: "24px 24px 32px" }}>
                 <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, marginBottom: 6, textAlign: "center" }}>
-                  Welcome to Kradəl
+                  Welcome to Kradel
                 </div>
                 <div style={{ fontSize: 14, color: "var(--mid)", textAlign: "center", marginBottom: 28, lineHeight: 1.6 }}>
-                  How would you like to use Kradəl?
+                  How would you like to use Kradel?
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

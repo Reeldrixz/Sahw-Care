@@ -9,8 +9,8 @@ export default function ReferFriendCard() {
   const handleShare = async () => {
     const url = `${window.location.origin}/find-help`;
     const shareData = {
-      title: "Kradəl",
-      text: "A friend thought Kradəl could help. Here's how to get connected to support for you and your baby.",
+      title: "Kradel",
+      text: "A friend thought Kradel could help. Here's how to get connected to support for you and your baby.",
       url,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -30,7 +30,7 @@ export default function ReferFriendCard() {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
-          Know someone who could use Kradəl?
+          Know someone who could use Kradel?
         </div>
         <div style={{ fontSize: 12.5, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.55, marginBottom: 12 }}>
           Share a link that points a friend toward our community partners. They&apos;ll help her get connected.
@@ -39,7 +39,7 @@ export default function ReferFriendCard() {
           onClick={handleShare}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--green)", border: "none", color: "white", borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
         >
-          {copied ? <><Check size={13} strokeWidth={2.5} /> Link copied</> : <><Share2 size={13} strokeWidth={2.25} /> Share Kradəl</>}
+          {copied ? <><Check size={13} strokeWidth={2.5} /> Link copied</> : <><Share2 size={13} strokeWidth={2.25} /> Share Kradel</>}
         </button>
       </div>
     </div>

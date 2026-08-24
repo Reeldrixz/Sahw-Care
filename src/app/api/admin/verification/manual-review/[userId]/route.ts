@@ -38,7 +38,7 @@ export async function PUT(
       data: {
         userId:  userId,
         type:    "MANUAL_REVIEW_APPROVED",
-        message: "Your profile has been verified. Welcome to the community. 💛 You can now access care support through Kradəl.",
+        message: "Your profile has been verified. Welcome to the community. 💛 You can now access care support through Kradel.",
         link:    "/profile",
       },
     });

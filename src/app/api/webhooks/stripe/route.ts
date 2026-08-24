@@ -169,7 +169,7 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
         data: {
           userId:  donorId,
           type:    "ITEM_FULLY_FUNDED",
-          message: `You completed funding "${item.name}"! Kradəl will purchase and deliver it soon.`,
+          message: `You completed funding "${item.name}"! Kradel will purchase and deliver it soon.`,
           link:    `/registers/${registerId}`,
         },
       });

@@ -260,7 +260,7 @@ export default function NewRegisterPage() {
             </div>
 
             <div style={{ fontSize: 12, color: "var(--mid)", marginBottom: 12, fontFamily: "Nunito, sans-serif" }}>
-              🔒 Donors never see your address. Only Kradəl uses it to ship.
+              🔒 Donors never see your address. Only Kradel uses it to ship.
             </div>
 
             {addressMode === "SAVED_PER_REGISTER" && (

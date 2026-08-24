@@ -94,7 +94,7 @@ export default function PublicRegisterClient({
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? `${window.location.origin}/r/${register.id}` : shareUrl;
     const shareData = {
-      title: `${firstName}'s Register on Kradəl`,
+      title: `${firstName}'s Register on Kradel`,
       text: `Help provide real essentials for ${firstName}'s baby. Every item is a genuine need.`,
       url,
     };
@@ -288,12 +288,12 @@ export default function PublicRegisterClient({
 
         {/* ── How Kradel works + trust ───────────── */}
         <div style={{ margin: "8px 16px 0", background: "var(--white)", borderRadius: 12, padding: "16px" }}>
-          <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, marginBottom: 10, color: "#1a3a2e" }}>How Kradəl works</div>
+          <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, marginBottom: 10, color: "#1a3a2e" }}>How Kradel works</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
               "A frontline partner refers a mother and verifies her need.",
               "She privately lists the specific items she needs for her baby.",
-              "You fund an item. Kradəl purchases it and delivers it to her door.",
+              "You fund an item. Kradel purchases it and delivers it to her door.",
             ].map((line, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <div style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#e8f5f1", color: "#1a7a5e", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Nunito, sans-serif" }}>{i + 1}</div>
@@ -304,7 +304,7 @@ export default function PublicRegisterClient({
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <ShieldCheck size={14} color="#1a7a5e" strokeWidth={1.75} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-              {firstName}&apos;s address and contact details are kept private. Kradəl handles delivery directly.
+              {firstName}&apos;s address and contact details are kept private. Kradel handles delivery directly.
             </span>
           </div>
         </div>

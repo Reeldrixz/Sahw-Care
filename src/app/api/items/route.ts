@@ -29,7 +29,7 @@ function parseQuantityNum(quantityStr: string): number {
 
 export const dynamic = "force-dynamic";
 
-// RANKING PHILOSOPHY — Kradəl is NOT a marketplace
+// RANKING PHILOSOPHY — Kradel is NOT a marketplace
 // The following signals are INTENTIONALLY EXCLUDED from ranking:
 // - Item likes or saves (favourites count)
 // - Number of requests received on an item

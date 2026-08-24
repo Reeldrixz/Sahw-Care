@@ -171,7 +171,7 @@ export default function PartnersPage() {
       </section>
 
       <footer style={{ padding: "24px 22px 40px", textAlign: "center" }}>
-        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradəl</div>
+        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradel</div>
         <p style={{ fontFamily: SANS, fontSize: 13, color: MUTED, margin: 0 }}>Maternal &amp; baby care, delivered with dignity.</p>
       </footer>
     </main>

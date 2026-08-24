@@ -741,10 +741,10 @@ export default function ProfilePage() {
         {!isAdmin && motherIntent && (
           <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
             <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>
-              Your Kradəl account
+              Your Kradel account
             </div>
             <p style={{ fontSize: 13, color: "var(--mid)", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, margin: "0 0 12px" }}>
-              You can browse Kradəl freely. Care bundles and mother features become available once a partner
+              You can browse Kradel freely. Care bundles and mother features become available once a partner
               organization connects you.
             </p>
             <a href="/find-help" style={{ fontSize: 13, fontWeight: 700, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "none" }}>
@@ -865,7 +865,7 @@ export default function ProfilePage() {
             <div style={{ background: "var(--white)", borderRadius: 16, border: "1px solid #e0e0e0", padding: 16, marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                 <Heart size={20} color="#1a7a5e" strokeWidth={1.75} />
-                <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--ink)" }}>Support Kradəl</div>
+                <div style={{ fontFamily: "Lora, serif", fontSize: 16, fontWeight: 700, color: "var(--ink)" }}>Support Kradel</div>
               </div>
               <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "var(--mid)", marginBottom: 14, lineHeight: 1.5 }}>
                 Help keep the platform running for mothers who need it.

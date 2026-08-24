@@ -14,21 +14,21 @@ const SANS = "Nunito, sans-serif";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
 
 export const metadata: Metadata = {
-  title: "Find help · Kradəl",
+  title: "Find help · Kradel",
   description:
-    "A friend thought Kradəl could help. Here are the community partners who can connect a mother to support for her baby.",
+    "A friend thought Kradel could help. Here are the community partners who can connect a mother to support for her baby.",
   alternates: { canonical: `${APP_URL}/find-help` },
   openGraph: {
-    title: "Find help · Kradəl",
-    description: "Community partners who connect mothers to Kradəl support.",
+    title: "Find help · Kradel",
+    description: "Community partners who connect mothers to Kradel support.",
     url: `${APP_URL}/find-help`,
-    siteName: "Kradəl",
+    siteName: "Kradel",
     type: "website",
   },
 };
 
 const STEPS = [
-  "A community partner gets to know you and confirms how Kradəl can help.",
+  "A community partner gets to know you and confirms how Kradel can help.",
   "With their support, you privately list the specific items you need for your baby.",
   "Neighbours fund those items, and they're delivered directly to you.",
 ];
@@ -89,7 +89,7 @@ export default async function FindHelpPage({
       {/* ── Top bar ─────────────────────────────────────── */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", maxWidth: 1040, margin: "0 auto" }}>
         <Link href="/" style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: INK, textDecoration: "none" }}>
-          Kradəl
+          Kradel
         </Link>
       </header>
 
@@ -110,7 +110,7 @@ export default async function FindHelpPage({
             marginBottom: 20,
           }}
         >
-          {fromOnboarding ? "You're in the right place" : "A friend thought Kradəl could help"}
+          {fromOnboarding ? "You're in the right place" : "A friend thought Kradel could help"}
         </span>
         <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 700, lineHeight: 1.2, margin: "0 0 16px", color: INK }}>
           Here&apos;s how to get connected
@@ -121,7 +121,7 @@ export default async function FindHelpPage({
           </p>
         )}
         <p style={{ fontFamily: SANS, fontSize: 16.5, lineHeight: 1.65, color: MUTED, margin: "0 auto", maxWidth: 560 }}>
-          Kradəl helps mothers get the specific things they need for their baby, funded by neighbours and
+          Kradel helps mothers get the specific things they need for their baby, funded by neighbours and
           delivered with dignity. Mothers join through a trusted community partner who offers a warm,
           private introduction. Below are the partners you can reach out to.
         </p>
@@ -213,7 +213,7 @@ export default async function FindHelpPage({
 
       {/* ── Footer ──────────────────────────────────────── */}
       <footer style={{ padding: "30px 22px 40px", textAlign: "center" }}>
-        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradəl</div>
+        <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: INK, marginBottom: 6 }}>Kradel</div>
         <p style={{ fontFamily: SANS, fontSize: 13, color: MUTED, margin: 0 }}>
           Maternal &amp; baby care, delivered with dignity.
         </p>

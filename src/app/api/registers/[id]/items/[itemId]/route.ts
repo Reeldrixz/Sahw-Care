@@ -83,7 +83,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (item.register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   if (item.totalFundedCents > 0) {
-    return NextResponse.json({ error: "Items with contributions cannot be removed. Contact Kradəl for help." }, { status: 400 });
+    return NextResponse.json({ error: "Items with contributions cannot be removed. Contact Kradel for help." }, { status: 400 });
   }
 
   await prisma.registerItem.delete({ where: { id: itemId } });

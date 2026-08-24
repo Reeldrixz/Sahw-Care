@@ -36,7 +36,7 @@ export async function sendPasswordResetEmail(opts: {
         <h2 style="color:#1a7a5e;margin-bottom:8px">Reset your password</h2>
         <p style="color:#555;line-height:1.6">Hi ${esc(opts.firstName)},</p>
         <p style="color:#555;line-height:1.6">
-          We received a request to reset your Kradəl password.
+          We received a request to reset your Kradel password.
           Click the button below to choose a new one. This link expires in <strong>1 hour</strong>.
         </p>
         <div style="text-align:center;margin:32px 0">
@@ -62,7 +62,7 @@ export async function sendWelcomeEmail(opts: { name: string; email: string }) {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Welcome to Kradəl",
+    subject: "Welcome to Kradel",
     html: `
       <div style="background:#faf8f3;padding:40px 16px;font-family:sans-serif">
         <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:40px 32px">
@@ -70,14 +70,14 @@ export async function sendWelcomeEmail(opts: { name: string; email: string }) {
             Welcome, ${esc(firstName)}.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 16px">
-            Kradəl is a care community where mothers receive support from people who want to help:
+            Kradel is a care community where mothers receive support from people who want to help:
             essentials, registers, and connections that make the early days a little easier.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.7;margin:0 0 32px">
             Your account is ready. Take a look around whenever you are.
           </p>
           <div style="border-top:1px solid #ede8df;padding-top:24px">
-            <p style="color:#999;font-size:13px;margin:0">Kradəl Care</p>
+            <p style="color:#999;font-size:13px;margin:0">Kradel Care</p>
           </div>
         </div>
       </div>
@@ -100,7 +100,7 @@ export async function sendCircleReplyEmail(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: `${esc(opts.replierName)} replied to your comment on Kradəl`,
+    subject: `${esc(opts.replierName)} replied to your comment on Kradel`,
     html: `
       <div style="background:#faf8f3;padding:40px 16px;font-family:sans-serif">
         <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;padding:36px 32px">
@@ -118,7 +118,7 @@ export async function sendCircleReplyEmail(opts: {
               View the conversation
             </a>
           </div>
-          <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
+          <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
         </div>
       </div>
     `,
@@ -137,7 +137,7 @@ export async function sendBundleRequestReceived(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Your Kradəl bundle request was received",
+    subject: "Your Kradel bundle request was received",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">We received your request</h2>
@@ -149,7 +149,7 @@ export async function sendBundleRequestReceived(opts: {
         <p style="color:#555;line-height:1.6">
           You can track the status of your bundle in the app under <strong>Full Care Bundles</strong>.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
       </div>
     `,
   });
@@ -192,7 +192,7 @@ export async function sendBundleApproved(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Your Kradəl bundle has been approved",
+    subject: "Your Kradel bundle has been approved",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle has been approved</h2>
@@ -201,7 +201,7 @@ export async function sendBundleApproved(opts: {
           Your <strong>${esc(opts.templateName)}</strong> bundle has been approved
           and is being prepared for you. We'll send you another message as soon as it's on its way.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
       </div>
     `,
   });
@@ -218,7 +218,7 @@ export async function sendBundleShipped(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      opts.email,
-    subject: "Your Kradəl bundle is on its way",
+    subject: "Your Kradel bundle is on its way",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#1a7a5e;margin-bottom:8px">Your bundle is on its way</h2>
@@ -228,10 +228,10 @@ export async function sendBundleShipped(opts: {
           ${opts.trackingNumber ? `Your tracking number is <strong>${esc(opts.trackingNumber)}</strong>.` : ""}
         </p>
         <p style="color:#555;line-height:1.6">
-          Once it arrives, please open the Kradəl app and confirm receipt so we can keep
+          Once it arrives, please open the Kradel app and confirm receipt so we can keep
           supporting more moms like you.
         </p>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
       </div>
     `,
   });
@@ -285,7 +285,7 @@ export async function sendBugReportNotification(opts: {
             View in Admin Queue
           </a>
         </div>
-        <p style="color:#999;font-size:12px;margin-top:24px">Kradəl Care</p>
+        <p style="color:#999;font-size:12px;margin-top:24px">Kradel Care</p>
       </div>
     `,
   });
@@ -313,10 +313,10 @@ export async function sendNewSignupNotification(opts: {
   const { error } = await getResend().emails.send({
     from:    FROM,
     to:      NOTIFY,
-    subject: "New Kradəl signup",
+    subject: "New Kradel signup",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="margin:0 0 16px">New signup on Kradəl</h2>
+        <h2 style="margin:0 0 16px">New signup on Kradel</h2>
         <table style="width:100%;border-collapse:collapse">
           <tr>
             <td style="padding:8px 0;color:#6b7280;width:140px">First name</td>

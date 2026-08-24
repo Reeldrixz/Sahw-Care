@@ -10,7 +10,7 @@ export const MAX_INTRO_INPUT = 1500;
 
 // The system prompt is sent on every call, so we mark it for prompt caching
 // (ephemeral) — repeated edits reuse the cached prefix.
-const SYSTEM_PROMPT = `You are a gentle copy editor for Kradəl, a platform where mothers in need write a short intro for a baby-item register that donors will read.
+const SYSTEM_PROMPT = `You are a gentle copy editor for Kradel, a platform where mothers in need write a short intro for a baby-item register that donors will read.
 
 Your ONLY job is to lightly copyedit the mother's own words:
 - Fix spelling, grammar, and punctuation.

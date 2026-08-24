@@ -50,7 +50,7 @@ export default function BetaWelcomeBanner() {
       }}>
         <span aria-hidden="true" style={{ fontSize: 16, flexShrink: 0 }}>🌱</span>
         <p style={{ margin: 0, flex: 1, fontSize: 13, lineHeight: 1.5, color: "#1a5c45" }}>
-          <strong style={{ fontWeight: 800 }}>Kradəl is in beta.</strong> If anything looks broken or confusing,
+          <strong style={{ fontWeight: 800 }}>Kradel is in beta.</strong> If anything looks broken or confusing,
           the Feedback button in the corner is always there. Every report genuinely helps us build this right.
         </p>
         <button

@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import CreatorsClient from "@/components/CreatorsClient";
 
 export const metadata: Metadata = {
-  title: "Impact Creator Program · Kradəl",
+  title: "Impact Creator Program · Kradel",
   description:
-    "Impact Creators help more people discover Kradəl. Share the mission honestly, with dignity and no pressure, so more mothers can find the support they need.",
+    "Impact Creators help more people discover Kradel. Share the mission honestly, with dignity and no pressure, so more mothers can find the support they need.",
 };
 
 export default function CreatorsPage() {
