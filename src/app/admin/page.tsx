@@ -3064,7 +3064,10 @@ export default function AdminPage() {
                       const blockedMonth = linkConfirmed ? undefined : ep.deliveries.find(
                         (d) => d.status !== "FULFILLED" && d.status !== "CANCELLED" && new Date(d.scheduledFor).getTime() <= Date.now()
                       );
-                      const waitingSince = ep.purchaseUrlSentAt ?? ep.purchaseUrlSetAt;
+                      // Same anchor as the F6 cron: fall back to the month's due
+                      // date so a month owed for weeks with no link ever added
+                      // shows its real waiting time instead of "0 days".
+                      const waitingSince = ep.purchaseUrlSentAt ?? ep.purchaseUrlSetAt ?? blockedMonth?.scheduledFor ?? null;
                       const daysWaiting = waitingSince
                         ? Math.floor((Date.now() - new Date(waitingSince).getTime()) / 86400000)
                         : 0;
