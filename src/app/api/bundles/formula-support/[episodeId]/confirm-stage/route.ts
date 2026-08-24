@@ -4,10 +4,15 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// D/F4d: the mother confirms a proposed stage-for-growth change. THIS is the only
-// place the live formulaStage is reassigned (confirm-before-applies). Future
-// fulfillments then snapshot the new stage automatically (D/F4c reads the live
-// formulaStage at fulfilment time). ACTIVE-only; a pending proposal must exist.
+// D/F4d + F5: the mother confirms a proposed stage-for-growth change AND the new
+// stage's product in one action. THIS is the only place the live formulaStage is
+// reassigned (confirm-before-applies). Future fulfillments then snapshot the new
+// stage automatically (D/F4c reads the live formulaStage at fulfilment time).
+//
+// Because she has just checked the new product here, the pending link becomes
+// the live link AND is marked confirmed in the same write — so purchasing
+// resumes immediately at the new stage with no second round-trip.
+// ACTIVE-only; a pending proposal must exist.
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ episodeId: string }> }
@@ -18,7 +23,7 @@ export async function POST(
   const { episodeId } = await params;
   const episode = await prisma.formulaEpisode.findUnique({
     where:  { id: episodeId },
-    select: { id: true, userId: true, status: true, pendingFormulaStage: true },
+    select: { id: true, userId: true, status: true, pendingFormulaStage: true, pendingPurchaseUrl: true },
   });
   if (!episode || episode.userId !== currentUser.userId) {
     return NextResponse.json({ error: "Formula episode not found" }, { status: 404 });
@@ -31,13 +36,30 @@ export async function POST(
   }
 
   const newStage = episode.pendingFormulaStage;
+  const newLink  = episode.pendingPurchaseUrl;
+  const now      = new Date();
   await prisma.formulaEpisode.update({
     where: { id: episode.id },
     data:  {
       formulaStage:               newStage, // apply the growth stage now
       pendingFormulaStage:        null,
+      pendingPurchaseUrl:         null,
       pendingStageRequestedAt:    null,
       pendingStageReminderSentAt: null,
+      // She checked the new stage's product as part of this same ask, so the
+      // pending link goes live already confirmed — purchasing resumes at once.
+      ...(newLink && {
+        purchaseUrl:            newLink,
+        purchaseUrlSetAt:       now,
+        purchaseUrlSentAt:      now,
+        purchaseUrlConfirmedAt: now,
+        purchaseUrlDeclinedAt:  null,
+        purchaseUrlDeclineNote: null,
+      }),
+      purchaseUrlReminderCount:  0,
+      purchaseUrlReminderSentAt: null,
+      blockedAdminNotifiedAt:    null,
+      blockedAdminEscalatedAt:   null,
     },
   });
 

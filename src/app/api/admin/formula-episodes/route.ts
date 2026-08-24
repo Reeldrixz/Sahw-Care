@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
     completedAt:           e.completedAt,
     pendingFormulaStage:     e.pendingFormulaStage,
     pendingStageRequestedAt: e.pendingStageRequestedAt,
+    pendingPurchaseUrl:      e.pendingPurchaseUrl,
     // F4: purchasing-link state drives the admin button lifecycle and the
     // BLOCKED panel. purchaseUrlConfirmedAt is the safe-to-purchase signal.
     purchaseUrl:            e.purchaseUrl,

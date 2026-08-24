@@ -2,18 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getResend } from "@/lib/resend";
+import { validatePurchaseUrl } from "@/lib/purchaseLink";
 
 export const dynamic = "force-dynamic";
 
 const MAX_STAGE_LEN = 60;
 
-// D/F4d: admin proposes a mid-episode STAGE change (stage-for-growth, e.g.
-// Stage 1 -> 2 as the baby ages). This endpoint is deliberately incapable of
-// changing brand/type/form or the live formulaStage: it reads ONLY formulaStage
-// from the body and writes ONLY the pending* proposal fields. The live
-// formulaStage is reassigned later, and only by the mother's confirm-stage
-// (confirm-before-applies). Re-proposing overwrites a prior pending proposal so
-// an admin can fix a typo before she acts.
+// D/F4d + F5: admin proposes a mid-episode STAGE change (stage-for-growth, e.g.
+// Stage 1 -> 2 as the baby ages), together with the new stage's product link —
+// ONE combined ask, so she is never asked twice about the same change.
+//
+// The new link is REQUIRED: a stage proposal without its product would leave her
+// confirming Stage 2 while the live link still points at the Stage 1 item, which
+// is precisely the mismatch this feature exists to prevent.
+//
+// This endpoint is deliberately incapable of changing brand/type/form or the
+// live formulaStage: it reads ONLY formulaStage and purchaseUrl from the body
+// and writes ONLY the pending* proposal fields. The live spec and link are
+// reassigned later, and only by the mother's confirm-stage
+// (confirm-before-applies). Her CURRENT confirmed link stays purchasable
+// throughout, so declining changes nothing and she keeps receiving her current
+// stage. Re-proposing overwrites a prior pending proposal so an admin can fix a
+// typo before she acts.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,13 +34,20 @@ export async function POST(
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
 
-  // Stage ONLY. No other field is read from the body.
+  // Stage + its product link ONLY. No other field is read from the body —
+  // brand/type/form can never change this way.
   const proposedStage = typeof body.formulaStage === "string" ? body.formulaStage.trim() : "";
   if (!proposedStage) {
     return NextResponse.json({ error: "A new stage is required." }, { status: 400 });
   }
   if (proposedStage.length > MAX_STAGE_LEN) {
     return NextResponse.json({ error: "That stage looks too long." }, { status: 400 });
+  }
+
+  // The new stage's product, so she confirms stage and item in one ask.
+  const validatedLink = validatePurchaseUrl(body.purchaseUrl);
+  if (!validatedLink.ok) {
+    return NextResponse.json({ error: `New stage product link: ${validatedLink.error}` }, { status: 400 });
   }
 
   const episode = await prisma.formulaEpisode.findUnique({
@@ -46,12 +63,14 @@ export async function POST(
   }
 
   // Write ONLY the proposal fields — never formulaBrand/formulaType/formulaForm,
-  // and never the live formulaStage. Reset the reminder marker so this fresh
-  // proposal gets its own single day-7 nudge.
+  // never the live formulaStage, and never the live purchaseUrl (which stays
+  // confirmed and purchasable until she accepts the new one). Reset the reminder
+  // marker so this fresh proposal gets its own single day-7 nudge.
   await prisma.formulaEpisode.update({
     where: { id: episode.id },
     data:  {
       pendingFormulaStage:        proposedStage,
+      pendingPurchaseUrl:         validatedLink.url,
       pendingStageRequestedAt:    new Date(),
       pendingStageReminderSentAt: null,
     },

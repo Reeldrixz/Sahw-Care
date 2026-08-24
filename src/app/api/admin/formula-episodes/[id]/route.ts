@@ -65,6 +65,18 @@ export async function PATCH(
         correctionRequestedAt: null,
         reminder7SentAt:       null,
         reminder12SentAt:      null,
+        // F5 (defensive): a spec change makes any existing purchasing link stale,
+        // so it can never stay confirmed. Unreachable today — links are only set
+        // on ACTIVE episodes and this route is AWAITING_CONFIRMATION-only — but
+        // free to hold, and it protects any future flow that sets a link earlier.
+        purchaseUrlConfirmedAt:    null,
+        purchaseUrlSentAt:         null,
+        purchaseUrlDeclinedAt:     null,
+        purchaseUrlDeclineNote:    null,
+        purchaseUrlReminderCount:  0,
+        purchaseUrlReminderSentAt: null,
+        blockedAdminNotifiedAt:    null,
+        blockedAdminEscalatedAt:   null,
       }),
     },
   });

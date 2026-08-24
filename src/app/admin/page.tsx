@@ -190,7 +190,7 @@ interface FormulaEpisodeAdmin {
   monthsTotal: number;
   confirmationDeadline: string | null; correctionNote: string | null; correctionRequestedAt: string | null;
   startedAt: string; confirmedAt: string | null; completedAt: string | null;
-  pendingFormulaStage: string | null; pendingStageRequestedAt: string | null;
+  pendingFormulaStage: string | null; pendingStageRequestedAt: string | null; pendingPurchaseUrl: string | null;
   purchaseUrl: string | null; purchaseUrlSetAt: string | null; purchaseUrlSentAt: string | null;
   purchaseUrlConfirmedAt: string | null; purchaseUrlDeclinedAt: string | null; purchaseUrlDeclineNote: string | null;
   fulfilledCount: number; deliveries: FormulaDeliveryAdmin[];
@@ -390,6 +390,7 @@ export default function AdminPage() {
   const [fulfillingKey,      setFulfillingKey]      = useState<string | null>(null);
   // D/F4d: propose a stage-for-growth change per active episode.
   const [stageInputMap,      setStageInputMap]      = useState<Record<string, string>>({});
+  const [stageLinkMap,       setStageLinkMap]       = useState<Record<string, string>>({});
   const [proposingId,        setProposingId]        = useState<string | null>(null);
   // F4: purchasing-link management + per-month purchase/complete lifecycle.
   const [linkInputMap,       setLinkInputMap]       = useState<Record<string, string>>({});
@@ -793,20 +794,24 @@ export default function AdminPage() {
     setPurchaseBusyKey(null);
   };
 
-  // D/F4d: propose a stage change (stage only). She re-confirms before it applies.
+  // D/F4d + F5: propose a stage change together with the new stage's product —
+  // one combined ask. She re-confirms both before either applies.
   const proposeStage = async (ep: FormulaEpisodeAdmin) => {
     const stage = (stageInputMap[ep.id] ?? "").trim();
+    const link  = (stageLinkMap[ep.id] ?? "").trim();
     if (!stage) { setToast("Enter the new stage first."); return; }
     if (stage === ep.formulaStage) { setToast("That's already her current stage."); return; }
+    if (!link) { setToast("Add the new stage's Amazon product link."); return; }
     setProposingId(ep.id);
     const r = await fetch(`/api/admin/formula-episodes/${ep.id}/propose-stage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ formulaStage: stage }),
+      body: JSON.stringify({ formulaStage: stage, purchaseUrl: link }),
     });
     if (r.ok) {
       setStageInputMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
-      setToast("Stage change proposed. She'll be asked to confirm.");
+      setStageLinkMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
+      setToast("Stage change proposed. She'll check the new product and confirm.");
       fetchActiveEpisodes();
     } else {
       const d = await r.json().catch(() => ({}));
@@ -3270,7 +3275,7 @@ export default function AdminPage() {
                                 Propose a stage change (as the baby grows)
                               </div>
                               <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginBottom: 8 }}>
-                                Stage only — brand, type, and form never change. She&apos;ll re-confirm before it applies.
+                                Stage only — brand, type, and form never change. Add the new stage&apos;s product too: she confirms the stage and the item in one ask, and her current product keeps shipping until she does.
                               </div>
                               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                                 <input
@@ -3278,6 +3283,11 @@ export default function AdminPage() {
                                   onChange={(e) => setStageInputMap((m) => ({ ...m, [ep.id]: e.target.value }))}
                                   placeholder="New stage (e.g. Stage 2)"
                                   style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, minWidth: 170 }} />
+                                <input
+                                  value={stageLinkMap[ep.id] ?? ""}
+                                  onChange={(e) => setStageLinkMap((m) => ({ ...m, [ep.id]: e.target.value }))}
+                                  placeholder="https://www.amazon.ca/…/dp/… (new stage product)"
+                                  style={{ flex: 1, minWidth: 240, padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
                                 <button
                                   onClick={() => proposeStage(ep)}
                                   disabled={proposingId === ep.id}

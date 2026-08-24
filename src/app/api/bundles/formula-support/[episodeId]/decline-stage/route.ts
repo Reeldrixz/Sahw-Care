@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// D/F4d: the mother declines / flags a proposed stage change. The live
-// formulaStage is left UNTOUCHED (safe default — her baby keeps its current
-// stage) and the pending proposal is cleared. Admins are notified, with her note
-// if she left one. ACTIVE-only; a pending proposal must exist.
+// D/F4d + F5: the mother declines / flags a proposed stage change. The live
+// formulaStage AND the live purchase link are left UNTOUCHED — her baby keeps
+// its current stage and that product stays confirmed and purchasable, so
+// declining costs her nothing and never blocks a month. Only the pending
+// proposal (stage + its link) is dropped. Admins are notified, with her note if
+// she left one. ACTIVE-only; a pending proposal must exist.
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ episodeId: string }> }
@@ -34,11 +36,13 @@ export async function POST(
   }
 
   const declinedStage = episode.pendingFormulaStage;
-  // Clear the proposal ONLY. formulaStage is intentionally not written here.
+  // Clear the proposal ONLY. formulaStage and the live purchase link (with its
+  // confirmation) are intentionally not written here.
   await prisma.formulaEpisode.update({
     where: { id: episode.id },
     data:  {
       pendingFormulaStage:        null,
+      pendingPurchaseUrl:         null,
       pendingStageRequestedAt:    null,
       pendingStageReminderSentAt: null,
     },

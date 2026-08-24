@@ -7,6 +7,7 @@ import FormulaSupportForm from "./FormulaSupportForm";
 import FormulaConfirmCard from "./FormulaConfirmCard";
 import FormulaProgressCard from "./FormulaProgressCard";
 import FormulaStageChangeCard from "./FormulaStageChangeCard";
+import FormulaLinkConfirmCard from "./FormulaLinkConfirmCard";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,11 @@ export default async function FormulaSupportPage() {
           formulaBrand: true, formulaType: true, formulaStage: true, formulaForm: true,
           monthsTotal: true,
           pendingFormulaStage: true,
+          pendingPurchaseUrl: true,
+          purchaseUrl: true,
+          purchaseUrlSentAt: true,
+          purchaseUrlConfirmedAt: true,
+          purchaseUrlDeclinedAt: true,
           deliveries: {
             orderBy: { monthIndex: "asc" },
             select:  { monthIndex: true, status: true, scheduledFor: true, fulfilledAt: true },
@@ -103,6 +109,27 @@ export default async function FormulaSupportPage() {
                 episodeId={episode.id}
                 currentStage={episode.formulaStage}
                 proposedStage={episode.pendingFormulaStage}
+                proposedPurchaseUrl={episode.pendingPurchaseUrl}
+                formulaBrand={episode.formulaBrand}
+                formulaType={episode.formulaType}
+                formulaForm={episode.formulaForm}
+              />
+            )}
+            {/* F3: she checks the exact product before we buy it. Shown only
+                while a sent link is awaiting her answer, and never alongside a
+                stage ask — one product question at a time. */}
+            {!episode.pendingFormulaStage
+              && episode.purchaseUrl
+              && episode.purchaseUrlSentAt
+              && !episode.purchaseUrlConfirmedAt
+              && !episode.purchaseUrlDeclinedAt && (
+              <FormulaLinkConfirmCard
+                episodeId={episode.id}
+                purchaseUrl={episode.purchaseUrl}
+                formulaBrand={episode.formulaBrand}
+                formulaType={episode.formulaType}
+                formulaStage={episode.formulaStage}
+                formulaForm={episode.formulaForm}
               />
             )}
             {episode.deliveries.length > 0 ? (
