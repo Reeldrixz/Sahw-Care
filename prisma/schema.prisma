@@ -1532,7 +1532,11 @@ model FormulaRequest {
   breastfeedingResourcesRequested Boolean @default(false)
 
   status     FormulaRequestStatus @default(PENDING)
-  adminNote  String?
+  adminNote  String? // INTERNAL triage note — never shown to her.
+  // A reason the admin chooses to SHARE with her on a decline. Deliberately a
+  // separate field from adminNote so candid internal notes can never leak: this
+  // one is sent to her word-for-word. Blank => she gets the warm generic message.
+  declineReasonForMother String?
   reviewedAt DateTime?
   reviewedBy String? // admin userId
   createdAt  DateTime @default(now())

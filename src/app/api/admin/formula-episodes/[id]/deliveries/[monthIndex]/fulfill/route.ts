@@ -138,16 +138,28 @@ export async function POST(
       }).catch((err) => console.error("[formula complete email]", err));
     }
   } else {
-    // Per-month reassurance: brief, in-app only (email is reserved for the two
-    // bookends — activation and completion).
-    prisma.notification.create({
+    // Per-month shipment notice. This now emails as well as posting in-app: it
+    // is the most email-worthy recurring moment in the programme, and in-app
+    // alone meant a mother who doesn't open the app never learned her baby's
+    // formula was on its way. "On its way" rather than "has been sent" because
+    // Complete may be stamped before the parcel physically moves.
+    const mother = await prisma.user.findUnique({ where: { id: episode.userId }, select: { name: true, email: true } });
+    await prisma.notification.create({
       data: {
         userId:  episode.userId,
         type:    "BUNDLE_UPDATE",
-        message: "Your formula for this month has been sent — it's on its way to you. 💛",
+        message: "Your formula for this month is on its way to you. 💛",
         link:    "/bundles/formula-support",
       },
-    }).catch(() => {});
+    }).catch((err) => console.error("[formula fulfil notify]", err));
+    if (mother?.email) {
+      await getResend().emails.send({
+        from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
+        to:      mother.email,
+        subject: "Your formula for this month is on its way",
+        html:    `<p>Hi ${mother.name},</p><p>Your formula for this month is on its way to you. There's nothing you need to do — we'll keep going month by month.</p><p>With warmth,<br/>The Kradel Team</p>`,
+      }).catch((err) => console.error("[formula fulfil email]", err));
+    }
   }
 
   return NextResponse.json({ ok: true, monthIndex, fulfilledCount, episodeCompleted });

@@ -377,6 +377,8 @@ export default function AdminPage() {
   const [formulaReqsFilter,  setFormulaReqsFilter]  = useState<"PENDING" | "APPROVED" | "DECLINED">("PENDING");
   const [formulaReqsTotal,   setFormulaReqsTotal]   = useState(0);
   const [formulaNoteMap,     setFormulaNoteMap]     = useState<Record<string, string>>({});
+  // Mother-facing decline reason — kept separate from the internal admin note.
+  const [formulaDeclineReasonMap, setFormulaDeclineReasonMap] = useState<Record<string, string>>({});
   const [expandedFormulaId,  setExpandedFormulaId]  = useState<string | null>(null);
   // D/F3b admission: per-request editable spec + form, and the in-flight admit id.
   const [admitFormMap,       setAdmitFormMap]       = useState<Record<string, { formulaBrand?: string; formulaType?: string; formulaStage?: string; formulaForm: string }>>({});
@@ -643,14 +645,23 @@ export default function AdminPage() {
 
   const reviewFormulaReq = async (id: string, status: string) => {
     const note = formulaNoteMap[id] ?? "";
+    // Mother-facing reason is sent to her word-for-word; adminNote stays internal.
+    const shared = (formulaDeclineReasonMap[id] ?? "").trim();
     const r = await fetch(`/api/admin/formula-requests/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, adminNote: note || undefined }),
+      body: JSON.stringify({
+        status,
+        adminNote: note || undefined,
+        ...(status === "DECLINED" && { declineReasonForMother: shared || undefined }),
+      }),
     });
     if (r.ok) {
       setFormulaReqs((prev) => prev.filter((a) => a.id !== id));
-      setToast(`Formula request ${status.toLowerCase()}`);
+      setFormulaDeclineReasonMap((m) => { const n = { ...m }; delete n[id]; return n; });
+      setToast(status === "DECLINED"
+        ? (shared ? "Declined. She's been sent your reason." : "Declined. She's been sent a warm general note.")
+        : `Formula request ${status.toLowerCase()}`);
     }
   };
 
@@ -3508,14 +3519,33 @@ export default function AdminPage() {
                                     </select>
                                   </div>
 
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#6b7280", fontFamily: "Nunito, sans-serif" }}>
+                                    Internal note (she won&apos;t see this)
+                                  </div>
                                   <textarea
-                                    placeholder="Admin note (optional, max 200 chars)…"
+                                    placeholder="Internal triage note (optional, max 200 chars)…"
                                     maxLength={200}
                                     value={formulaNoteMap[rq.id] ?? ""}
                                     onChange={(e) => setFormulaNoteMap((m) => ({ ...m, [rq.id]: e.target.value }))}
                                     rows={2}
                                     style={{ padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const }}
                                   />
+
+                                  {/* Mother-facing decline reason — sent to her verbatim. */}
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: "#b45309", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
+                                    Reason to share with her (optional — she will see this)
+                                  </div>
+                                  <textarea
+                                    placeholder="e.g. we're at capacity this month, please apply again in a few weeks"
+                                    maxLength={300}
+                                    value={formulaDeclineReasonMap[rq.id] ?? ""}
+                                    onChange={(e) => setFormulaDeclineReasonMap((m) => ({ ...m, [rq.id]: e.target.value }))}
+                                    rows={2}
+                                    style={{ padding: "8px 10px", border: "1.5px solid #fde8c8", background: "#fffdf8", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12, resize: "vertical", width: "100%", boxSizing: "border-box" as const }}
+                                  />
+                                  <div style={{ fontSize: 10.5, color: "#9ca3af", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, marginTop: -2 }}>
+                                    Only used when you decline. Leave blank and she gets a warm general message. Anything you write here goes to her word-for-word, so keep it kind.
+                                  </div>
 
                                   {noSlots && (
                                     <div style={{ fontSize: 11.5, color: "#c0392b", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>

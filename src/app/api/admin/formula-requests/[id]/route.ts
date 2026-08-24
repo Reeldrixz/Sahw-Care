@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getResend } from "@/lib/resend";
 import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,13 @@ export async function PATCH(
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  const { status, adminNote } = await req.json();
+  const { status, adminNote, declineReasonForMother } = await req.json();
+
+  // Mother-facing reason, kept strictly separate from the internal adminNote:
+  // whatever lands here is sent to her word-for-word.
+  const sharedReason = typeof declineReasonForMother === "string" && declineReasonForMother.trim()
+    ? declineReasonForMother.trim().slice(0, 300)
+    : null;
 
   const valid = ["PENDING", "APPROVED", "DECLINED"];
   if (status && !valid.includes(status)) {
@@ -51,19 +58,39 @@ export async function PATCH(
     data: {
       ...(status && { status, reviewedAt: new Date(), reviewedBy: admin.userId }),
       ...(adminNote !== undefined && { adminNote }),
+      ...(status === "DECLINED" && { declineReasonForMother: sharedReason }),
     },
-    select: { userId: true, status: true },
+    select: { userId: true, status: true, user: { select: { name: true, email: true } } },
   });
 
   // Supportive notification on a decision. Deliberately makes no promise of
-  // supply, even on approval ("follow up about next steps").
+  // supply, even on approval ("follow up about next steps"). A decline is a
+  // sensitive moment, so it stays warm and does NOT deflect her to other
+  // programmes — just an honest note and an open door to apply again.
   if (status === "APPROVED" || status === "DECLINED") {
+    const declineMessage = sharedReason
+      ? `Thank you for your formula support request. We're not able to help with it right now. ${sharedReason} You're welcome to apply again if anything changes.`
+      : "Thank you for your formula support request. We're not able to help with it right now, but your situation matters to us — please reach out or apply again if anything changes.";
     const message = status === "APPROVED"
       ? "We've reviewed your formula support request and will follow up with you about next steps."
-      : "Thank you for your formula support request. We're not able to help with it right now, but please reach out again if your situation changes.";
-    prisma.notification.create({
-      data: { userId: updated.userId, type: "BUNDLE_UPDATE", message, link: "/bundles" },
-    }).catch(() => {});
+      : declineMessage;
+
+    // Awaited: a dropped decision notice leaves her with no idea what happened.
+    await prisma.notification.create({
+      data: { userId: updated.userId, type: "BUNDLE_UPDATE", message, link: "/bundles/formula-support" },
+    }).catch((err) => console.error("[formula decision notify]", err));
+
+    // Decline now emails too — in-app alone meant a mother who doesn't open the
+    // app was never told her request had been turned down.
+    if (status === "DECLINED" && updated.user.email) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
+      await getResend().emails.send({
+        from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
+        to:      updated.user.email,
+        subject: "About your formula support request",
+        html:    `<p>Hi ${updated.user.name},</p><p>${declineMessage}</p><p><a href="${appUrl}/bundles/formula-support">Formula support</a></p><p>With warmth,<br/>The Kradel Team</p>`,
+      }).catch((err) => console.error("[formula decline email]", err));
+    }
   }
 
   return NextResponse.json({ ok: true });
