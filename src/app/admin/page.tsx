@@ -596,7 +596,9 @@ export default function AdminPage() {
 
   const fetchFormulaCapacity = useCallback(async () => {
     setFormulaCapacityLoading(true);
-    const r = await fetch("/api/admin/formula-capacity");
+    // no-store: refetched right after writes, so a cached body would show
+    // pre-write state (see the /bundles catalogue fix, 2b52e01).
+    const r = await fetch("/api/admin/formula-capacity", { cache: "no-store" });
     if (r.ok) {
       const d = await r.json();
       setFormulaCapacity(d);
@@ -621,13 +623,16 @@ export default function AdminPage() {
 
   // D/F3c: awaiting-confirmation episodes (so a flagged correction can be fixed).
   const fetchFormulaEpisodes = useCallback(async () => {
-    const r = await fetch("/api/admin/formula-episodes?status=AWAITING_CONFIRMATION");
+    const r = await fetch("/api/admin/formula-episodes?status=AWAITING_CONFIRMATION", { cache: "no-store" });
     if (r.ok) { const d = await r.json(); setFormulaEpisodes(d.episodes ?? []); }
   }, []);
 
   // D/F4c: ACTIVE episodes with per-month deliveries, for delivery marking.
   const fetchActiveEpisodes = useCallback(async () => {
-    const r = await fetch("/api/admin/formula-episodes?status=ACTIVE");
+    // no-store: this drives the link-panel button lifecycle, which must reflect
+    // the write that just happened (a stale body left "Approve" clickable after
+    // the link had already been sent).
+    const r = await fetch("/api/admin/formula-episodes?status=ACTIVE", { cache: "no-store" });
     if (r.ok) { const d = await r.json(); setActiveEpisodes(d.episodes ?? []); }
   }, []);
 
@@ -754,6 +759,12 @@ export default function AdminPage() {
     setLinkBusyId(ep.id);
     const r = await fetch(`/api/admin/formula-episodes/${ep.id}/purchase-link/approve`, { method: "POST" });
     if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      // Flip to "Awaiting her confirmation" immediately from the endpoint's own
+      // sentAt, so the Approve button can never linger as clickable while a
+      // refetch is slow or fails. The refetch below still reconciles the rest.
+      const sentAt = d.sentAt ?? new Date().toISOString();
+      setActiveEpisodes((prev) => prev.map((e) => (e.id === ep.id ? { ...e, purchaseUrlSentAt: sentAt } : e)));
       setToast("Sent to her. She'll check the product before we buy it.");
       fetchActiveEpisodes();
     } else {
