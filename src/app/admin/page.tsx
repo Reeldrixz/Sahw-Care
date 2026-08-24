@@ -193,6 +193,7 @@ interface FormulaEpisodeAdmin {
   pendingFormulaStage: string | null; pendingStageRequestedAt: string | null; pendingPurchaseUrl: string | null;
   purchaseUrl: string | null; purchaseUrlSetAt: string | null; purchaseUrlSentAt: string | null;
   purchaseUrlConfirmedAt: string | null; purchaseUrlDeclinedAt: string | null; purchaseUrlDeclineNote: string | null;
+  purchaseUrlReminderCount: number;
   fulfilledCount: number; deliveries: FormulaDeliveryAdmin[];
   mother: { id: string; name: string; email: string | null; phone: string | null };
 }
@@ -3092,6 +3093,10 @@ export default function AdminPage() {
                               <br />
                               Month {blockedMonth.monthIndex} of {ep.monthsTotal} · due {new Date(blockedMonth.scheduledFor).toLocaleDateString("en-CA")}
                               {waitingSince ? ` · waiting ${daysWaiting} day${daysWaiting === 1 ? "" : "s"}` : ""}
+                              {` · ${ep.purchaseUrlReminderCount} reminder${ep.purchaseUrlReminderCount === 1 ? "" : "s"} sent`}
+                              {ep.purchaseUrlReminderCount >= 4 && (
+                                <strong> — automated reminders are exhausted; only human contact remains.</strong>
+                              )}
                             </div>
                             <div style={{ fontSize: 12, color: "#7f231c", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>
                               We never purchase an unconfirmed product. <strong>Reach her directly:</strong>{" "}

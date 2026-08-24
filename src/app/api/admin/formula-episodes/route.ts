@@ -63,6 +63,10 @@ export async function GET(req: NextRequest) {
     purchaseUrlConfirmedAt: e.purchaseUrlConfirmedAt,
     purchaseUrlDeclinedAt:  e.purchaseUrlDeclinedAt,
     purchaseUrlDeclineNote: e.purchaseUrlDeclineNote,
+    // F6: how many automated chases have gone out — an admin seeing "4 reminders
+    // sent, still nothing" knows the automated path is exhausted and only human
+    // contact remains.
+    purchaseUrlReminderCount: e.purchaseUrlReminderCount,
     fulfilledCount:        e.deliveries.filter((d) => d.status === "FULFILLED").length,
     deliveries:            e.deliveries,
     mother: { id: e.user.id, name: e.user.name, email: e.user.email, phone: e.user.phone },
