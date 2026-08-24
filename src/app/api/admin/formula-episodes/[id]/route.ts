@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUser } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -81,16 +82,19 @@ export async function PATCH(
     },
   });
 
+  // Tier-1 when the spec actually changed: she must re-confirm before anything
+  // proceeds, so a dropped notice would stall her episode silently.
+  let notified = true;
   if (specChanged) {
-    prisma.notification.create({
-      data: {
-        userId:  episode.userId,
-        type:    "BUNDLE_UPDATE",
-        message: "We've updated your formula details. Please take another look and confirm that everything matches what your baby uses.",
-        link:    "/bundles/formula-support",
-      },
-    }).catch(() => {});
+    const res = await notifyUser({
+      userId:  episode.userId,
+      type:    "BUNDLE_UPDATE",
+      message: "We've updated your formula details. Please take another look and confirm that everything matches what your baby uses.",
+      link:    "/bundles/formula-support",
+      context: "formula:spec-fix",
+    });
+    notified = res.reached;
   }
 
-  return NextResponse.json({ ok: true, specChanged });
+  return NextResponse.json({ ok: true, specChanged, notified });
 }

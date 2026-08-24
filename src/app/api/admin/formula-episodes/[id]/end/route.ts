@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -71,23 +71,21 @@ export async function POST(
   // Warm, vague, no-fault note to the mother (best-effort, outside the txn). The
   // internal reason is NEVER included here. "Paused" is deliberate — her page
   // falls through to normal intake, so she can always come back.
+  // Tier-1: her support just stopped. If this never reaches her she is left
+  // expecting formula that will not come, so the result goes back to the admin.
   const mother = await prisma.user.findUnique({ where: { id: episode.userId }, select: { name: true, email: true } });
-  prisma.notification.create({
-    data: {
-      userId:  episode.userId,
-      type:    "BUNDLE_UPDATE",
-      message: "We've paused your formula support for now. If this was unexpected, or anything has changed and you'd like to continue, please reach out — we're here and happy to help. 💛",
-      link:    "/bundles/formula-support",
-    },
-  }).catch(() => {});
-  if (mother?.email) {
-    getResend().emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
-      to:      mother.email,
+  const { reached } = await notifyUser({
+    userId:  episode.userId,
+    type:    "BUNDLE_UPDATE",
+    message: "We've paused your formula support for now. If this was unexpected, or anything has changed and you'd like to continue, please reach out — we're here and happy to help. 💛",
+    link:    "/bundles/formula-support",
+    context: "formula:end",
+    email: {
+      to:      mother?.email,
       subject: "About your formula support",
-      html:    `<p>Hi ${mother.name},</p><p>We've paused your formula support for now. If this was unexpected, or if anything has changed and you'd like to continue, please reach out — we're here and happy to help.</p><p>Warmly,<br/>The Kradel Team</p>`,
-    }).catch((err) => console.error("[formula end email]", err));
-  }
+      html:    `<p>Hi ${mother?.name},</p><p>We've paused your formula support for now. If this was unexpected, or if anything has changed and you'd like to continue, please reach out — we're here and happy to help.</p><p>Warmly,<br/>The Kradel Team</p>`,
+    },
+  });
 
-  return NextResponse.json({ ok: true, cancelledDeliveries });
+  return NextResponse.json({ ok: true, cancelledDeliveries, notified: reached });
 }

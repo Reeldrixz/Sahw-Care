@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyUser } from "@/lib/notify";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
@@ -126,14 +127,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  prisma.notification.create({
-    data: {
-      userId:  currentUser.userId,
-      type:    "BUNDLE_UPDATE",
-      message: "Your formula support request has been received. Our team will review it individually and follow up with you.",
-      link:    "/bundles",
-    },
-  }).catch(() => {});
+  await notifyUser({
+    userId:  currentUser.userId,
+    type:    "BUNDLE_UPDATE",
+    message: "Your formula support request has been received. Our team will review it individually and follow up with you.",
+    link:    "/bundles/formula-support",
+    context: "formula:request-received",
+  });
 
   return NextResponse.json({ requestId: request.id }, { status: 201 });
 }

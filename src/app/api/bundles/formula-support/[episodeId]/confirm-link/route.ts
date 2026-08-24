@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdmins } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -57,18 +58,11 @@ export async function POST(
   });
 
   // Tell admins it's now safe to buy (best-effort).
-  prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }).then((admins) => {
-    if (admins.length === 0) return;
-    return prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId:  a.id,
-        type:    "ADMIN_MESSAGE" as const,
-        title:   "Formula product confirmed",
-        message: `${currentUser.name ?? "A mother"} confirmed her formula product. It's safe to purchase and send.`,
-        link:    "/admin",
-      })),
-    });
-  }).catch(() => {});
+  await notifyAdmins({
+    title:   "Formula product confirmed",
+    message: `${currentUser.name ?? "A mother"} confirmed her formula product. It's safe to purchase and send.`,
+    context: "formula:confirm-link",
+  });
 
   return NextResponse.json({ ok: true, confirmedAt: now.toISOString() });
 }

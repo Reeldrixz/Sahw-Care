@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser } from "@/lib/notify";
 import { monthlyCooldown, formatCooldownDate } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
@@ -75,23 +75,24 @@ export async function PATCH(
       ? "We've reviewed your formula support request and will follow up with you about next steps."
       : declineMessage;
 
-    // Awaited: a dropped decision notice leaves her with no idea what happened.
-    await prisma.notification.create({
-      data: { userId: updated.userId, type: "BUNDLE_UPDATE", message, link: "/bundles/formula-support" },
-    }).catch((err) => console.error("[formula decision notify]", err));
-
-    // Decline now emails too — in-app alone meant a mother who doesn't open the
-    // app was never told her request had been turned down.
-    if (status === "DECLINED" && updated.user.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
-      await getResend().emails.send({
-        from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
+    // Tier-1: a dropped decision notice leaves her with no idea what happened.
+    // Decline emails too — in-app alone meant a mother who doesn't open the app
+    // was never told her request had been turned down.
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
+    const res = await notifyUser({
+      userId:  updated.userId,
+      type:    "BUNDLE_UPDATE",
+      message,
+      link:    "/bundles/formula-support",
+      context: status === "DECLINED" ? "formula:decline" : "formula:approve-request",
+      email: status === "DECLINED" ? {
         to:      updated.user.email,
         subject: "About your formula support request",
         html:    `<p>Hi ${updated.user.name},</p><p>${declineMessage}</p><p><a href="${appUrl}/bundles/formula-support">Formula support</a></p><p>With warmth,<br/>The Kradel Team</p>`,
-      }).catch((err) => console.error("[formula decline email]", err));
-    }
+      } : null,
+    });
+    return NextResponse.json({ ok: true, notified: res.reached });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, notified: true });
 }

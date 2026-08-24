@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdmins } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -49,18 +50,11 @@ export async function POST(
   });
 
   // Alert admins she declined so someone can follow up (best-effort).
-  prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }).then((admins) => {
-    if (admins.length === 0) return;
-    return prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId:  a.id,
-        type:    "ADMIN_MESSAGE" as const,
-        title:   "Stage change declined",
-        message: `${currentUser.name ?? "A mother"} declined the move to Stage ${declinedStage}.${note ? ` Note: ${note}` : ""}`,
-        link:    "/admin",
-      })),
-    });
-  }).catch(() => {});
+  await notifyAdmins({
+    title:   "Stage change declined",
+    message: `${currentUser.name ?? "A mother"} declined the move to Stage ${declinedStage}.${note ? ` Note: ${note}` : ""}`,
+    context: "formula:decline-stage",
+  });
 
   return NextResponse.json({ ok: true });
 }

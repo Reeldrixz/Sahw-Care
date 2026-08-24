@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -134,23 +134,21 @@ export async function POST(
     select: { name: true, email: true },
   });
 
-  prisma.notification.create({
-    data: {
-      userId:  request.userId,
-      type:    "BUNDLE_UPDATE",
-      message: "Good news: you've been admitted to Kradel formula support. Please open the app and confirm your baby's exact formula so we can begin. It only takes a moment.",
-      link:    "/bundles/formula-support",
-    },
-  }).catch(() => {});
-
-  if (mother?.email) {
-    getResend().emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
-      to:      mother.email,
+  // Tier-1: her slot is now reserved against a 14-day window. If this never
+  // reaches her the window can lapse and the episode expires no-fault, so the
+  // result goes back to the admin.
+  const { reached } = await notifyUser({
+    userId:  request.userId,
+    type:    "BUNDLE_UPDATE",
+    message: "Good news: you've been admitted to Kradel formula support. Please open the app and confirm your baby's exact formula so we can begin. It only takes a moment.",
+    link:    "/bundles/formula-support",
+    context: "formula:admit",
+    email: {
+      to:      mother?.email,
       subject: "Please confirm your baby's formula to begin",
-      html:    `<p>Hi ${mother.name},</p><p>Good news: you've been admitted to Kradel formula support, six months of your baby's formula with no need to reapply. Before we begin, please confirm the exact formula so we send precisely what your baby uses. Open the app and tap to confirm. If anything isn't right, tell us and we'll fix it first.</p><p>The Kradel Team</p>`,
-    }).catch((err) => console.error("[formula admit email]", err));
-  }
+      html:    `<p>Hi ${mother?.name},</p><p>Good news: you've been admitted to Kradel formula support, six months of your baby's formula with no need to reapply. Before we begin, please confirm the exact formula so we send precisely what your baby uses. Open the app and tap to confirm. If anything isn't right, tell us and we'll fix it first.</p><p>The Kradel Team</p>`,
+    },
+  });
 
-  return NextResponse.json({ ok: true, episodeId, hasEmail: !!mother?.email });
+  return NextResponse.json({ ok: true, episodeId, hasEmail: !!mother?.email, notified: reached });
 }

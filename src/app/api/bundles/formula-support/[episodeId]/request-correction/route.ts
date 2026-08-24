@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdmins } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -38,18 +39,11 @@ export async function POST(
   });
 
   // Alert all admins to review and fix the spec.
-  prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }).then((admins) => {
-    if (admins.length === 0) return;
-    return prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId:  a.id,
-        type:    "ADMIN_MESSAGE" as const,
-        title:   "Formula correction flagged",
-        message: `${currentUser.name ?? "A mother"} flagged a correction on her formula details. Please review and update.`,
-        link:    "/admin",
-      })),
-    });
-  }).catch(() => {});
+  await notifyAdmins({
+    title:   "Formula correction flagged",
+    message: `${currentUser.name ?? "A mother"} flagged a correction on her formula details. Please review and update.`,
+    context: "formula:request-correction",
+  });
 
   return NextResponse.json({ ok: true });
 }

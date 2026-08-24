@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdmins } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -64,18 +65,11 @@ export async function POST(
   });
 
   // Let admins know she accepted (best-effort).
-  prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }).then((admins) => {
-    if (admins.length === 0) return;
-    return prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId:  a.id,
-        type:    "ADMIN_MESSAGE" as const,
-        title:   "Stage change confirmed",
-        message: `${currentUser.name ?? "A mother"} confirmed the move to Stage ${newStage}.`,
-        link:    "/admin",
-      })),
-    });
-  }).catch(() => {});
+  await notifyAdmins({
+    title:   "Stage change confirmed",
+    message: `${currentUser.name ?? "A mother"} confirmed the move to Stage ${newStage}.`,
+    context: "formula:confirm-stage",
+  });
 
   return NextResponse.json({ ok: true, formulaStage: newStage });
 }

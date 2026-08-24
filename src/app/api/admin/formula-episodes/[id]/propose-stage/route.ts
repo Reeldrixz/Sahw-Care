@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser } from "@/lib/notify";
 import { validatePurchaseUrl } from "@/lib/purchaseLink";
 
 export const dynamic = "force-dynamic";
@@ -76,24 +76,21 @@ export async function POST(
     },
   });
 
-  // Notify the mother: in-app always, email when present (best-effort).
+  // Tier-1: the proposal is meaningless if she never sees it — it would sit
+  // pending until the day-7 nudge, so the result goes back to the admin.
   const mother = await prisma.user.findUnique({ where: { id: episode.userId }, select: { name: true, email: true } });
-  prisma.notification.create({
-    data: {
-      userId:  episode.userId,
-      type:    "BUNDLE_UPDATE",
-      message: `As your baby grows, we'd like to move their formula to Stage ${proposedStage}. Please take a look and confirm it's right before we send your next month.`,
-      link:    "/bundles/formula-support",
-    },
-  }).catch(() => {});
-  if (mother?.email) {
-    getResend().emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
-      to:      mother.email,
+  const { reached } = await notifyUser({
+    userId:  episode.userId,
+    type:    "BUNDLE_UPDATE",
+    message: `As your baby grows, we'd like to move their formula to Stage ${proposedStage}. Please take a look and confirm it's right before we send your next month.`,
+    link:    "/bundles/formula-support",
+    context: "formula:propose-stage",
+    email: {
+      to:      mother?.email,
       subject: "A stage update for your baby's formula",
-      html:    `<p>Hi ${mother.name},</p><p>As babies grow, formula usually moves up a stage. We'd like to update your support to <strong>Stage ${proposedStage}</strong> — only the stage changes, it's the same brand, type, and form your baby already uses.</p><p>Please open your formula support page to confirm it's right before we send your next month.</p><p>With warmth,<br/>The Kradel Team</p>`,
-    }).catch((err) => console.error("[propose-stage email]", err));
-  }
+      html:    `<p>Hi ${mother?.name},</p><p>As babies grow, formula usually moves up a stage. We'd like to update your support to <strong>Stage ${proposedStage}</strong> — only the stage changes, it's the same brand, type, and form your baby already uses.</p><p>Please open your formula support page to confirm it's right before we send your next month.</p><p>With warmth,<br/>The Kradel Team</p>`,
+    },
+  });
 
-  return NextResponse.json({ ok: true, pendingFormulaStage: proposedStage });
+  return NextResponse.json({ ok: true, pendingFormulaStage: proposedStage, notified: reached });
 }

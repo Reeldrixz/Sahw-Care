@@ -286,6 +286,11 @@ function catalogStalePill(lastVerifiedAt: string | null): { label: string; color
   return { label: `Verified ${days}d ago`, color: "#c0392b", bg: "#fee2e2" };
 }
 
+// Shown when a Tier-1 formula notification reached the mother by NO channel
+// (neither in-app nor email). The action itself succeeded — this is the admin's
+// cue that the automated path failed and only human contact remains.
+const UNREACHED_WARNING = "⚠️ Done, but we could NOT reach her — no notification or email got through. Please contact her directly.";
+
 const VERIFY_LABELS = ["Unverified", "Phone/Email ✓", "Phone+Email ✓✓", "ID Verified ✓✓✓"];
 const TRUST_COLOR = (s: number) => s >= 70 ? "var(--green)" : s >= 40 ? "#b8860b" : "var(--terra)";
 const TRUST_BG   = (s: number) => s >= 70 ? "var(--green-light)" : s >= 40 ? "var(--yellow-light)" : "var(--terra-light)";
@@ -657,9 +662,12 @@ export default function AdminPage() {
       }),
     });
     if (r.ok) {
+      const d = await r.json().catch(() => ({}));
       setFormulaReqs((prev) => prev.filter((a) => a.id !== id));
       setFormulaDeclineReasonMap((m) => { const n = { ...m }; delete n[id]; return n; });
-      setToast(status === "DECLINED"
+      setToast(d.notified === false
+        ? UNREACHED_WARNING
+        : status === "DECLINED"
         ? (shared ? "Declined. She's been sent your reason." : "Declined. She's been sent a warm general note.")
         : `Formula request ${status.toLowerCase()}`);
     }
@@ -687,7 +695,9 @@ export default function AdminPage() {
       const d = await r.json().catch(() => ({}));
       setFormulaReqs((prev) => prev.filter((a) => a.id !== rq.id));
       fetchFormulaCapacity();
-      setToast(d.hasEmail
+      setToast(d.notified === false
+        ? UNREACHED_WARNING
+        : d.hasEmail
         ? "Admitted for 6 months. She'll be asked to confirm her baby's formula."
         : "Admitted. No email on file, so follow up with her directly so she confirms in time.");
     } else {
@@ -710,7 +720,9 @@ export default function AdminPage() {
     });
     if (r.ok) {
       const d = await r.json().catch(() => ({}));
-      setToast(d.specChanged ? "Updated. She's been asked to confirm again." : "Saved. No spec change.");
+      setToast(d.notified === false
+        ? UNREACHED_WARNING
+        : d.specChanged ? "Updated. She's been asked to confirm again." : "Saved. No spec change.");
       fetchFormulaEpisodes();
     } else {
       const d = await r.json().catch(() => ({}));
@@ -733,7 +745,9 @@ export default function AdminPage() {
     if (r.ok) {
       const d = await r.json().catch(() => ({}));
       setDeliveryNoteMap((m) => { const next = { ...m }; delete next[key]; return next; });
-      setToast(d.episodeCompleted ? "Episode complete — all 6 months delivered." : `Month ${monthIndex} marked fulfilled`);
+      setToast(d.notified === false
+        ? UNREACHED_WARNING
+        : d.episodeCompleted ? "Episode complete — all 6 months delivered." : `Month ${monthIndex} marked fulfilled`);
       fetchActiveEpisodes();
       fetchFormulaCapacity();
     } else {
@@ -776,7 +790,7 @@ export default function AdminPage() {
       // refetch is slow or fails. The refetch below still reconciles the rest.
       const sentAt = d.sentAt ?? new Date().toISOString();
       setActiveEpisodes((prev) => prev.map((e) => (e.id === ep.id ? { ...e, purchaseUrlSentAt: sentAt } : e)));
-      setToast("Sent to her. She'll check the product before we buy it.");
+      setToast(d.notified === false ? UNREACHED_WARNING : "Sent to her. She'll check the product before we buy it.");
       fetchActiveEpisodes();
     } else {
       const d = await r.json().catch(() => ({}));
@@ -832,9 +846,10 @@ export default function AdminPage() {
       body: JSON.stringify({ formulaStage: stage, purchaseUrl: link }),
     });
     if (r.ok) {
+      const d = await r.json().catch(() => ({}));
       setStageInputMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
       setStageLinkMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
-      setToast("Stage change proposed. She'll check the new product and confirm.");
+      setToast(d.notified === false ? UNREACHED_WARNING : "Stage change proposed. She'll check the new product and confirm.");
       fetchActiveEpisodes();
     } else {
       const d = await r.json().catch(() => ({}));
@@ -855,9 +870,10 @@ export default function AdminPage() {
       body: JSON.stringify({ reason }),
     });
     if (r.ok) {
+      const d = await r.json().catch(() => ({}));
       setEndReasonMap((m) => { const next = { ...m }; delete next[ep.id]; return next; });
       setEndOpenId(null);
-      setToast("Formula support ended. She's been sent a kind note.");
+      setToast(d.notified === false ? UNREACHED_WARNING : "Formula support ended. She's been sent a kind note.");
       fetchActiveEpisodes();
       fetchFormulaCapacity();
     } else {

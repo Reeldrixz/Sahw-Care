@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -117,50 +117,43 @@ export async function POST(
   // Notify the mother (best-effort, outside the txn). On the completing
   // fulfilment we send the warmer completion message INSTEAD of the per-month
   // one, so she never gets two pings at once.
+  const mother = await prisma.user.findUnique({ where: { id: episode.userId }, select: { name: true, email: true } });
+  let notified: boolean;
+
   if (episodeCompleted) {
-    const mother = await prisma.user.findUnique({ where: { id: episode.userId }, select: { name: true, email: true } });
-    prisma.notification.create({
-      data: {
-        userId:  episode.userId,
-        type:    "BUNDLE_UPDATE",
-        // Leads with belonging (Circle) then the other supports; links to her
-        // community, not the formula page she's now graduated from.
-        message: "Your 6 months of formula support are complete. 💛 You're still part of the Kradel community — your Circle, your Register, and Discover are all here whenever you need them.",
-        link:    "/circles",
-      },
-    }).catch(() => {});
-    if (mother?.email) {
-      getResend().emails.send({
-        from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
-        to:      mother.email,
+    ({ reached: notified } = await notifyUser({
+      userId:  episode.userId,
+      type:    "BUNDLE_UPDATE",
+      // Leads with belonging (Circle) then the other supports; links to her
+      // community, not the formula page she's now graduated from.
+      message: "Your 6 months of formula support are complete. 💛 You're still part of the Kradel community — your Circle, your Register, and Discover are all here whenever you need them.",
+      link:    "/circles",
+      context: "formula:complete",
+      email: {
+        to:      mother?.email,
         subject: "Your formula support is complete — and you're still part of Kradel",
-        html:    `<p>Hi ${mother.name},</p><p>Your 6 months of formula support are now complete — every month has been sent. It's been our privilege to walk this stretch with you and your baby.</p><p>Formula support is a one-time, six-month program, and it comes to a close here — but your place in Kradel doesn't. Your Circle is still yours: your stage community, the mothers you've met, and your Reflections. So are your Register and Discover, here whenever you need them.</p><p>Thank you for letting us be part of your journey. You're always welcome here.</p><p>With warmth,<br/>The Kradel Team</p>`,
-      }).catch((err) => console.error("[formula complete email]", err));
-    }
+        html:    `<p>Hi ${mother?.name},</p><p>Your 6 months of formula support are now complete — every month has been sent. It's been our privilege to walk this stretch with you and your baby.</p><p>Formula support is a one-time, six-month program, and it comes to a close here — but your place in Kradel doesn't. Your Circle is still yours: your stage community, the mothers you've met, and your Reflections. So are your Register and Discover, here whenever you need them.</p><p>Thank you for letting us be part of your journey. You're always welcome here.</p><p>With warmth,<br/>The Kradel Team</p>`,
+      },
+    }));
   } else {
     // Per-month shipment notice. This now emails as well as posting in-app: it
     // is the most email-worthy recurring moment in the programme, and in-app
     // alone meant a mother who doesn't open the app never learned her baby's
     // formula was on its way. "On its way" rather than "has been sent" because
     // Complete may be stamped before the parcel physically moves.
-    const mother = await prisma.user.findUnique({ where: { id: episode.userId }, select: { name: true, email: true } });
-    await prisma.notification.create({
-      data: {
-        userId:  episode.userId,
-        type:    "BUNDLE_UPDATE",
-        message: "Your formula for this month is on its way to you. 💛",
-        link:    "/bundles/formula-support",
-      },
-    }).catch((err) => console.error("[formula fulfil notify]", err));
-    if (mother?.email) {
-      await getResend().emails.send({
-        from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
-        to:      mother.email,
+    ({ reached: notified } = await notifyUser({
+      userId:  episode.userId,
+      type:    "BUNDLE_UPDATE",
+      message: "Your formula for this month is on its way to you. 💛",
+      link:    "/bundles/formula-support",
+      context: "formula:shipment",
+      email: {
+        to:      mother?.email,
         subject: "Your formula for this month is on its way",
-        html:    `<p>Hi ${mother.name},</p><p>Your formula for this month is on its way to you. There's nothing you need to do — we'll keep going month by month.</p><p>With warmth,<br/>The Kradel Team</p>`,
-      }).catch((err) => console.error("[formula fulfil email]", err));
-    }
+        html:    `<p>Hi ${mother?.name},</p><p>Your formula for this month is on its way to you. There's nothing you need to do — we'll keep going month by month.</p><p>With warmth,<br/>The Kradel Team</p>`,
+      },
+    }));
   }
 
-  return NextResponse.json({ ok: true, monthIndex, fulfilledCount, episodeCompleted });
+  return NextResponse.json({ ok: true, monthIndex, fulfilledCount, episodeCompleted, notified });
 }

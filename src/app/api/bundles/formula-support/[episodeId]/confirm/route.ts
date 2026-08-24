@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser, notifyAdmins } from "@/lib/notify";
 import { addOneMonth } from "@/lib/cooldowns";
 
 export const dynamic = "force-dynamic";
@@ -64,38 +64,29 @@ export async function POST(
     return NextResponse.json({ error: "Could not confirm. Please try again." }, { status: 500 });
   }
 
-  // Notify all admins to fulfil month 1 (best-effort, outside the txn).
-  prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }).then((admins) => {
-    if (admins.length === 0) return;
-    return prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId:  a.id,
-        type:    "ADMIN_MESSAGE" as const,
-        title:   "Formula confirmed",
-        message: `${currentUser.name ?? "A mother"} confirmed her formula. Please fulfil month 1 of ${months}.`,
-        link:    "/admin",
-      })),
-    });
-  }).catch(() => {});
+  // Notify all admins to fulfil month 1 (after the txn — the activation is
+  // already committed, so a notification failure must never undo it).
+  await notifyAdmins({
+    title:   "Formula confirmed",
+    message: `${currentUser.name ?? "A mother"} confirmed her formula. Please fulfil month 1 of ${months}.`,
+    context: "formula:confirm",
+  });
 
   // Warm success to the mother: in-app always, email when present.
   const mother = await prisma.user.findUnique({ where: { id: currentUser.userId }, select: { name: true, email: true } });
-  prisma.notification.create({
-    data: {
-      userId:  currentUser.userId,
-      type:    "BUNDLE_UPDATE",
-      message: "Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed.",
-      link:    "/bundles/formula-support",
-    },
-  }).catch(() => {});
-  if (mother?.email) {
-    getResend().emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
-      to:      mother.email,
+  const activeMsg = "Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed.";
+  await notifyUser({
+    userId:  currentUser.userId,
+    type:    "BUNDLE_UPDATE",
+    message: activeMsg,
+    link:    "/bundles/formula-support",
+    context: "formula:confirm",
+    email: {
+      to:      mother?.email,
       subject: "Your Kradel formula support is active",
-      html:    `<p>Hi ${mother.name},</p><p>Thank you. Your formula support is now active. We're preparing your first month now. We aim for every month, though occasionally one may be delayed.</p><p>The Kradel Team</p>`,
-    }).catch((err) => console.error("[formula confirm email]", err));
-  }
+      html:    `<p>Hi ${mother?.name},</p><p>${activeMsg}</p><p>The Kradel Team</p>`,
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

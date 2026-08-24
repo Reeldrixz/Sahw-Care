@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getResend } from "@/lib/resend";
+import { notifyUser } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -74,23 +74,21 @@ export async function POST(
   // Ask her to check the product (best-effort, outside the write). The email
   // links to her formula support page, NOT straight to Amazon — the checklist
   // and the confirm/decline actions live on the card there.
+  // Tier-1: if this never reaches her she cannot confirm, and the month stalls
+  // with nothing purchased — so the result is reported back to the admin.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sahw-care.vercel.app";
-  prisma.notification.create({
-    data: {
-      userId:  episode.userId,
-      type:    "BUNDLE_UPDATE",
-      message: "Please take a look at your baby's formula before we buy it. Open the product, check it's right, and we'll send it.",
-      link:    "/bundles/formula-support",
-    },
-  }).catch(() => {});
-  if (episode.user.email) {
-    getResend().emails.send({
-      from:    process.env.RESEND_FROM_EMAIL ?? "noreply@kradel.care",
+  const { reached } = await notifyUser({
+    userId:  episode.userId,
+    type:    "BUNDLE_UPDATE",
+    message: "Please take a look at your baby's formula before we buy it. Open the product, check it's right, and we'll send it.",
+    link:    "/bundles/formula-support",
+    context: "formula:approve-link",
+    email: {
       to:      episode.user.email,
       subject: "Please confirm your baby's formula before we send it",
       html:    `<p>Hi ${episode.user.name},</p><p>We're getting this month's formula ready. Before we buy anything, please open the exact product and confirm it's what your baby uses. We never purchase until you've checked.</p><p>It only takes a moment: <a href="${appUrl}/bundles/formula-support">check your formula</a>.</p><p>With warmth,<br/>The Kradel Team</p>`,
-    }).catch((err) => console.error("[purchase-link approve email]", err));
-  }
+    },
+  });
 
-  return NextResponse.json({ ok: true, sentAt: now.toISOString() });
+  return NextResponse.json({ ok: true, sentAt: now.toISOString(), notified: reached });
 }

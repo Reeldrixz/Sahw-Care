@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifyAdmins } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -59,18 +60,11 @@ export async function POST(
   });
 
   // Alert admins loudly — nothing can be purchased until they correct the link.
-  prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } }).then((admins) => {
-    if (admins.length === 0) return;
-    return prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId:  a.id,
-        type:    "ADMIN_MESSAGE" as const,
-        title:   wasConfirmed ? "Formula product flagged AFTER confirming" : "Formula product flagged as wrong",
-        message: `${currentUser.name ?? "A mother"} flagged her formula product as wrong.${note ? ` She said: "${note}"` : ""}${wasConfirmed ? " She had previously confirmed it, so the confirmation has been withdrawn." : ""} Nothing can be purchased until the link is corrected.`,
-        link:    "/admin",
-      })),
-    });
-  }).catch(() => {});
+  await notifyAdmins({
+    title:   wasConfirmed ? "Formula product flagged AFTER confirming" : "Formula product flagged as wrong",
+    message: `${currentUser.name ?? "A mother"} flagged her formula product as wrong.${note ? ` She said: "${note}"` : ""}${wasConfirmed ? " She had previously confirmed it, so the confirmation has been withdrawn." : ""} Nothing can be purchased until the link is corrected.`,
+    context: "formula:decline-link",
+  });
 
   return NextResponse.json({ ok: true });
 }
