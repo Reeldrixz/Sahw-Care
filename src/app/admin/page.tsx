@@ -181,6 +181,7 @@ interface FormulaRequestAdmin {
 interface FormulaDeliveryAdmin {
   monthIndex: number; status: string; scheduledFor: string;
   fulfilledAt: string | null; formulaStageAtFulfilment: string | null; note: string | null;
+  purchasedAt: string | null; purchaseUrlAtPurchase: string | null;
 }
 
 interface FormulaEpisodeAdmin {
@@ -190,6 +191,8 @@ interface FormulaEpisodeAdmin {
   confirmationDeadline: string | null; correctionNote: string | null; correctionRequestedAt: string | null;
   startedAt: string; confirmedAt: string | null; completedAt: string | null;
   pendingFormulaStage: string | null; pendingStageRequestedAt: string | null;
+  purchaseUrl: string | null; purchaseUrlSetAt: string | null; purchaseUrlSentAt: string | null;
+  purchaseUrlConfirmedAt: string | null; purchaseUrlDeclinedAt: string | null; purchaseUrlDeclineNote: string | null;
   fulfilledCount: number; deliveries: FormulaDeliveryAdmin[];
   mother: { id: string; name: string; email: string | null; phone: string | null };
 }
@@ -388,6 +391,11 @@ export default function AdminPage() {
   // D/F4d: propose a stage-for-growth change per active episode.
   const [stageInputMap,      setStageInputMap]      = useState<Record<string, string>>({});
   const [proposingId,        setProposingId]        = useState<string | null>(null);
+  // F4: purchasing-link management + per-month purchase/complete lifecycle.
+  const [linkInputMap,       setLinkInputMap]       = useState<Record<string, string>>({});
+  const [linkBusyId,         setLinkBusyId]         = useState<string | null>(null);
+  const [linkEditOpenId,     setLinkEditOpenId]     = useState<string | null>(null);
+  const [purchaseBusyKey,    setPurchaseBusyKey]    = useState<string | null>(null);
   // Early-end: humane mid-episode exit (internal reason required).
   const [endOpenId,          setEndOpenId]          = useState<string | null>(null);
   const [endReasonMap,       setEndReasonMap]       = useState<Record<string, string>>({});
@@ -715,6 +723,74 @@ export default function AdminPage() {
       setToast(d.error ?? "Could not mark this month fulfilled. Please try again.");
     }
     setFulfillingKey(null);
+  };
+
+  // F4: set or correct the purchasing link (always restarts confirmation).
+  const savePurchaseLink = async (ep: FormulaEpisodeAdmin) => {
+    const url = (linkInputMap[ep.id] ?? "").trim();
+    if (!url) { setToast("Paste the Amazon product link first."); return; }
+    setLinkBusyId(ep.id);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/purchase-link`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ purchaseUrl: url }),
+    });
+    if (r.ok) {
+      setLinkInputMap((m) => { const n = { ...m }; delete n[ep.id]; return n; });
+      setLinkEditOpenId(null);
+      setToast("Link saved. Approve it to send it to her.");
+      fetchActiveEpisodes();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not save the link.");
+    }
+    setLinkBusyId(null);
+  };
+
+  // F4: send the link to her for confirmation. This does not approve a purchase.
+  const approvePurchaseLink = async (ep: FormulaEpisodeAdmin) => {
+    setLinkBusyId(ep.id);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/purchase-link/approve`, { method: "POST" });
+    if (r.ok) {
+      setToast("Sent to her. She'll check the product before we buy it.");
+      fetchActiveEpisodes();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not send the link.");
+    }
+    setLinkBusyId(null);
+  };
+
+  // F4: record the purchase and open the confirmed listing.
+  const purchaseMonth = async (ep: FormulaEpisodeAdmin, monthIndex: number) => {
+    const key = `${ep.id}:${monthIndex}`;
+    setPurchaseBusyKey(key);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/deliveries/${monthIndex}/purchase`, { method: "POST" });
+    if (r.ok) {
+      const d = await r.json().catch(() => ({}));
+      if (d.purchaseUrl) window.open(d.purchaseUrl, "_blank", "noopener,noreferrer");
+      setToast(d.alreadyPurchased ? "Already marked purchased — reopened the listing." : `Month ${monthIndex} marked purchased`);
+      fetchActiveEpisodes();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not record the purchase.");
+    }
+    setPurchaseBusyKey(null);
+  };
+
+  // F4: undo a purchase stamp (mis-click, or she retracted her confirmation).
+  const resetPurchase = async (ep: FormulaEpisodeAdmin, monthIndex: number) => {
+    const key = `${ep.id}:${monthIndex}`;
+    setPurchaseBusyKey(key);
+    const r = await fetch(`/api/admin/formula-episodes/${ep.id}/deliveries/${monthIndex}/purchase`, { method: "DELETE" });
+    if (r.ok) {
+      setToast(`Month ${monthIndex} purchase reset`);
+      fetchActiveEpisodes();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      setToast(d.error ?? "Could not reset the purchase.");
+    }
+    setPurchaseBusyKey(null);
   };
 
   // D/F4d: propose a stage change (stage only). She re-confirms before it applies.
@@ -2965,7 +3041,28 @@ export default function AdminPage() {
                     <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginBottom: 14, lineHeight: 1.5 }}>
                       Confirmed mothers inside their 6-month window. Mark each month fulfilled as you send it — the 6th fulfilment completes the episode automatically.
                     </div>
-                    {activeEpisodes.map((ep) => (
+                    {activeEpisodes.map((ep) => {
+                      // F4 derived link state — purchaseUrlConfirmedAt is the
+                      // only safe-to-purchase signal.
+                      const linkConfirmed = !!ep.purchaseUrlConfirmedAt;
+                      const linkDeclined  = !!ep.purchaseUrlDeclinedAt;
+                      const linkSent      = !!ep.purchaseUrlSentAt;
+                      const linkState: "NEEDS_LINK" | "DECLINED" | "CONFIRMED" | "AWAITING" | "READY_TO_SEND" =
+                        !ep.purchaseUrl ? "NEEDS_LINK"
+                        : linkDeclined   ? "DECLINED"
+                        : linkConfirmed  ? "CONFIRMED"
+                        : linkSent       ? "AWAITING"
+                        : "READY_TO_SEND";
+                      // BLOCKED: a month is due/past-due and unfulfilled while the
+                      // product is unconfirmed — she has received nothing.
+                      const blockedMonth = linkConfirmed ? undefined : ep.deliveries.find(
+                        (d) => d.status !== "FULFILLED" && d.status !== "CANCELLED" && new Date(d.scheduledFor).getTime() <= Date.now()
+                      );
+                      const waitingSince = ep.purchaseUrlSentAt ?? ep.purchaseUrlSetAt;
+                      const daysWaiting = waitingSince
+                        ? Math.floor((Date.now() - new Date(waitingSince).getTime()) / 86400000)
+                        : 0;
+                      return (
                       <div key={ep.id} style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 12 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 2, flexWrap: "wrap" }}>
                           <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif" }}>{ep.mother.name}</div>
@@ -2976,6 +3073,110 @@ export default function AdminPage() {
                         <div style={{ fontSize: 11.5, color: "#6b7280", fontFamily: "Nunito, sans-serif", marginBottom: 10 }}>
                           {ep.formulaBrand} {ep.formulaType} · Stage {ep.formulaStage}{ep.formulaForm ? ` · ${ep.formulaForm}` : ""}
                           {" · "}<strong style={{ color: "#1a7a5e" }}>{ep.fulfilledCount} of {ep.monthsTotal} months fulfilled</strong>
+                        </div>
+
+                        {/* F4: BLOCKED — the loud state. Human follow-up is the ONLY
+                            mitigation, since there is deliberately no override. */}
+                        {blockedMonth && (
+                          <div style={{ background: "#fdecea", border: "2px solid #c0392b", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#c0392b", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                              🔴 BLOCKED — nothing sent this month
+                            </div>
+                            <div style={{ fontSize: 12, color: "#7f231c", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 8 }}>
+                              <strong>{ep.mother.name}</strong> hasn&apos;t confirmed the product, so we have purchased nothing. She has received no formula this month.
+                              <br />
+                              Month {blockedMonth.monthIndex} of {ep.monthsTotal} · due {new Date(blockedMonth.scheduledFor).toLocaleDateString("en-CA")}
+                              {waitingSince ? ` · waiting ${daysWaiting} day${daysWaiting === 1 ? "" : "s"}` : ""}
+                            </div>
+                            <div style={{ fontSize: 12, color: "#7f231c", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>
+                              We never purchase an unconfirmed product. <strong>Reach her directly:</strong>{" "}
+                              {ep.mother.phone
+                                ? <a href={`tel:${ep.mother.phone}`} style={{ color: "#c0392b", fontWeight: 900, textDecoration: "underline" }}>📞 {ep.mother.phone}</a>
+                                : <span style={{ fontWeight: 800 }}>no phone on file</span>}
+                              {ep.mother.email ? ` · ✉️ ${ep.mother.email}` : ""}
+                            </div>
+                            {daysWaiting >= 7 && (
+                              <div style={{ fontSize: 12, fontWeight: 900, color: "#c0392b", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                ⚠️ Waiting {daysWaiting} days — please call her.
+                              </div>
+                            )}
+                            {!ep.mother.email && (
+                              <div style={{ fontSize: 12, fontWeight: 900, color: "#c0392b", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                                ⚠️ PHONE-ONLY — she receives no email reminders. A call is the surest way to reach her.
+                              </div>
+                            )}
+                            {linkDeclined && (
+                              <div style={{ fontSize: 12, color: "#7f231c", fontFamily: "Nunito, sans-serif", lineHeight: 1.6, marginBottom: 4 }}>
+                                💬 <strong>She flagged this link:</strong>{" "}
+                                {ep.purchaseUrlDeclineNote ? <em>“{ep.purchaseUrlDeclineNote}”</em> : <em>(no note left)</em>} — correct it and send again.
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11, color: "#9b5a55", fontFamily: "Nunito, sans-serif", fontStyle: "italic" }}>
+                              No purchase-anyway option exists by design: buying an unconfirmed product risks sending the wrong formula.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* F4: purchasing link (episode-level — months 2-6 reuse it) */}
+                        <div style={{ background: "#fafbfa", border: "1px solid #eef2f0", borderRadius: 8, padding: "10px 12px", marginBottom: 10 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: linkEditOpenId === ep.id ? 8 : 0 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 800, color: "#6b7280", fontFamily: "Nunito, sans-serif" }}>Purchasing link</span>
+                            {linkState === "CONFIRMED" && (
+                              <span style={{ fontSize: 10.5, fontWeight: 800, color: "#1a7a5e", background: "#eafaf3", borderRadius: 20, padding: "2px 9px", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                                ✓ Confirmed {ep.purchaseUrlConfirmedAt ? new Date(ep.purchaseUrlConfirmedAt).toLocaleDateString("en-CA") : ""}
+                              </span>
+                            )}
+                            {linkState === "AWAITING" && (
+                              <span style={{ fontSize: 10.5, fontWeight: 800, color: "#b45309", background: "#fff8ed", borderRadius: 20, padding: "2px 9px", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                                Awaiting her confirmation
+                              </span>
+                            )}
+                            {linkState === "DECLINED" && (
+                              <span style={{ fontSize: 10.5, fontWeight: 800, color: "#c0392b", background: "#fdecea", borderRadius: 20, padding: "2px 9px", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.4px" }}>
+                                She flagged this link
+                              </span>
+                            )}
+                            {ep.purchaseUrl && (
+                              <a href={ep.purchaseUrl} target="_blank" rel="noopener noreferrer"
+                                style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", textDecoration: "underline", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {ep.purchaseUrl}
+                              </a>
+                            )}
+                            <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                              {linkState === "READY_TO_SEND" && (
+                                <button onClick={() => approvePurchaseLink(ep)} disabled={linkBusyId === ep.id}
+                                  style={{ padding: "6px 13px", background: linkBusyId === ep.id ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 800, cursor: linkBusyId === ep.id ? "default" : "pointer" }}>
+                                  {linkBusyId === ep.id ? "Sending…" : "Approve"}
+                                </button>
+                              )}
+                              <button onClick={() => { setLinkEditOpenId(linkEditOpenId === ep.id ? null : ep.id); setLinkInputMap((m) => ({ ...m, [ep.id]: ep.purchaseUrl ?? "" })); }}
+                                style={{ padding: "6px 13px", background: "white", border: "1.5px solid #e0e0e0", borderRadius: 8, color: "#555", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}>
+                                {ep.purchaseUrl ? "Correct link" : "Add purchase link"}
+                              </button>
+                            </div>
+                          </div>
+                          {linkEditOpenId === ep.id && (
+                            <>
+                              <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif", marginBottom: 6, lineHeight: 1.5 }}>
+                                Full amazon.ca or amazon.com product URL. Saving always clears her confirmation — she&apos;ll be asked to check the new product before anything can be purchased.
+                              </div>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                <input
+                                  value={linkInputMap[ep.id] ?? ""}
+                                  onChange={(e) => setLinkInputMap((m) => ({ ...m, [ep.id]: e.target.value }))}
+                                  placeholder="https://www.amazon.ca/…/dp/…"
+                                  style={{ flex: 1, minWidth: 240, padding: "8px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 12 }} />
+                                <button onClick={() => savePurchaseLink(ep)} disabled={linkBusyId === ep.id}
+                                  style={{ padding: "8px 14px", background: linkBusyId === ep.id ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 800, cursor: linkBusyId === ep.id ? "default" : "pointer" }}>
+                                  {linkBusyId === ep.id ? "Saving…" : "Save link"}
+                                </button>
+                                <button onClick={() => setLinkEditOpenId(null)}
+                                  style={{ padding: "8px 14px", background: "white", border: "1.5px solid #e0e0e0", borderRadius: 8, color: "#555", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div style={{ display: "grid", gap: 6 }}>
@@ -3005,19 +3206,50 @@ export default function AdminPage() {
                                 {isFulfilled && d.note && (
                                   <span style={{ fontSize: 11, color: "#6b7280", fontFamily: "Nunito, sans-serif", fontStyle: "italic" }}>“{d.note}”</span>
                                 )}
+                                {!isFulfilled && d.purchasedAt && (
+                                  <span style={{ fontSize: 11, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 700 }}>
+                                    bought {new Date(d.purchasedAt).toLocaleDateString("en-CA")}
+                                  </span>
+                                )}
+                                {/* F4 lifecycle: Purchase (only once she has confirmed) -> Complete. */}
                                 {!isFulfilled && !isCancelled && (
                                   <div style={{ display: "flex", gap: 6, marginLeft: "auto", alignItems: "center" }}>
-                                    <input
-                                      value={deliveryNoteMap[key] ?? ""}
-                                      onChange={(e) => setDeliveryNoteMap((m) => ({ ...m, [key]: e.target.value }))}
-                                      placeholder="Note (optional)"
-                                      style={{ padding: "6px 9px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 11.5, width: 150 }} />
-                                    <button
-                                      onClick={() => fulfillDelivery(ep, d.monthIndex)}
-                                      disabled={fulfillingKey === key}
-                                      style={{ padding: "6px 13px", background: fulfillingKey === key ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 800, cursor: fulfillingKey === key ? "default" : "pointer", whiteSpace: "nowrap" }}>
-                                      {fulfillingKey === key ? "Marking…" : "Mark fulfilled"}
-                                    </button>
+                                    {!linkConfirmed ? (
+                                      <span style={{ fontSize: 11, color: "#b45309", fontFamily: "Nunito, sans-serif", fontWeight: 700 }}>
+                                        {linkState === "NEEDS_LINK"   ? "Add a purchase link first"
+                                          : linkState === "READY_TO_SEND" ? "Approve the link to send it to her"
+                                          : linkState === "DECLINED"      ? "She flagged the link — correct it"
+                                          : "Awaiting her confirmation"}
+                                      </span>
+                                    ) : !d.purchasedAt ? (
+                                      <button
+                                        onClick={() => purchaseMonth(ep, d.monthIndex)}
+                                        disabled={purchaseBusyKey === key}
+                                        style={{ padding: "6px 13px", background: purchaseBusyKey === key ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 800, cursor: purchaseBusyKey === key ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                        {purchaseBusyKey === key ? "Opening…" : "Purchase"}
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <input
+                                          value={deliveryNoteMap[key] ?? ""}
+                                          onChange={(e) => setDeliveryNoteMap((m) => ({ ...m, [key]: e.target.value }))}
+                                          placeholder="Note (optional)"
+                                          style={{ padding: "6px 9px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontFamily: "Nunito, sans-serif", fontSize: 11.5, width: 130 }} />
+                                        <button
+                                          onClick={() => resetPurchase(ep, d.monthIndex)}
+                                          disabled={purchaseBusyKey === key}
+                                          title="Undo the purchase stamp (mis-click, or she retracted her confirmation)"
+                                          style={{ padding: "6px 10px", background: "white", border: "1.5px solid #e0e0e0", borderRadius: 8, color: "#555", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                                          Reset
+                                        </button>
+                                        <button
+                                          onClick={() => fulfillDelivery(ep, d.monthIndex)}
+                                          disabled={fulfillingKey === key}
+                                          style={{ padding: "6px 13px", background: fulfillingKey === key ? "#9ca3af" : "#1a7a5e", border: "none", borderRadius: 8, color: "white", fontFamily: "Nunito, sans-serif", fontSize: 11.5, fontWeight: 800, cursor: fulfillingKey === key ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                                          {fulfillingKey === key ? "Completing…" : "Complete"}
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -3098,7 +3330,8 @@ export default function AdminPage() {
                           )}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

@@ -33,11 +33,21 @@ export async function POST(
 
   const episode = await prisma.formulaEpisode.findUnique({
     where:  { id },
-    select: { id: true, userId: true, status: true, formulaStage: true, monthsTotal: true },
+    select: { id: true, userId: true, status: true, formulaStage: true, monthsTotal: true, purchaseUrlConfirmedAt: true },
   });
   if (!episode) return NextResponse.json({ error: "Episode not found" }, { status: 404 });
   if (episode.status !== "ACTIVE") {
     return NextResponse.json({ error: "Only an active episode's deliveries can be fulfilled." }, { status: 409 });
+  }
+  // F4: a month can only be completed for a product she has confirmed. If she
+  // retracted her confirmation after the purchase, reset the purchase, correct
+  // the link, and get it re-confirmed rather than recording a delivery of a
+  // product she flagged as wrong.
+  if (!episode.purchaseUrlConfirmedAt) {
+    return NextResponse.json({
+      error: "She hasn't confirmed this product, so this month can't be completed.",
+      code:  "NOT_CONFIRMED",
+    }, { status: 409 });
   }
   if (monthIndex > episode.monthsTotal) {
     return NextResponse.json({ error: `This episode only has ${episode.monthsTotal} months.` }, { status: 400 });
@@ -45,7 +55,7 @@ export async function POST(
 
   const delivery = await prisma.formulaDelivery.findUnique({
     where:  { episodeId_monthIndex: { episodeId: episode.id, monthIndex } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, purchasedAt: true },
   });
   if (!delivery) return NextResponse.json({ error: "Delivery not found for that month." }, { status: 404 });
   if (delivery.status === "FULFILLED") {
@@ -53,6 +63,15 @@ export async function POST(
   }
   if (delivery.status === "CANCELLED") {
     return NextResponse.json({ error: "That month was cancelled and cannot be fulfilled." }, { status: 409 });
+  }
+  // You cannot fulfil what was never bought. purchaseUrlAtPurchase was snapshot
+  // at purchase time and is NOT rewritten here — it records what was actually
+  // bought, even if the link has since changed.
+  if (!delivery.purchasedAt) {
+    return NextResponse.json({
+      error: "Purchase this month before completing it.",
+      code:  "NOT_PURCHASED",
+    }, { status: 409 });
   }
 
   const now = new Date();

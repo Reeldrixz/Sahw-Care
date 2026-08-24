@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
           fulfilledAt:             true,
           formulaStageAtFulfilment: true,
           note:                    true,
+          purchasedAt:             true,
+          purchaseUrlAtPurchase:   true,
         },
       },
     },
@@ -52,6 +54,14 @@ export async function GET(req: NextRequest) {
     completedAt:           e.completedAt,
     pendingFormulaStage:     e.pendingFormulaStage,
     pendingStageRequestedAt: e.pendingStageRequestedAt,
+    // F4: purchasing-link state drives the admin button lifecycle and the
+    // BLOCKED panel. purchaseUrlConfirmedAt is the safe-to-purchase signal.
+    purchaseUrl:            e.purchaseUrl,
+    purchaseUrlSetAt:       e.purchaseUrlSetAt,
+    purchaseUrlSentAt:      e.purchaseUrlSentAt,
+    purchaseUrlConfirmedAt: e.purchaseUrlConfirmedAt,
+    purchaseUrlDeclinedAt:  e.purchaseUrlDeclinedAt,
+    purchaseUrlDeclineNote: e.purchaseUrlDeclineNote,
     fulfilledCount:        e.deliveries.filter((d) => d.status === "FULFILLED").length,
     deliveries:            e.deliveries,
     mother: { id: e.user.id, name: e.user.name, email: e.user.email, phone: e.user.phone },
