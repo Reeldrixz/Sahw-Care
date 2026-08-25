@@ -40,6 +40,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     include: { location: true },
   });
 
+  // Both parties have now agreed a time, so the pickup really is agreed. This is
+  // where Request.status earns PICKUP_AGREED — it used to be set back at
+  // confirm-location, when only the location was known.
+  await prisma.request.update({
+    where: { id: requestId },
+    data:  { status: "PICKUP_AGREED" },
+  });
+
   // Notify both parties
   const timeStr = coordination.proposedTime?.toDateString() ?? "the scheduled time";
   const locationName = coordination.location?.name ?? "the agreed location";

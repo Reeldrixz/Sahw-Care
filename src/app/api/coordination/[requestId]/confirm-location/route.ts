@@ -44,11 +44,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
         },
       });
 
-  // Update request status to reflect coordination started
-  await prisma.request.update({
-    where: { id: requestId },
-    data: { status: "PICKUP_AGREED" },
-  });
+  // Request.status deliberately stays ACCEPTED here. Only the LOCATION has been
+  // chosen — no time is agreed yet, so calling this PICKUP_AGREED (as it used to)
+  // described a state that had not happened. The fine-grained progress lives on
+  // PickupCoordination.status (now LOCATION_CONFIRMED); Request.status advances to
+  // PICKUP_AGREED in confirm-time, where a pickup genuinely has been agreed.
 
   // Notify recipient
   const location = request.preferredLocation;

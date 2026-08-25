@@ -587,16 +587,19 @@ enum ItemStatus {
   RESERVED
 }
 
+// Coarse request state. The fine-grained pickup progress lives on
+// PickupCoordination.status (LOCATION_CONFIRMED -> TIME_PROPOSED -> SCHEDULED ->
+// DONOR_READY -> DELIVERED -> CONFIRMED); this enum only tracks the milestones.
 enum RequestStatus {
   PENDING // submitted, waiting donor review
   APPROVED // legacy — treat same as ACCEPTED
   REJECTED // legacy — treat same as DECLINED
-  FULFILLED // item handed over
-  ACCEPTED // donor accepted, chat opened
+  FULFILLED // TERMINAL SUCCESS — item handed over and receipt confirmed
+  ACCEPTED // donor accepted; coordination opens and stays here until a time is agreed
   DECLINED // donor declined
-  CHAT_OPENED // both in chat
-  PICKUP_AGREED // both confirmed pickup time
-  CONFIRMED // recipient confirmed receipt
+  CHAT_OPENED // DEAD — never set by any live path (kept: historical rows may hold it)
+  PICKUP_AGREED // both confirmed a pickup TIME (set in confirm-time, not confirm-location)
+  CONFIRMED // DEAD — never set by any live path; confirm-received writes FULFILLED instead
   CANCELLED // either party cancelled
 }
 
