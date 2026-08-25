@@ -45,8 +45,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     data: { status: "CANCELLED" },
   });
 
-  // If donor cancelled, restore item to ACTIVE
-  if (user.userId === donorId && coordination.request.item.status === "RESERVED") {
+  // Restore the item to the pool, whoever cancelled. Acceptance decremented the
+  // quantity and may have flipped it to RESERVED, so restoring only on a donor
+  // cancel (as this did) left an item permanently reserved and invisible to
+  // everyone whenever the RECIPIENT backed out — the item leaked out of
+  // circulation with no way back. The reservation belongs to the cancelled
+  // coordination, not to whoever happened to end it.
+  if (coordination.request.item.status === "RESERVED") {
     await prisma.item.update({
       where: { id: coordination.request.item.id },
       data: {

@@ -295,6 +295,13 @@ model Request {
   reviewedAt       DateTime?
   reviewNote       String?
 
+  // Why a request ended, when it was NOT a person's choice. A PENDING claim that
+  // the giver never answered has no PickupCoordination row (coordination is only
+  // created on acceptance), so its no-fault marker cannot live there — it lives
+  // here. Null means an ordinary cancellation; a value means the system expired
+  // it, and every surface must then render "expired", never "she cancelled".
+  cancelReason String?
+
   itemId      String
   item        Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
   requesterId String
