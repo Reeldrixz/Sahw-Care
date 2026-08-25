@@ -76,6 +76,8 @@ export default function ItemDetailPage() {
   const [fav, setFav] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
   const [requested, setRequested] = useState(false);
+  // Set when a claim is blocked because a gift is already being arranged (2b).
+  const [inProgressUrl, setInProgressUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -139,6 +141,9 @@ export default function ItemDetailPage() {
     } else {
       const d = await res.json();
       setToast(d.error ?? "Something went wrong");
+      // Turn-taking block: the toast is string-only, so surface the link to the
+      // gift already being arranged in the claim area instead.
+      if (d.code === "GIFT_IN_PROGRESS" && d.coordinationUrl) setInProgressUrl(d.coordinationUrl);
     }
   };
 
@@ -292,6 +297,14 @@ export default function ItemDetailPage() {
         <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
           {requested ? "✓ Request Sent, Awaiting donor" : "Request"}
         </button>
+        {inProgressUrl && (
+          <button
+            onClick={() => router.push(inProgressUrl)}
+            style={{ display: "block", width: "100%", marginTop: 10, padding: "11px 0", background: "none", border: "1.5px solid #c3e6cb", borderRadius: 12, color: "#1a7a5e", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" }}
+          >
+            View the pickup →
+          </button>
+        )}
       </div>
     );
   };

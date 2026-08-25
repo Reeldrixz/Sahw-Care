@@ -14,8 +14,25 @@ interface MyRequest {
   createdAt: string;
   notes: string | null;
   reviewNote: string | null;
+  cancelReason: string | null;
   coordinationId: string | null;
   item: { id: string; title: string; images: string[]; donor?: { name: string } | null } | null;
+}
+
+// A request can end because the SYSTEM timed it out rather than because anyone
+// chose to end it. Those must never read as "Cancelled" — that implies she
+// withdrew. Any unrecognised reason falls back to the neutral sentence, and the
+// raw constant is never rendered.
+function expiryCopy(cancelReason: string | null): { pill: string; note: string } | null {
+  if (!cancelReason) return null; // a person cancelled — not an expiry
+  switch (cancelReason) {
+    case "AUTO_EXPIRED_NO_RESPONSE":
+      return { pill: "Expired", note: "This request wasn't answered in time. That's no reflection on you." };
+    case "AUTO_EXPIRED_STALLED":
+      return { pill: "Closed", note: "This pickup didn't move forward, so we closed it. You're free to request something else." };
+    default:
+      return { pill: "Closed", note: "This request was closed. You're free to request something else." };
+  }
 }
 
 function declineMessage(reviewNote: string | null, city?: string | null): string {
@@ -124,6 +141,8 @@ export default function RequestsPage() {
           const isAccepted = req.status === "ACCEPTED" && !!req.coordinationId;
           const isDeclined = req.status === "DECLINED";
           const declineMsg = isDeclined ? declineMessage(req.reviewNote, user?.preferredCity) : null;
+          // System expiry reads as "Expired"/"Closed", never "Cancelled".
+          const expiry = req.status === "CANCELLED" ? expiryCopy(req.cancelReason) : null;
           return (
             <div
               key={req.id}
@@ -150,9 +169,14 @@ export default function RequestsPage() {
                   </div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: sc.bg, color: sc.color, flexShrink: 0, fontFamily: "Nunito, sans-serif", whiteSpace: "nowrap" }}>
-                  {isAccepted ? "Coordinate →" : req.status.charAt(0) + req.status.slice(1).toLowerCase()}
+                  {isAccepted ? "Coordinate →" : expiry ? expiry.pill : req.status.charAt(0) + req.status.slice(1).toLowerCase()}
                 </span>
               </div>
+              {expiry && (
+                <div style={{ marginTop: 8, padding: "8px 12px", background: "#f8faf9", borderRadius: 8, fontSize: 12, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
+                  {expiry.note}
+                </div>
+              )}
               {isDeclined && declineMsg && (
                 <div style={{ marginTop: 8, padding: "8px 12px", background: "#fef9f0", borderRadius: 8, fontSize: 12, color: "#92400e", fontFamily: "Nunito, sans-serif", lineHeight: 1.5, fontStyle: "italic" }}>
                   {declineMsg}

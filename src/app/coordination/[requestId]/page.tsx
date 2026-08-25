@@ -61,13 +61,40 @@ const QUICK_MSG_LABELS: Record<string, string> = {
   CUSTOM:         "",
 };
 
-const CANCEL_REASONS = [
+// Reasons are role-aware. The single old list was written from the giver's side
+// ("I no longer have the item"), which left a recipient escaping a stalled pickup
+// with nothing honest to pick — she had to claim "I changed my mind" and take
+// blame for someone else's silence. Choosing a reason is also OPTIONAL: a safety
+// exit must never demand a justification.
+const CANCEL_REASONS_GIVER = [
   "I no longer have the item",
   "I can't make the scheduled time",
   "I changed my mind",
   "I feel uncomfortable with this request",
   "Other",
 ];
+
+const CANCEL_REASONS_RECIPIENT = [
+  "They stopped replying",
+  "The time didn't work out",
+  "I no longer need it",
+  "Something felt off",
+  "Other",
+];
+
+// Copy for a coordination the SYSTEM closed (cancelledById === null). Falls back
+// to a neutral sentence for any unrecognised reason — the raw constant
+// ("AUTO_EXPIRED_STALLED") must never reach a person.
+function expiryCopy(reason: string | null): string {
+  switch (reason) {
+    case "AUTO_EXPIRED_STALLED":
+      return "It hadn't moved in a few days, so we closed it and returned the item to the list. Nothing went wrong on your side — you're free to request something else whenever you like.";
+    case "AUTO_EXPIRED_NO_RESPONSE":
+      return "This request expired because it wasn't answered in time. That's no reflection on you.";
+    default:
+      return "This pickup was closed. You're free to request something else whenever you like.";
+  }
+}
 
 const REPORT_REASONS = [
   "INAPPROPRIATE_MESSAGES",
@@ -733,12 +760,15 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
               <Flag size={13} /> Report an issue
             </button>
 
-            {/* Cancel button */}
+            {/* Blameless exit. Deliberately not a red X labelled "Cancel" —
+                backing out of a gift is not a failure, and framing it as one
+                discourages the mother from using the escape hatch she needs
+                when a pickup stalls. */}
             <button
               onClick={() => setShowCancel(true)}
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: "#c0392b", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700 }}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: "#6b7280", fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700 }}
             >
-              <X size={13} /> Cancel this pickup
+              This isn&apos;t working out
             </button>
           </div>
         )}
@@ -754,16 +784,50 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
           </div>
         )}
 
-        {/* CANCELLED state */}
-        {status === "CANCELLED" && (
-          <div style={{ margin: "16px 16px 0", background: "#fef2f2", border: "1.5px solid #fca5a5", borderRadius: 16, padding: "20px", textAlign: "center" }}>
-            <X size={40} color="#c0392b" style={{ marginBottom: 12 }} />
-            <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>Coordination cancelled</div>
-            {coord.cancelReason && (
-              <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif" }}>Reason: {coord.cancelReason}</div>
-            )}
-          </div>
-        )}
+        {/* CANCELLED state.
+            Two distinct cases:
+             - cancelledById === null  => the SYSTEM timed it out. No fault, no
+               alarm styling, and never the raw reason constant.
+             - a person cancelled      => the verbatim reason is shown ONLY to
+               whoever wrote it. Symmetric in both directions: her "Something
+               felt off" must not reach him, and his "I feel uncomfortable with
+               this request" must not reach her — either would land right before
+               an in-person meeting. */}
+        {status === "CANCELLED" && (() => {
+          const wasAutoClosed = coord.cancelledById === null;
+          const iCancelled    = !!coord.cancelledById && coord.cancelledById === user?.id;
+          return (
+            <div style={{
+              margin: "16px 16px 0", borderRadius: 16, padding: "20px", textAlign: "center",
+              background: wasAutoClosed ? "#f8faf9" : "#fef2f2",
+              border: `1.5px solid ${wasAutoClosed ? "#e0ede8" : "#fca5a5"}`,
+            }}>
+              {wasAutoClosed
+                ? <Clock size={36} color="#6b7280" style={{ marginBottom: 12 }} />
+                : <X size={40} color="#c0392b" style={{ marginBottom: 12 }} />}
+              <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
+                {wasAutoClosed ? "This pickup was closed" : iCancelled ? "You closed this pickup" : "This pickup was closed"}
+              </div>
+              <div style={{ fontSize: 13, color: "#555", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
+                {wasAutoClosed
+                  ? expiryCopy(coord.cancelReason)
+                  : iCancelled
+                    ? (coord.cancelReason ? `Reason: ${coord.cancelReason}` : "No reason given.")
+                    : isDonor
+                      ? "Your item is back in the list."
+                      : "You're free to request something else whenever you like."}
+              </div>
+              {!isDonor && (
+                <button
+                  onClick={() => router.push("/browse")}
+                  style={{ marginTop: 14, padding: "10px 18px", borderRadius: 10, background: "#1a7a5e", color: "white", border: "none", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" }}
+                >
+                  Browse gifts →
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Other party info */}
         <div style={{ margin: "12px 16px 0", background: "white", borderRadius: 14, border: "1.5px solid #f3f4f6", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -874,27 +938,33 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setShowCancel(false)}>
           <div style={{ background: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 430, padding: "20px 20px 40px", animation: "sheetUp 0.25s ease" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: 36, height: 4, background: "#e5e7eb", borderRadius: 4, margin: "0 auto 20px" }} />
-            <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 16, color: "#1a1a1a", marginBottom: 16 }}>Cancel this pickup?</div>
-            {CANCEL_REASONS.map((r) => (
+            <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 16, color: "#1a1a1a", marginBottom: 6 }}>Close this pickup?</div>
+            <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#555", lineHeight: 1.6, marginBottom: 14 }}>
+              Gifts fall through sometimes — no one is penalised. The item goes back to others who need it, and you&apos;ll be free to claim another right away.
+            </div>
+            <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, fontWeight: 700, color: "#6b7280", marginBottom: 2 }}>
+              Anything you&apos;d like us to know? <span style={{ fontWeight: 400, color: "#9ca3af" }}>(optional)</span>
+            </div>
+            {(isDonor ? CANCEL_REASONS_GIVER : CANCEL_REASONS_RECIPIENT).map((r) => (
               <label key={r} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #f5f5f5", cursor: "pointer" }}>
-                <input type="radio" name="cancel-reason" value={r} checked={cancelReason === r} onChange={() => setCancelReason(r)} style={{ accentColor: "#c0392b", width: 16, height: 16 }} />
+                <input type="radio" name="cancel-reason" value={r} checked={cancelReason === r} onChange={() => setCancelReason(r)} style={{ accentColor: "#1a7a5e", width: 16, height: 16 }} />
                 <span style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "#1a1a1a" }}>{r}</span>
               </label>
             ))}
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              {/* Enabled with or without a reason — see CANCEL_REASONS_* above. */}
               <button
                 onClick={async () => {
-                  if (!cancelReason) return;
-                  await post("cancel", { reason: cancelReason });
+                  await post("cancel", { reason: cancelReason || null });
                   setShowCancel(false);
                 }}
-                disabled={!cancelReason || acting}
-                style={{ flex: 1, padding: "13px 0", borderRadius: 12, background: cancelReason ? "#c0392b" : "#e5e7eb", color: cancelReason ? "white" : "#9ca3af", border: "none", fontSize: 14, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: cancelReason ? "pointer" : "not-allowed" }}
+                disabled={acting}
+                style={{ flex: 1, padding: "13px 0", borderRadius: 12, background: acting ? "#e5e7eb" : "#c0392b", color: acting ? "#9ca3af" : "white", border: "none", fontSize: 14, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: acting ? "not-allowed" : "pointer" }}
               >
-                Cancel coordination
+                Close this pickup
               </button>
               <button onClick={() => setShowCancel(false)} style={{ padding: "13px 20px", borderRadius: 12, background: "transparent", color: "#555", border: "1.5px solid #e5e7eb", fontSize: 14, fontWeight: 700, fontFamily: "Nunito, sans-serif", cursor: "pointer" }}>
-                Go back
+                Never mind
               </button>
             </div>
           </div>
