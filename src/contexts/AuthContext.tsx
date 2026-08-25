@@ -28,6 +28,8 @@ export interface User {
   createdAt: string;
   // cohort / onboarding
   onboardingComplete: boolean;
+  isMother: boolean;
+  motherhoodDeclaredAt: string | null;
   tourCompletedAt: string | null;
   betaWelcomeSeenAt: string | null;
   motherIntentAt: string | null;

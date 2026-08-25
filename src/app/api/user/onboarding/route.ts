@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     dueYear,       // full year e.g. 2025 (pregnant only)
     babyAgeMonths, // decimal months old (postpartum only)
     subTags,       // string[]
+    isMother,      // boolean — the explicit ask, donor path only (see below)
   } = await req.json();
 
   if (!["pregnant", "postpartum", "donor"].includes(journeyType)) {
@@ -27,6 +28,23 @@ export async function POST(req: NextRequest) {
 
   // Only update gender if explicitly provided (preserve existing value on journey-type switches)
   const safeGender = ["male", "female", "unspecified"].includes(gender) ? gender : undefined;
+
+  // ── Motherhood (Experiences eligibility) ─────────────────────────────────
+  // Two collection paths:
+  //   Path A — pregnant/postpartum: she has already told us, in substance.
+  //     Derived, so motherhoodDeclaredAt stays null.
+  //   Path B — donor: the explicit ask. Skipping leaves both fields untouched
+  //     so the profile prompt still appears; answering either way records the
+  //     timestamp so we stop asking.
+  //
+  // isMother is NEVER set back to false here. A mother switching journeyType to
+  // "donor" stays a mother; only she can revoke it, in her profile.
+  const motherhoodPatch =
+    journeyType === "pregnant" || journeyType === "postpartum"
+      ? { isMother: true }                                    // derived
+      : typeof isMother === "boolean"
+        ? { isMother, motherhoodDeclaredAt: new Date() }      // explicitly answered
+        : {};                                                 // skipped — ask again later
 
   // ── Donors skip stage assignment entirely ────────────────────────────────
   if (journeyType === "donor") {
@@ -41,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     const updated = await prisma.user.update({
       where: { id: auth.userId },
-      data:  { onboardingComplete: true, journeyType, ...(safeGender && { gender: safeGender }), subTags: subTags ?? [] },
+      data:  { onboardingComplete: true, journeyType, ...(safeGender && { gender: safeGender }), ...motherhoodPatch, subTags: subTags ?? [] },
       select: {
         id: true, name: true, email: true, phone: true, role: true,
         avatar: true, location: true, isPremium: true,
@@ -79,6 +97,7 @@ export async function POST(req: NextRequest) {
         // original timestamp if already set.
         motherIntentAt: currentUser?.motherIntentAt ?? new Date(),
         ...(safeGender && { gender: safeGender }),
+        ...motherhoodPatch,
         subTags: subTags ?? [],
       },
       select: {
@@ -168,6 +187,7 @@ export async function POST(req: NextRequest) {
       onboardingComplete: true,
       journeyType,
       ...(safeGender && { gender: safeGender }),
+      ...motherhoodPatch,
       dueDate,
       babyBirthDate,
       currentStage: stageKey,

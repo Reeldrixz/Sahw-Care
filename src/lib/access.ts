@@ -17,6 +17,24 @@ const HOLD_RESULT: AccessResult = {
     "We need to confirm a few details before this can continue. We'll be in touch.",
 };
 
+// Experiences eligibility. Motherhood is the ONLY basis — not gender, not
+// donation, not verification tier. A mother belongs in the motherhood community
+// on her own merits; how she arrived at Kradel is incidental.
+//
+// Reads the LIVE flag, so revoking motherhood in her profile stops new posts and
+// comments immediately. It deliberately does nothing to what she already wrote:
+// those were true when written, other mothers may be relying on them, and
+// retracting knowledge would punish contribution.
+export function canWriteExperiences(user: { isMother: boolean }): AccessResult {
+  if (user.isMother) return { allowed: true };
+  return {
+    allowed: false,
+    code: "NOT_A_MOTHER",
+    message:
+      "Experiences is where mothers share what they've learned. If you're a mother too, you can join in — just let us know in your profile.",
+  };
+}
+
 export function canCreateRegister(user: UserForAccess): AccessResult {
   if (
     user.manualReviewStatus === "PENDING" ||

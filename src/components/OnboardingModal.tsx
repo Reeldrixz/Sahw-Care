@@ -52,8 +52,9 @@ export default function OnboardingModal({ onComplete }: Props) {
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
   const [donorWelcome, setDonorWelcome] = useState(false);
+  const [donorMotherAsk, setDonorMotherAsk] = useState(false);
 
-  const totalSteps = journey === "donor" ? 1 : 2;
+  const totalSteps = 2;
 
   const selectRole = (j: Journey) => {
     setJourney(j);
@@ -65,11 +66,14 @@ export default function OnboardingModal({ onComplete }: Props) {
     }
   };
 
-  const submitOnboarding = async (jType: Journey) => {
+  const submitOnboarding = async (jType: Journey, isMother?: boolean) => {
     setSaving(true);
     setError(null);
     try {
       const body: Record<string, unknown> = { journeyType: jType, subTags: [] };
+      // Only sent when she actually answered; skipping leaves it unset so the
+      // profile prompt still appears.
+      if (typeof isMother === "boolean") body.isMother = isMother;
       if (jType === "pregnant") {
         body.dueMonth = dueMonth;
         body.dueYear  = dueYear;
@@ -101,6 +105,72 @@ export default function OnboardingModal({ onComplete }: Props) {
   };
 
   // ── Donor threshold screen ───────────────────────────────────────────────
+  // ── Donor step 2: the motherhood ask ──────────────────────────────────────
+  // A standalone moment, not crammed onto the welcome screen: this single
+  // question is the entire eligibility on-ramp for Experiences. The copy makes
+  // MOTHERHOOD the basis for belonging — "whatever brought you to Kradel" —
+  // because giving must never be what buys a place in the mothers' community.
+  if (donorMotherAsk) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 500,
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      }}>
+        <div style={{
+          background: "var(--white)", borderRadius: 24, width: "100%", maxWidth: 460,
+          padding: "36px 28px", textAlign: "center",
+        }}>
+          <div style={{ marginBottom: 18, opacity: 0.4 }}>
+            <Leaf size={22} strokeWidth={1.5} color="#1a7a5e" />
+          </div>
+
+          <h2 style={{ fontFamily: "Lora, serif", fontSize: 23, fontWeight: 700, color: "#1a1a1a", margin: "0 0 12px" }}>
+            Are you a mother?
+          </h2>
+
+          <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14.5, color: "#555", lineHeight: 1.7, margin: "0 0 8px" }}>
+            Kradel has a space called Experiences, where mothers write down what they&apos;ve
+            learned — the practical things that help another mother later.
+          </p>
+          <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14.5, color: "#555", lineHeight: 1.7, margin: "0 0 24px" }}>
+            If you&apos;re a mother too, you&apos;re welcome there, whatever brought you to Kradel.
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              onClick={() => submitOnboarding("donor", true)}
+              disabled={saving}
+              style={{
+                width: "100%", padding: "15px", background: saving ? "#aaa" : "#1a7a5e",
+                color: "white", border: "none", borderRadius: 14,
+                fontFamily: "Nunito, sans-serif", fontSize: 15, fontWeight: 800,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Setting up…" : "Yes, I'm a mother"}
+            </button>
+            <button
+              onClick={() => submitOnboarding("donor", false)}
+              disabled={saving}
+              style={{
+                width: "100%", padding: "13px", background: "transparent",
+                color: "#555", border: "1.5px solid var(--border)", borderRadius: 14,
+                fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 700,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              Not right now
+            </button>
+          </div>
+
+          <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#9ca3af", marginTop: 16, lineHeight: 1.6 }}>
+            You can change this any time in your profile. We never show it to other people.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (donorWelcome) {
     return (
       <div style={{
@@ -147,7 +217,7 @@ export default function OnboardingModal({ onComplete }: Props) {
 
           {/* Begin button */}
           <button
-            onClick={() => submitOnboarding("donor")}
+            onClick={() => setDonorMotherAsk(true)}
             disabled={saving}
             style={{
               width: "100%", maxWidth: 400, padding: "16px",

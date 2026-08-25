@@ -96,6 +96,27 @@ model User {
   creatorLinkVisits     Int       @default(0)     // awareness metric: visits to this creator's link
   referredByUserId      String?                   // who brought this user in (creator attribution); set once at signup
 
+  // Self-declared motherhood — the eligibility basis for Experiences. A mother
+  // belongs in the motherhood community on her own merits, whether she gives or
+  // receives; donation is how she arrived, not why she belongs. NEVER inferred:
+  // an existing babyBirthDate is data, not consent.
+  //
+  // Two fields because one cannot express three states:
+  //   false + null  => never asked (still prompt her)
+  //   false + set   => asked, said no (stop asking)
+  //   true  + set   => she said yes
+  //   true  + null  => derived from journeyType pregnant/postpartum at onboarding
+  //
+  // isMother is never automatically set back to false. Switching journeyType to
+  // "donor" does not un-mother her — journey is what she is doing now,
+  // motherhood is who she is. Only she can revoke it, in her profile.
+  //
+  // VISIBILITY: exposed to a user about HERSELF only (/api/auth/me). It must
+  // never appear in any payload describing another user — it is the field that
+  // would reveal which authors are donors, and that distinction must not exist.
+  isMother             Boolean   @default(false)
+  motherhoodDeclaredAt DateTime?
+
   journeyType        String? // "pregnant" | "postpartum" | "donor"
   gender             String    @default("unspecified") // "male" | "female" | "unspecified" — internal only, never shown publicly
   dueDate            DateTime?

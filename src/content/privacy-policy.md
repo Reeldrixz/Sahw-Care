@@ -134,6 +134,10 @@ We collect different types of information depending on whether you are a mother 
 - For peer-to-peer item sharing on Discover: a description and photos of items you offer
 - Coordination messages you send to mothers about handoff logistics
 
+**Everyone (optional)**
+
+- Whether you are a mother. We ask because Kradel has a space called Experiences, where mothers write down what they have learned for the mothers who come after them. If you are a mother, you are welcome there whatever brought you to Kradel. This is always self-declared and never inferred from anything else we hold, it is used only to decide whether to invite you into that space, it is never shown to other users, and you can change or remove it at any time in your profile.
+
 ### 3.2 Information collected automatically when you use the platform
 
 - Your device type, browser, and operating system

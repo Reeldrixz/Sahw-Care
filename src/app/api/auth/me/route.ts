@@ -40,6 +40,10 @@ export async function GET(req: NextRequest) {
       status: true,
       createdAt: true,
       onboardingComplete: true,
+      // Self-fact only: she may see her own motherhood declaration. It must
+      // NEVER appear in a payload describing another user.
+      isMother: true,
+      motherhoodDeclaredAt: true,
       tourCompletedAt: true,
       betaWelcomeSeenAt: true,
       motherIntentAt: true,

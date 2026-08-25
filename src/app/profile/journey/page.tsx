@@ -36,6 +36,23 @@ export default function JourneyPage() {
     setSaving(false);
   };
 
+  // Motherhood is independent of journey — its own endpoint, so toggling it
+  // never disturbs her circle assignment.
+  const handleMotherhood = async (next: boolean) => {
+    setSaving(true);
+    const res = await fetch("/api/user/motherhood", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isMother: next }),
+    });
+    if (res.ok) {
+      await refreshUser();
+      setToast(next
+        ? "Thank you — you can share what you've learned in Experiences."
+        : "Updated. Anything you've already shared stays where it is.");
+    }
+    setSaving(false);
+  };
+
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh", paddingBottom: 80 }}>
       <div style={{ background: "linear-gradient(135deg, #0d3d2e 0%, #1a5c45 100%)", padding: "20px 16px 20px" }}>
@@ -88,6 +105,54 @@ export default function JourneyPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* Motherhood — Experiences eligibility. Separate from journey on
+            purpose: motherhood is who she is, journey is what she's doing now.
+            The copy keeps belonging tied to motherhood, never to giving. */}
+        <div style={{ marginTop: 24, padding: "16px", borderRadius: 16, background: "white", border: "1.5px solid var(--border)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 6 }}>
+            Are you a mother?
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--mid)", lineHeight: 1.65, marginBottom: 14 }}>
+            Kradel has a space called Experiences, where mothers write down what they&apos;ve learned
+            for the mothers who come after them. If you&apos;re a mother too, you&apos;re welcome
+            there, whatever brought you to Kradel. We never show this to other people.
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              disabled={saving || user.isMother}
+              onClick={() => handleMotherhood(true)}
+              style={{
+                flex: 1, padding: "11px 0", borderRadius: 12,
+                border: `2px solid ${user.isMother ? "#1a7a5e" : "var(--border)"}`,
+                background: user.isMother ? "#e8f5f1" : "white",
+                color: user.isMother ? "#1a7a5e" : "var(--ink)",
+                fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif",
+                cursor: user.isMother ? "default" : "pointer",
+              }}
+            >
+              Yes{user.isMother ? " ✓" : ""}
+            </button>
+            <button
+              disabled={saving || !user.isMother}
+              onClick={() => handleMotherhood(false)}
+              style={{
+                flex: 1, padding: "11px 0", borderRadius: 12,
+                border: "1.5px solid var(--border)", background: "white",
+                color: "var(--mid)", fontSize: 13, fontWeight: 700,
+                fontFamily: "Nunito, sans-serif",
+                cursor: !user.isMother ? "default" : "pointer",
+              }}
+            >
+              No
+            </button>
+          </div>
+          {user.isMother && (
+            <div style={{ fontSize: 11.5, color: "var(--light)", marginTop: 10, lineHeight: 1.6 }}>
+              Changing this to No stops new posts and comments. Anything you&apos;ve already shared stays — other mothers may be relying on it.
+            </div>
+          )}
         </div>
 
         {saving && (
