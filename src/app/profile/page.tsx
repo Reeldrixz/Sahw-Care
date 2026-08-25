@@ -153,7 +153,7 @@ function DonorStatusCard() {
 
   const verified      = (user?.verificationLevel ?? 0) >= 1;
   const fullyVerified = (user?.verificationLevel ?? 0) >= 2;
-  const label         = verified ? "Verified Donor" : "Donor";
+  const label         = verified ? "Verified Giver" : "Giver";
 
   return (
     <div style={{ background: "white", borderRadius: 16, padding: "18px 16px", marginBottom: 12, border: "1px solid var(--border)" }}>
@@ -164,7 +164,7 @@ function DonorStatusCard() {
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "Lora, serif", fontSize: 18, fontWeight: 700, color: "#1a1a1a" }}>{label}</div>
           <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
-            {fullyVerified ? "Fully verified donor" : verified ? "Verified donor" : "Unverified. Complete verification to unlock more"}
+            {fullyVerified ? "Fully verified giver" : verified ? "Verified giver" : "Unverified. Complete verification to unlock more"}
           </div>
         </div>
         {verified && (

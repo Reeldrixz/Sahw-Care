@@ -10,7 +10,7 @@ import Toast from "@/components/Toast";
 const JOURNEY_OPTIONS = [
   { value: "pregnant",   emoji: "🤰", label: "I'm pregnant",           sub: "You'll be placed in a pregnancy circle"      },
   { value: "postpartum", emoji: "🤱", label: "I'm a mother",            sub: "You'll be placed in a postpartum circle"     },
-  { value: "donor",      emoji: "🎁", label: "I'm a supporter / donor", sub: "You'll see the platform as a donor"          },
+  { value: "donor",      emoji: "🎁", label: "I'm a giver", sub: "You'll see the platform as a giver"          },
 ];
 
 export default function JourneyPage() {

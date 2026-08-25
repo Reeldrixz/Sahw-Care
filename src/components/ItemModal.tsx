@@ -22,7 +22,7 @@ interface Item {
 interface ItemModalProps {
   item: Item;
   onClose: () => void;
-  onRequest: (note: string) => Promise<void>;
+  onRequest: () => Promise<void>;
   requested?: boolean;
 }
 
@@ -37,14 +37,13 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export default function ItemModal({ item, onClose, onRequest, requested }: ItemModalProps) {
   const { user } = useAuth();
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleRequest = async () => {
     if (loading) return;
     setLoading(true);
     try {
-      await onRequest(note);
+      await onRequest();
     } finally {
       setLoading(false);
     }
@@ -112,13 +111,8 @@ export default function ItemModal({ item, onClose, onRequest, requested }: ItemM
 
           {user && user.id !== item.donor.id && (
             <>
-              <textarea
-                className="request-note"
-                rows={3}
-                placeholder="Add a note to the donor (optional), e.g. tell them about your situation..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
+              {/* No note field: a message written to be chosen turns a gift
+                  into an application. Logistics happen in coordination. */}
               <button
                 className="btn-primary"
                 style={{ width: "100%", padding: "13px", fontSize: 15, borderRadius: 12 }}

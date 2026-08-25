@@ -39,13 +39,13 @@ function declineMessage(reviewNote: string | null, city?: string | null): string
   if (!reviewNote) return "Your request was declined.";
   const n = reviewNote.toLowerCase();
   if (n.includes("too far") || n.includes("travel") || n.includes("location"))
-    return `This donor wasn't able to meet up${city ? `. Try items closer to ${city}` : ""}.`;
+    return `They weren't able to meet up${city ? `. Try items closer to ${city}` : ""}.`;
   if (n.includes("promised") || n.includes("someone else"))
     return "This item was promised to another mother first.";
   if (n.includes("no longer available") || n.includes("not available") || n.includes("unavailable"))
     return "This item is no longer available.";
   if (n.includes("not a good match") || n.includes("match"))
-    return "The donor felt this wasn't the right match, but keep looking. The right one is out there.";
+    return "It wasn't the right match this time, but keep looking. The right one is out there.";
   return reviewNote;
 }
 
@@ -163,7 +163,7 @@ export default function RequestsPage() {
                   </div>
                   <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>
                     {req.status === "PENDING"
-                      ? "Waiting for donor to respond"
+                      ? "Waiting for a reply"
                       : new Date(req.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })
                         + (req.item?.donor ? ` · from ${req.item.donor.name}` : "")}
                   </div>

@@ -188,7 +188,7 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
         { key: "B01", label: "First Trimester Essentials", description: "Vitamins, comfort items, and early pregnancy support.", actionLabel: "Apply", href: "/bundles" },
         { key: "B02", label: "Second Trimester Comfort Kit", description: "Maternity wear, belly support, and midstage essentials.", actionLabel: "Apply", href: "/bundles" },
         { key: "circles", label: "Prenatal circles", description: "Connect with other mothers in your stage.", actionLabel: "Explore", href: "/circles" },
-        { key: "discover", label: "Find prenatal items near you", description: "Browse items donated by people in your community.", actionLabel: "Browse", href: "/" },
+        { key: "discover", label: "Find prenatal items near you", description: "Browse gifts shared by people in your community.", actionLabel: "Browse", href: "/" },
       ];
     }
     if (daysLeft > 0) {
@@ -216,7 +216,7 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
         { key: "B09", label: "Postpartum Recovery Kit", description: "Support for your body and mind in the first weeks.", actionLabel: "Apply", href: "/bundles" },
         { key: "B10", label: "Fourth Trimester Wellness Kit", description: "Self-care and resources to support your mental wellbeing.", actionLabel: "Apply", href: "/bundles" },
         { key: "B12", label: "Baby Development & Play Kit", description: "Stimulating, developmental toys for babies 0-6 months.", actionLabel: "Apply", href: "/bundles" },
-        { key: "discover", label: "Find postpartum items near you", description: "Browse donated items in your community.", actionLabel: "Browse", href: "/" },
+        { key: "discover", label: "Find postpartum items near you", description: "Browse gifts shared in your community.", actionLabel: "Browse", href: "/" },
       ];
     }
     if (agedays <= 365) {
@@ -224,7 +224,7 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
         { key: "B07", label: "Newborn Sleep & Soothing Kit", description: "Sleep aids and soothing essentials to help you both rest.", actionLabel: "Apply", href: "/bundles" },
         { key: "B08", label: "Feeding Kit", description: "Support for breastfeeding and bottle-feeding in the early weeks.", actionLabel: "Apply", href: "/bundles" },
         { key: "B06", label: "Complete Newborn Bundle", description: "Clothing, sleep items, and newborn necessities.", actionLabel: "Apply", href: "/bundles" },
-        { key: "discover", label: "Browse available items", description: "Discover what's being donated in your area.", actionLabel: "Browse", href: "/" },
+        { key: "discover", label: "Browse available items", description: "See what's being gifted in your area.", actionLabel: "Browse", href: "/" },
       ];
     }
   }
@@ -232,7 +232,7 @@ function getRecommendations(user: JourneyUser): Recommendation[] {
   return [
     { key: "bundles", label: "Browse all bundles", description: "See all available support bundles.", actionLabel: "Browse", href: "/bundles" },
     { key: "reg", label: "Create a register", description: "Ask your community for specific items you need.", actionLabel: "Create", href: "/registers/new" },
-    { key: "discover", label: "Discover donated items", description: "Find items near you, donated by community members.", actionLabel: "Browse", href: "/" },
+    { key: "discover", label: "Browse gifts", description: "Find gifts near you, shared by community members.", actionLabel: "Browse", href: "/" },
   ];
 }
 
@@ -248,8 +248,8 @@ function statusLabel(status: string, queueStatus: string | null): string {
 }
 
 function coordStatusLabel(s: string): string {
-  if (s === "PENDING")           return "Awaiting donor response";
-  if (s === "ACCEPTED")          return "Donor accepted";
+  if (s === "PENDING")           return "Awaiting reply";
+  if (s === "ACCEPTED")          return "Accepted";
   if (s === "TIME_PROPOSED")     return "Time being confirmed";
   if (s === "SCHEDULED")         return "Pickup scheduled";
   if (s === "DONOR_READY")       return "Donor is ready";
@@ -421,7 +421,7 @@ export default function JourneyPage() {
       done: ms.hasPickupDelivered,
       label: "First pickup completed",
       note: "You completed a community pickup",
-      nudge: "Browse available donations →",
+      nudge: "Browse available gifts →",
     },
     {
       key: "community",

@@ -134,7 +134,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   });
 
   if (user?.journeyType === "donor") {
-    return NextResponse.json({ error: "Donors cannot post in circles." }, { status: 403 });
+    return NextResponse.json({ error: "Givers cannot post in circles." }, { status: 403 });
   }
 
   if (!user?.currentCircleId || user.currentCircleId !== circleId) {

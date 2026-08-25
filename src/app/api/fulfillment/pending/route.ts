@@ -194,7 +194,8 @@ export async function GET(req: NextRequest) {
     requesterName:       r.requester.name,
     requesterAvatar:     r.requester.avatar,
     requesterTrustScore: r.requester.trustScore,
-    reasonForRequest:    r.reasonForRequest,
+    // reasonForRequest is deliberately NOT exposed: a giver must not read a
+    // mother's stated need before deciding whether to give.
     whoIsItFor:          r.whoIsItFor,
     pickupPreference:    r.pickupPreference,
     pickupCategoryId:    r.pickupCategoryId,

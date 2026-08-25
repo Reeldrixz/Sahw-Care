@@ -204,7 +204,7 @@ export default function HowItWorksPage() {
               <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>📦</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", color: "var(--ink)" }}>Item listed or register committed</div>
-                <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>They list an item to donate or commit to a register.</div>
+                <div style={{ fontSize: 11, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginTop: 2 }}>They list an item to give or commit to a register.</div>
               </div>
             </div>
 
@@ -225,7 +225,7 @@ export default function HowItWorksPage() {
               Every action matters. Whether you share, donate, or fulfil a request, your contribution moves the mission forward. No one has to do all of it.
             </div>
             {[
-              { step: "1", label: "Accept the mission",      desc: "You join a team of 5 donors." },
+              { step: "1", label: "Accept the mission",      desc: "You join a team of 5 givers." },
               { step: "2", label: "Share, list, deliver care", desc: "Every action your team takes moves the mission forward, and Kradel turns it into verified maternal care." },
               { step: "3", label: "Mission completes",       desc: "When the shared goal is reached, the mission is done." },
               { step: "4", label: "See the real outcome",    desc: "The platform shows what your team's work funded." },

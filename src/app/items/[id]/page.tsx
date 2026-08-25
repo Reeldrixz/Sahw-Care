@@ -137,7 +137,7 @@ export default function ItemDetailPage() {
     });
     if (res.ok) {
       setRequested(true);
-      setToast("Request sent. The donor will review and reach out.");
+      setToast("Request sent. They'll take a look and get back to you.");
     } else {
       const d = await res.json();
       setToast(d.error ?? "Something went wrong");
@@ -295,7 +295,7 @@ export default function ItemDetailPage() {
           </div>
         )}
         <button className={`btn-big ${requested ? "done" : ""}`} onClick={handleRequest} disabled={requested}>
-          {requested ? "✓ Request Sent, Awaiting donor" : "Request"}
+          {requested ? "✓ Request sent — awaiting reply" : "Request"}
         </button>
         {inProgressUrl && (
           <button
@@ -332,7 +332,7 @@ export default function ItemDetailPage() {
       </div>
 
       <div className="detail-divider" />
-      <div className="detail-section-title">About the donor</div>
+      <div className="detail-section-title">About the giver</div>
       <div className="donor-card" onClick={() => router.push(`/donors/${item.donor.id}`)}>
         <div className="donor-avatar-lg" style={{ overflow: "hidden" }}>
           <Avatar src={item.donor.avatar} name={item.donor.name} size={48} />
@@ -480,7 +480,7 @@ export default function ItemDetailPage() {
               <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "#1a1a1a", textAlign: "center" }}>What does verified mean?</div>
             </div>
             {[
-              "This donor's identity has been reviewed by the Kradel team.",
+              "This giver's identity has been reviewed by the Kradel team.",
               "They have completed phone and email verification.",
               "Their listing has passed our basic review process.",
             ].map((text, i) => (

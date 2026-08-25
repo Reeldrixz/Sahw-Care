@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
-  const name = searchParams.get("name") ?? "A Kradel Donor";
+  const name = searchParams.get("name") ?? "A Kradel Giver";
 
   let donations = 0, families = 0, babiesFed = 0;
   let rankLabel = "New Giver", rankEmoji = "🌱";
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   // Headline copy varies by milestone
   const headline =
     donations === 0 ? "Just joined Kradel 💛" :
-    donations === 1 ? "Made their first donation!" :
+    donations === 1 ? "Gave their first gift!" :
     families === 1 ? `Helped 1 family in need` :
     `Helped ${families} families`;
 
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
               marginTop: 24,
             }}>
               {[
-                { value: String(donations), label: "donations" },
+                { value: String(donations), label: "gifts given" },
                 { value: String(families), label: "families helped" },
                 { value: String(babiesFed), label: "babies nourished" },
               ].map(({ value, label }) => (

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
 
   const donorId = coordination.request.item.donorId;
   if (user.userId !== donorId && user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Only the donor can mark ready" }, { status: 403 });
+    return NextResponse.json({ error: "Only the giver can mark ready" }, { status: 403 });
   }
 
   if (coordination.status !== "SCHEDULED") {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
     data: {
       userId: coordination.request.requesterId,
       type: "COORDINATION_DELIVERED",
-      message: "Your donor is at the pickup location. Head over!",
+      message: "They are at the pickup location. Head over!",
       link: `/coordination/${requestId}`,
       triggeredByUserId: user.userId,
     },

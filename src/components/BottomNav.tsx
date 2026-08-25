@@ -16,7 +16,7 @@ const SIZE   = 20;
 
 // Tabs shown to pregnant / postpartum users (Circles access)
 const MOM_TABS = [
-  { path: "/",            label: "Discover",   Icon: Compass,       section: "discover"  },
+  { path: "/",            label: "Home",       Icon: Compass,       section: "discover"  },
   { path: "/registers",   label: "Registers",  Icon: ClipboardList, section: "registers" },
   { path: "/bundles",     label: "Bundles",    Icon: Gift,          section: "bundles"   },
   { path: "/circles",     label: "Circles",    Icon: Users,         section: "circles"   },
@@ -26,7 +26,7 @@ const MOM_TABS = [
 
 // Tabs shown to donor users (no Circles, no Favourites)
 const DONOR_TABS = [
-  { path: "/",           label: "Discover",  Icon: Compass,       section: "discover"  },
+  { path: "/",           label: "Home",      Icon: Compass,       section: "discover"  },
   { path: "/registers",  label: "Registers", Icon: ClipboardList, section: "registers" },
   { path: "/bundles",    label: "Bundles",   Icon: Gift,          section: "bundles"   },
   { path: "/pickups",    label: "Pickups",   Icon: PackageCheck,  section: "pickups"   },

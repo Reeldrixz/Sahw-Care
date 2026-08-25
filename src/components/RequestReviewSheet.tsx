@@ -62,7 +62,6 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
   const router = useRouter();
   const { user } = useAuth();
 
-  const [note, setNote]                           = useState("");
   const [whoFor, setWhoFor]                       = useState<WhoFor | null>(null);
   const [pickup, setPickup]                       = useState<PickupPref | null>(null);
   const [selectedCategory, setSelectedCategory]   = useState<PickupCategoryId | null>(null);
@@ -95,12 +94,10 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
     return bucket?.suggestions[0]?.id ?? null;
   })();
 
-  const noteOk = note.trim().length === 0 || note.trim().length <= 100;
   const locationNoteOk = selectedCategory !== "OTHER" || locationNote.trim().length > 0;
   const canSubmit =
     !!whoFor &&
     !!pickup &&
-    noteOk &&
     !!selectedCategory &&
     locationNoteOk;
 
@@ -113,7 +110,6 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         itemId:             item.id,
-        requestNote:        note.trim() || null,
         whoIsItFor:         whoFor,
         pickupPreference:   pickup,
         pickupMode:         pickup ?? "PICKUP",
@@ -201,7 +197,7 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                 {item.title}
               </div>
               <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified donor" : "Shared by a Kradel member"} · {item.location.split(",")[0]}
+                {(item.donor.verificationLevel ?? 0) >= 1 ? "Shared by a verified giver" : "Shared by a Kradel member"} · {item.location.split(",")[0]}
               </div>
             </div>
             {item.urgent && (
@@ -260,34 +256,11 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
           ) : (
             /* ── Form ── */
             <>
-              {/* Request note */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", marginBottom: 6, color: "var(--ink)" }}>
-                  Add a short request note <span style={{ color: "var(--light)", fontWeight: 600 }}>(optional)</span>
-                </label>
-                <textarea
-                  rows={2}
-                  maxLength={100}
-                  placeholder="Needed for newborn care"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  style={{
-                    width: "100%", padding: "11px 14px", borderRadius: 12,
-                    border: "1.5px solid var(--border)",
-                    fontSize: 14, fontFamily: "Nunito, sans-serif", outline: "none",
-                    resize: "none", boxSizing: "border-box",
-                    background: "var(--bg)", color: "var(--ink)", lineHeight: 1.5,
-                  }}
-                />
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                  <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
-                    Keep it brief. Logistics only.
-                  </span>
-                  <span style={{ fontSize: 11, color: "var(--light)", fontFamily: "Nunito, sans-serif" }}>
-                    {note.length}/100
-                  </span>
-                </div>
-              </div>
+              {/* No request note. Asking her to write something to the giver at
+                  claim time invites her to justify her need in order to be
+                  chosen — the exact dynamic the gifting reframe removes. It was
+                  never load-bearing: location and time are settled in
+                  coordination, where both parties can already talk. */}
 
               {/* Who is it for */}
               <div style={{ marginBottom: 20 }}>
@@ -328,12 +301,12 @@ export default function RequestReviewSheet({ item, onClose, onSubmitted }: Props
                   {/* Section header */}
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, fontFamily: "Lora, serif", color: "var(--ink)", marginBottom: 4 }}>
-                      {pickup === "PICKUP" ? "Choose a public place type" : "Where should the donor meet you?"}{" "}
+                      {pickup === "PICKUP" ? "Choose a public place type" : "Where should they meet you?"}{" "}
                       <span style={{ color: "var(--terra)" }}>*</span>
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 400, fontFamily: "Nunito, sans-serif", color: "var(--mid)", lineHeight: 1.5, marginBottom: 6 }}>
                       {pickup === "PICKUP"
-                        ? "Pick the kind of place that's easy for you. You and the donor will agree on the exact spot together."
+                        ? "Pick the kind of place that's easy for you. You'll agree on the exact spot together."
                         : "Pick a public place type near you. You'll agree on the exact spot together."}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

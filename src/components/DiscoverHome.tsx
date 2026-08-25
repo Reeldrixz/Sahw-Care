@@ -38,7 +38,7 @@ interface PendingRequest {
   requestId: string; itemId: string; itemTitle: string;
   requesterId: string; requesterName: string; requesterAvatar: string | null;
   requesterTrustScore: number;
-  reasonForRequest: string | null; whoIsItFor: string | null; pickupPreference: string | null;
+  whoIsItFor: string | null; pickupPreference: string | null;
   pickupCategoryId: string | null;
   requestedAt: string;
 }
@@ -433,7 +433,7 @@ export default function DiscoverPage() {
               fontSize: 12, color: "#1a5c45", fontFamily: "Nunito, sans-serif", fontWeight: 600,
             }}>
               <CheckCircle size={13} color="#1a7a5e" strokeWidth={2.5} />
-              {trustCount} item{trustCount !== 1 ? "s" : ""} fulfilled{activeCity ? ` in ${activeCity}` : ""} this month · All donors verified
+              {trustCount} item{trustCount !== 1 ? "s" : ""} fulfilled{activeCity ? ` in ${activeCity}` : ""} this month · All givers verified
             </div>
           )}
 
@@ -490,12 +490,10 @@ export default function DiscoverPage() {
                         {isTrusted ? "Trusted member" : "New member"}
                       </span>
                     </div>
-                    {r.reasonForRequest && (
-                      <div style={{ background: "var(--bg)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>Why they need it</div>
-                        <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "var(--ink)", lineHeight: 1.5 }}>"{r.reasonForRequest}"</div>
-                      </div>
-                    )}
+                    {/* "Why they need it" is gone by design. Showing a giver a
+                        mother's stated reason before he chooses makes the gift
+                        conditional on how well she performs need. A gift is
+                        given because it's wanted, not because it's justified. */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
                       {r.whoIsItFor && (
                         <span style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: "#e8f5f1", color: "#1a7a5e", fontFamily: "Nunito, sans-serif" }}>

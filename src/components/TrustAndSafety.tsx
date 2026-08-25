@@ -12,7 +12,7 @@ const COLUMNS = [
   {
     icon: Package,
     title: "Kradel Delivers",
-    desc: "We handle purchasing and delivery. Donors never share addresses.",
+    desc: "We handle purchasing and delivery. Givers never share addresses.",
   },
   {
     icon: Lock,

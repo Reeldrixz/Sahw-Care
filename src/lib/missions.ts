@@ -34,9 +34,9 @@ const LABELS: Record<ActionType, string> = {
   click:               "Someone discovered Kradel through your shared link.",
   signup:              "A new member joined Kradel through your link.",
   listing_posted:      "A new item was listed on Discover through someone you brought in.",
-  register_committed:  "A donation was committed toward a mom's register request.",
+  register_committed:  "A gift was committed toward a mom's register request.",
   listing_completed:   "Support delivered: [category] essentials, through your link.",
-  register_fulfilled:  "Support delivered: a [category] donation, through your link.",
+  register_fulfilled:  "Support delivered: a [category] gift, through your link.",
   bundle_delivered:    "Support delivered: [itemName] · [stage].",
 };
 

@@ -27,7 +27,7 @@ interface Coordination {
   confirmedTime: string | null; status: string;
   cancelledById: string | null; cancelReason: string | null;
   request: {
-    id: string; requesterId: string; whoIsItFor: string | null; requestNote: string | null;
+    id: string; requesterId: string; whoIsItFor: string | null;
     pickupPreference: string | null; pickupLocationNote: string | null;
     item: { id: string; title: string; donorId: string };
     requester: { id: string; name: string; verificationLevel: number; trustScore: number };
@@ -41,11 +41,11 @@ interface Coordination {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
-  PENDING:           "Waiting for donor to confirm",
+  PENDING:           "Waiting for the giver to confirm",
   LOCATION_CONFIRMED: "Location agreed. Propose a time",
   TIME_PROPOSED:     "Time proposed. Waiting for confirmation",
   SCHEDULED:         "Meetup scheduled ✓",
-  DONOR_READY:       "Donor is at the location",
+  DONOR_READY:       "They're at the location",
   DELIVERED:         "Item handed over. Please confirm",
   CONFIRMED:         "Pickup complete ✓",
   CANCELLED:         "Coordination cancelled",
@@ -199,7 +199,7 @@ function ProgressBar({ status }: { status: string }) {
             transition: "background 0.3s",
           }} />
           <span style={{ fontSize: 9, color: i <= idx ? "#1a7a5e" : "#9ca3af", fontFamily: "Nunito, sans-serif", fontWeight: 700, textAlign: "center" }}>
-            {["Scheduled", "Donor ready", "Delivered", "Confirmed"][i]}
+            {["Scheduled", "Ready", "Delivered", "Confirmed"][i]}
           </span>
         </div>
       ))}
@@ -311,7 +311,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
   const isRecipient = user.id === recipientId;
   const otherName   = isDonor
     ? coord?.request.requester.name.split(" ")[0] ?? "Recipient"
-    : "Donor";
+    : "Giver";
   const status = coord?.status ?? "PENDING";
 
   const post = async (endpoint: string, body?: Record<string, unknown>) => {
@@ -400,7 +400,7 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
     return (
       <div style={{ padding: 24, textAlign: "center", fontFamily: "Nunito, sans-serif" }}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Coordination not yet started</div>
-        <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24 }}>The donor hasn't confirmed the pickup location yet.</div>
+        <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 24 }}>They haven't confirmed the pickup location yet.</div>
         <button onClick={() => router.back()} style={{ background: "none", border: "1.5px solid #e5e7eb", borderRadius: 12, padding: "10px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
           Go back
         </button>
@@ -541,17 +541,8 @@ export default function CoordinationPage({ params }: { params: Promise<{ request
             )}
           </div>
 
-          {/* Recipient request note */}
-          {coord.request.requestNote && (
-            <div style={{ margin: "10px 16px 0", background: "white", borderRadius: 14, border: "1.5px solid #f3f4f6", padding: "12px 16px" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af", fontFamily: "Nunito, sans-serif", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>
-                Request note
-              </div>
-              <div style={{ fontSize: 13, fontFamily: "Nunito, sans-serif", color: "#1a1a1a", lineHeight: 1.55 }}>
-                &ldquo;{coord.request.requestNote}&rdquo;
-              </div>
-            </div>
-          )}
+          {/* The recipient request note is no longer collected or shown — see
+              RequestReviewSheet. Both parties can talk in the thread below. */}
 
           {/* Messages */}
           {coord.messages.length > 0 && (

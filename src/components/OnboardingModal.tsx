@@ -217,7 +217,7 @@ export default function OnboardingModal({ onComplete }: Props) {
                   {[
                     { j: "pregnant"   as Journey, Icon: Baby,  title: "I'm pregnant",     sub: "Get support and access items for your pregnancy" },
                     { j: "postpartum" as Journey, Icon: Users, title: "I'm a mother",     sub: "Find items and connect with others on your journey" },
-                    { j: "donor"      as Journey, Icon: Gift,  title: "I want to donate", sub: "Give essential items to mothers in need"           },
+                    { j: "donor"      as Journey, Icon: Gift,  title: "I want to give", sub: "Share essential items with mothers in need"           },
                   ].map(({ j, Icon, title, sub }) => (
                     <button
                       key={j!}

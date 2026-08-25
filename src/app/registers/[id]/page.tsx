@@ -1261,7 +1261,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
             <div style={{ background: "#e8f5f1", borderRadius: 10, padding: "10px 12px", marginBottom: 16, fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", lineHeight: 1.6 }}>
-              Your address is only used to ship this item and is never shared with donors.
+              Your address is only used to ship this item and is never shared with givers.
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>

@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: { register: true, assignment: true },
   });
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (!item.assignment) return NextResponse.json({ error: "No donor assigned yet" }, { status: 400 });
+  if (!item.assignment) return NextResponse.json({ error: "No giver assigned yet" }, { status: 400 });
 
   const isMom = item.register.creatorId === auth.userId;
   const isDonor = item.assignment.donorId === auth.userId;

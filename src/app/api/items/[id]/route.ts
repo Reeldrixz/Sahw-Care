@@ -92,7 +92,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await cancelActiveRequestsForItem(
       id,
       updated.title,
-      "Item removed by donor",
+      "Item removed by the giver",
       user.userId,
     ).catch(() => {});
   }

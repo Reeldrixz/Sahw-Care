@@ -1153,7 +1153,7 @@ export default function AdminPage() {
                 </div>
                 <div className="admin-table">
                   <div className="admin-table-header"><div className="admin-table-title">Recent Listings</div></div>
-                  <table><thead><tr><th>Item</th><th>Donor</th><th>Status</th><th>Date</th></tr></thead>
+                  <table><thead><tr><th>Item</th><th>Giver</th><th>Status</th><th>Date</th></tr></thead>
                     <tbody>{recentActivity.map((item) => (
                       <tr key={item.id}>
                         <td><strong>{item.title}</strong></td>
@@ -1226,7 +1226,7 @@ export default function AdminPage() {
                 </div>
                 {loading ? <div className="loading"><div className="spinner" /></div> : (
                   <table>
-                    <thead><tr><th>Title</th><th>Category</th><th>Donor</th><th>Requests</th><th>Status</th><th>Actions</th></tr></thead>
+                    <thead><tr><th>Title</th><th>Category</th><th>Giver</th><th>Requests</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody>{items.map((item) => (
                       <tr key={item.id}>
                         <td><strong>{item.title}</strong>{item.urgent && <span style={{ marginLeft: 6, fontSize: 10, background: "var(--yellow)", padding: "2px 6px", borderRadius: 10, fontWeight: 700 }}>⚡ Urgent</span>}</td>
@@ -1883,9 +1883,9 @@ export default function AdminPage() {
                     <thead>
                       <tr>
                         <th>Item</th>
-                        <th>Donor</th>
+                        <th>Giver</th>
                         <th>Recipient</th>
-                        <th>Donor note</th>
+                        <th>Giver note</th>
                         <th>Marked</th>
                         <th>Responded</th>
                         <th>Status</th>
@@ -2557,7 +2557,7 @@ export default function AdminPage() {
                 ) : (
                   <table>
                     <thead>
-                      <tr><th>Date</th><th>Donor</th><th>Item</th><th>Register</th><th>Amount</th><th>Action</th></tr>
+                      <tr><th>Date</th><th>Giver</th><th>Item</th><th>Register</th><th>Amount</th><th>Action</th></tr>
                     </thead>
                     <tbody>
                       {refunds.map((r) => (

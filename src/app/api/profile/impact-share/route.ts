@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (user?.journeyType !== "donor") {
-    return NextResponse.json({ error: "Donors only" }, { status: 403 });
+    return NextResponse.json({ error: "Givers only" }, { status: 403 });
   }
 
   // ── Pull all qualifying actions ──────────────────────────────────────────

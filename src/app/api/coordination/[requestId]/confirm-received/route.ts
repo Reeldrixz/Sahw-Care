@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ req
   }
 
   if (coordination.status !== "DELIVERED") {
-    return NextResponse.json({ error: "Donor must mark as delivered first" }, { status: 409 });
+    return NextResponse.json({ error: "The giver must mark it as delivered first" }, { status: 409 });
   }
 
   const [updatedCoord] = await prisma.$transaction([

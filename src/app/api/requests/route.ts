@@ -127,7 +127,12 @@ export async function POST(req: NextRequest) {
     }, { status: 429 });
   }
 
-  const { itemId, note, reasonForRequest, requestNote, whoIsItFor, pickupPreference, pickupLocationId, pickupMode, pickupCategoryId, pickupLocationNote } = await req.json();
+  // note / reasonForRequest / requestNote are deliberately NOT read from the
+  // body any more. Asking a mother to explain herself at claim time made the
+  // gift conditional on how well she justified her need. The columns remain so
+  // historical rows keep their text; nothing new is collected. Logistics live in
+  // coordination, where both parties can talk.
+  const { itemId, whoIsItFor, pickupPreference, pickupLocationId, pickupMode, pickupCategoryId, pickupLocationNote } = await req.json();
 
   if (!itemId) return NextResponse.json({ error: "itemId is required" }, { status: 400 });
 
@@ -172,9 +177,6 @@ export async function POST(req: NextRequest) {
     data: {
       itemId,
       requesterId: user.userId,
-      note: note ?? null,
-      reasonForRequest: reasonForRequest ?? null,
-      requestNote: requestNote ?? null,
       whoIsItFor: whoIsItFor ?? null,
       pickupPreference: pickupPreference ?? null,
       pickupMode: pickupMode ?? "PICKUP",

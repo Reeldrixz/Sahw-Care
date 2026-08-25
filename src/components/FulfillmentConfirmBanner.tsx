@@ -129,7 +129,7 @@ export default function FulfillmentConfirmBanner({ items, onResolved }: Props) {
             {/* Donor note */}
             {item.donorNote && (
               <div style={{ background: "#fff8e6", borderRadius: 10, padding: "10px 12px", marginBottom: 12, fontSize: 12, color: "var(--ink)", fontFamily: "Nunito, sans-serif", lineHeight: 1.5 }}>
-                <span style={{ fontWeight: 700, color: "#b8860b" }}>Message from donor: </span>
+                <span style={{ fontWeight: 700, color: "#b8860b" }}>Message from the giver: </span>
                 {item.donorNote}
               </div>
             )}
@@ -139,7 +139,7 @@ export default function FulfillmentConfirmBanner({ items, onResolved }: Props) {
               <div style={{ marginBottom: 12 }}>
                 <img
                   src={item.donorPhotoUrl}
-                  alt="Item photo from donor"
+                  alt="Photo from the giver"
                   style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }}
                 />
               </div>

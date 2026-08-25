@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
         data: {
           userId:  fl.request.requesterId,
           type:    "FULFILLMENT_REMINDER",
-          message: `Reminder: your donor says they've sent "${fl.request.item.title}". Did you receive it? Please confirm.`,
+          message: `Reminder: the giver says they've sent "${fl.request.item.title}". Did you receive it? Please confirm.`,
           link:    `/?confirm=${fl.requestId}`,
         },
       }),

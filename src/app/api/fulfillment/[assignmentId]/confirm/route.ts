@@ -41,7 +41,7 @@ export async function POST(
   // Donor must have marked as DELIVERED first
   if (assignment.status !== "DELIVERED") {
     return NextResponse.json({
-      error: "The donor must mark the item as delivered before you can confirm receipt.",
+      error: "The giver must mark the item as delivered before you can confirm receipt.",
     }, { status: 400 });
   }
 

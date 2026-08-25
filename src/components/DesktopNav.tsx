@@ -7,8 +7,8 @@ import NotificationBell from "@/components/NotificationBell";
 import { Compass, ClipboardList, Users, Gift, PackageCheck, Search } from "lucide-react";
 
 const ALL_NAV_LINKS = [
-  { label: "Discover",  href: "/",          Icon: Compass,       donorOnly: false, momOnly: false },
-  { label: "Browse",    href: "/browse",    Icon: Search,        donorOnly: false, momOnly: false },
+  { label: "Home",      href: "/",          Icon: Compass,       donorOnly: false, momOnly: false },
+  { label: "Gifts",     href: "/browse",    Icon: Search,        donorOnly: false, momOnly: false },
   { label: "Registers", href: "/registers", Icon: ClipboardList, donorOnly: false, momOnly: false },
   { label: "Bundles",   href: "/bundles",   Icon: Gift,          donorOnly: false, momOnly: false },
   { label: "Circles",   href: "/circles",   Icon: Users,         donorOnly: false, momOnly: true  },

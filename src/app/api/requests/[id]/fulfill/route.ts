@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   if (!request) return NextResponse.json({ error: "Request not found" }, { status: 404 });
   if (request.item.donorId !== auth.userId) {
-    return NextResponse.json({ error: "Only the donor can mark this as fulfilled" }, { status: 403 });
+    return NextResponse.json({ error: "Only the giver can mark this as fulfilled" }, { status: 403 });
   }
   if (request.status !== "APPROVED") {
     return NextResponse.json({ error: "Request must be APPROVED before marking fulfilled" }, { status: 400 });
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     data: {
       userId:            request.requesterId,
       type:              "FULFILLMENT_PENDING",
-      message:           `${request.requester.name.split(" ")[0]}, your donor says they've sent your item. Please confirm you received it.`,
+      message:           `${request.requester.name.split(" ")[0]}, the giver says they've sent your item. Please confirm you received it.`,
       link:              `/?confirm=${requestId}`,
       triggeredByUserId: auth.userId,
     },
