@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // Enforce Layer 1 before requesting items (bypassed for verificationLevel >= 2)
-  const [requester, priorClaimCount] = await Promise.all([
+  const [requester, priorClaimCount, giftInProgress] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user.userId },
       select: {
@@ -68,6 +68,15 @@ export async function POST(req: NextRequest) {
         requesterId: user.userId,
         status: { notIn: ["CANCELLED", "DECLINED", "REJECTED"] },
       },
+    }),
+    // Turn-taking: the one gift already being arranged, if any. Same query shape
+    // as priorClaimCount, but selects the id so we can link her straight to it.
+    prisma.request.findFirst({
+      where: {
+        requesterId: user.userId,
+        status: { in: ["ACCEPTED", "PICKUP_AGREED"] },
+      },
+      select: { id: true },
     }),
   ]);
   if (!requester) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -87,6 +96,23 @@ export async function POST(req: NextRequest) {
       error: claimAccess.message,
       code:  claimAccess.code,
     }, { status: 403 });
+  }
+
+  // Turn-taking: one gift in progress at a time. ACCEPTED and PICKUP_AGREED are
+  // the states where a giver has committed and a handover is being arranged
+  // (post-rename, PICKUP_AGREED means a time was actually agreed). PENDING does
+  // NOT block: an unanswered claim may sit for up to 48h before the expiry cron
+  // clears it, and freezing her on a giver's silence would punish her for it.
+  //
+  // This can never trap her: the stall timeouts free the slot automatically
+  // (48h unanswered / 72h stalled), and she can cancel the coordination herself
+  // at any point — which is why the copy names both exits.
+  if (giftInProgress) {
+    return NextResponse.json({
+      error: "You have a gift being arranged right now. Once it's handed over, or if it falls through, you can claim another.",
+      code:  "GIFT_IN_PROGRESS",
+      coordinationUrl: `/coordination/${giftInProgress.id}`,
+    }, { status: 409 });
   }
 
   // Request cooldown: max 8 requests per 12-hour window
