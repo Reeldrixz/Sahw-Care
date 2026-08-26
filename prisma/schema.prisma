@@ -1831,10 +1831,20 @@ model Reflection {
 // and the well-meaning-dangerous ones are exactly what nobody reports.
 
 enum ExperienceStatus {
-  DRAFT     // posts only — comments are never drafted
+  DRAFT     // posts only — comments are never drafted. Also the send-back state:
+            // a post that needs one specific change to be publishable, returned
+            // to her with an actionable note rather than refused outright.
   PENDING   // awaiting admin review; the default for posts and comments alike
   PUBLISHED
   REJECTED
+
+  // Held because the author appears to be in crisis. Deliberately NOT a
+  // rejection: recording a struggling mother as "rejected" is precisely the
+  // outcome to avoid. The post is set aside, she receives the crisis support
+  // message rather than any verdict on her writing, and the state stays
+  // filterable so a human can follow up. Appended last so the value order here
+  // matches the order ALTER TYPE ... ADD VALUE produces in Postgres.
+  HELD_FOR_SUPPORT
 }
 
 // Fixed taxonomy, deliberately NOT free tags: browse-by-topic is the primary

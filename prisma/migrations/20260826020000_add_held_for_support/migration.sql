@@ -1,0 +1,25 @@
+-- ExperienceStatus.HELD_FOR_SUPPORT — the crisis path for the Experiences
+-- review queue (E4).
+--
+-- A post whose author appears to be in crisis must not be recorded as REJECTED.
+-- She has not done anything wrong, and the queue should not be able to express
+-- "we refused her" when what happened was "we set this aside and reached out".
+-- Without a state of its own, the crisis path would have to borrow REJECTED and
+-- paper over it with kinder wording, which leaves the database saying the one
+-- thing we do not mean.
+--
+-- So this is a real state: filterable, followable-up, and structurally distinct
+-- from a rejection. She receives the crisis support message — 988, ConnexOntario,
+-- Postpartum Support International, 911 — and no verdict on her writing at all.
+--
+-- Appended (plain ADD VALUE, no BEFORE/AFTER) so the value order in Postgres
+-- matches the order declared in schema.prisma, keeping the two in agreement.
+--
+-- Postgres 12+ permits ALTER TYPE ... ADD VALUE inside a transaction provided
+-- the new value is not USED in the same transaction; nothing here references it,
+-- so this is safe under migrate deploy.
+--
+-- PURELY ADDITIVE: one enum value. Zero drops, no table touched, no data moved.
+
+-- AlterEnum
+ALTER TYPE "ExperienceStatus" ADD VALUE 'HELD_FOR_SUPPORT';
