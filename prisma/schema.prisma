@@ -206,6 +206,9 @@ model User {
   formulaRequests      FormulaRequest[]
   formulaEpisodes      FormulaEpisode[]
   reflections          Reflection[]
+  experiences          Experience[]
+  experienceHelpfuls   ExperienceHelpful[]
+  experienceComments   ExperienceComment[]
 
   totalFundedCents Int @default(0)
   fundingCount     Int @default(0)
@@ -1802,6 +1805,145 @@ model Reflection {
   @@index([stageKey, status])
   @@index([authorId])
   @@index([status])
+}
+
+// ==================== EXPERIENCES ====================
+// Accumulated, retrievable knowledge: what mothers have LEARNED. A distinct
+// primitive from the other two spaces, and the distinction is the point:
+//   Circles      = people and conversation  (what mothers are talking about)
+//   Reflections  = personal stories          (what mothers have lived through)
+//   Experiences  = searchable knowledge      (what mothers have figured out)
+//
+// The test every post must pass: would this still help a stranger eight months
+// from now? That is why the body is three required parts rather than free text —
+// a "how is everyone today?" post cannot be written in this shape, so the form
+// itself is the guardrail against becoming a second conversational feed.
+//
+// Eligibility is MOTHERHOOD (User.isMother), never gender and never donation.
+// THESIS RULE: nothing on a post may reveal whether its author gives or
+// receives. Reads expose first name / chosen display name only — never role,
+// journeyType, isMother or userId. If donation ever became visible here it would
+// have purchased status, and the hierarchy we removed would be back.
+//
+// Everything is review-before-publish (default PENDING), posts AND comments,
+// because this space is permanent, public and baby-health-adjacent: a wrong
+// "what worked for sleep" that stays searchable for years is a safety hazard,
+// and the well-meaning-dangerous ones are exactly what nobody reports.
+
+enum ExperienceStatus {
+  DRAFT     // posts only — comments are never drafted
+  PENDING   // awaiting admin review; the default for posts and comments alike
+  PUBLISHED
+  REJECTED
+}
+
+// Fixed taxonomy, deliberately NOT free tags: browse-by-topic is the primary
+// way in, and free tagging fragments a small corpus into unusable slivers.
+enum ExperienceTopic {
+  FEEDING
+  SLEEP
+  RECOVERY
+  MENTAL_HEALTH
+  MEDICAL
+  LOGISTICS_MONEY
+  RELATIONSHIPS
+}
+
+model Experience {
+  id       String @id @default(cuid())
+  authorId String
+
+  // The three required parts. situation is the retrieval key — it should read as
+  // the problem a future mother would search for ("baby wouldn't take a bottle
+  // after 6 weeks"), not as a title. whatITried should include what did NOT work,
+  // which is usually the most useful and least recorded part.
+  situation  String @db.Text
+  whatITried String @db.Text
+  takeaway   String @db.Text
+
+  topic    ExperienceTopic
+  stageKey String?          // optional StageKey snapshot, e.g. "postpartum-0-3"
+
+  status ExperienceStatus @default(PENDING)
+
+  // Admin review. reviewNote is INTERNAL and never rendered to the author;
+  // rejectionReasonForAuthor is written to be read by her, so the two must stay
+  // separate fields — the same split used for formula decline reasons.
+  reviewedById             String?
+  reviewedAt               DateTime?
+  reviewNote               String?
+  rejectionReasonForAuthor String?
+
+  // Denormalised on purpose, unlike the live-computed capacity ledger: this is
+  // the primary SORT KEY for every browse query, so it must be an indexable
+  // column. Drift is contained because there is exactly one writer — it moves
+  // only in the same transaction as an ExperienceHelpful insert/delete.
+  helpedCount Int @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  author   User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  helpfuls ExperienceHelpful[]
+  comments ExperienceComment[]
+
+  // Ranking is helpedCount DESC with createdAt ASC as tiebreak — oldest wins.
+  // Deliberately anti-feed: nothing is privileged for being new, and knowledge
+  // does not decay. These indexes serve browse-by-topic and that ranking.
+  @@index([status, topic, helpedCount])
+  @@index([status, stageKey])
+  @@index([status, createdAt]) // the bounded "recently added" shelf only
+  @@index([authorId])
+}
+
+// One signal per person per post. The unique constraint IS the rule — this is a
+// helpfulness signal, not a vote count that can be stacked.
+model ExperienceHelpful {
+  id           String   @id @default(cuid())
+  experienceId String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // No separate @@index([experienceId]): the unique index below is already
+  // usable for experienceId-prefixed lookups, so a standalone one would only
+  // add write cost on every insert and delete.
+  @@unique([experienceId, userId])
+}
+
+// Comments add to the knowledge ("this worked for me too"), they do not host a
+// conversation. There is deliberately NO parentId: the absence of that column is
+// what structurally prevents threading. Anything needing a back-and-forth
+// belongs in Circles.
+//
+// Reviewed before publishing like posts, because a dangerous comment under a
+// TRUSTED post is permanent public advice that every future reader sees.
+model ExperienceComment {
+  id           String @id @default(cuid())
+  experienceId String
+  authorId     String
+  body         String @db.Text
+
+  status ExperienceStatus @default(PENDING)
+
+  reviewedById             String?
+  reviewedAt               DateTime?
+  reviewNote               String?
+  rejectionReasonForAuthor String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  author     User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([experienceId, status])
+  @@index([status])
+  @@index([authorId])
 }
 
 // ==================== PROFILE SNAPSHOTS ====================
