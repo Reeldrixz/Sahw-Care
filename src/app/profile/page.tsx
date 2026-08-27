@@ -963,39 +963,6 @@ export default function ProfilePage() {
 
             <RetakeTourButton />
 
-            {/* Experiences — mothers only. Quiet entry point by design: this is
-                a soft launch, and nav placement is revisited at promotion. A
-                mother who gives cannot reach it through Circles, so it lives
-                here where every mother has it regardless of journey. */}
-            {user.isMother && (
-              <div
-                onClick={() => router.push(firstDraftId ? `/experiences/new?draft=${firstDraftId}` : "/experiences/new")}
-                style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
-              >
-                <div style={{ width: 38, height: 38, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <PencilLine size={17} strokeWidth={2} color="#1a7a5e" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>
-                    Write an experience
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.5, marginTop: 2 }}>
-                    {draftCount > 0
-                      ? draftCount === 1
-                        ? "1 draft needs your edit"
-                        : `${draftCount} drafts need your edit`
-                      : "Something you went through, for the mother coming up behind you"}
-                  </div>
-                </div>
-                {draftCount > 0 && (
-                  <span style={{ background: "#d97706", color: "white", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
-                    {draftCount}
-                  </span>
-                )}
-                <ChevronRight size={16} strokeWidth={2.5} color="var(--light)" />
-              </div>
-            )}
-
             {/* My Requests summary card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -1092,6 +1059,45 @@ export default function ProfilePage() {
               </a>
             </div>
           </>
+        )}
+
+        {/* Experiences — deliberately OUTSIDE the !isAdmin && !isDonor block
+            above. Eligibility here is motherhood, not journey: a mother who
+            gives is exactly the case E1 exists for, and journeyType === "donor"
+            IS that person. Gating this on !isDonor hid the entry point from the
+            only people it was built for, while canWriteExperiences on the server
+            happily accepted their posts — the form was reachable by API and not
+            by hand.
+            The condition below mirrors canWriteExperiences exactly (isMother +
+            no account hold) and must keep mirroring it: any extra exclusion here
+            is a surface that disagrees with the server. */}
+        {user.isMother && !user.accountHold && (
+          <div
+            onClick={() => router.push(firstDraftId ? `/experiences/new?draft=${firstDraftId}` : "/experiences/new")}
+            style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+          >
+            <div style={{ width: 38, height: 38, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <PencilLine size={17} strokeWidth={2} color="#1a7a5e" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>
+                Write an experience
+              </div>
+              <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.5, marginTop: 2 }}>
+                {draftCount > 0
+                  ? draftCount === 1
+                    ? "1 draft needs your edit"
+                    : `${draftCount} drafts need your edit`
+                  : "Something you went through, for the mother coming up behind you"}
+              </div>
+            </div>
+            {draftCount > 0 && (
+              <span style={{ background: "#d97706", color: "white", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
+                {draftCount}
+              </span>
+            )}
+            <ChevronRight size={16} strokeWidth={2.5} color="var(--light)" />
+          </div>
         )}
 
         {/* Spacer for bottom nav */}
