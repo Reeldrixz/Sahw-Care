@@ -1150,6 +1150,10 @@ export default function AdminPage() {
                     🐛 Bug Reports
                     <ExternalLink size={12} color="var(--mid)" />
                   </a>
+                  <a href="/admin/experiences" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "white", border: "1px solid var(--border)", borderRadius: 12, textDecoration: "none", fontFamily: "Nunito, sans-serif", fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>
+                    🛡️ Experiences Review
+                    <ExternalLink size={12} color="var(--mid)" />
+                  </a>
                 </div>
                 <div className="admin-table">
                   <div className="admin-table-header"><div className="admin-table-title">Recent Listings</div></div>

@@ -26,7 +26,13 @@ export type RejectionCategory = "CRISIS" | "NON_CRISIS";
 
 // The exact, approved crisis message. Never uses the word "rejected"; frames not
 // publishing as care; puts her above the post; affirms she is welcome back.
-export const CRISIS_REJECTION_MESSAGE = [
+//
+// Named SUPPORT rather than REJECTION because it is sent in contexts that are
+// deliberately not rejections — the Experiences queue holds such a post as
+// HELD_FOR_SUPPORT, a state of its own. One source of truth: if this copy ever
+// needs to change, it must change in exactly one place, for every surface that
+// reaches a mother in crisis.
+export const CRISIS_SUPPORT_MESSAGE = [
   "We're holding this one for you.",
   "",
   "Thank you for trusting us with something so honest. What you wrote sounds really heavy, and we care more about you right now than about a post.",
@@ -47,5 +53,5 @@ export const NON_CRISIS_REJECTION_MESSAGE =
   "Thanks for sharing. Reflections is a space for your own experience and state of mind at this stage, so this one wasn't quite a fit here. A request or a question is usually better placed in your Circle, where mothers and our team can help. Nothing about this counts against you, and you're welcome to write a reflection any time.";
 
 export function rejectionMessageFor(category: RejectionCategory): string {
-  return category === "CRISIS" ? CRISIS_REJECTION_MESSAGE : NON_CRISIS_REJECTION_MESSAGE;
+  return category === "CRISIS" ? CRISIS_SUPPORT_MESSAGE : NON_CRISIS_REJECTION_MESSAGE;
 }
