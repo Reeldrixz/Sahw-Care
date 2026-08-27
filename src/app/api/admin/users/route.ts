@@ -39,6 +39,8 @@ export async function GET(req: NextRequest) {
         // this account once.
         manualReviewStatus: true, identityVerified: true, motherIntentAt: true,
         recipientGrantedAt: true, recipientGrantNote: true,
+        // Identity state, and whether it came from Persona or an admin vouching.
+        identityOverrideByAdminId: true, identityOverrideReason: true, personaStatus: true,
         _count: { select: { items: true, requests: true } },
       },
       orderBy: { createdAt: "desc" },

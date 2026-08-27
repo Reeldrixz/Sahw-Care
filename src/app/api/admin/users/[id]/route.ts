@@ -18,7 +18,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // ── Manual verification override ─────────────────────────────────────────
     if (action === "manualVerify") {
-      // Step 1: set all access flags so the user is fully unlocked
+      // Step 1: contact + document verification.
+      //
+      // This does NOT set identityVerified, and so does NOT unlock bundles,
+      // item creation, register creation, or address confirmation — all four
+      // read identityVerified, which only Persona or the overrideIdentity
+      // action above can set. This comment previously claimed the user was
+      // "fully unlocked" here, which was untrue and made a missing feature look
+      // like a bug for a long time. Use overrideIdentity for those gates.
       await prisma.user.update({
         where: { id },
         data: {
@@ -44,6 +51,75 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         select: { id: true, name: true, trustScore: true, verificationLevel: true, phoneVerified: true, emailVerified: true, docStatus: true, onboardingComplete: true },
       });
       return NextResponse.json({ user: updated });
+    }
+
+    // ── Identity override (admin bypass of Persona ID verification) ──────────
+    // identityVerified is the single boolean four gates read: applying for a
+    // bundle, creating an item, creating a register, and confirming a shipment
+    // address. Its only other writer is the Persona webhook on inquiry.approved.
+    // Without this action there is no path to it at all for a mother Persona
+    // cannot serve — which is not a hypothetical, it is the live blocker.
+    //
+    // personaInquiryId and personaStatus are deliberately NOT set. They stay
+    // null so an override remains permanently distinguishable from a real
+    // government-ID pass: identityVerified=true with personaStatus=null means a
+    // human vouched, and identityOverrideByAdminId says which human and why.
+    // Writing a fake "approved" here would erase that distinction forever.
+    //
+    // Note what is skipped along with Persona: the duplicate-identity check
+    // (identityHash) that runs on a real approval. An overridden account is not
+    // deduped, so the same person could in principle be verified twice under
+    // two accounts. That is a reason to use this deliberately, not a reason to
+    // fake the hash from data we do not have.
+    if (action === "overrideIdentity") {
+      if (!reason?.trim()) {
+        return NextResponse.json(
+          { error: "A written reason is required — this vouches for a real person receiving physical goods." },
+          { status: 400 }
+        );
+      }
+
+      const target = await prisma.user.findUnique({
+        where:  { id },
+        select: { id: true, name: true, identityVerified: true },
+      });
+      if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+      // Never re-run on someone already verified. If Persona approved her, that
+      // record must not be overwritten by an override stamp.
+      if (target.identityVerified) {
+        return NextResponse.json({ ok: true, alreadyVerified: true });
+      }
+
+      await prisma.user.update({
+        where: { id },
+        data: {
+          identityVerified:          true,
+          identityVerifiedAt:        new Date(),
+          identityOverrideByAdminId: admin.userId,
+          identityOverrideReason:    reason.trim().slice(0, 1000),
+        },
+      });
+
+      // Same notification the Persona path sends, so she sees one consistent
+      // outcome regardless of which route got her there. The reason is
+      // admin-only and deliberately excluded.
+      await notifyUser({
+        userId:  id,
+        type:    "VERIFICATION_APPROVED",
+        message: "Your identity has been verified. You're all set — you can apply for a care bundle whenever you're ready.",
+        link:    "/bundles",
+        context: "admin:override-identity",
+      });
+
+      const updated = await prisma.user.findUnique({
+        where:  { id },
+        select: {
+          id: true, name: true, identityVerified: true, identityVerifiedAt: true,
+          identityOverrideByAdminId: true, personaStatus: true,
+        },
+      });
+      return NextResponse.json({ user: updated, overridden: true });
     }
 
     // ── Grant recipient access (admin override of the referral gate) ─────────

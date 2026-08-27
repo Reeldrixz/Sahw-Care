@@ -18,6 +18,8 @@ interface AdminUser {
   accountHold: boolean; accountHoldReason: string | null; accountHoldAt: string | null;
   manualReviewStatus: string; identityVerified: boolean; motherIntentAt: string | null;
   recipientGrantedAt: string | null; recipientGrantNote: string | null;
+  identityOverrideByAdminId: string | null; identityOverrideReason: string | null;
+  personaStatus: string | null;
   _count: { items: number; requests: number };
 }
 
@@ -952,6 +954,48 @@ export default function AdminPage() {
     }
   };
 
+  // Admin bypass of Persona ID verification. identityVerified is one boolean
+  // that opens four separate gates at once, so the confirmation says so
+  // explicitly — this must never be clicked believing it affects only the one
+  // thing the mother happened to ask about.
+  const overrideIdentity = async (u: AdminUser) => {
+    const ok = window.confirm(
+      `Verify the identity of ${u.name} <${u.email}> without Persona?\n\n` +
+      `This BYPASSES government-ID verification. Normally Persona checks her ID ` +
+      `document; this is you vouching for her instead, and she will be receiving ` +
+      `physical goods at a real address on the strength of it.\n\n` +
+      `It unlocks ALL FOUR of these at once:\n` +
+      `  • applying for a care bundle\n` +
+      `  • creating an item\n` +
+      `  • creating a register of needs\n` +
+      `  • confirming a shipping address\n\n` +
+      `Duplicate-identity checking is skipped — an overridden account is not ` +
+      `deduped against others.\n\n` +
+      `Who did this and why will be recorded permanently on her account.`
+    );
+    if (!ok) return;
+
+    const reason = window.prompt(
+      "Why is this justified? (required, internal only — never shown to her)\n\n" +
+      "e.g. \"ID and proof of address seen in person at the shelter intake, 27 Aug.\""
+    );
+    if (!reason?.trim()) return;
+
+    const res = await fetch(`/api/admin/users/${u.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "overrideIdentity", reason: reason.trim() }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok)            { setToast(d.error ?? "Failed to override identity"); return; }
+    if (d.alreadyVerified)  { setToast(`${u.name} is already identity-verified`); return; }
+
+    setUsers((p) => p.map((x) => x.id === u.id
+      ? { ...x, identityVerified: true, identityOverrideReason: reason.trim(), identityOverrideByAdminId: "me" }
+      : x));
+    setToast(`Identity overridden for ${u.name} — she can now apply`);
+  };
+
   // Admin override of the referral gate. The confirmation names her and states
   // plainly what is being bypassed — this is the vetting step, not a formality,
   // and it should never be clicked absent-mindedly from a row of buttons.
@@ -1247,6 +1291,12 @@ export default function AdminPage() {
                           {u.recipientGrantedAt && (
                             <span title={`Granted without a referral code. Reason: ${u.recipientGrantNote ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#fce7f3", color: "#9d174d", border: "1px solid #f9a8d4", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>🔑 NO REFERRAL</span>
                           )}
+                          {/* Identity verified by an admin vouching rather than
+                              by Persona — permanently distinguishable because
+                              personaStatus stays null. */}
+                          {u.identityOverrideByAdminId && (
+                            <span title={`Identity verified by an admin, not Persona. Reason: ${u.identityOverrideReason ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#dbeafe", color: "#1d4ed8", border: "1px solid #93c5fd", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>🪪 ID OVERRIDE</span>
+                          )}
                         </td>
                         <td>
                           {u.status !== "ACTIVE"     && <button className="action-btn action-approve" onClick={() => updateUserStatus(u.id, "ACTIVE")}>✓ Approve</button>}
@@ -1272,6 +1322,20 @@ export default function AdminPage() {
                               onClick={() => grantRecipient(u)}
                             >
                               🔑 Grant access{u.motherIntentAt ? " •" : ""}
+                            </button>
+                          )}
+                          {/* Identity override. Shown only where it can do
+                              something: a mother who is not yet identity
+                              verified. Unlocks bundles, items, registers and
+                              address confirmation together. */}
+                          {u.role === "RECIPIENT" && !u.identityVerified && (
+                            <button
+                              className="action-btn"
+                              style={{ background: "rgba(29,78,216,0.1)", color: "#1d4ed8", fontWeight: 800 }}
+                              title="Vouch for her identity without Persona — unlocks bundles, items, registers, address"
+                              onClick={() => overrideIdentity(u)}
+                            >
+                              🪪 Verify ID
                             </button>
                           )}
                           {!u.accountHold
