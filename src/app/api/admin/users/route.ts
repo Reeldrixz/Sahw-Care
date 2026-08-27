@@ -33,6 +33,12 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         activeRequestLockedUntil: true,
         accountHold: true, accountHoldReason: true, accountHoldAt: true,
+        // Context for the "Grant recipient access" decision: her verification
+        // state, whether she ever asked for mother access and hit the referral
+        // wall (motherIntentAt), and whether the gate was already bypassed for
+        // this account once.
+        manualReviewStatus: true, identityVerified: true, motherIntentAt: true,
+        recipientGrantedAt: true, recipientGrantNote: true,
         _count: { select: { items: true, requests: true } },
       },
       orderBy: { createdAt: "desc" },

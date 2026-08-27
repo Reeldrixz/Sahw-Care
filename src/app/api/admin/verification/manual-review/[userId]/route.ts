@@ -38,8 +38,20 @@ export async function PUT(
       data: {
         userId:  userId,
         type:    "MANUAL_REVIEW_APPROVED",
-        message: "Your profile has been verified. Welcome to the community. 💛 You can now access care support through Kradel.",
-        link:    "/profile",
+        // Says what verification actually does, and nothing more.
+        //
+        // This previously read "You can now access care support through
+        // Kradel." That was false for every user it was ever sent to:
+        // verification sets manualReviewStatus and never touches role, and
+        // care support requires the RECIPIENT role, which is granted only
+        // through a referral. Mothers were being told a door was open that
+        // was not, and then hitting the partner-directory wall with no idea
+        // why. Promising access is the one thing this message must not do.
+        message:
+          "Your profile has been verified. 💛 Thank you for your patience. " +
+          "If you're looking for care support, that comes through one of our partner " +
+          "organisations — you can find them under Find help.",
+        link:    "/find-help",
       },
     });
   } else {

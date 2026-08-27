@@ -89,6 +89,17 @@ model User {
   betaWelcomeSeenAt  DateTime? // one-time beta welcome note dismissed; null = not yet
   motherIntentAt     DateTime? // picked pregnant/postpartum but referral-gated; the "held-open door" state (null = never expressed mother-intent, e.g. real donors)
 
+  // ── Admin override of the referral gate ────────────────────────────────────
+  // The RECIPIENT role is referral-only by design: a partner organisation
+  // vouching for a mother IS the vetting. An admin can grant it directly when
+  // no code exists, but that is a manual bypass of a deliberate safety gate, so
+  // it is recorded rather than left invisible. Null on every user who arrived
+  // through the normal referral path — presence of a grant note is exactly the
+  // signal that the gate was bypassed for this account, and by whom.
+  recipientGrantedByAdminId String?
+  recipientGrantedAt        DateTime?
+  recipientGrantNote        String?   // why the bypass was justified; admin-only, never shown to her
+
   // ── Impact Creator program (awareness-first) ──────
   isCreator             Boolean   @default(false) // activated Impact Creator
   creatorCodeAcceptedAt DateTime?                 // Code of Conduct acknowledged; gates activation

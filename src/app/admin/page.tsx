@@ -16,6 +16,8 @@ interface AdminUser {
   docStatus: string | null; createdAt: string;
   activeRequestLockedUntil: string | null;
   accountHold: boolean; accountHoldReason: string | null; accountHoldAt: string | null;
+  manualReviewStatus: string; identityVerified: boolean; motherIntentAt: string | null;
+  recipientGrantedAt: string | null; recipientGrantNote: string | null;
   _count: { items: number; requests: number };
 }
 
@@ -950,6 +952,49 @@ export default function AdminPage() {
     }
   };
 
+  // Admin override of the referral gate. The confirmation names her and states
+  // plainly what is being bypassed — this is the vetting step, not a formality,
+  // and it should never be clicked absent-mindedly from a row of buttons.
+  const grantRecipient = async (u: AdminUser) => {
+    const verified =
+      u.manualReviewStatus === "APPROVED"
+        ? "profile verified"
+        : `profile NOT verified (${u.manualReviewStatus})`;
+    const identity = u.identityVerified ? "identity verified" : "identity NOT verified";
+
+    const ok = window.confirm(
+      `Grant care-support access to ${u.name} <${u.email}>?\n\n` +
+      `This BYPASSES partner referral vetting. Normally a partner organisation ` +
+      `issues her a code, and that referral is how we know someone accountable ` +
+      `vouched for her. Granting directly skips that.\n\n` +
+      `Her current state: ${verified}, ${identity}.\n\n` +
+      `She'll be asked to finish onboarding (stage + circle) before it takes effect. ` +
+      `Who granted it and why will be recorded on her account.`
+    );
+    if (!ok) return;
+
+    const reason = window.prompt(
+      "Why is this justified? (required, internal only — never shown to her)\n\n" +
+      "e.g. \"Referred by St Mary's shelter by phone; partner had no codes left.\""
+    );
+    if (!reason?.trim()) return;
+
+    const res = await fetch(`/api/admin/users/${u.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "grantRecipient", reason: reason.trim() }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok)               { setToast(d.error ?? "Failed to grant access"); return; }
+    if (d.alreadyRecipient)    { setToast(`${u.name} already has care-support access`); return; }
+
+    setUsers((p) => p.map((x) => x.id === u.id
+      ? { ...x, role: "RECIPIENT", manualReviewStatus: "APPROVED",
+          recipientGrantedAt: new Date().toISOString(), recipientGrantNote: reason.trim() }
+      : x));
+    setToast(`Access granted to ${u.name} — she'll finish onboarding on next visit`);
+  };
+
   const placeHold = async (userId: string) => {
     const reason = window.prompt("Reason for placing this account on hold (required, internal only, not shown to user):");
     if (!reason?.trim()) return;
@@ -1197,6 +1242,11 @@ export default function AdminPage() {
                           {u.accountHold && (
                             <span title={u.accountHoldReason ?? ""} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>⏸ HOLD</span>
                           )}
+                          {/* Admitted without partner vetting — visible at a
+                              glance, with the justification on hover. */}
+                          {u.recipientGrantedAt && (
+                            <span title={`Granted without a referral code. Reason: ${u.recipientGrantNote ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#fce7f3", color: "#9d174d", border: "1px solid #f9a8d4", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>🔑 NO REFERRAL</span>
+                          )}
                         </td>
                         <td>
                           {u.status !== "ACTIVE"     && <button className="action-btn action-approve" onClick={() => updateUserStatus(u.id, "ACTIVE")}>✓ Approve</button>}
@@ -1207,6 +1257,22 @@ export default function AdminPage() {
                           )}
                           {u.activeRequestLockedUntil && new Date(u.activeRequestLockedUntil) > new Date() && (
                             <button className="action-btn" style={{ background: "rgba(245,158,11,0.12)", color: "#b45309", fontWeight: 800 }} onClick={() => resetRequestLock(u.id)}>🔓 Unlock</button>
+                          )}
+                          {/* Grant care-support access. Shown only for plain
+                              donors — a RECIPIENT already has it, and any other
+                              role the API refuses. Marked as an override in the
+                              label so it never reads like a routine approval. */}
+                          {u.role === "DONOR" && (
+                            <button
+                              className="action-btn"
+                              style={{ background: "rgba(157,23,77,0.1)", color: "#9d174d", fontWeight: 800 }}
+                              title={u.motherIntentAt
+                                ? "She asked for care support and hit the referral wall"
+                                : "She has not asked for care support"}
+                              onClick={() => grantRecipient(u)}
+                            >
+                              🔑 Grant access{u.motherIntentAt ? " •" : ""}
+                            </button>
                           )}
                           {!u.accountHold
                             ? <button className="action-btn" style={{ background: "rgba(146,64,14,0.1)", color: "#92400e", fontWeight: 800 }} onClick={() => placeHold(u.id)}>⏸ Hold</button>
