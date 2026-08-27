@@ -231,3 +231,95 @@ export const PUBLISHED_MESSAGE =
 
 export const COMMENT_PUBLISHED_MESSAGE =
   "Your comment has been published. Thank you for adding what the post was missing.";
+
+// ── Authoring (E3) ──────────────────────────────────────────────────────────
+// The three fields, their limits, and the placeholder text that teaches the
+// form. Kept here with the rest of the mother-facing words so there is one
+// module to change when the wording changes.
+//
+// THE MINIMUMS ARE THE GUARDRAIL. Experiences is not a feed and must not decay
+// into one. With situation and takeaway both required at a real length, "just
+// checking in 💕" has nowhere to live — a check-in is structurally unable to
+// become a post, rather than being allowed in and moderated out later. That is
+// a property of the form, not a rule someone has to enforce at 3am.
+//
+// The whatITried placeholder deliberately invites what did NOT work. That is
+// usually the most useful part of an experience and the least often written
+// down, because it feels like failure rather than knowledge.
+
+export interface ExperienceField {
+  key: "situation" | "whatITried" | "takeaway";
+  label: string;
+  hint: string;
+  placeholder: string;
+  min: number;
+  max: number;
+}
+
+export const EXPERIENCE_FIELDS: ExperienceField[] = [
+  {
+    key: "situation",
+    label: "What was happening",
+    hint: "Write it as the problem, the way another mother would search for it — not as a title.",
+    placeholder:
+      "Baby wouldn't take a bottle after 6 weeks. I was going back to work in three weeks and starting to panic about it.",
+    min: 20,
+    max: 500,
+  },
+  {
+    key: "whatITried",
+    label: "What you tried",
+    hint: "Include what didn't work. That part is usually the most useful and the least often written down.",
+    placeholder:
+      "Paced feeding, three different teats, my partner giving it instead of me. None of that helped on its own. What finally worked was...",
+    min: 20,
+    max: 2000,
+  },
+  {
+    key: "takeaway",
+    label: "What you'd tell another mother",
+    hint: "The one thing you wish someone had told you.",
+    placeholder:
+      "Start earlier than feels necessary. Don't leave it until the week before you go back.",
+    min: 20,
+    max: 1000,
+  },
+];
+
+export const EXPERIENCE_FIELD_MAP: Record<ExperienceField["key"], ExperienceField> =
+  Object.fromEntries(EXPERIENCE_FIELDS.map((f) => [f.key, f])) as Record<
+    ExperienceField["key"],
+    ExperienceField
+  >;
+
+/** Server-side validation. Returns an author-facing error, or null when valid. */
+export function validateExperienceField(
+  key: ExperienceField["key"],
+  value: unknown
+): string | null {
+  const f = EXPERIENCE_FIELD_MAP[key];
+  const v = typeof value === "string" ? value.trim() : "";
+  if (v.length < f.min) {
+    return `"${f.label}" needs a little more — at least ${f.min} characters.`;
+  }
+  if (v.length > f.max) {
+    return `"${f.label}" is a bit long — please keep it under ${f.max} characters.`;
+  }
+  return null;
+}
+
+// The redirect that keeps Experiences from becoming a question board. Shown on
+// the compose form itself, before she has written anything, because the moment
+// to redirect a question is before it is typed out — not after, in a decline.
+export const QUESTION_REDIRECT_LINE =
+  "Have a question instead? Ask it in your Circle — mothers at your stage are there, and our team reads it too.";
+
+// Shown after submitting. No link to the experience: the reader does not exist
+// yet, and a button leading to a 404 would undercut the reassurance.
+export const SUBMITTED_HEADLINE = "It's with the team.";
+export const SUBMITTED_BODY =
+  "Someone will read it before it goes anywhere. That's true of everything here — it's why a mother can act on what she finds. We'll let you know once it's published, and if anything needs changing first, we'll tell you exactly what.";
+
+export const DRAFT_RESUBMITTED_HEADLINE = "Sent back to the team.";
+export const DRAFT_RESUBMITTED_BODY =
+  "Thank you for making that change. Someone will read it again shortly.";

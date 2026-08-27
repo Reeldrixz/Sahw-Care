@@ -25,7 +25,16 @@ const HOLD_RESULT: AccessResult = {
 // comments immediately. It deliberately does nothing to what she already wrote:
 // those were true when written, other mothers may be relying on them, and
 // retracting knowledge would punish contribution.
-export function canWriteExperiences(user: { isMother: boolean }): AccessResult {
+// The hold check comes FIRST and is deliberately indistinguishable from every
+// other held-account response: Experiences is a safety-reviewed knowledge base
+// that other mothers act on, so an account under review does not get to push
+// content into it while that review is open. Motherhood is still the only
+// eligibility basis; a hold is a separate, temporary state.
+export function canWriteExperiences(user: {
+  isMother: boolean;
+  accountHold: boolean;
+}): AccessResult {
+  if (user.accountHold) return HOLD_RESULT;
   if (user.isMother) return { allowed: true };
   return {
     allowed: false,

@@ -156,12 +156,24 @@ export async function PATCH(
   }
 
   // ── Tell her ─────────────────────────────────────────────────────────────
-  // No link on approval until E3 ships the reader — a notification pointing at
-  // a 404 is worse than one that simply carries the good news.
+  // Approval still carries no link: the reader does not exist yet, and a
+  // notification pointing at a 404 is worse than one that simply carries the
+  // good news.
+  //
+  // A send-back does link, straight into the editor with the draft loaded. The
+  // message promises "edit it whenever you're ready and send it back to us" —
+  // without this, that sentence has nowhere to go, and a send-back becomes a
+  // decline wearing kinder words.
+  const link =
+    action === "send_back" && !isComment
+      ? `/experiences/new?draft=${id}`
+      : undefined;
+
   const result = await notifyUser({
     userId: target.authorId,
     type: "ADMIN_MESSAGE",
     message: messageForAuthor,
+    ...(link && { link }),
     context: `experiences:${action}`,
   });
 

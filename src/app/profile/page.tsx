@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight, Settings, ShieldCheck, FileText, Clock, CheckCircle, XCircle,
-  Heart, Users, LayoutDashboard, Flag, Package, Gift, Crown, Calendar,
+  Heart, Users, LayoutDashboard, Flag, Package, Gift, Crown, Calendar, PencilLine,
   type LucideIcon,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
@@ -433,6 +433,8 @@ export default function ProfilePage() {
   const [toast,           setToast]           = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [summary,         setSummary]         = useState<Summary | null>(null);
+  const [draftCount,      setDraftCount]      = useState(0);
+  const [firstDraftId,    setFirstDraftId]    = useState<string | null>(null);
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationInput,   setLocationInput]   = useState("");
 
@@ -474,6 +476,18 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     fetch("/api/profile/summary").then(r => r.json()).then(d => setSummary(d)).catch(() => {});
+    // Drafts sent back to her for one change. no-store because this is a
+    // "something is waiting on you" count — a cached zero would hide it.
+    if (user.isMother) {
+      fetch("/api/experiences/drafts", { cache: "no-store" })
+        .then(r => r.json())
+        .then(d => {
+          const drafts = (d.items ?? []).filter((x: { status: string }) => x.status === "DRAFT");
+          setDraftCount(drafts.length);
+          setFirstDraftId(drafts[0]?.id ?? null);
+        })
+        .catch(() => {});
+    }
     if (user.journeyType === "donor") {
       fetch("/api/notifications/preferences").then(r => r.json()).then(d => setNotifPrefs(d.prefs ?? null)).catch(() => {});
     }
@@ -948,6 +962,39 @@ export default function ProfilePage() {
             <ReferFriendCard />
 
             <RetakeTourButton />
+
+            {/* Experiences — mothers only. Quiet entry point by design: this is
+                a soft launch, and nav placement is revisited at promotion. A
+                mother who gives cannot reach it through Circles, so it lives
+                here where every mother has it regardless of journey. */}
+            {user.isMother && (
+              <div
+                onClick={() => router.push(firstDraftId ? `/experiences/new?draft=${firstDraftId}` : "/experiences/new")}
+                style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+              >
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <PencilLine size={17} strokeWidth={2} color="#1a7a5e" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>
+                    Write an experience
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.5, marginTop: 2 }}>
+                    {draftCount > 0
+                      ? draftCount === 1
+                        ? "1 draft needs your edit"
+                        : `${draftCount} drafts need your edit`
+                      : "Something you went through, for the mother coming up behind you"}
+                  </div>
+                </div>
+                {draftCount > 0 && (
+                  <span style={{ background: "#d97706", color: "white", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
+                    {draftCount}
+                  </span>
+                )}
+                <ChevronRight size={16} strokeWidth={2.5} color="var(--light)" />
+              </div>
+            )}
 
             {/* My Requests summary card */}
             <div style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)" }}>
