@@ -1856,6 +1856,13 @@ enum ExperienceStatus {
   // filterable so a human can follow up. Appended last so the value order here
   // matches the order ALTER TYPE ... ADD VALUE produces in Postgres.
   HELD_FOR_SUPPORT
+
+  // Human-approved, then stopped by the AI final gate. NOT published, and not a
+  // decision about her — it is a request that the reviewer look once more at a
+  // specific passage. All four review actions remain available from here: the
+  // second look may rightly change an approve into a decline, a send-back or a
+  // hold, not merely confirm-or-dismiss.
+  AI_FLAGGED
 }
 
 // Fixed taxonomy, deliberately NOT free tags: browse-by-topic is the primary
@@ -1900,6 +1907,34 @@ model Experience {
   // column. Drift is contained because there is exactly one writer — it moves
   // only in the same transaction as an ExperienceHelpful insert/delete.
   helpedCount Int @default(0)
+
+  // ── AI final gate ─────────────────────────────────────────────────────────
+  // A SECOND, independent gate that runs only AFTER a human has approved. It is
+  // a backstop on the publish path: it can stop a post for one more human look,
+  // or let an approved post through. It can never publish something a human
+  // declined, never write rejectionReasonForAuthor, and never contacts her.
+  //
+  // aiVerdict is PASS | FLAG | UNAVAILABLE. UNAVAILABLE means the check could
+  // not run and the post published anyway — deliberately fail-open, because the
+  // human is the primary gate and has already approved, and a missing API key
+  // must never silently freeze every mother's post. Recorded so the degradation
+  // is visible rather than silent.
+  //
+  // aiFlags holds the highlighted passages: [{ field, quote, hazard, why }].
+  // Quotes are matched back against the stored text before rendering, so a
+  // hallucinated quote is dropped rather than displayed.
+  //
+  // aiNote and aiFlags are INTERNAL. Nothing the AI produces is ever shown to
+  // the author.
+  aiCheckedAt DateTime?
+  aiVerdict   String?
+  aiNote      String?
+  aiFlags     Json?
+
+  // Who published over a flag, and when. A human overriding an AI safety flag on
+  // baby content is a deliberate decision and is recorded as one.
+  aiConfirmedByAdminId String?
+  aiConfirmedAt        DateTime?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

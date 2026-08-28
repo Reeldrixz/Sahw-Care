@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 // new; a post that has waited longest is reviewed first, which is also the only
 // ordering that cannot quietly strand someone at the bottom of the queue.
 
-const VALID_STATUSES = ["PENDING", "PUBLISHED", "REJECTED", "DRAFT", "HELD_FOR_SUPPORT", "ALL"] as const;
+const VALID_STATUSES = ["PENDING", "PUBLISHED", "REJECTED", "DRAFT", "HELD_FOR_SUPPORT", "AI_FLAGGED", "ALL"] as const;
 type QueueStatus = (typeof VALID_STATUSES)[number];
 
 const AUTHOR_FIELDS = { id: true, name: true, email: true } as const;
@@ -57,6 +57,14 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         reviewedAt: true,
         publishedAt: true,
+        // AI final-gate state. Internal to the queue — none of it is ever shown
+        // to the author.
+        aiVerdict: true,
+        aiNote: true,
+        aiFlags: true,
+        aiCheckedAt: true,
+        aiConfirmedByAdminId: true,
+        aiConfirmedAt: true,
         author: { select: AUTHOR_FIELDS },
       },
     });
@@ -98,9 +106,12 @@ export async function GET(req: NextRequest) {
 // Pending counts for both tabs, so the reviewer can see at a glance whether
 // comments are quietly piling up behind the posts.
 async function queueCounts() {
-  const [posts, comments] = await Promise.all([
+  const [posts, comments, aiFlagged] = await Promise.all([
     prisma.experience.count({ where: { status: "PENDING" } }),
     prisma.experienceComment.count({ where: { status: "PENDING" } }),
+    // Posts the AI stopped after a human approved. These are waiting on a
+    // second look and must not sit unnoticed behind the pending count.
+    prisma.experience.count({ where: { status: "AI_FLAGGED" } }),
   ]);
-  return { pendingPosts: posts, pendingComments: comments };
+  return { pendingPosts: posts, pendingComments: comments, aiFlagged };
 }

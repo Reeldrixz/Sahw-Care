@@ -24,11 +24,14 @@ import {
 // prompts visible is the mitigation.
 
 interface Author { id: string; name: string | null; email: string | null }
+interface AiFlag { field: "situation" | "whatITried" | "takeaway"; quote: string; hazard: string; why: string }
 interface PostItem {
   id: string; situation: string; whatITried: string; takeaway: string;
   topic: string; stageKey: string | null; stageLabel: string | null;
   status: string; reviewNote: string | null; rejectionReasonForAuthor: string | null;
   helpedCount: number; createdAt: string; reviewedAt: string | null; author: Author;
+  aiVerdict: string | null; aiNote: string | null; aiFlags: AiFlag[] | null;
+  aiCheckedAt: string | null; aiConfirmedByAdminId: string | null; aiConfirmedAt: string | null;
 }
 interface CommentItem {
   id: string; body: string; status: string;
@@ -40,15 +43,49 @@ type Item = PostItem | CommentItem;
 const isPost = (i: Item): i is PostItem => "situation" in i;
 
 type Kind = "posts" | "comments";
-type StatusTab = "PENDING" | "PUBLISHED" | "REJECTED" | "DRAFT" | "HELD_FOR_SUPPORT";
+type StatusTab = "PENDING" | "PUBLISHED" | "REJECTED" | "DRAFT" | "HELD_FOR_SUPPORT" | "AI_FLAGGED";
 
 const STATUS_TABS: { value: StatusTab; label: string }[] = [
   { value: "PENDING",          label: "Awaiting review" },
+  { value: "AI_FLAGGED",       label: "Needs a second look" },
   { value: "PUBLISHED",        label: "Published"       },
   { value: "DRAFT",            label: "Sent back"       },
   { value: "REJECTED",         label: "Declined"        },
   { value: "HELD_FOR_SUPPORT", label: "Held for support" },
 ];
+
+const HAZARD_LABEL: Record<string, string> = {
+  UNSAFE_SLEEP: "Unsafe sleep",
+  FEEDING:      "Feeding danger",
+  MEDICAL:      "Medical",
+  HAZARDS:      "Hazards & equipment",
+};
+
+// Render a field with the AI-flagged passages marked. Quotes were verified
+// server-side as real substrings before storage, so a match is guaranteed to be
+// real text from the post rather than something the model invented.
+function highlight(text: string, quotes: string[]): React.ReactNode {
+  if (!quotes.length) return text;
+  const parts: React.ReactNode[] = [];
+  let rest = text;
+  let key = 0;
+  while (rest.length) {
+    let idx = -1, found = "";
+    for (const q of quotes) {
+      const i = rest.indexOf(q);
+      if (q && i !== -1 && (idx === -1 || i < idx)) { idx = i; found = q; }
+    }
+    if (idx === -1) { parts.push(rest); break; }
+    if (idx > 0) parts.push(rest.slice(0, idx));
+    parts.push(
+      <mark key={`h${key++}`} style={{ background: "#fecaca", color: "#7f1d1d", padding: "1px 2px", borderRadius: 3 }}>
+        {found}
+      </mark>
+    );
+    rest = rest.slice(idx + found.length);
+  }
+  return parts;
+}
 
 export default function AdminExperiencesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -57,7 +94,7 @@ export default function AdminExperiencesPage() {
   const [kind,   setKind]   = useState<Kind>("posts");
   const [status, setStatus] = useState<StatusTab>("PENDING");
   const [items,  setItems]  = useState<Item[]>([]);
-  const [counts, setCounts] = useState({ pendingPosts: 0, pendingComments: 0 });
+  const [counts, setCounts] = useState({ pendingPosts: 0, pendingComments: 0, aiFlagged: 0 });
   const [loading, setLoading] = useState(true);
   const [busyId,  setBusyId]  = useState<string | null>(null);
   const [toast,   setToast]   = useState<string | null>(null);
@@ -79,7 +116,7 @@ export default function AdminExperiencesPage() {
     if (r.ok) {
       const d = await r.json();
       setItems(d.items ?? []);
-      setCounts(d.counts ?? { pendingPosts: 0, pendingComments: 0 });
+      setCounts(d.counts ?? { pendingPosts: 0, pendingComments: 0, aiFlagged: 0 });
     }
     setLoading(false);
   }, []);
@@ -110,8 +147,17 @@ export default function AdminExperiencesPage() {
     if (!r.ok) { setToast(d.error ?? "Action failed"); return; }
 
     setItems((prev) => prev.filter((x) => x.id !== id));
-    if (d.warning)            setToast(d.warning);
+
+    // The AI stopped the publish. She is told nothing — from her side the post
+    // is still simply under review.
+    if (d.aiBlocked) {
+      setToast("Not published — the safety check flagged a passage. See “Needs a second look”.");
+      setStatus("AI_FLAGGED");
+      return;
+    }
+    if (d.warning)                 setToast(d.warning);
     else if (d.notified === false) setToast("Decision saved — but she received nothing. Follow up directly.");
+    else if (d.aiUnavailable)      setToast(`Published — but the safety check did not run (${d.aiNote}). Recorded on the post.`);
     else setToast(
       action === "approve"          ? "Published"
       : action === "decline"        ? "Declined — she's been sent the message"
@@ -160,6 +206,7 @@ export default function AdminExperiencesPage() {
           {STATUS_TABS.map((s) => (
             <button key={s.value} onClick={() => setStatus(s.value)} style={pill(status === s.value)}>
               {s.label}
+              {s.value === "AI_FLAGGED" && counts.aiFlagged > 0 && ` (${counts.aiFlagged})`}
             </button>
           ))}
         </div>
@@ -191,9 +238,12 @@ export default function AdminExperiencesPage() {
                     <span style={chip}>{item.topic.replace(/_/g, " ").toLowerCase()}</span>
                     {item.stageLabel && <span style={chip}>{item.stageLabel}</span>}
                   </div>
-                  <Field label="What was happening" value={item.situation} />
-                  <Field label="What she tried"     value={item.whatITried} />
-                  <Field label="What she'd tell another mother" value={item.takeaway} />
+                  <Field label="What was happening" value={item.situation}
+                         quotes={quotesFor(item, "situation")} />
+                  <Field label="What she tried"     value={item.whatITried}
+                         quotes={quotesFor(item, "whatITried")} />
+                  <Field label="What she'd tell another mother" value={item.takeaway}
+                         quotes={quotesFor(item, "takeaway")} />
                 </>
               ) : (
                 <>
@@ -206,7 +256,34 @@ export default function AdminExperiencesPage() {
                 </>
               )}
 
-              {status === "PENDING" && (
+              {/* What the AI stopped, and why. Shown above the checklist so the
+                  reviewer reads the objection before the buttons. */}
+              {item.status === "AI_FLAGGED" && isPost(item) && (
+                <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "#fef2f2", border: "1.5px solid #fca5a5" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#991b1b", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>
+                    <ShieldAlert size={14} strokeWidth={2.5} />
+                    You approved this — the safety check stopped it
+                  </div>
+                  {item.aiNote && (
+                    <div style={{ fontSize: 12, color: "#7f1d1d", lineHeight: 1.6, marginBottom: 8 }}>{item.aiNote}</div>
+                  )}
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {(item.aiFlags ?? []).map((f, i) => (
+                      <div key={i} style={{ fontSize: 11.5, color: "#7f1d1d", lineHeight: 1.55 }}>
+                        <strong>{HAZARD_LABEL[f.hazard] ?? f.hazard}</strong>
+                        {" — "}{f.why}
+                        <div style={{ marginTop: 2, fontStyle: "italic", opacity: 0.85 }}>“{f.quote}”</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#991b1b", marginTop: 10, lineHeight: 1.55 }}>
+                    Highlighted above. She has <strong>not</strong> been told anything — from her side this is still
+                    under review. Publish again to confirm, or change your decision.
+                  </div>
+                </div>
+              )}
+
+              {(status === "PENDING" || status === "AI_FLAGGED") && (
                 <>
                   {/* The checklist — always visible, never behind a toggle */}
                   <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "#fff7ed", border: "1px solid #fed7aa" }}>
@@ -236,8 +313,21 @@ export default function AdminExperiencesPage() {
 
                   {/* Actions */}
                   <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-                    <button disabled={busyId === item.id} onClick={() => decide(item.id, "approve")} style={btnPrimary}>
-                      <Check size={14} strokeWidth={2.5} /> Publish
+                    {/* On a first approve this submits for the final check, so
+                        it no longer publishes instantly. On a flagged item it IS
+                        the confirming second click and publishes immediately —
+                        the check does not re-run. */}
+                    <button
+                      disabled={busyId === item.id}
+                      onClick={() => decide(item.id, "approve")}
+                      style={item.status === "AI_FLAGGED" ? btnConfirm : btnPrimary}
+                    >
+                      <Check size={14} strokeWidth={2.5} />
+                      {busyId === item.id && item.status !== "AI_FLAGGED"
+                        ? "Checking…"
+                        : item.status === "AI_FLAGGED"
+                          ? "Publish anyway — I've read the flag"
+                          : "Approve & check"}
                     </button>
 
                     {/* Decline — requires a category, which fixes the copy she gets */}
@@ -307,6 +397,18 @@ export default function AdminExperiencesPage() {
                   </pre>
                 </details>
               )}
+              {/* Published without the gate running — fail-open, made visible. */}
+              {isPost(item) && item.aiVerdict === "UNAVAILABLE" && (
+                <div style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 9px", lineHeight: 1.5 }}>
+                  ⚠ Safety check did not run{item.aiNote ? ` — ${item.aiNote}` : ""}
+                </div>
+              )}
+              {/* Published over a flag by a human. */}
+              {isPost(item) && item.aiConfirmedAt && (
+                <div style={{ marginTop: 8, fontSize: 11, color: "var(--light)" }}>
+                  Published over a safety flag on {new Date(item.aiConfirmedAt).toLocaleDateString()}
+                </div>
+              )}
               {status !== "PENDING" && item.reviewNote && (
                 <div style={{ marginTop: 8, fontSize: 11, color: "var(--light)" }}>
                   Internal: {item.reviewNote}
@@ -324,11 +426,18 @@ export default function AdminExperiencesPage() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function quotesFor(item: PostItem, field: AiFlag["field"]): string[] {
+  if (item.status !== "AI_FLAGGED" || !item.aiFlags) return [];
+  return item.aiFlags.filter((f) => f.field === field).map((f) => f.quote);
+}
+
+function Field({ label, value, quotes = [] }: { label: string; value: string; quotes?: string[] }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 10.5, fontWeight: 800, color: "var(--light)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{value}</div>
+      <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>
+        {highlight(value, quotes)}
+      </div>
     </div>
   );
 }
@@ -339,6 +448,7 @@ const chip: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, color: "#1a
 const input: React.CSSProperties = { padding: "9px 11px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 12.5, fontFamily: "inherit", width: "100%", background: "white", color: "var(--ink)" };
 const btnIcon: React.CSSProperties = { background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 10, padding: "7px 10px", cursor: "pointer", display: "flex", alignItems: "center" };
 const btnPrimary: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", borderRadius: 12, border: "none", background: "#1a7a5e", color: "white", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" };
+const btnConfirm: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", borderRadius: 12, border: "1.5px solid #b91c1c", background: "#fef2f2", color: "#991b1b", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" };
 const btnCrisis: React.CSSProperties = { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", borderRadius: 12, border: "1.5px solid #be185d", background: "#fdf2f8", color: "#9d174d", fontSize: 12.5, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" };
 const btnSecondary = (enabled: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "9px 16px", borderRadius: 10, border: "1.5px solid var(--border)", background: "white", color: enabled ? "var(--ink)" : "var(--light)", fontSize: 12.5, fontWeight: 700, fontFamily: "Nunito, sans-serif", cursor: enabled ? "pointer" : "not-allowed", whiteSpace: "nowrap" });
 const tab = (active: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 12, border: `1.5px solid ${active ? "#1a7a5e" : "var(--border)"}`, background: active ? "#e8f5f1" : "white", color: active ? "#1a7a5e" : "var(--mid)", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" });

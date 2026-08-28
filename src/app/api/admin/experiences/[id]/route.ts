@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/lib/notify";
@@ -11,6 +12,7 @@ import {
   isSafetyCategoryCode,
   sendBackMessage,
 } from "@/lib/experienceSafety";
+import { checkExperienceSafety, type AiCheckResult } from "@/lib/experienceSafetyCheck";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +45,12 @@ const ACTIONS: Action[] = ["approve", "decline", "send_back", "hold_for_support"
 // Only items awaiting a decision can be decided. DRAFT is excluded on purpose:
 // a sent-back post is hers again, and the queue should not be able to reach
 // back in and publish or decline it behind her.
-const DECIDABLE: string[] = ["PENDING"];
+//
+// AI_FLAGGED is decidable by ALL FOUR actions, not just approve. The whole point
+// of the second look is that it may change the reviewer's mind — seeing the
+// flagged passage can rightly turn an approve into a decline, a send-back, or a
+// hold. Restricting it to confirm-or-nothing would waste the second look.
+const DECIDABLE: string[] = ["PENDING", "AI_FLAGGED"];
 
 export async function PATCH(
   req: NextRequest,
@@ -101,13 +108,63 @@ export async function PATCH(
     messageForAuthor = CRISIS_SUPPORT_MESSAGE;
   }
 
+  const now = new Date();
+
+  // ── Load the target first ────────────────────────────────────────────────
+  // Needed before the gate runs: the AI is given the post's own text, and the
+  // gate must only run on a first approve (PENDING), never on the confirming
+  // second click from AI_FLAGGED.
+  const model = isComment ? prisma.experienceComment : prisma.experience;
+
+  // Fetched into two separately typed variables rather than one union: only the
+  // post shape carries the three text fields the gate needs, and narrowing a
+  // union of two selects costs more than it saves.
+  const commentTarget = isComment
+    ? await prisma.experienceComment.findUnique({
+        where:  { id },
+        select: { id: true, authorId: true, status: true },
+      })
+    : null;
+
+  const post = isComment
+    ? null
+    : await prisma.experience.findUnique({
+        where:  { id },
+        select: {
+          id: true, authorId: true, status: true,
+          situation: true, whatITried: true, takeaway: true,
+        },
+      });
+
+  const target = commentTarget ?? post;
+  if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // ── AI final gate ────────────────────────────────────────────────────────
+  // Runs ONLY here, inside approve, after the human has decided. It is a second
+  // independent check on the publish path, never a reviewer of her work and
+  // never a decision-maker: it can stop a publish for one more human look, or
+  // let an approved post through. decline/send_back/hold never reach this code,
+  // so it can never see or act on something a human declined.
+  //
+  // It does NOT re-run on the confirming second click. Re-checking would flag
+  // the same passage again and loop forever; the second click IS the decision.
+  //
+  // Fail-open: UNAVAILABLE publishes anyway and records that the gate did not
+  // run. The human is the primary gate and has already approved, so this
+  // degrades to exactly today's human-only safety — while failing closed would
+  // let one missing key silently freeze every mother's post.
+  let aiResult: AiCheckResult | null = null;
+  if (action === "approve" && post && target.status === "PENDING") {
+    aiResult = await checkExperienceSafety(post);
+  }
+
+  const aiBlocked = aiResult?.verdict === "FLAG";
+
   const nextStatus =
-    action === "approve"   ? "PUBLISHED"
+    action === "approve"   ? (aiBlocked ? "AI_FLAGGED" : "PUBLISHED")
     : action === "decline" ? "REJECTED"
     : action === "send_back" ? "DRAFT"
     : "HELD_FOR_SUPPORT";
-
-  const now = new Date();
 
   // reviewNote is INTERNAL and never rendered to the author. It is stored apart
   // from rejectionReasonForAuthor for exactly that reason.
@@ -127,18 +184,34 @@ export async function PATCH(
     reviewedAt: now,
     reviewNote: internalNote,
     rejectionReasonForAuthor: authorFacing,
-    publishedAt: action === "approve" ? now : null,
+    // Only a real publish stamps publishedAt — an AI-flagged post is not
+    // published, so it must not look published in the data.
+    publishedAt: action === "approve" && !aiBlocked ? now : null,
+
+    // The AI verdict is stored on posts whenever the gate ran, including
+    // UNAVAILABLE. A gate that stopped running has to be visible in the record,
+    // not inferred from a missing value.
+    ...(aiResult && {
+      aiCheckedAt: now,
+      aiVerdict:   aiResult.verdict,
+      aiNote:      aiResult.note || null,
+      // Cast: AiFlag[] is structurally valid JSON, but Prisma's InputJsonValue
+      // does not accept a typed interface array without it.
+      aiFlags: aiResult.flags.length
+        ? (aiResult.flags as unknown as Prisma.InputJsonValue)
+        : undefined,
+    }),
+
+    // Publishing over a flag: the second, deliberate click. Recorded because a
+    // human overriding an AI safety flag on baby content is a decision worth
+    // being able to look up later.
+    ...(action === "approve" && !isComment && target.status === "AI_FLAGGED" && {
+      aiConfirmedByAdminId: admin.userId,
+      aiConfirmedAt:        now,
+    }),
   };
 
   // ── Conditional transition: exactly once ─────────────────────────────────
-  const model = isComment ? prisma.experienceComment : prisma.experience;
-
-  const target = await (model as typeof prisma.experience).findUnique({
-    where: { id },
-    select: { id: true, authorId: true, status: true },
-  });
-  if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
   const { count } = await (model as typeof prisma.experience).updateMany({
     where: { id, status: { in: DECIDABLE as never } },
     data,
@@ -148,11 +221,26 @@ export async function PATCH(
     return NextResponse.json(
       {
         error: "Already decided",
-        detail: `This ${isComment ? "comment" : "experience"} is ${target.status}; only PENDING items can be decided.`,
+        detail: `This ${isComment ? "comment" : "experience"} is ${target.status}; only PENDING or AI_FLAGGED items can be decided.`,
         status: target.status,
       },
       { status: 409 }
     );
+  }
+
+  // ── AI blocked the publish: stop here, tell nobody but the reviewer ───────
+  // She is deliberately NOT notified. Nothing has happened from her side — her
+  // post is still under review, and being told "an AI flagged your writing"
+  // would be both alarming and untrue, since no decision about it has been made.
+  // The AI never contacts her; only a terminal human decision does.
+  if (aiBlocked) {
+    return NextResponse.json({
+      ok: true,
+      status: "AI_FLAGGED",
+      aiBlocked: true,
+      aiNote:  aiResult?.note ?? "",
+      aiFlags: aiResult?.flags ?? [],
+    });
   }
 
   // ── Tell her ─────────────────────────────────────────────────────────────
@@ -180,6 +268,12 @@ export async function PATCH(
   return NextResponse.json({
     ok: true,
     status: nextStatus,
+    // Surfaced so a publish that happened without the gate running is visible
+    // to the reviewer at the moment it happens, not only in the record.
+    ...(aiResult?.verdict === "UNAVAILABLE" && {
+      aiUnavailable: true,
+      aiNote: aiResult.note,
+    }),
     // Surfaced so the queue can flag a mother who received nothing at all.
     // Most important on the crisis path: an unreceived crisis message is the
     // entire failure, and it must not pass silently.
