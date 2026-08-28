@@ -90,6 +90,64 @@ const VALID_HAZARDS = new Set(
 );
 
 /**
+ * Pull a JSON object out of a model response.
+ *
+ * A prompt asking for bare JSON is a request, not a guarantee. Claude will
+ * sometimes wrap the object in a ```json fence, or precede it with a line of
+ * prose, and a strict JSON.parse turns that ordinary formatting variation into a
+ * disabled safety gate — which is exactly what happened the first time this ran
+ * against a real hazard. The parser has to be the guarantee.
+ *
+ * Two strategies, in order:
+ *   1. Strip a surrounding markdown fence (```json … ``` or ``` … ```).
+ *   2. Scan for the first balanced {…} block, tracking string literals and
+ *      escapes so a brace or quote inside the mother's own quoted text cannot
+ *      end the object early.
+ *
+ * Returns null when nothing object-shaped is present — including a truncated
+ * response, where the braces never balance. That is the correct outcome: an
+ * incomplete object must not be half-parsed into a verdict.
+ *
+ * Exported because reflectionModeration.ts parses model JSON the same bare way
+ * and carries the identical latent failure.
+ */
+export function extractJsonObject(raw: string): string | null {
+  const text = raw.trim();
+  if (!text) return null;
+
+  // 1. Fenced block. Takes the fence contents whatever the info string.
+  const fenced = text.match(/```(?:json|JSON)?\s*\n?([\s\S]*?)\n?\s*```/);
+  const candidate = fenced ? fenced[1].trim() : text;
+  if (candidate.startsWith("{") && candidate.endsWith("}")) return candidate;
+
+  // 2. First balanced object, string-aware.
+  const start = candidate.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < candidate.length; i++) {
+    const ch = candidate[i];
+
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\" && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return candidate.slice(start, i + 1);
+    }
+  }
+
+  // Braces never balanced — truncated or malformed.
+  return null;
+}
+
+/**
  * Run the final safety check on an approved post. Always resolves; never throws.
  * UNAVAILABLE means the caller should publish anyway and record that the gate
  * did not run.
@@ -153,12 +211,24 @@ export async function checkExperienceSafety(post: {
     };
   }
 
+  const json = extractJsonObject(raw);
+  if (!json) {
+    console.error("[experience-ai-gate] no JSON object in response:", raw.slice(0, 400));
+    return {
+      verdict: "UNAVAILABLE",
+      flags: [],
+      note: "AI check returned no readable result (no JSON object found — possibly truncated).",
+    };
+  }
+
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(json);
   } catch {
-    console.error("[experience-ai-gate] unparseable response:", raw.slice(0, 400));
-    return { verdict: "UNAVAILABLE", flags: [], note: "AI check returned an unreadable response." };
+    // Extraction found something object-shaped but it is not valid JSON. Logged
+    // separately from the no-object case so the two are distinguishable later.
+    console.error("[experience-ai-gate] extracted block failed to parse:", json.slice(0, 400));
+    return { verdict: "UNAVAILABLE", flags: [], note: "AI check returned an unreadable result." };
   }
 
   const p = parsed as { verdict?: unknown; flags?: unknown; note?: unknown };
