@@ -13,6 +13,11 @@
 // reflection still lands in the admin queue for a human to read.
 
 import { checkCircleContent } from "@/lib/circleFilter";
+// Shared with the Experiences AI gate: a prompt asking for bare JSON is a
+// request, not a guarantee, so the parser has to be the guarantee. If a third
+// caller appears this belongs in a neutral module rather than being imported
+// across features.
+import { extractJsonObject } from "@/lib/experienceSafetyCheck";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
@@ -65,7 +70,10 @@ export async function checkReflection(title: string, body: string): Promise<Refl
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 200,
+        // Raised from 200. The response carries a rationale sentence as well as
+        // the two booleans, and a truncated object cannot be parsed at all —
+        // which on this path silently means crisis:false.
+        max_tokens: 400,
         system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
         messages: [
           { role: "user", content: `Classify this reflection:\n\nTitle: ${title}\n\nBody:\n${body.slice(0, MAX_INPUT)}` },
@@ -80,7 +88,19 @@ export async function checkReflection(title: string, body: string): Promise<Refl
 
     const data = await res.json();
     const raw = (data?.content?.[0]?.text ?? "").trim();
-    const parsed = JSON.parse(raw) as { nonReflective?: boolean; crisis?: boolean; note?: string };
+
+    // Claude wraps JSON in a markdown fence often enough that a bare
+    // JSON.parse here is not safe. When it threw, the exception fell to the
+    // catch below and this function returned crisis:false — a reflection from a
+    // mother in distress recorded as not-a-crisis, with the failure visible only
+    // as a phrase inside an advisory note. That is the same defect that silently
+    // disabled the Experiences AI gate on its first real hazard.
+    const json = extractJsonObject(raw);
+    if (!json) {
+      console.error("Reflection AI check: no JSON object in response:", raw.slice(0, 300));
+      return { ...base, note: `${base.note} AI check unavailable (unreadable response) — read this one carefully.`.trim() };
+    }
+    const parsed = JSON.parse(json) as { nonReflective?: boolean; crisis?: boolean; note?: string };
 
     return {
       // OR the keyword hit with the AI judgment so a keyword match is never lost.
