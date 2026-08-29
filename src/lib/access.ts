@@ -44,6 +44,33 @@ export function canWriteExperiences(user: {
   };
 }
 
+// Reading Experiences is gated identically to writing them, on purpose.
+//
+// This is a values decision, not a technical one. A mother writing honestly
+// about her hardest weeks is writing for the mothers coming up behind her — not
+// for donors to browse. Opening the reader to anyone who is not a mother would
+// betray the expectation she wrote under, and it is the same firewall that keeps
+// support type following need rather than exposure. A mother who also gives
+// reads here because she is a mother; giving is incidental either way.
+//
+// Kept as its own function rather than an alias so the two can diverge later if
+// there is ever a reason — but any divergence should be deliberate, because a
+// surface that can be read but not written to, or vice versa, is confusing in
+// both directions.
+export function canReadExperiences(user: {
+  isMother: boolean;
+  accountHold: boolean;
+}): AccessResult {
+  if (user.accountHold) return HOLD_RESULT;
+  if (user.isMother) return { allowed: true };
+  return {
+    allowed: false,
+    code: "NOT_A_MOTHER",
+    message:
+      "Experiences is where mothers share what they've learned. If you're a mother too, you can join in — just let us know in your profile.",
+  };
+}
+
 export function canCreateRegister(user: UserForAccess): AccessResult {
   if (
     user.manualReviewStatus === "PENDING" ||

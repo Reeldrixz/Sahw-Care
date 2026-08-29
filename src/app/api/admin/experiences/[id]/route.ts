@@ -11,6 +11,7 @@ import {
   declineMessageFor,
   isSafetyCategoryCode,
   sendBackMessage,
+  publishedLink,
 } from "@/lib/experienceSafety";
 import { checkExperienceSafety, type AiCheckResult } from "@/lib/experienceSafetyCheck";
 
@@ -244,18 +245,20 @@ export async function PATCH(
   }
 
   // ── Tell her ─────────────────────────────────────────────────────────────
-  // Approval still carries no link: the reader does not exist yet, and a
-  // notification pointing at a 404 is worse than one that simply carries the
-  // good news.
-  //
-  // A send-back does link, straight into the editor with the draft loaded. The
+  // A send-back links straight into the editor with the draft loaded. The
   // message promises "edit it whenever you're ready and send it back to us" —
   // without this, that sentence has nowhere to go, and a send-back becomes a
   // decline wearing kinder words.
+  //
+  // An approval links to the published experience itself, now that the reader
+  // exists. Comments have no page of their own yet, so they still carry none —
+  // a link to a 404 is worse than no link.
   const link =
     action === "send_back" && !isComment
       ? `/experiences/new?draft=${id}`
-      : undefined;
+      : action === "approve" && !isComment
+        ? publishedLink(id)
+        : undefined;
 
   const result = await notifyUser({
     userId: target.authorId,

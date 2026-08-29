@@ -224,10 +224,17 @@ export function sendBackMessage(specificNote: string): string {
 }
 
 // ── Approval ────────────────────────────────────────────────────────────────
-// No link until E3 ships the reader — a notification pointing at a 404 is worse
-// than one that simply says the good news.
+// Now carries a link: /experiences/[id] exists, so the notification can take her
+// to her own published experience. It deliberately had none until the reader
+// shipped — a notification pointing at a 404 is worse than one that simply
+// carries the good news.
 export const PUBLISHED_MESSAGE =
   "Your experience has been published. Thank you for writing it down — what you learned is now where another mother can find it when she needs it.";
+
+/** Where a published-experience notification should take her. */
+export function publishedLink(experienceId: string): string {
+  return `/experiences/${experienceId}`;
+}
 
 export const COMMENT_PUBLISHED_MESSAGE =
   "Your comment has been published. Thank you for adding what the post was missing.";

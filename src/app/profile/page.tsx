@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight, Settings, ShieldCheck, FileText, Clock, CheckCircle, XCircle,
-  Heart, Users, LayoutDashboard, Flag, Package, Gift, Crown, Calendar, PencilLine,
+  Heart, Users, LayoutDashboard, Flag, Package, Gift, Crown, Calendar, PencilLine, BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
@@ -1072,31 +1072,55 @@ export default function ProfilePage() {
             no account hold) and must keep mirroring it: any extra exclusion here
             is a surface that disagrees with the server. */}
         {user.isMother && !user.accountHold && (
-          <div
-            onClick={() => router.push(firstDraftId ? `/experiences/new?draft=${firstDraftId}` : "/experiences/new")}
-            style={{ background: "white", borderRadius: 16, padding: "16px", marginBottom: 12, border: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
-          >
-            <div style={{ width: 38, height: 38, borderRadius: 12, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <PencilLine size={17} strokeWidth={2} color="#1a7a5e" />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ background: "white", borderRadius: 16, marginBottom: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+            <div style={{ padding: "14px 16px 12px" }}>
               <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>
-                Write an experience
+                Experiences
               </div>
               <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.5, marginTop: 2 }}>
-                {draftCount > 0
-                  ? draftCount === 1
-                    ? "1 draft needs your edit"
-                    : `${draftCount} drafts need your edit`
-                  : "Something you went through, for the mother coming up behind you"}
+                What mothers learned, for the mothers after them
               </div>
             </div>
-            {draftCount > 0 && (
-              <span style={{ background: "#d97706", color: "white", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
-                {draftCount}
-              </span>
-            )}
-            <ChevronRight size={16} strokeWidth={2.5} color="var(--light)" />
+
+            {/* Read first: most visits are someone looking for an answer, not
+                someone arriving to write. */}
+            <div
+              onClick={() => router.push("/experiences")}
+              style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <BookOpen size={16} strokeWidth={2} color="#1a7a5e" />
+              </div>
+              <div style={{ flex: 1, fontSize: 13.5, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif" }}>
+                Browse experiences
+              </div>
+              <ChevronRight size={16} strokeWidth={2.5} color="var(--light)" />
+            </div>
+
+            <div
+              onClick={() => router.push(firstDraftId ? `/experiences/new?draft=${firstDraftId}` : "/experiences/new")}
+              style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: "#e8f5f1", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <PencilLine size={16} strokeWidth={2} color="#1a7a5e" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)", fontFamily: "Nunito, sans-serif" }}>
+                  Write an experience
+                </div>
+                {draftCount > 0 && (
+                  <div style={{ fontSize: 11.5, color: "#92400e", lineHeight: 1.5, marginTop: 2 }}>
+                    {draftCount === 1 ? "1 draft needs your edit" : `${draftCount} drafts need your edit`}
+                  </div>
+                )}
+              </div>
+              {draftCount > 0 && (
+                <span style={{ background: "#d97706", color: "white", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 20, fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
+                  {draftCount}
+                </span>
+              )}
+              <ChevronRight size={16} strokeWidth={2.5} color="var(--light)" />
+            </div>
           </div>
         )}
 
