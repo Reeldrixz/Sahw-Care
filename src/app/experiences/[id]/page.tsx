@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 // One experience, read in full.
@@ -20,6 +20,7 @@ interface Experience {
   id: string; situation: string; whatITried: string; takeaway: string;
   topic: string; stageKey: string | null; stageLabel: string | null;
   helpedCount: number; publishedAt: string | null; isMine: boolean;
+  hasMarkedHelpful: boolean;
 }
 
 export default function ExperienceDetailPage() {
@@ -30,6 +31,37 @@ export default function ExperienceDetailPage() {
   const [experience, setExperience] = useState<Experience | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  const [marking, setMarking] = useState(false);
+
+  // Optimistic on the way out, reconciled with the server's count on the way
+  // back — the count is the ranking input, so the server's number wins.
+  const toggleHelpful = async () => {
+    if (!experience || marking) return;
+    setMarking(true);
+    const optimistic = !experience.hasMarkedHelpful;
+    setExperience({
+      ...experience,
+      hasMarkedHelpful: optimistic,
+      helpedCount: Math.max(0, experience.helpedCount + (optimistic ? 1 : -1)),
+    });
+
+    const r = await fetch(`/api/experiences/${experience.id}/helpful`, {
+      method: "POST",
+      cache: "no-store",
+    });
+    if (r.ok) {
+      const d = await r.json();
+      setExperience((prev) => prev && { ...prev, hasMarkedHelpful: d.marked, helpedCount: d.helpedCount });
+    } else {
+      // Roll back rather than leave her looking at a state the server rejected.
+      setExperience((prev) => prev && {
+        ...prev,
+        hasMarkedHelpful: !optimistic,
+        helpedCount: Math.max(0, prev.helpedCount + (optimistic ? -1 : 1)),
+      });
+    }
+    setMarking(false);
+  };
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/");
@@ -99,6 +131,26 @@ export default function ExperienceDetailPage() {
               </div>
             </div>
 
+            {/* "This helped" — detail only, never on a browse card. Marking
+                something helpful from a 150-character preview is not a real
+                signal, and this count is the ranking input for every browse
+                query. Her own experience is excluded: helpedCount should mean
+                "this helped someone else". */}
+            {!experience.isMine && (
+              <button
+                onClick={toggleHelpful}
+                disabled={marking}
+                style={experience.hasMarkedHelpful ? btnHelpedOn : btnHelpedOff}
+              >
+                <Heart
+                  size={15}
+                  strokeWidth={2.5}
+                  fill={experience.hasMarkedHelpful ? "#1a7a5e" : "none"}
+                />
+                {experience.hasMarkedHelpful ? "You found this helpful" : "This helped me"}
+              </button>
+            )}
+
             <p style={{ fontSize: 11.5, color: "var(--light)", lineHeight: 1.65, textAlign: "center", margin: "16px auto 0", maxWidth: 460 }}>
               Every experience here is read by our team before it&apos;s published. It&apos;s one
               mother&apos;s experience, not medical advice — if something worries you about your
@@ -136,3 +188,5 @@ const chip: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, color: "#1a
 const chipMuted: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, color: "var(--mid)", background: "var(--bg)", padding: "3px 8px", borderRadius: 20 };
 const chipMine: React.CSSProperties = { fontSize: 10.5, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", padding: "3px 8px", borderRadius: 20 };
 const btnBack: React.CSSProperties = { width: "100%", padding: "12px 0", borderRadius: 12, border: "1.5px solid var(--border)", background: "white", color: "var(--ink)", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", cursor: "pointer" };
+const btnHelpedOff: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "12px 0", marginTop: 14, borderRadius: 12, border: "1.5px solid var(--border)", background: "white", color: "var(--ink)", fontSize: 13, fontWeight: 700, fontFamily: "Nunito, sans-serif", cursor: "pointer" };
+const btnHelpedOn: React.CSSProperties = { width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "12px 0", marginTop: 14, borderRadius: 12, border: "1.5px solid #1a7a5e", background: "#e8f5f1", color: "#1a7a5e", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" };

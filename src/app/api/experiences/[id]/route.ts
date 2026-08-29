@@ -69,6 +69,14 @@ export async function GET(
   });
   const isMine = owner?.authorId === auth.userId;
 
+  // Whether SHE has marked this helpful. Same discipline as isMine: scoped to
+  // her own userId and collapsed to a boolean, so it says nothing about who
+  // else has marked it. Only the aggregate count is public.
+  const myMark = await prisma.experienceHelpful.findUnique({
+    where:  { experienceId_userId: { experienceId: id, userId: auth.userId } },
+    select: { userId: true },
+  });
+
   return NextResponse.json({
     experience: {
       ...experience,
@@ -76,6 +84,7 @@ export async function GET(
         ? STAGE_META[experience.stageKey as StageKey]?.label ?? experience.stageKey
         : null,
       isMine,
+      hasMarkedHelpful: !!myMark,
     },
   });
 }
