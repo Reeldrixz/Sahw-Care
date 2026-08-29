@@ -31,7 +31,7 @@ const MAX_FIELD_INPUT = 4000;
 const TIMEOUT_MS = 12_000;
 
 export type AiVerdict = "PASS" | "FLAG" | "UNAVAILABLE";
-export type FlaggedField = "situation" | "whatITried" | "takeaway";
+export type FlaggedField = "situation" | "whatITried" | "takeaway" | "body";
 
 export interface AiFlag {
   field: FlaggedField;
@@ -157,12 +157,7 @@ export async function checkExperienceSafety(post: {
   whatITried: string;
   takeaway: string;
 }): Promise<AiCheckResult> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    return { verdict: "UNAVAILABLE", flags: [], note: "AI check not configured (no API key)." };
-  }
-
-  const fields: Record<FlaggedField, string> = {
+  const fields: Partial<Record<FlaggedField, string>> = {
     situation:  post.situation.slice(0, MAX_FIELD_INPUT),
     whatITried: post.whatITried.slice(0, MAX_FIELD_INPUT),
     takeaway:   post.takeaway.slice(0, MAX_FIELD_INPUT),
@@ -171,6 +166,61 @@ export async function checkExperienceSafety(post: {
   const userContent =
     `Check this experience.\n\n` +
     FIELDS.map((f) => `<${f}>\n${fields[f]}\n</${f}>`).join("\n\n");
+
+  return runCheck(buildSystemPrompt(), userContent, fields);
+}
+
+/**
+ * The same final gate, for a comment on an already-published experience.
+ *
+ * The parent post is supplied as CONTEXT and nothing else. A comment genuinely
+ * cannot be judged without it — "just do what I said above" is harmless or
+ * dangerous entirely depending on what is above it — but the post has already
+ * passed both gates and is not what is being assessed here.
+ *
+ * That separation is enforced structurally, not just by asking: `fields` given
+ * to the validator contains ONLY the comment body, so a quote lifted from the
+ * parent post matches nothing and is dropped. The prompt can be ignored; the
+ * validation cannot.
+ */
+export async function checkCommentSafety(
+  commentBody: string,
+  parent: { situation: string; whatITried: string; takeaway: string }
+): Promise<AiCheckResult> {
+  const body = commentBody.slice(0, MAX_FIELD_INPUT);
+
+  const userContent =
+    `A mother has commented on a published experience. The experience below is CONTEXT ONLY — ` +
+    `it has already been reviewed and published, and you are NOT assessing it. Judge ONLY the ` +
+    `comment, and quote only from the comment.\n\n` +
+    `<context_experience>\n` +
+    `situation: ${parent.situation.slice(0, MAX_FIELD_INPUT)}\n\n` +
+    `whatITried: ${parent.whatITried.slice(0, MAX_FIELD_INPUT)}\n\n` +
+    `takeaway: ${parent.takeaway.slice(0, MAX_FIELD_INPUT)}\n` +
+    `</context_experience>\n\n` +
+    `<body>\n${body}\n</body>\n\n` +
+    `A comment can carry a hazard by pointing at one — "do what she said", "ignore that, just ` +
+    `put him on his front" — so read it against the experience above, but flag only the ` +
+    `comment's own words. Use "body" as the field for any flag.`;
+
+  // Only the comment body is validatable, so a quote from the context post is
+  // dropped by the same check that drops an invented one.
+  return runCheck(buildSystemPrompt(), userContent, { body });
+}
+
+/**
+ * Shared call, parse, and validation for both surfaces. Never throws; every
+ * failure path resolves to UNAVAILABLE, which the caller treats as fail-open.
+ */
+async function runCheck(
+  systemPrompt: string,
+  userContent: string,
+  fields: Partial<Record<FlaggedField, string>>
+): Promise<AiCheckResult> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) {
+    return { verdict: "UNAVAILABLE", flags: [], note: "AI check not configured (no API key)." };
+  }
 
   let raw: string;
   try {
@@ -189,7 +239,7 @@ export async function checkExperienceSafety(post: {
       body: JSON.stringify({
         model:      MODEL,
         max_tokens: 900,
-        system: [{ type: "text", text: buildSystemPrompt(), cache_control: { type: "ephemeral" } }],
+        system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: userContent }],
       }),
     }).finally(() => clearTimeout(timer));
@@ -244,9 +294,13 @@ export async function checkExperienceSafety(post: {
         const quote  = typeof o.quote === "string" ? o.quote.trim() : "";
         const hazard = o.hazard as SafetyCategoryCode;
 
-        if (!FIELDS.includes(field)) return [];
+        // Validate against the fields THIS check was given, not the global list.
+        // A post check is given the three post fields; a comment check is given
+        // only "body". That is what stops a comment flag quoting the parent post
+        // it was shown as context — the quote has nothing to match against.
+        if (!(field in fields) || !fields[field]) return [];
         if (!VALID_HAZARDS.has(hazard as string)) return [];
-        if (!quote || !fields[field].includes(quote)) {
+        if (!quote || !fields[field]!.includes(quote)) {
           console.warn("[experience-ai-gate] dropped unverifiable quote:", quote.slice(0, 80));
           return [];
         }

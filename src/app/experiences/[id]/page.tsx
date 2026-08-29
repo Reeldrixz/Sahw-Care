@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Heart } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { COMMENT_MIN, COMMENT_MAX, COMMENT_PLACEHOLDER, COMMENT_SUBMITTED_NOTE } from "@/lib/experienceSafety";
 
 // One experience, read in full.
 //
@@ -32,6 +33,38 @@ export default function ExperienceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
+
+  const [comments,     setComments]     = useState<{ id: string; body: string }[]>([]);
+  const [myPending,    setMyPending]    = useState<{ id: string; body: string }[]>([]);
+  const [commentText,  setCommentText]  = useState("");
+  const [posting,      setPosting]      = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [commentDone,  setCommentDone]  = useState(false);
+
+  const loadComments = useCallback(async () => {
+    const r = await fetch(`/api/experiences/${id}/comments`, { cache: "no-store" });
+    if (r.ok) {
+      const d = await r.json();
+      setComments(d.comments ?? []);
+      setMyPending(d.myPending ?? []);
+    }
+  }, [id]);
+
+  const postComment = async () => {
+    setPosting(true);
+    setCommentError(null);
+    const r = await fetch(`/api/experiences/${id}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: commentText.trim() }),
+    });
+    const d = await r.json().catch(() => ({}));
+    setPosting(false);
+    if (!r.ok) { setCommentError(d.error ?? "Something went wrong."); return; }
+    setCommentText("");
+    setCommentDone(true);
+    loadComments();
+  };
 
   // Optimistic on the way out, reconciled with the server's count on the way
   // back — the count is the ranking input, so the server's number wins.
@@ -81,7 +114,7 @@ export default function ExperienceDetailPage() {
     setLoading(false);
   }, [id]);
 
-  useEffect(() => { if (user) load(); }, [user, load]);
+  useEffect(() => { if (user) { load(); loadComments(); } }, [user, load, loadComments]);
 
   if (authLoading || !user) return null;
 
@@ -150,6 +183,73 @@ export default function ExperienceDetailPage() {
                 {experience.hasMarkedHelpful ? "You found this helpful" : "This helped me"}
               </button>
             )}
+
+            {/* Comments. Every one has passed the same two gates as a post:
+                a human reviewer, then the AI final check. The byline is "a
+                mother" here too — the API never selects author. */}
+            <div style={{ marginTop: 26 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "var(--light)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+                {comments.length > 0
+                  ? `${comments.length} ${comments.length === 1 ? "mother added" : "mothers added"} to this`
+                  : "Add what this missed"}
+              </div>
+
+              {comments.map((c) => (
+                <div key={c.id} style={{ ...card, marginBottom: 8, padding: 14 }}>
+                  <div style={{ fontSize: 13.5, color: "var(--ink)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.body}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--light)", fontStyle: "italic", marginTop: 8 }}>a mother</div>
+                </div>
+              ))}
+
+              {/* Hers, still in review. Shown only to her, so a comment she
+                  wrote does not appear to have vanished. */}
+              {myPending.map((c) => (
+                <div key={c.id} style={{ ...card, marginBottom: 8, padding: 14, background: "#fffbeb", border: "1px solid #fde68a" }}>
+                  <div style={{ fontSize: 13.5, color: "#78350f", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{c.body}</div>
+                  <div style={{ fontSize: 11.5, color: "#92400e", marginTop: 8, fontWeight: 700 }}>
+                    Waiting to be published — only you can see this
+                  </div>
+                </div>
+              ))}
+
+              {commentDone ? (
+                <div style={{ ...card, padding: 14, fontSize: 12.5, color: "var(--mid)", lineHeight: 1.6 }}>
+                  {COMMENT_SUBMITTED_NOTE}
+                </div>
+              ) : (
+                <div style={{ ...card, padding: 14 }}>
+                  <textarea
+                    value={commentText}
+                    maxLength={COMMENT_MAX}
+                    placeholder={COMMENT_PLACEHOLDER}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    style={{ width: "100%", minHeight: 78, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", fontSize: 13.5, fontFamily: "inherit", lineHeight: 1.65, color: "var(--ink)", background: "white", resize: "vertical" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                    <span style={{ fontSize: 10.5, color: "var(--light)" }}>
+                      {commentText.trim().length < COMMENT_MIN
+                        ? `At least ${COMMENT_MIN} characters`
+                        : `${commentText.trim().length}/${COMMENT_MAX}`}
+                    </span>
+                    <button
+                      disabled={commentText.trim().length < COMMENT_MIN || posting}
+                      onClick={postComment}
+                      style={{
+                        padding: "8px 16px", borderRadius: 10, border: "none",
+                        background: commentText.trim().length >= COMMENT_MIN ? "#1a7a5e" : "var(--border)",
+                        color: "white", fontSize: 12.5, fontWeight: 800, fontFamily: "Nunito, sans-serif",
+                        cursor: commentText.trim().length >= COMMENT_MIN ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {posting ? "Sending…" : "Add"}
+                    </button>
+                  </div>
+                  {commentError && (
+                    <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 8, lineHeight: 1.55 }}>{commentError}</div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <p style={{ fontSize: 11.5, color: "var(--light)", lineHeight: 1.65, textAlign: "center", margin: "16px auto 0", maxWidth: 460 }}>
               Every experience here is read by our team before it&apos;s published. It&apos;s one

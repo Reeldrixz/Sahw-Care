@@ -1990,6 +1990,23 @@ model ExperienceComment {
   reviewNote               String?
   rejectionReasonForAuthor String?
 
+  // ── AI final gate ─────────────────────────────────────────────────────────
+  // Same second gate as posts, and for the same reason: "just do what I said
+  // above" carries whatever hazard is above it, and a comment is the easier
+  // place to slip something past a tired reviewer precisely because it is short
+  // and looks incidental. Deferred at E4 until comment traffic warranted it.
+  //
+  // The parent post is given to the check as CONTEXT only — a comment cannot be
+  // judged without knowing what it replies to — but quotes are validated
+  // against the comment body alone, so a flag lifted from the post is dropped.
+  aiCheckedAt DateTime?
+  aiVerdict   String?
+  aiNote      String?
+  aiFlags     Json?
+
+  aiConfirmedByAdminId String?
+  aiConfirmedAt        DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?

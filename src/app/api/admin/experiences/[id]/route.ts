@@ -13,7 +13,7 @@ import {
   sendBackMessage,
   publishedLink,
 } from "@/lib/experienceSafety";
-import { checkExperienceSafety, type AiCheckResult } from "@/lib/experienceSafetyCheck";
+import { checkExperienceSafety, checkCommentSafety, type AiCheckResult } from "@/lib/experienceSafetyCheck";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +123,12 @@ export async function PATCH(
   const commentTarget = isComment
     ? await prisma.experienceComment.findUnique({
         where:  { id },
-        select: { id: true, authorId: true, status: true },
+        select: {
+          id: true, authorId: true, status: true, body: true,
+          // The parent is fetched as CONTEXT for the AI check only. A comment
+          // cannot be judged without knowing what it replies to.
+          experience: { select: { situation: true, whatITried: true, takeaway: true } },
+        },
       })
     : null;
 
@@ -154,9 +159,16 @@ export async function PATCH(
   // run. The human is the primary gate and has already approved, so this
   // degrades to exactly today's human-only safety — while failing closed would
   // let one missing key silently freeze every mother's post.
+  // Posts and comments both. A comment carries the same hazard class — "just do
+  // what I said above" inherits whatever is above it — and is the easier place
+  // to slip something past a tired reviewer precisely because it is short.
   let aiResult: AiCheckResult | null = null;
-  if (action === "approve" && post && target.status === "PENDING") {
-    aiResult = await checkExperienceSafety(post);
+  if (action === "approve" && target.status === "PENDING") {
+    if (post) {
+      aiResult = await checkExperienceSafety(post);
+    } else if (commentTarget?.experience) {
+      aiResult = await checkCommentSafety(commentTarget.body, commentTarget.experience);
+    }
   }
 
   const aiBlocked = aiResult?.verdict === "FLAG";
@@ -206,7 +218,7 @@ export async function PATCH(
     // Publishing over a flag: the second, deliberate click. Recorded because a
     // human overriding an AI safety flag on baby content is a decision worth
     // being able to look up later.
-    ...(action === "approve" && !isComment && target.status === "AI_FLAGGED" && {
+    ...(action === "approve" && target.status === "AI_FLAGGED" && {
       aiConfirmedByAdminId: admin.userId,
       aiConfirmedAt:        now,
     }),

@@ -315,6 +315,20 @@ export function validateExperienceField(
   return null;
 }
 
+// ── Comments (E6) ───────────────────────────────────────────────────────────
+// Long enough to add something real, short enough that a comment stays an
+// addition rather than becoming a rival post. If she has a whole experience of
+// her own, it belongs in the form, where it gets the three-part structure and
+// its own place in the library.
+export const COMMENT_MIN = 15;
+export const COMMENT_MAX = 1000;
+
+export const COMMENT_PLACEHOLDER =
+  "Add what this post missed — what worked differently for you, or the bit nobody mentions.";
+
+export const COMMENT_SUBMITTED_NOTE =
+  "Thanks — someone will read it before it appears, same as every post here.";
+
 // The redirect that keeps Experiences from becoming a question board. Shown on
 // the compose form itself, before she has written anything, because the moment
 // to redirect a question is before it is typed out — not after, in a decline.

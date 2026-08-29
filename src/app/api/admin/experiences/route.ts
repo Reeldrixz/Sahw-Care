@@ -92,6 +92,13 @@ export async function GET(req: NextRequest) {
       createdAt: true,
       reviewedAt: true,
       publishedAt: true,
+      // Comments now pass the AI gate too, so the queue shows their verdict.
+      aiVerdict: true,
+      aiNote: true,
+      aiFlags: true,
+      aiCheckedAt: true,
+      aiConfirmedByAdminId: true,
+      aiConfirmedAt: true,
       author: { select: AUTHOR_FIELDS },
       // The parent post, for context. A comment is often only judgeable
       // against what it is replying to — "just do what I said above" is
@@ -106,12 +113,18 @@ export async function GET(req: NextRequest) {
 // Pending counts for both tabs, so the reviewer can see at a glance whether
 // comments are quietly piling up behind the posts.
 async function queueCounts() {
-  const [posts, comments, aiFlagged] = await Promise.all([
+  const [posts, comments, aiFlagged, aiFlaggedComments] = await Promise.all([
     prisma.experience.count({ where: { status: "PENDING" } }),
     prisma.experienceComment.count({ where: { status: "PENDING" } }),
     // Posts the AI stopped after a human approved. These are waiting on a
     // second look and must not sit unnoticed behind the pending count.
     prisma.experience.count({ where: { status: "AI_FLAGGED" } }),
+    prisma.experienceComment.count({ where: { status: "AI_FLAGGED" } }),
   ]);
-  return { pendingPosts: posts, pendingComments: comments, aiFlagged };
+  return {
+    pendingPosts: posts,
+    pendingComments: comments,
+    // Combined so a flagged comment cannot hide behind a zero post count.
+    aiFlagged: aiFlagged + aiFlaggedComments,
+  };
 }

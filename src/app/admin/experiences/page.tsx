@@ -24,7 +24,7 @@ import {
 // prompts visible is the mitigation.
 
 interface Author { id: string; name: string | null; email: string | null }
-interface AiFlag { field: "situation" | "whatITried" | "takeaway"; quote: string; hazard: string; why: string }
+interface AiFlag { field: "situation" | "whatITried" | "takeaway" | "body"; quote: string; hazard: string; why: string }
 interface PostItem {
   id: string; situation: string; whatITried: string; takeaway: string;
   topic: string; stageKey: string | null; stageLabel: string | null;
@@ -38,6 +38,8 @@ interface CommentItem {
   reviewNote: string | null; rejectionReasonForAuthor: string | null;
   createdAt: string; reviewedAt: string | null; author: Author;
   experience: { id: string; situation: string; status: string } | null;
+  aiVerdict: string | null; aiNote: string | null; aiFlags: AiFlag[] | null;
+  aiCheckedAt: string | null; aiConfirmedByAdminId: string | null; aiConfirmedAt: string | null;
 }
 type Item = PostItem | CommentItem;
 const isPost = (i: Item): i is PostItem => "situation" in i;
@@ -252,13 +254,13 @@ export default function AdminExperiencesPage() {
                       On: “{item.experience.situation.slice(0, 140)}”
                     </div>
                   )}
-                  <Field label="Comment" value={item.body} />
+                  <Field label="Comment" value={item.body} quotes={quotesFor(item, "body")} />
                 </>
               )}
 
               {/* What the AI stopped, and why. Shown above the checklist so the
                   reviewer reads the objection before the buttons. */}
-              {item.status === "AI_FLAGGED" && isPost(item) && (
+              {item.status === "AI_FLAGGED" && (
                 <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "#fef2f2", border: "1.5px solid #fca5a5" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: "#991b1b", marginBottom: 8, fontFamily: "Nunito, sans-serif" }}>
                     <ShieldAlert size={14} strokeWidth={2.5} />
@@ -398,13 +400,13 @@ export default function AdminExperiencesPage() {
                 </details>
               )}
               {/* Published without the gate running — fail-open, made visible. */}
-              {isPost(item) && item.aiVerdict === "UNAVAILABLE" && (
+              {item.aiVerdict === "UNAVAILABLE" && (
                 <div style={{ marginTop: 10, fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 8, padding: "6px 9px", lineHeight: 1.5 }}>
                   ⚠ Safety check did not run{item.aiNote ? ` — ${item.aiNote}` : ""}
                 </div>
               )}
               {/* Published over a flag by a human. */}
-              {isPost(item) && item.aiConfirmedAt && (
+              {item.aiConfirmedAt && (
                 <div style={{ marginTop: 8, fontSize: 11, color: "var(--light)" }}>
                   Published over a safety flag on {new Date(item.aiConfirmedAt).toLocaleDateString()}
                 </div>
@@ -426,7 +428,7 @@ export default function AdminExperiencesPage() {
   );
 }
 
-function quotesFor(item: PostItem, field: AiFlag["field"]): string[] {
+function quotesFor(item: Item, field: AiFlag["field"]): string[] {
   if (item.status !== "AI_FLAGGED" || !item.aiFlags) return [];
   return item.aiFlags.filter((f) => f.field === field).map((f) => f.quote);
 }
