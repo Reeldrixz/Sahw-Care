@@ -270,5 +270,16 @@ export async function checkExperienceSafety(post: {
     };
   }
 
-  return { verdict: p.verdict === "FLAG" ? "FLAG" : "PASS", flags, note };
+  // flags means "the reasons this was blocked", never "passages considered".
+  // The model sometimes returns a PASS while still listing the passage it
+  // weighed — usually the interesting one it decided was recounting rather than
+  // advice. Storing those would make the field mean two different things
+  // depending on the verdict, and a reviewer reading a PASS row with flags on it
+  // would reasonably wonder why it published. On a PASS the reasoning belongs in
+  // aiNote, which is exactly what that field is for.
+  if (p.verdict !== "FLAG") {
+    return { verdict: "PASS", flags: [], note };
+  }
+
+  return { verdict: "FLAG", flags, note };
 }
