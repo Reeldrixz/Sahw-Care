@@ -145,6 +145,36 @@ export async function PATCH(
   const target = commentTarget ?? post;
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // ── No one reviews their own writing ─────────────────────────────────────
+  // Every decision here is meant to be a second pair of eyes. An admin who is
+  // also a mother can legitimately write an experience; she cannot also be the
+  // person who decides it is safe for other mothers to act on. That applies to
+  // all four actions and to the confirm-over-flag step especially — overruling
+  // the safety gate on your own writing is the single decision that most needs
+  // someone else in the room.
+  //
+  // Checked BEFORE the AI gate runs, so a self-review does not even spend a
+  // check, and before any mutation or notification.
+  //
+  // There is deliberately NO override flag. An escape hatch reduces this to a
+  // suggestion, and a guard everyone knows how to click past is worse than no
+  // guard at all — it produces the appearance of oversight without any.
+  //
+  // The consequence is real and accepted: with a single admin, that admin
+  // cannot publish her own experiences. The answer is a second reviewer, not a
+  // bypass.
+  if (target.authorId === admin.userId) {
+    return NextResponse.json(
+      {
+        error:
+          "You can't review your own writing. Someone else has to decide this one — " +
+          "that's the whole point of a second pair of eyes.",
+        code: "SELF_REVIEW",
+      },
+      { status: 403 }
+    );
+  }
+
   // ── AI final gate ────────────────────────────────────────────────────────
   // Runs ONLY here, inside approve, after the human has decided. It is a second
   // independent check on the publish path, never a reviewer of her work and

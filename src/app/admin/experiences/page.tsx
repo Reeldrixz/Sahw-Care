@@ -285,7 +285,22 @@ export default function AdminExperiencesPage() {
                 </div>
               )}
 
-              {(status === "PENDING" || status === "AI_FLAGGED") && (
+              {/* Your own writing. The server refuses this regardless; saying so
+                  here means you find out before clicking rather than after, and
+                  the reason reads as a principle rather than an error. */}
+              {(status === "PENDING" || status === "AI_FLAGGED") && item.author.id === user.id && (
+                <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "var(--bg)", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: "var(--ink)", fontFamily: "Nunito, sans-serif", marginBottom: 4 }}>
+                    This is yours — someone else has to review it
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.6 }}>
+                    You can write experiences like any other mother, but you can&apos;t be the one who
+                    decides your own is safe for others to act on. It needs a second reviewer.
+                  </div>
+                </div>
+              )}
+
+              {(status === "PENDING" || status === "AI_FLAGGED") && item.author.id !== user.id && (
                 <>
                   {/* The checklist — always visible, never behind a toggle */}
                   <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "#fff7ed", border: "1px solid #fed7aa" }}>
