@@ -185,26 +185,51 @@ export async function checkExperienceSafety(post: {
  */
 export async function checkCommentSafety(
   commentBody: string,
-  parent: { situation: string; whatITried: string; takeaway: string }
+  parent: { situation: string; whatITried: string; takeaway: string },
+  /** The parent's own recorded verdict. Anything but PASS means unverified. */
+  parentVerdict?: string | null
 ): Promise<AiCheckResult> {
   const body = commentBody.slice(0, MAX_FIELD_INPUT);
 
+  // The parent's real verdict, stated honestly. The previous version of this
+  // prompt asserted the post "has already been reviewed and published" — a
+  // guarantee the system cannot make. On 2026-08-29 a stomach-sleeping post
+  // that published on an UNAVAILABLE verdict received a comment saying "just do
+  // what she said above", and the check passed it, reasoning correctly from
+  // that false premise: the comment added no new hazardous advice. Published
+  // does not mean safe, and amplifying a hazard is a hazard.
+  const verdictLine =
+    parentVerdict === "PASS"
+      ? `The post's own safety check recorded PASS. That is a signal, not a guarantee — still read it yourself.`
+      : `The post's own safety check recorded ${parentVerdict ?? "nothing at all"}. It was NOT verified. Do not assume it is safe.`;
+
   const userContent =
-    `A mother has commented on a published experience. The experience below is CONTEXT ONLY — ` +
-    `it has already been reviewed and published, and you are NOT assessing it. Judge ONLY the ` +
-    `comment, and quote only from the comment.\n\n` +
-    `<context_experience>\n` +
+    `A mother has commented on an experience. Judge ONLY the comment.\n\n` +
+    `<post_context>\n` +
     `situation: ${parent.situation.slice(0, MAX_FIELD_INPUT)}\n\n` +
     `whatITried: ${parent.whatITried.slice(0, MAX_FIELD_INPUT)}\n\n` +
     `takeaway: ${parent.takeaway.slice(0, MAX_FIELD_INPUT)}\n` +
-    `</context_experience>\n\n` +
+    `</post_context>\n\n` +
     `<body>\n${body}\n</body>\n\n` +
-    `A comment can carry a hazard by pointing at one — "do what she said", "ignore that, just ` +
-    `put him on his front" — so read it against the experience above, but flag only the ` +
-    `comment's own words. Use "body" as the field for any flag.`;
+    `${verdictLine}\n\n` +
+    `The post is CONTEXT. You are not judging it and must not flag it. But you must READ it for ` +
+    `hazards, because a comment can be dangerous purely by pointing at one.\n\n` +
+    `TWO QUESTIONS, IN ORDER:\n` +
+    `1. Does the POST contain an infant-safety hazard from the four categories?\n` +
+    `2. Does the COMMENT endorse, affirm, repeat, or direct a reader toward that hazard?\n\n` +
+    `FLAG only if BOTH are yes. "We did this too" or "just do what she said" IS a flag when the ` +
+    `post is unsafe — a second mother saying it worked is exactly what makes a tired reader act ` +
+    `on it. Adding no new instruction does not make it safe.\n\n` +
+    `If the post contains no hazard, ordinary agreement is a PASS. Warmth, gratitude, "this ` +
+    `helped me", "same here", "thank you for writing this", "this made me cry" are ALWAYS PASS on ` +
+    `a safe post. Do not flag agreement itself, and do not flag a comment that DISAGREES with a ` +
+    `hazard or says it did not work for her — that is the opposite of amplification.\n\n` +
+    `Quote ONLY from the comment, and use "body" as the field. If your reason lives in the post ` +
+    `rather than in the comment's own words, there is nothing here to flag.`;
 
-  // Only the comment body is validatable, so a quote from the context post is
-  // dropped by the same check that drops an invented one.
+  // Only the comment body is validatable, so a quote lifted from the post is
+  // dropped by the same check that drops an invented one. The prompt asks; this
+  // enforces.
   return runCheck(buildSystemPrompt(), userContent, { body });
 }
 

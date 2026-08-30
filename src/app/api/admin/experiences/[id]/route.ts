@@ -127,7 +127,7 @@ export async function PATCH(
           id: true, authorId: true, status: true, body: true,
           // The parent is fetched as CONTEXT for the AI check only. A comment
           // cannot be judged without knowing what it replies to.
-          experience: { select: { situation: true, whatITried: true, takeaway: true } },
+          experience: { select: { situation: true, whatITried: true, takeaway: true, aiVerdict: true } },
         },
       })
     : null;
@@ -167,7 +167,11 @@ export async function PATCH(
     if (post) {
       aiResult = await checkExperienceSafety(post);
     } else if (commentTarget?.experience) {
-      aiResult = await checkCommentSafety(commentTarget.body, commentTarget.experience);
+      aiResult = await checkCommentSafety(
+        commentTarget.body,
+        commentTarget.experience,
+        commentTarget.experience.aiVerdict,
+      );
     }
   }
 
