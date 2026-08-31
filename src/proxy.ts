@@ -13,6 +13,14 @@ const PUBLIC_PATHS = [
   // public Community Partner directory + per-business profile pages.
   // Must stay public: in-store QR codes point at these, no auth.
   "/community-partners",
+  // public mother-facing "how to reach a partner" directory. Must stay public
+  // for the same reason: the landing page footer ("Need support?") and the
+  // logged-out referral landing at /join/[code] both link here, and the page's
+  // own description addresses someone who was handed the link — "A friend
+  // thought Kradel could help." It renders a static partner list with no auth,
+  // no Prisma and no user data, so there is nothing to protect. Gating it put a
+  // login wall in front of a mother at the moment she was reaching for help.
+  "/find-help",
   // public tiered sponsorship / "become a partner" marketing page
   "/partners",
   // public Impact Creator program page (+ public link-visit counter)
