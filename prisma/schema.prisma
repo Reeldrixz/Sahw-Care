@@ -2192,3 +2192,79 @@ model ReferralCode {
   @@index([partnerId])
   @@index([status])
 }
+
+// ==================== FUNDRAISING EVENTS ====================
+//
+// A live fundraising event run by a HOST — someone streaming or presenting to an
+// audience outside Kradel, showing registers that mothers have opted in to being
+// featured.
+//
+// NAMING: "host", never "creator". That word is already taken twice — the mother
+// who created a register is Register.creatorId, and User.isCreator is the Impact
+// Creator programme, which has accounts and its own dashboard. A third meaning
+// would be exactly the identityVerified-vs-docStatus collision that has cost
+// real time on this codebase.
+//
+// A HOST HAS NO KRADEL ACCOUNT. Access is by unguessable bearer token in a link,
+// following the ReferralCode pattern but longer-lived and therefore stronger:
+// 16 random bytes (~128 bits) rather than the ~39 bits used for a single-use
+// invite. An event link may be pasted into chat, live for hours, and grants a
+// broad read, so it is sized for that rather than for a one-shot code.
+//
+// Deliberately NOT built on the existing Campaign model. Campaign is
+// sponsor-funded bundles — sponsorName, costPerBundle, bundlesRemaining, tied to
+// BundleTemplate — and no code references it at all. Overloading dead schema
+// from an earlier direction to mean something new is how a model ends up unable
+// to answer the questions you ask it later.
+//
+// Featured registers are read LIVE from fetchFeaturableRegisters() during an
+// event and are deliberately NOT pinned here. If a mother revokes consent
+// mid-stream she must drop out on the next poll; a pinned list would keep
+// showing her. A snapshot for reproducible post-event results is taken at event
+// END, and needs its own model — it does not exist yet.
+model FundraisingEvent {
+  id    String @id @default(cuid())
+  title String
+
+  // Human-readable URL segment. Unique, but NOT a credential — knowing the slug
+  // grants nothing. Access is the token below.
+  slug String @unique
+
+  // Display name of the person or channel hosting. Free text; no account, no
+  // identity claim, nothing verified about it.
+  hostName String
+
+  goalCents Int @default(0)
+
+  status FundraisingEventStatus @default(DRAFT)
+
+  // ── Host access ───────────────────────────────────────────────────────────
+  // The bearer token in the host's dashboard link. Nullable on purpose: null
+  // means there is no working link, either because one was never issued or
+  // because it was revoked. Revocation sets this to null so the credential
+  // ceases to exist rather than being marked dead — a token that is still
+  // stored is a token that can still leak. Rotation is the same operation with
+  // a new value.
+  //
+  // Generated as 16 random bytes, hex-encoded, with a "kevt_" prefix so it is
+  // recognisable in logs and support requests.
+  accessToken    String?   @unique
+  tokenIssuedAt  DateTime?
+  tokenExpiresAt DateTime? // a stream ends; the link should not outlive it
+  tokenRevokedAt DateTime? // set alongside nulling the token, so "revoked" and
+                           // "never issued" stay distinguishable
+
+  startedAt DateTime?
+  endedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum FundraisingEventStatus {
+  DRAFT // being set up; no link issued or link not yet live
+  LIVE  // running now; the host dashboard reads the featurable pool live
+  ENDED // finished; results snapshotted, host link should no longer work
+}
