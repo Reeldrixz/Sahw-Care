@@ -95,6 +95,46 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
   };
 }
 
+// ── Featurable pool: registers a mother has consented to be featured ─────────
+//
+// The pool a creator/fundraising surface reads from. Two properties are
+// load-bearing and should not be relaxed:
+//
+// 1. featureConsent: true lives IN THE WHERE, never as a post-filter. A
+//    register without consent is unreachable by construction rather than by a
+//    filter someone can forget to apply, reorder, or drop while refactoring.
+//    The same discipline as status: "PUBLISHED" on the Experiences reader.
+//
+// 2. It returns the EXACT shape fetchPublicRegister returns, by calling it.
+//    That is what makes "consenting reveals nothing new" structurally true
+//    instead of a claim in a comment: there is no second mapping that could
+//    drift and start including a surname, a contact detail, or an address.
+//
+// ACTIVE only. A COMPLETED register is deliberately excluded even with consent
+// on: she agreed while her register was live and asking for help, and appearing
+// in a campaign months after it was fulfilled is a materially different thing
+// to have agreed to. That is a separate consent, not an assumption to make
+// forward on her behalf.
+//
+// Consent is read LIVE here. Anything that caches this pool must re-check at
+// display time — if she revokes, a cached pool must not keep her featurable.
+export async function fetchFeaturableRegisters(limit = 50): Promise<PublicRegister[]> {
+  const rows = await prisma.register.findMany({
+    where: {
+      featureConsent: true,
+      status:         "ACTIVE",
+    },
+    orderBy: { featureConsentAt: "desc" },
+    take:    Math.min(limit, 100),
+    select:  { id: true },
+  });
+
+  // Deliberately re-fetched through the public helper rather than selected here.
+  // One definition of what is public, one place to audit.
+  const full = await Promise.all(rows.map((r) => fetchPublicRegister(r.id)));
+  return full.filter((r): r is PublicRegister => r !== null);
+}
+
 // ── Admin helper: includes all address data ───────────────────────────────────
 
 export async function fetchAdminRegister(registerId: string): Promise<AdminFacingRegister | null> {

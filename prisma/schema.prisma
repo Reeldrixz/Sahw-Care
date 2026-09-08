@@ -492,6 +492,31 @@ model Register {
   status      RegisterStatus      @default(DRAFT)
   completedAt DateTime?
   closedAt    DateTime?
+
+  // ── Fundraising feature consent ───────────────────────────────────────────
+  // Whether this Register may be shown to audiences OUTSIDE Kradel during
+  // livestreams and other fundraising campaigns.
+  //
+  // OPT-IN, and @default(false) is what makes that structural rather than a
+  // policy someone has to remember: every existing register and every new one
+  // starts excluded, and no backfill can accidentally opt anyone in. There is
+  // no opt-out path by design.
+  //
+  // Consenting reveals NOTHING NEW. A register is already viewable by anyone
+  // with the link, and the featurable pool returns the exact shape
+  // fetchPublicRegister already returns. This governs the CONTEXT she may
+  // appear in, not the data.
+  //
+  // featureConsentAt exists because consent to be shown outside the platform is
+  // something you need to be able to evidence later — when she agreed, and
+  // whether that was before or after a campaign that used her register. A
+  // boolean alone cannot answer that.
+  //
+  // Revocation is clean: flip to false and null the timestamp. Deliberately no
+  // revoked-at history — keeping a record of something she asked us to stop is
+  // the opposite of honouring it.
+  featureConsent   Boolean   @default(false)
+  featureConsentAt DateTime?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 

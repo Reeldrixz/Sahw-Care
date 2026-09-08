@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, city, dueDate, status } = await req.json();
+  const { title, city, dueDate, status, featureConsent } = await req.json();
 
   if (status === "CLOSED") {
     const updated = await prisma.$transaction(async (tx) => {
@@ -72,12 +72,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ register: updated });
   }
 
+  // Fundraising feature consent. Only the register's own creator reaches this
+  // — ownership is checked above — so consent can only ever be set by her.
+  //
+  // Written as an explicit boolean check rather than a truthy one: `featureConsent
+  // && {...}` would silently ignore `false`, making the toggle impossible to
+  // turn OFF. On a consent flag that failure mode is unacceptable, so revocation
+  // has to be as easy as granting.
+  //
+  // Granting stamps featureConsentAt; revoking nulls it. No revoked-at history:
+  // keeping a record of consent she withdrew is the opposite of honouring it.
+  const consentPatch =
+    typeof featureConsent === "boolean"
+      ? featureConsent
+        ? { featureConsent: true,  featureConsentAt: new Date() }
+        : { featureConsent: false, featureConsentAt: null }
+      : {};
+
   const updated = await prisma.register.update({
     where: { id },
     data: {
       ...(title && { title }),
       ...(city && { city }),
       ...(dueDate && { dueDate: new Date(dueDate) }),
+      ...consentPatch,
     },
   });
 

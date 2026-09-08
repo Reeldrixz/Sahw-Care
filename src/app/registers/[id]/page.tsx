@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   CheckCircle, Package, Loader2, Users, Heart,
   BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
-  ShieldCheck, ImageOff, HandHeart, AlertCircle, Share2, Check,
+  ShieldCheck, ImageOff, HandHeart, AlertCircle, Share2, Check, Megaphone,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -46,6 +46,7 @@ interface RegisterData {
   intro: string | null;
   status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
   addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
+  featureConsent: boolean;
   creator: { id: string; name: string; location: string | null; verificationLevel?: number };
   items: RegisterItemData[];
 }
@@ -111,6 +112,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter();
 
   const [register, setRegister]             = useState<RegisterData | null>(null);
+  const [savingConsent, setSavingConsent]   = useState(false);
   const [loading, setLoading]               = useState(true);
   const [selectedItem, setSelectedItem]     = useState<RegisterItemData | null>(null);
   const [fundingDetails, setFundingDetails] = useState<{ donorCount: number; contributors: FundingEntry[] } | null>(null);
@@ -197,6 +199,20 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   }, [id]);
 
   useEffect(() => { fetchRegister(); }, [fetchRegister]);
+
+  // Fundraising feature consent. Re-fetches rather than setting state
+  // optimistically: this is a consent flag, and the UI must show what the
+  // server actually recorded, not what we hoped it recorded.
+  const setFeatureConsent = useCallback(async (value: boolean) => {
+    setSavingConsent(true);
+    const res = await fetch(`/api/registers/${id}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ featureConsent: value }),
+    });
+    if (res.ok) await fetchRegister();
+    setSavingConsent(false);
+  }, [id, fetchRegister]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -812,6 +828,69 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#555555" }}>Thank you for helping mothers feel supported, not alone.</span>
             </div>
           </>
+        )}
+
+        {/* ── Fundraising feature consent (mom only) ──────────────────────
+            Its own bordered section, deliberately away from the funding
+            controls: this is a privacy choice about where she may appear, not
+            a lever for raising more money. Presenting it beside funding
+            options would invite her to read it as something that helps her
+            register do better, which is not a fair basis for consent. */}
+        {isMom && (
+          <div style={{ margin: "24px 16px 0", padding: "16px", background: "white", border: "1.5px solid var(--border)", borderRadius: 16 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+              <Megaphone size={17} strokeWidth={2} color="#1a7a5e" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)", lineHeight: 1.4 }}>
+                Allow my Register to be featured in Kradel fundraising events
+              </div>
+            </div>
+
+            <p style={{ fontSize: 12.5, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 10px" }}>
+              Your first name, Register items, and information you&apos;ve chosen to share on your
+              Register may be shown to audiences outside Kradel during livestreams and other Kradel
+              fundraising campaigns.
+            </p>
+
+            {/* Stated plainly, because the reasonable assumption is the opposite. */}
+            <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 14px", padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
+              This doesn&apos;t share anything new — your Register is already viewable by anyone with
+              the link. This is about whether we may show it during fundraising.
+            </p>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                disabled={savingConsent || register.featureConsent}
+                onClick={() => setFeatureConsent(true)}
+                style={{
+                  flex: 1, padding: "11px 0", borderRadius: 12,
+                  border: `2px solid ${register.featureConsent ? "#1a7a5e" : "var(--border)"}`,
+                  background: register.featureConsent ? "#e8f5f1" : "white",
+                  color: register.featureConsent ? "#1a7a5e" : "var(--ink)",
+                  fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif",
+                  cursor: register.featureConsent ? "default" : "pointer",
+                }}
+              >
+                Yes, you can feature it{register.featureConsent ? " ✓" : ""}
+              </button>
+              <button
+                disabled={savingConsent || !register.featureConsent}
+                onClick={() => setFeatureConsent(false)}
+                style={{
+                  flex: 1, padding: "11px 0", borderRadius: 12,
+                  border: "1.5px solid var(--border)", background: "white",
+                  color: "var(--mid)", fontSize: 13, fontWeight: 700,
+                  fontFamily: "Nunito, sans-serif",
+                  cursor: !register.featureConsent ? "default" : "pointer",
+                }}
+              >
+                No
+              </button>
+            </div>
+
+            <p style={{ fontSize: 11.5, color: "var(--light)", lineHeight: 1.6, margin: "10px 0 0", textAlign: "center" }}>
+              You can change this anytime.
+            </p>
+          </div>
         )}
 
         {!isDonorView && <div style={{ height: 140 }} />}
