@@ -32,6 +32,12 @@ const PUBLIC_PATHS = [
   "/api/auth/google",
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
+  // host dashboard read for a fundraising event. A host has no Kradel account;
+  // the bearer token in the path is the entire authorisation, and the route
+  // enforces it itself through resolveEventByToken — which fails uniformly for
+  // missing, malformed, revoked, expired and ENDED. Public here means "no
+  // session required", not "unauthenticated".
+  "/api/host",
   // public referral-code validation (non-leaking, rate-limited). Redemption
   // itself happens through the auth routes above or the authenticated
   // /api/referral/redeem (which stays protected).
