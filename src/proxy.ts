@@ -38,6 +38,10 @@ const PUBLIC_PATHS = [
   // missing, malformed, revoked, expired and ENDED. Public here means "no
   // session required", not "unauthenticated".
   "/api/host",
+  // the host dashboard page itself. Same reasoning as the API above: no Kradel
+  // session, the bearer token in the path is the authorisation, and the page
+  // reads nothing except /api/host/[token] — which enforces it.
+  "/host",
   // public referral-code validation (non-leaking, rate-limited). Redemption
   // itself happens through the auth routes above or the authenticated
   // /api/referral/redeem (which stays protected).
