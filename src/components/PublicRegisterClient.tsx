@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { PublicRegister, PublicRegisterItem } from "@/lib/registers";
+import GuestFundSheet from "@/components/GuestFundSheet";
 
 function fmtMoney(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
@@ -72,6 +73,7 @@ export default function PublicRegisterClient({
   const { user } = useAuth();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [guestItem, setGuestItem] = useState<PublicRegisterItem | null>(null);
 
   const firstName  = register.firstName;
   const isVerified = register.verificationLevel >= 2;
@@ -108,10 +110,20 @@ export default function PublicRegisterClient({
     } catch { /* clipboard unavailable */ }
   };
 
+  // A logged-in donor continues to the full register, where they get the
+  // familiar flow and their contribution is attributed to their account.
+  //
+  // A logged-out visitor used to be sent to /auth. That is a login wall placed
+  // in front of someone who arrived from a stream with about twenty seconds of
+  // intent, and it is where that intent dies. They now fund as a guest, in a
+  // sheet, without leaving the page.
   const goFund = (itemId: string) => {
-    const target = `/registers/${register.id}?item=${itemId}`;
-    if (user) router.push(target);
-    else router.push(`/auth?redirect=${encodeURIComponent(target)}`);
+    if (user) {
+      router.push(`/registers/${register.id}?item=${itemId}`);
+      return;
+    }
+    const item = register.items.find((i) => i.id === itemId);
+    if (item) setGuestItem(item);
   };
 
   return (
@@ -318,6 +330,17 @@ export default function PublicRegisterClient({
           <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#555555" }}>Thank you for helping mothers feel supported, not alone.</span>
         </div>
       </div>
+
+      {/* Guest funding. Only reachable when there is no session — a logged-in
+          donor goes to the full register instead, so their contribution is
+          attributed to their account. */}
+      {guestItem && (
+        <GuestFundSheet
+          item={guestItem}
+          firstName={firstName}
+          onClose={() => setGuestItem(null)}
+        />
+      )}
     </div>
   );
 }

@@ -42,6 +42,13 @@ const PUBLIC_PATHS = [
   // session, the bearer token in the path is the authorisation, and the page
   // reads nothing except /api/host/[token] — which enforces it.
   "/host",
+  // the public register share page. lib/registers.ts describes
+  // fetchPublicRegister as "privacy-safe, no auth required" and the page carries
+  // OpenGraph metadata for sharing — both of which were pointless while this
+  // redirected a logged-out visitor to /auth. It exposes first name only, no
+  // contact and no address, and DRAFT/ABANDONED registers return not-found, so
+  // there is nothing here to gate. Guest funding starts from this page.
+  "/r",
   // guest checkout for a register item. A logged-out viewer — typically someone
   // who followed a host link during a stream — can fund without an account. A
   // SEPARATE route rather than opening /api/registers, which carries address
