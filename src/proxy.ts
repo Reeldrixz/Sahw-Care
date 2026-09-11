@@ -42,6 +42,20 @@ const PUBLIC_PATHS = [
   // session, the bearer token in the path is the authorisation, and the page
   // reads nothing except /api/host/[token] — which enforces it.
   "/host",
+  // the shareable profile snapshot. api/profile/contributor/share mints a /u/<id>
+  // link for a contributor to send to people who do not have Kradel accounts —
+  // that is the entire purpose. The page takes no auth: it reads a frozen
+  // snapshotData blob and renders it, with an unguessable id and a 30-day
+  // expiresAt as the access control. While this was gated, every link the
+  // feature produced worked only for people who already had accounts, which made
+  // the whole feature silently non-functional.
+  "/u",
+  // the privacy policy. A login-walled privacy policy defeats its own purpose:
+  // it is the document you point app stores, payment processors, partners and
+  // regulators at, and the people most likely to request it are precisely the
+  // ones without accounts. Several of those parties require it to be publicly
+  // reachable, so this one carries a compliance edge the other pages do not.
+  "/privacy",
   // the public register share page. lib/registers.ts describes
   // fetchPublicRegister as "privacy-safe, no auth required" and the page carries
   // OpenGraph metadata for sharing — both of which were pointless while this
