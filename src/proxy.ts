@@ -42,6 +42,13 @@ const PUBLIC_PATHS = [
   // session, the bearer token in the path is the authorisation, and the page
   // reads nothing except /api/host/[token] — which enforces it.
   "/host",
+  // guest checkout for a register item. A logged-out viewer — typically someone
+  // who followed a host link during a stream — can fund without an account. A
+  // SEPARATE route rather than opening /api/registers, which carries address
+  // confirmation and register mutation: this one does a single thing, is IP
+  // rate-limited, re-verifies the register is publicly fundable, and computes
+  // every amount server-side.
+  "/api/guest/fund",
   // public referral-code validation (non-leaking, rate-limited). Redemption
   // itself happens through the auth routes above or the authenticated
   // /api/referral/redeem (which stays protected).

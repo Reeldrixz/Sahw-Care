@@ -1,0 +1,47 @@
+-- Guest checkout for register funding: allow a payment with no Kradel account.
+--
+-- WHY NULLABLE donorId RATHER THAN A GUEST User ROW. The alternative was
+-- creating a lightweight User at checkout so nothing downstream had to change.
+-- It dies on User.email being @unique: a guest paying as sarah@example.com takes
+-- that address, and the real Sarah can never sign up with it afterwards. She
+-- would hit "email already in use" for an account she never created, and fixing
+-- it would need account-claiming logic larger than guest checkout itself.
+-- User.password is also non-nullable, so every guest row would need a fake
+-- unusable hash, and those rows would silently join admin user lists, donor
+-- counts and abuse statistics.
+--
+-- Nullability costs nine call sites, once, visible in a diff. A phantom User row
+-- costs a real person, later, invisibly. The schema was already saying a guest
+-- is not a user; this stops arguing with it.
+--
+-- THE MONEY-CRITICAL CONSEQUENCE. The Stripe webhook used to increment User
+-- counters inside the SAME transaction that records the payment:
+--
+--   tx.registerItemFunding.update(... CONFIRMED)
+--   tx.registerItem.update(... totalFundedCents)
+--   tx.user.update({ where: { id: donorId } })      <- throws for a guest
+--
+-- For a guest that third call throws and the whole transaction rolls back: the
+-- funding is never confirmed and the item total never moves, while Stripe keeps
+-- the money and retries the webhook into the same failure forever. The webhook
+-- is therefore restructured into three phases — record the money unconditionally
+-- and in isolation, then fulfilment, then donor side effects each independently
+-- failable — so a successful payment is ALWAYS recorded, guest or not.
+--
+-- guestEmail is where a guest's receipt and any refund go. With no account
+-- behind the payment it is the only channel that exists, which makes it
+-- load-bearing rather than a convenience. Null for authenticated donors, whose
+-- User record is the contact.
+--
+-- DROP NOT NULL is a widening change: every existing row keeps its donorId and
+-- nothing is rewritten. The foreign key is retained, so deleting a User still
+-- cascades their funding rows; a guest row has no User to cascade from and
+-- persists, which is correct — the payment happened.
+--
+-- Not destructive, but not purely additive either: one constraint relaxed, one
+-- column added, zero drops, zero data changed.
+
+-- AlterTable
+ALTER TABLE "RegisterItemFunding"
+  ALTER COLUMN "donorId" DROP NOT NULL,
+  ADD COLUMN "guestEmail" TEXT;

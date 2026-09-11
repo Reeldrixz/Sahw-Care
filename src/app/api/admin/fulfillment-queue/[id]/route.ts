@@ -100,8 +100,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           },
         });
 
-        // Award + notify each unique donor
-        const uniqueDonorIds = [...new Set(entry.registerItem.funding.map((f) => f.donorId))];
+        // Award + notify each unique donor. Guests (donorId null) are filtered
+        // out: they have no account to award points to and no inbox to notify.
+        // Their contribution still counted toward fulfilling this item — that is
+        // recorded on the funding row, which is what every count reads.
+        const uniqueDonorIds = [...new Set(
+          entry.registerItem.funding.map((f) => f.donorId).filter((d): d is string => d !== null)
+        )];
         for (const donorId of uniqueDonorIds) {
           awardImpactPoints(donorId, "REGISTER_ITEM_FULFILLED_DONOR", itemId).catch(() => {});
           await tx.notification.create({
@@ -120,12 +125,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         });
         if (remainingItems === 0) {
           // All items fulfilled — notify all unique donors to the register
+          // { not: null } in Prisma means "has a value" — so guests are excluded
+          // at the query rather than filtered afterwards.
           const allDonors = await tx.registerItemFunding.findMany({
-            where: { registerItem: { registerId }, status: "CONFIRMED" },
+            where: { registerItem: { registerId }, status: "CONFIRMED", donorId: { not: null } },
             select: { donorId: true },
             distinct: ["donorId"],
           });
           for (const { donorId } of allDonors) {
+            if (!donorId) continue; // unreachable given the WHERE; satisfies the type
             await tx.notification.create({
               data: {
                 userId:  donorId,

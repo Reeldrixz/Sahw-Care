@@ -109,6 +109,10 @@ export async function POST(req: NextRequest) {
       });
       for (const f of fundings) {
         if (!successfulRefundIds.includes(f.id)) continue;
+        // Guests have no inbox. Their refund is communicated by Stripe's refund
+        // email to the address captured at checkout — and the refund itself has
+        // already been issued above either way, which is the part that matters.
+        if (!f.donorId) continue;
         await tx.notification.create({
           data: {
             userId:  f.donorId,

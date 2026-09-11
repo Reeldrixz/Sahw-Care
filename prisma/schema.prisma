@@ -1367,9 +1367,33 @@ model ItemCatalog {
 }
 
 model RegisterItemFunding {
-  id                    String        @id @default(cuid())
-  registerItemId        String
-  donorId               String
+  id             String @id @default(cuid())
+  registerItemId String
+
+  // NULLABLE because a guest can fund without a Kradel account — a stream
+  // viewer who clicked a host link has thirty seconds of intent and no reason
+  // to make one.
+  //
+  // The rejected alternative was creating a lightweight guest User row. It dies
+  // on User.email @unique: a guest paying as sarah@example.com would take that
+  // address, and the real Sarah could never sign up with it afterwards. The cost
+  // of nullability is explicit, one-time, and visible in the diff; the cost of a
+  // phantom User row is hidden, arrives later, and is paid by someone else.
+  //
+  // EVERY READ OF THIS FIELD MUST HANDLE NULL, and one of them is money-critical:
+  // the Stripe webhook used to increment User counters inside the same
+  // transaction that records the payment. For a guest that throws, rolling back
+  // the CONFIRMED status and the item total while Stripe keeps the money. Donor
+  // side effects now run in a separate phase, after the money is recorded, each
+  // independently failable.
+  donorId String?
+
+  // Where a guest's receipt and any refund go. The only channel that exists when
+  // there is no account behind a payment, which makes it load-bearing rather
+  // than a convenience. Null for authenticated donors — their User record is
+  // the contact.
+  guestEmail String?
+
   amountCents           Int           // item contribution only — used for progress tracking
   kradelFee             Int           @default(0)
   optionalSupport       Int           @default(0)
@@ -1382,7 +1406,10 @@ model RegisterItemFunding {
   createdAt             DateTime      @default(now())
 
   registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
-  donor        User         @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  // Optional relation. Cascade is retained for authenticated donors: deleting a
+  // User still removes their funding rows. A guest row has no User to cascade
+  // from and simply persists, which is correct — the payment happened.
+  donor        User?        @relation(fields: [donorId], references: [id], onDelete: Cascade)
 }
 
 model StripeEvent {

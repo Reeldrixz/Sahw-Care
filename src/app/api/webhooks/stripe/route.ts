@@ -71,12 +71,39 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
 
   const fundingId  = session.metadata?.fundingId;
   const itemId     = session.metadata?.itemId;
-  const donorId    = session.metadata?.donorId;
   const registerId = session.metadata?.registerId;
 
-  if (!fundingId || !itemId || !donorId || !registerId) return;
+  // donorId is OPTIONAL now. A guest funds without a Kradel account, so its
+  // absence is a legitimate state rather than a malformed session — isGuest says
+  // so explicitly, which is the difference between "no donor on purpose" and
+  // "metadata got lost".
+  const donorId = session.metadata?.donorId || null;
+  const isGuest = session.metadata?.isGuest === "true";
+
+  // fundingId, itemId and registerId remain REQUIRED. Without fundingId there is
+  // no row to mark paid and nothing this function can safely do, which means a
+  // real payment is sitting at Stripe unrecorded — the loudest possible failure,
+  // so it is logged as an error rather than returning quietly.
+  if (!fundingId || !itemId || !registerId) {
+    console.error(
+      "[stripe-webhook] PAYMENT RECEIVED WITH INCOMPLETE METADATA — money may be unrecorded",
+      { sessionId: session.id, fundingId, itemId, registerId },
+    );
+    return;
+  }
+  if (!donorId && !isGuest) {
+    // Neither a donor nor an explicit guest marker: treat as suspect and say so,
+    // but continue — the payment is real and Phase 1 must still record it.
+    console.error(
+      "[stripe-webhook] session has no donorId and is not marked isGuest — recording anyway",
+      { sessionId: session.id, fundingId },
+    );
+  }
 
   const funding = await prisma.registerItemFunding.findUnique({ where: { id: fundingId } });
+  // IDEMPOTENCY. Stripe retries webhooks, and a handler that ran once must not
+  // run twice. This guard is the whole protection against double-counting a
+  // payment, and it must survive any future refactor of this function.
   if (!funding || funding.status !== "PENDING") return;
 
   const paymentIntentId = typeof session.payment_intent === "string"
@@ -105,14 +132,38 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
     ? "FULLY_FUNDED"
     : newTotal > 0 ? "PARTIAL" : "UNFUNDED";
 
+  // Other donors who already funded this item, for the "it's complete" notice.
+  // donorId may be null (guest), and `{ not: null }` in Prisma means "has a
+  // value" — which is exactly right here: guests have no inbox to notify, so
+  // they are excluded from the recipient list while still being counted as
+  // contributors everywhere that counts rows rather than users.
   const previousDonorIds = isFullyFunded
     ? (await prisma.registerItemFunding.findMany({
-        where:    { registerItemId: itemId, donorId: { not: donorId }, status: "CONFIRMED" },
+        where: {
+          registerItemId: itemId,
+          status:         "CONFIRMED",
+          donorId:        donorId ? { not: donorId } : { not: null },
+        },
         select:   { donorId: true },
         distinct: ["donorId"],
-      })).map((f) => f.donorId)
+      }))
+        .map((f) => f.donorId)
+        .filter((d): d is string => d !== null)
     : [];
 
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE 1 — RECORD THE MONEY. Unconditional, isolated, idempotent.
+  //
+  // Nothing donor-keyed may enter this transaction. It previously contained
+  // tx.user.update({ where: { id: donorId } }), which for a guest throws and
+  // rolls back the CONFIRMED status and the item total — while Stripe keeps the
+  // money and retries into the same failure forever. That single call was the
+  // money-vanishes bug, and it now lives in Phase 3.
+  //
+  // If this transaction commits, the payment is recorded. That is the invariant
+  // the whole restructure exists to protect, and it must hold for a guest
+  // exactly as it does for an account holder.
+  // ════════════════════════════════════════════════════════════════════════
   await prisma.$transaction(async (tx) => {
     await tx.registerItemFunding.update({
       where: { id: fundingId },
@@ -122,11 +173,16 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
       where: { id: itemId },
       data:  { totalFundedCents: newTotal, fundingStatus: newFundingStatus },
     });
-    await tx.user.update({
-      where: { id: donorId },
-      data:  { totalFundedCents: { increment: amountCents }, fundingCount: { increment: 1 } },
-    });
+  });
 
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE 2 — FULFILMENT. Register-keyed, so already guest-safe: what happens
+  // when an item completes depends on the mother's register and address mode,
+  // never on who paid. Wrapped separately so a fulfilment failure cannot undo
+  // the recorded payment in Phase 1.
+  // ════════════════════════════════════════════════════════════════════════
+  try {
+    await prisma.$transaction(async (tx) => {
     if (isFullyFunded) {
       const hasSavedAddress = !!item.register.savedAddress;
       const useSavedAddress = item.register.addressMode === "SAVED_PER_REGISTER" && hasSavedAddress;
@@ -164,35 +220,71 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
         });
       }
 
-      // Notify contributing donor
-      await tx.notification.create({
+    }
+    });
+  } catch (err) {
+    // The payment is already recorded. Fulfilment failing is serious and needs
+    // a human, but it is not a reason to lose the money.
+    console.error("[stripe-webhook] PHASE 2 fulfilment failed — payment IS recorded", { fundingId, itemId, err });
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // PHASE 3 — DONOR SIDE EFFECTS. Every one of these is skipped for a guest,
+  // and every one is independently wrapped: a failure here can neither undo the
+  // recorded payment nor prevent the others from running.
+  //
+  // Guest answers, each deliberate rather than incidental:
+  //   user counters      — skipped; there is no row to increment
+  //   impact points      — skipped; a points ledger needs an account to accrue to
+  //   donor notification — skipped; a guest has no inbox. She is still counted
+  //                        as a contributor everywhere that counts funding ROWS
+  //                        rather than users, so her contribution is visible.
+  //   abuse logging      — skipped; it already needs a NextRequest it does not
+  //                        have here, and guest abuse belongs with rate limiting
+  //                        rather than this ledger.
+  // ════════════════════════════════════════════════════════════════════════
+  if (donorId) {
+    await Promise.allSettled([
+      prisma.user.update({
+        where: { id: donorId },
+        data:  { totalFundedCents: { increment: amountCents }, fundingCount: { increment: 1 } },
+      }),
+      isFullyFunded
+        ? prisma.notification.create({
+            data: {
+              userId:  donorId,
+              type:    "ITEM_FULLY_FUNDED",
+              message: `You completed funding "${item.name}"! Kradel will purchase and deliver it soon.`,
+              link:    `/registers/${registerId}`,
+            },
+          })
+        : Promise.resolve(null),
+      awardImpactPoints(donorId, "REGISTER_ITEM_FUNDED", itemId),
+      isFullFundInOne
+        ? awardImpactPoints(donorId, "REGISTER_ITEM_FULL_FUND", itemId)
+        : Promise.resolve(null),
+      logAbuseEvent(donorId, "DISCOVER_REQUEST_CREATED", 0, { action: "ITEM_FUNDED", itemId, amountCents }, null as unknown as import("next/server").NextRequest),
+    ]).then((rs) => {
+      const failed = rs.filter((r) => r.status === "rejected");
+      if (failed.length) console.error("[stripe-webhook] PHASE 3 donor side effects failed", { fundingId, donorId, failed });
+    });
+  }
+
+  // Previous contributors are notified regardless of who completed the item —
+  // they are account holders by construction, since guests were filtered out of
+  // previousDonorIds above.
+  if (isFullyFunded && previousDonorIds.length) {
+    await Promise.allSettled(previousDonorIds.map((prevDonorId) =>
+      prisma.notification.create({
         data: {
-          userId:  donorId,
+          userId:  prevDonorId,
           type:    "ITEM_FULLY_FUNDED",
-          message: `You completed funding "${item.name}"! Kradel will purchase and deliver it soon.`,
+          message: `An item you helped fund, "${item.name}", is now fully funded and will be fulfilled soon.`,
           link:    `/registers/${registerId}`,
         },
-      });
-      for (const prevDonorId of previousDonorIds) {
-        await tx.notification.create({
-          data: {
-            userId:  prevDonorId,
-            type:    "ITEM_FULLY_FUNDED",
-            message: `An item you helped fund, "${item.name}", is now fully funded and will be fulfilled soon.`,
-            link:    `/registers/${registerId}`,
-          },
-        });
-      }
-    }
-  });
-
-  Promise.all([
-    awardImpactPoints(donorId, "REGISTER_ITEM_FUNDED", itemId),
-    isFullFundInOne
-      ? awardImpactPoints(donorId, "REGISTER_ITEM_FULL_FUND", itemId)
-      : Promise.resolve(null),
-    logAbuseEvent(donorId, "DISCOVER_REQUEST_CREATED", 0, { action: "ITEM_FUNDED", itemId, amountCents }, null as unknown as import("next/server").NextRequest),
-  ]).catch(() => {});
+      })
+    ));
+  }
 }
 
 async function handleSessionExpired(session: Stripe.Checkout.Session) {
@@ -226,6 +318,10 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     ? "FULLY_FUNDED"
     : newTotal > 0 ? "PARTIAL" : "UNFUNDED";
 
+  // PHASE 1 — record the refund. Same rule as a payment, for the same reason:
+  // tx.user.update used to live in here, and for a guest refund it throws and
+  // rolls back the REFUNDED status and the item total. The refund would then have
+  // happened at Stripe while Kradel still showed the money as funded.
   await prisma.$transaction(async (tx) => {
     await tx.registerItemFunding.update({
       where: { id: funding.id },
@@ -235,12 +331,21 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
       where: { id: item.id },
       data:  { totalFundedCents: newTotal, fundingStatus: newFundingStatus },
     });
-    await tx.user.update({
-      where: { id: funding.donorId },
-      data:  {
-        totalFundedCents: { decrement: funding.amountCents },
-        fundingCount:     { decrement: 1 },
-      },
-    });
   });
+
+  // PHASE 3 — donor counters, outside the transaction and skipped for guests.
+  // There is no Phase 2 here: a refund has no fulfilment step.
+  if (funding.donorId) {
+    try {
+      await prisma.user.update({
+        where: { id: funding.donorId },
+        data:  {
+          totalFundedCents: { decrement: funding.amountCents },
+          fundingCount:     { decrement: 1 },
+        },
+      });
+    } catch (err) {
+      console.error("[stripe-webhook] refund donor counters failed — refund IS recorded", { fundingId: funding.id, err });
+    }
+  }
 }

@@ -86,14 +86,20 @@ export async function POST(req: NextRequest) {
       if (wasFullyFunded && !stillFullyFunded && item.fulfillmentQueue) {
         await tx.fulfillmentQueue.delete({ where: { registerItemId: item.id } });
       }
-      await tx.notification.create({
-        data: {
-          userId: funding.donorId,
-          type: "ADMIN_MESSAGE",
-          message: `Your ${amountStr} contribution to "${item.name}" has been refunded. It will appear on your card in 5 to 10 days.`,
-          link: `/registers/${item.registerId}`,
-        },
-      });
+      // An in-app notification only reaches an account holder. A guest refund is
+      // communicated by Stripe's own refund email to the address on the charge —
+      // which is guestEmail, captured at checkout precisely so this case has a
+      // channel. Nothing is silently dropped; the channel differs.
+      if (funding.donorId) {
+        await tx.notification.create({
+          data: {
+            userId: funding.donorId,
+            type: "ADMIN_MESSAGE",
+            message: `Your ${amountStr} contribution to "${item.name}" has been refunded. It will appear on your card in 5 to 10 days.`,
+            link: `/registers/${item.registerId}`,
+          },
+        });
+      }
       await tx.notification.create({
         data: {
           userId: item.register.creatorId,
