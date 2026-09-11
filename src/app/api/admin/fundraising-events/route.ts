@@ -29,6 +29,42 @@ function slugify(title: string): string {
   return base || "event";
 }
 
+// List every event with enough state to operate it.
+//
+// THE TOKEN VALUE IS DELIBERATELY NOT RETURNED. Issuing says "copy this now —
+// it is shown once", and that promise would be worthless if a routine list call
+// handed the credential back on every admin page load. What an operator
+// actually needs is whether a live link EXISTS, when it expires, and whether it
+// was revoked — none of which requires seeing the secret. A lost token is
+// rotated, not recovered.
+export async function GET(req: NextRequest) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const rows = await prisma.fundraisingEvent.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      id: true, title: true, slug: true, hostName: true, goalCents: true,
+      status: true, startedAt: true, endedAt: true, createdAt: true,
+      // Presence only — never the value itself.
+      accessToken: true,
+      tokenIssuedAt: true, tokenExpiresAt: true, tokenRevokedAt: true,
+    },
+  });
+
+  const now = Date.now();
+  return NextResponse.json({
+    events: rows.map(({ accessToken, ...e }) => ({
+      ...e,
+      hasToken: !!accessToken,
+      // Computed here so the UI does not have to re-derive expiry rules that
+      // resolveEventByToken already owns.
+      tokenExpired: !!e.tokenExpiresAt && e.tokenExpiresAt.getTime() <= now,
+    })),
+  });
+}
+
 export async function POST(req: NextRequest) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
