@@ -42,6 +42,12 @@ const PUBLIC_PATHS = [
   // session, the bearer token in the path is the authorisation, and the page
   // reads nothing except /api/host/[token] — which enforces it.
   "/host",
+  // the broadcast overlay and its stream. Added to OBS as a browser source on the
+  // host machine, so the bearer token in the path is the authorisation — the same
+  // credential as the dashboard, and equally never viewer-facing. The stream
+  // enforces it through resolveEventByToken.
+  "/overlay",
+  "/api/overlay",
   // the event landing page — the on-ramp from a broadcast to a payment. This is
   // the one URL a host says on air, and it is addressed by SLUG, never by the
   // kevt_ access token: a viewer-facing URL carrying the token would hand every

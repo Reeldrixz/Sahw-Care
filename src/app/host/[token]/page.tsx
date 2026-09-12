@@ -20,9 +20,12 @@ import { useParams } from "next/navigation";
 // true of the screen if the screen re-reads. Without polling, a mother who
 // revokes consent mid-stream stays visible until someone refreshes. Every 25s.
 //
-// FEATURING IS LOCAL ONLY. Selecting a register enlarges it here and nowhere
-// else — nothing is persisted, nobody else sees it, and it does not survive a
-// refresh. A shared "now featuring" needs a model that does not exist yet.
+// FEATURING IS NO LONGER LOCAL. It was, deliberately, until the broadcast
+// overlay needed to know what was on screen — so selecting a register now writes
+// FundraisingEvent.currentRegisterId through the token-authed featured endpoint,
+// and the overlay reads it. The write is optimistic and reconciled: the server
+// re-checks the register is still in the live featurable pool, so a mother who
+// revoked consent since this list loaded cannot be put on air.
 
 const POLL_MS = 25_000;
 
@@ -66,6 +69,22 @@ export default function HostDashboardPage() {
   const [dead, setDead]       = useState(false);
   const [loading, setLoading] = useState(true);
   const [featured, setFeatured] = useState<string | null>(null);
+
+  // Featuring is no longer local-only: the broadcast overlay reads
+  // currentRegisterId to know what is on screen. Written optimistically so the
+  // dashboard stays responsive, then reconciled — if the server refuses (she
+  // revoked consent since this list loaded) the selection is rolled back rather
+  // than left showing a register the overlay will not display.
+  const feature = useCallback(async (registerId: string | null) => {
+    setFeatured(registerId);
+    const r = await fetch(`/api/host/${token}/featured`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ registerId }),
+      cache: "no-store",
+    });
+    if (!r.ok) setFeatured(null);
+  }, [token]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -134,16 +153,18 @@ export default function HostDashboardPage() {
 
       {/* Pool summary. Labelled for exactly what it is: the all-time funding
           state of the registers currently featurable — NOT money raised during
-          this event. Event-attributed totals need funding aggregates that do
-          not exist yet, and a number that looks like "raised tonight" but isn't
-          would be read aloud as if it were. */}
+          this event. The event-attributed total now exists and is shown on the
+          broadcast overlay as "raised through this event"; this dashboard figure
+          is deliberately still the all-time one, and says so, because a number
+          that looks like "raised tonight" but isn't would be read aloud as if it
+          were. Surfacing the attributed total here too is a small follow-up. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 26, padding: "16px 0", borderBottom: `1px solid ${LINE}` }}>
         <Stat label="Registers featurable" value={String(registers.length)} />
         <Stat label="Items still needed" value={String(registers.reduce((s, r) => s + registerTotals(r).remaining, 0))} />
         <Stat label="Funded of total (all-time)" value={`${money(poolFunded)} / ${money(poolTarget)}`} sub="not event-attributed" />
       </div>
 
-      {featuredReg && <FeaturedPanel reg={featuredReg} onClose={() => setFeatured(null)} />}
+      {featuredReg && <FeaturedPanel reg={featuredReg} onClose={() => feature(null)} />}
 
       {registers.length === 0 ? (
         <div style={{ marginTop: 60, textAlign: "center", color: MUTED, fontSize: 16, lineHeight: 1.7 }}>
@@ -153,7 +174,7 @@ export default function HostDashboardPage() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 14, marginTop: 20 }}>
           {registers.map((r) => (
-            <RegisterCard key={r.id} reg={r} active={r.id === featured} onSelect={() => setFeatured(r.id === featured ? null : r.id)} />
+            <RegisterCard key={r.id} reg={r} active={r.id === featured} onSelect={() => feature(r.id === featured ? null : r.id)} />
           ))}
         </div>
       )}
@@ -163,7 +184,7 @@ export default function HostDashboardPage() {
           Updated {new Date(data.fetchedAt).toLocaleTimeString()} · refreshes every {POLL_MS / 1000}s
         </span>
         <span style={{ fontSize: 13, color: MUTED }}>
-          Featuring is local to this screen — nothing here is shown to anyone else.
+          Featuring drives the broadcast overlay — what you select here is what goes on screen.
         </span>
       </div>
     </Shell>

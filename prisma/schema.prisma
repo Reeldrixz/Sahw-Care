@@ -2312,6 +2312,28 @@ model FundraisingEvent {
   startedAt DateTime?
   endedAt   DateTime?
 
+  // Which register the host currently has on screen. Featuring was local-only UI
+  // state until now, which meant the broadcast overlay had no way to learn what
+  // the host was showing. Written by the host through the token-authed featured
+  // endpoint, read by the overlay. Nullable: nothing is featured by default.
+  //
+  // Soft reference, deliberately not a relation: a register being deleted or
+  // leaving the featurable pool must not block anything, and the overlay
+  // re-resolves it against the live pool on every frame anyway — so a stale id
+  // simply shows nothing rather than showing a register whose consent was
+  // withdrawn.
+  currentRegisterId String?
+
+  // Bumped once per confirmed contribution attributed to this event. The overlay
+  // SSE loop reads THIS single indexed row every 2s and only recomputes the
+  // aggregate and the register pool when it has moved, so an idle stream costs
+  // almost nothing.
+  //
+  // A dedicated counter rather than updatedAt: updatedAt moves for any edit —
+  // a status change, a token rotation, featuring a different register — and the
+  // marker must mean "money arrived" and nothing else.
+  contributionCounter Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

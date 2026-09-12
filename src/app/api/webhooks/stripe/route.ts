@@ -175,6 +175,28 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
     });
   });
 
+  // ── Overlay marker ───────────────────────────────────────────────────────
+  // Bump the event's contribution counter so the broadcast overlay's 2s stream
+  // knows something changed and recomputes. Deliberately OUTSIDE the Phase 1
+  // transaction and independently failable: a missed animation is cosmetic, a
+  // payment rolled back for an animation marker would be precisely the bug the
+  // phase split exists to prevent.
+  //
+  // funding.fundraisingEventId is read from the row rather than from metadata,
+  // because attribution was resolved and stored at creation. A non-null value
+  // implies the event still exists — the foreign key is ON DELETE SET NULL, so a
+  // deleted event would have nulled this.
+  if (funding.fundraisingEventId) {
+    try {
+      await prisma.fundraisingEvent.update({
+        where: { id: funding.fundraisingEventId },
+        data:  { contributionCounter: { increment: 1 } },
+      });
+    } catch (err) {
+      console.error("[stripe-webhook] overlay marker bump failed — payment IS recorded", { fundingId, err });
+    }
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // PHASE 2 — FULFILMENT. Register-keyed, so already guest-safe: what happens
   // when an item completes depends on the mother's register and address mode,
