@@ -1,4 +1,4 @@
-# CareCircle — Setup Guide
+# Kradel — Setup Guide
 
 ## Prerequisites
 

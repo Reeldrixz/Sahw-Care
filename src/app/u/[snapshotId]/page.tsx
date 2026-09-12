@@ -138,7 +138,7 @@ export default async function SnapshotPage({ params }: Params) {
               fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 800,
               textDecoration: "none",
             }}>
-              Learn about CareCircle
+              Learn about Kradel
             </a>
           </div>
         </div>
@@ -159,8 +159,10 @@ export default async function SnapshotPage({ params }: Params) {
         background: "white", borderBottom: `1px solid ${C.border}`,
         padding: "13px 16px", display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
+        {/* Wordmark position — takes the schwa, same as the branding bar on the
+            public register page. Plain "Kradel" everywhere else on this page. */}
         <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: C.purple }}>
-          CareCircle
+          Kradəl
         </div>
         <a href="/" style={{
           background: C.purplePale, color: C.purple, border: "none",
@@ -316,7 +318,7 @@ export default async function SnapshotPage({ params }: Params) {
             fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 800,
             textDecoration: "none", marginBottom: 12,
           }}>
-            Join CareCircle
+            Join Kradel
           </a>
           <div style={{ fontFamily: "Lora, serif", fontStyle: "italic", fontSize: 13, color: C.muted, lineHeight: 1.8 }}>
             Care moves everything.
