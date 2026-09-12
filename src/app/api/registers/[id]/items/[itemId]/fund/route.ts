@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
 import { rateLimitAsync } from "@/lib/rateLimit";
+import { resolveEventIdForAttribution } from "@/lib/fundraisingEvent";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { itemId } = await params;
   const body = await req.json();
-  const { amountCents, supportOn = true, coverStripe = true } = body;
+  const { amountCents, supportOn = true, coverStripe = true, eventSlug } = body;
 
   if (!amountCents || typeof amountCents !== "number" || !Number.isInteger(amountCents) || amountCents <= 0) {
     return NextResponse.json({ error: "amountCents must be a positive integer" }, { status: 400 });
@@ -75,10 +76,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   const appUrl    = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const registerId = item.register.id;
 
+  // Logged-in donors funding through an event link are attributed too —
+  // otherwise "raised tonight" silently omits every donor with an account.
+  const fundraisingEventId = await resolveEventIdForAttribution(eventSlug);
+
   const funding = await prisma.registerItemFunding.create({
     data: {
       registerItemId:  itemId,
       donorId:         auth.userId,
+      fundraisingEventId,
       amountCents:     breakdown.itemSubtotal,
       kradelFee:       breakdown.kradelFee,
       optionalSupport: breakdown.optionalSupport,

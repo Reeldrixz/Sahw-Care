@@ -27,6 +27,22 @@ export default function GuestFundSheet({
   firstName: string;
   onClose: () => void;
 }) {
+  // Event attribution tag. Read from ?e= on first arrival and kept in
+  // sessionStorage, because a viewer who opens a register, wanders off and comes
+  // back via history would otherwise lose it — and a contribution that happened
+  // because of an event should count toward it. Scoped to the tab and cleared
+  // when it closes; the server refuses to attribute unless the event is LIVE, so
+  // a stale tag attributes nothing.
+  const [eventSlug] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const fromUrl = new URLSearchParams(window.location.search).get("e");
+    if (fromUrl) {
+      try { window.sessionStorage.setItem("kradel.eventSlug", fromUrl); } catch { /* private mode */ }
+      return fromUrl;
+    }
+    try { return window.sessionStorage.getItem("kradel.eventSlug"); } catch { return null; }
+  });
+
   const remaining = Math.max(0, item.standardPriceCents - item.totalFundedCents);
 
   const [amountStr, setAmountStr]   = useState(() => (remaining > 0 ? (remaining / 100).toFixed(0) : "25"));
@@ -57,6 +73,11 @@ export default function GuestFundSheet({
         email: email.trim(),
         supportOn,
         coverStripe,
+        // Which event sent her here, if any. Read from the URL and persisted for
+        // the session, so losing it to a back button does not silently undercount
+        // an event. The server only attributes while the event is LIVE, which is
+        // what stops a stale tag landing in a finished event's total.
+        eventSlug: eventSlug ?? undefined,
       }),
     });
     const d = await r.json().catch(() => ({}));

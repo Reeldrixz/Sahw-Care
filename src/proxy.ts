@@ -42,6 +42,13 @@ const PUBLIC_PATHS = [
   // session, the bearer token in the path is the authorisation, and the page
   // reads nothing except /api/host/[token] — which enforces it.
   "/host",
+  // the event landing page — the on-ramp from a broadcast to a payment. This is
+  // the one URL a host says on air, and it is addressed by SLUG, never by the
+  // kevt_ access token: a viewer-facing URL carrying the token would hand every
+  // viewer host access. DRAFT events 404 so an unannounced event is not findable
+  // by guessing; ENDED renders a closed state because a link read out on air
+  // keeps being visited afterwards.
+  "/e",
   // the shareable profile snapshot. api/profile/contributor/share mints a /u/<id>
   // link for a contributor to send to people who do not have Kradel accounts —
   // that is the entire purpose. The page takes no auth: it reads a frozen

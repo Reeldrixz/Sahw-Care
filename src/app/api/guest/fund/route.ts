@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
 import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
+import { resolveEventIdForAttribution } from "@/lib/fundraisingEvent";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { registerItemId, amountCents, email, supportOn = true, coverStripe = true } = body ?? {};
+  const { registerItemId, amountCents, email, supportOn = true, coverStripe = true, eventSlug } = body ?? {};
 
   if (typeof registerItemId !== "string" || !registerItemId) {
     return NextResponse.json({ error: "registerItemId is required" }, { status: 400 });
@@ -93,11 +94,17 @@ export async function POST(req: NextRequest) {
   // No pending-session resume for guests: resuming keys on donorId, which does
   // not exist here. A duplicate PENDING row is harmless and is cleaned up by the
   // checkout.session.expired handler.
+  // Attribution. Resolved from the SLUG, never the host token, and null-safe by
+  // design: an unknown slug or a non-LIVE event records null and the payment
+  // proceeds. Attribution is bookkeeping and must never cost a contribution.
+  const fundraisingEventId = await resolveEventIdForAttribution(eventSlug);
+
   const funding = await prisma.registerItemFunding.create({
     data: {
       registerItemId:  item.id,
       donorId:         null,
       guestEmail,
+      fundraisingEventId,
       amountCents:     breakdown.itemSubtotal,
       kradelFee:       breakdown.kradelFee,
       optionalSupport: breakdown.optionalSupport,

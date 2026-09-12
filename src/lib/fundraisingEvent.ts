@@ -20,6 +20,39 @@ export function generateEventToken(): string {
   return `kevt_${randomBytes(16).toString("hex")}`;
 }
 
+/**
+ * Resolve an event SLUG to an id for attributing a contribution, or null.
+ *
+ * Used by both fund routes. Three rules, each deliberate:
+ *
+ * 1. IT NEVER FAILS A PAYMENT. An unknown slug, a malformed one, or an event
+ *    that is not LIVE all return null, and the caller records null and takes the
+ *    money. Attribution is bookkeeping; losing a contribution because the
+ *    bookkeeping did not resolve would be the same mistake as putting a donor
+ *    counter inside the money-recording transaction.
+ *
+ * 2. IT ONLY ATTRIBUTES WHILE LIVE. A stale link used weeks later must not land
+ *    in an ended event's total, and a DRAFT event has not started. This is also
+ *    the backstop for persisting the tag in sessionStorage — a tag that outlives
+ *    the broadcast attributes nothing.
+ *
+ * 3. IT TAKES THE SLUG, NEVER THE TOKEN. The slug grants nothing and is safe in
+ *    a viewer-facing URL. The kevt_ token is the host's dashboard credential and
+ *    must never reach a viewer.
+ */
+export async function resolveEventIdForAttribution(slug: unknown): Promise<string | null> {
+  if (typeof slug !== "string") return null;
+  const s = slug.trim().toLowerCase();
+  if (!s || s.length > 80) return null;
+
+  const event = await prisma.fundraisingEvent.findUnique({
+    where:  { slug: s },
+    select: { id: true, status: true },
+  });
+  if (!event || event.status !== "LIVE") return null;
+  return event.id;
+}
+
 export interface HostEvent {
   id: string;
   title: string;

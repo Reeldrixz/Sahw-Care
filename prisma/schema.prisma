@@ -1388,6 +1388,29 @@ model RegisterItemFunding {
   // independently failable.
   donorId String?
 
+  // Which fundraising event this contribution came THROUGH, if any.
+  //
+  // TRUE ATTRIBUTION, not a time window. Summing everything that happened to
+  // featurable registers between startedAt and now is wrong in four ways that
+  // cannot be corrected afterwards: it counts strangers who arrived from a
+  // shared link, misses the viewer who watched tonight and paid tomorrow,
+  // double-counts a contribution when two events run at once, and destroys the
+  // information needed to tell those apart. A host says "we raised $400
+  // tonight" out loud to an audience, so it has to mean it.
+  //
+  // NULLABLE because most contributions have no event — that is the normal
+  // case, not an exception. Recorded ONCE at funding creation and never
+  // recomputed.
+  //
+  // Carried from the viewer's URL as the event SLUG, never the access token.
+  // The token is the host's dashboard credential; putting it in a viewer-facing
+  // link would hand every viewer host access, and a host reading it on air
+  // would broadcast it. The slug grants nothing.
+  //
+  // onDelete: SetNull — a payment record must outlive an event record.
+  fundraisingEventId String?
+  fundraisingEvent   FundraisingEvent? @relation(fields: [fundraisingEventId], references: [id], onDelete: SetNull)
+
   // Where a guest's receipt and any refund go. The only channel that exists when
   // there is no account behind a payment, which makes it load-bearing rather
   // than a convenience. Null for authenticated donors — their User record is
@@ -1404,6 +1427,11 @@ model RegisterItemFunding {
   stripePaymentIntentId String?
   refundedAt            DateTime?
   createdAt             DateTime      @default(now())
+
+  // Event totals are summed by (event, status) live during a broadcast, so this
+  // is an indexed lookup rather than a scan. status is part of the key because
+  // every total filters CONFIRMED.
+  @@index([fundraisingEventId, status])
 
   registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
   // Optional relation. Cascade is retained for authenticated donors: deleting a
@@ -2286,6 +2314,11 @@ model FundraisingEvent {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Contributions attributed to this event. Every total is computed from these
+  // with status: CONFIRMED only, which is how refunds drop out with no
+  // decrement logic and no drift.
+  fundings RegisterItemFunding[]
 
   @@index([status])
 }
