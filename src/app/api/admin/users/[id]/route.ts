@@ -14,7 +14,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await req.json();
-    const { action, status, role, isPremium, trustScore, reason } = body;
+    const { action, status, role, isPremium, trustScore, reason, basis } = body;
 
     // ── Manual verification override ─────────────────────────────────────────
     if (action === "manualVerify") {
@@ -144,6 +144,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           { status: 400 }
         );
       }
+      // Which check the admin's judgement stands in for. Required, so a null
+      // recipientGrantBasis can only ever mean a grant made before it existed.
+      if (basis !== "ID" && basis !== "REFERRAL") {
+        return NextResponse.json(
+          { error: "A grant basis is required: \"ID\" (you checked her identity) or \"REFERRAL\" (a partner vouched for her without a code)." },
+          { status: 400 }
+        );
+      }
 
       const target = await prisma.user.findUnique({
         where:  { id },
@@ -173,6 +181,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           recipientGrantedByAdminId: admin.userId,
           recipientGrantedAt:        new Date(),
           recipientGrantNote:        reason.trim().slice(0, 1000),
+          recipientGrantBasis:       basis,
         },
       });
 
@@ -202,6 +211,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         select: {
           id: true, name: true, role: true, onboardingComplete: true,
           journeyType: true, manualReviewStatus: true, recipientGrantedAt: true,
+          recipientGrantBasis: true,
         },
       });
       return NextResponse.json({ user: updated, granted: true });

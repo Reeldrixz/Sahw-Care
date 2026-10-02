@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
       ];
     }
     if (status) where.status = status;
+    // ?granted=1 — only mothers admitted by an admin override rather than a
+    // partner code. recipientGrantedAt is set by grantRecipient and nothing else.
+    if (searchParams.get("granted") === "1") where.recipientGrantedAt = { not: null };
 
     const users = await prisma.user.findMany({
       where,
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
         // wall (motherIntentAt), and whether the gate was already bypassed for
         // this account once.
         manualReviewStatus: true, identityVerified: true, motherIntentAt: true,
-        recipientGrantedAt: true, recipientGrantNote: true,
+        recipientGrantedAt: true, recipientGrantNote: true, recipientGrantBasis: true,
         // Identity state, and whether it came from Persona or an admin vouching.
         identityOverrideByAdminId: true, identityOverrideReason: true, personaStatus: true,
         _count: { select: { items: true, requests: true } },

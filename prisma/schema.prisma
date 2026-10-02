@@ -99,6 +99,9 @@ model User {
   recipientGrantedByAdminId String?
   recipientGrantedAt        DateTime?
   recipientGrantNote        String?   // why the bypass was justified; admin-only, never shown to her
+  // Which check the admin's own judgement stood in for. Required on every new
+  // grant; null only on grants made before it existed (basis not recorded).
+  recipientGrantBasis       RecipientGrantBasis?
 
   // The partner code she redeemed, if she came in through one. Set by
   // consumeReferralCode in the same transaction as the RECIPIENT grant; null
@@ -2216,6 +2219,15 @@ model BugReport {
 }
 
 // ==================== REFERRAL GRANT (beta: mother role is referral-only) ====================
+
+// What an admin recipient grant rested on, in place of a partner code.
+//   ID        — the admin checked her identity directly
+//   REFERRAL  — a partner or trusted organisation vouched for her outside the
+//               code system (by phone, email, in person)
+enum RecipientGrantBasis {
+  ID
+  REFERRAL
+}
 
 enum ReferralCodeStatus {
   UNUSED

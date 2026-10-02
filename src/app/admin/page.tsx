@@ -18,10 +18,18 @@ interface AdminUser {
   accountHold: boolean; accountHoldReason: string | null; accountHoldAt: string | null;
   manualReviewStatus: string; identityVerified: boolean; motherIntentAt: string | null;
   recipientGrantedAt: string | null; recipientGrantNote: string | null;
+  recipientGrantBasis: "ID" | "REFERRAL" | null;
   identityOverrideByAdminId: string | null; identityOverrideReason: string | null;
   personaStatus: string | null;
   _count: { items: number; requests: number };
 }
+
+// Badge for a recipient admitted by admin grant, keyed by what it rested on.
+const GRANT_BASIS_BADGE: Record<"ID" | "REFERRAL" | "UNRECORDED", { label: string; meaning: string; bg: string; fg: string; border: string }> = {
+  ID:         { label: "🔑 GRANT · ID",       meaning: "Basis: an admin checked her identity.",                       bg: "#dcfce7", fg: "#166534", border: "#86efac" },
+  REFERRAL:   { label: "🔑 GRANT · REFERRAL", meaning: "Basis: a partner vouched for her without a code.",            bg: "#dbeafe", fg: "#1d4ed8", border: "#93c5fd" },
+  UNRECORDED: { label: "🔑 NO REFERRAL",      meaning: "Basis not recorded (granted before it was required).",       bg: "#fce7f3", fg: "#9d174d", border: "#f9a8d4" },
+};
 
 interface AdminItem {
   id: string; title: string; category: string; status: string;
@@ -322,6 +330,7 @@ export default function AdminPage() {
   const [flaggedFilter, setFlaggedFilter] = useState("PENDING");
   const [leaderUserId, setLeaderUserId] = useState<Record<string, string>>({});
   const [userSearch, setUserSearch] = useState("");
+  const [grantedOnly, setGrantedOnly] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
   const [reportFilter, setReportFilter] = useState("PENDING");
   const [toast, setToast] = useState<string | null>(null);
@@ -449,7 +458,7 @@ export default function AdminPage() {
   }, [user, authLoading, router]);
 
   const fetchStats    = useCallback(async () => { const r = await fetch("/api/admin/stats"); if (r.ok) { const d = await r.json(); setStats(d.stats); setRecentActivity(d.recentActivity ?? []); } }, []);
-  const fetchUsers    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/users?search=${encodeURIComponent(userSearch)}`); if (r.ok) { const d = await r.json(); setUsers(d.users ?? []); } setLoading(false); }, [userSearch]);
+  const fetchUsers    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/users?search=${encodeURIComponent(userSearch)}${grantedOnly ? "&granted=1" : ""}`); if (r.ok) { const d = await r.json(); setUsers(d.users ?? []); } setLoading(false); }, [userSearch, grantedOnly]);
   const fetchItems    = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/items?search=${encodeURIComponent(itemSearch)}`); if (r.ok) { const d = await r.json(); setItems(d.items ?? []); } setLoading(false); }, [itemSearch]);
   const fetchReports  = useCallback(async () => { setLoading(true); const r = await fetch(`/api/admin/reports?status=${reportFilter}`); if (r.ok) { const d = await r.json(); setReports(d.reports ?? []); } setLoading(false); }, [reportFilter]);
   const fetchTrust    = useCallback(async () => { setLoading(true); const r = await fetch("/api/admin/trust"); if (r.ok) { const d = await r.json(); setTrustUsers(d.users ?? []); } setLoading(false); }, []);
@@ -1017,6 +1026,20 @@ export default function AdminPage() {
     );
     if (!ok) return;
 
+    // Which check this grant stands in for. Typed, not a confirm() OK/Cancel,
+    // so it can never be recorded by a reflexive click.
+    const basisRaw = window.prompt(
+      "What is this grant based on? Type one:\n\n" +
+      "  ID        — you checked her identity yourself\n" +
+      "  REFERRAL  — a partner or trusted organisation vouched for her without a code"
+    );
+    if (basisRaw === null) return;
+    const basis = basisRaw.trim().toUpperCase();
+    if (basis !== "ID" && basis !== "REFERRAL") {
+      setToast("Grant cancelled — the basis must be ID or REFERRAL");
+      return;
+    }
+
     const reason = window.prompt(
       "Why is this justified? (required, internal only — never shown to her)\n\n" +
       "e.g. \"Referred by St Mary's shelter by phone; partner had no codes left.\""
@@ -1026,7 +1049,7 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/users/${u.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "grantRecipient", reason: reason.trim() }),
+      body: JSON.stringify({ action: "grantRecipient", reason: reason.trim(), basis }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok)               { setToast(d.error ?? "Failed to grant access"); return; }
@@ -1034,7 +1057,8 @@ export default function AdminPage() {
 
     setUsers((p) => p.map((x) => x.id === u.id
       ? { ...x, role: "RECIPIENT", manualReviewStatus: "APPROVED",
-          recipientGrantedAt: new Date().toISOString(), recipientGrantNote: reason.trim() }
+          recipientGrantedAt: new Date().toISOString(), recipientGrantNote: reason.trim(),
+          recipientGrantBasis: basis }
       : x));
     setToast(`Access granted to ${u.name} — she'll finish onboarding on next visit`);
   };
@@ -1268,7 +1292,13 @@ export default function AdminPage() {
             {section === "users" && (
               <div className="admin-table">
                 <div className="admin-table-header">
-                  <div className="admin-table-title">All Users</div>
+                  <div className="admin-table-title">{grantedOnly ? "Override-granted recipients" : "All Users"}</div>
+                  {/* Mothers admitted by an admin grant instead of a partner
+                      code — the list to audit those overrides from. */}
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--mid)", cursor: "pointer", marginLeft: "auto", marginRight: 12 }}>
+                    <input type="checkbox" checked={grantedOnly} onChange={(e) => setGrantedOnly(e.target.checked)} />
+                    🔑 Granted by override only
+                  </label>
                   <input className="search-bar" style={{ maxWidth: 220 }} placeholder="Search users..." value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
                 </div>
                 {loading ? <div className="loading"><div className="spinner" /></div> : (
@@ -1290,16 +1320,21 @@ export default function AdminPage() {
                           {u.accountHold && (
                             <span title={u.accountHoldReason ?? ""} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>⏸ HOLD</span>
                           )}
-                          {/* Admitted without partner vetting — visible at a
-                              glance, with the justification on hover. */}
-                          {u.recipientGrantedAt && (
-                            <span title={`Granted without a referral code. Reason: ${u.recipientGrantNote ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#fce7f3", color: "#9d174d", border: "1px solid #f9a8d4", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>🔑 NO REFERRAL</span>
-                          )}
+                          {/* Admitted without a partner code — visible at a
+                              glance, coloured by what the grant rested on, with
+                              the justification on hover. Pink = a grant from
+                              before the basis was recorded. */}
+                          {u.recipientGrantedAt && (() => {
+                            const b = GRANT_BASIS_BADGE[u.recipientGrantBasis ?? "UNRECORDED"];
+                            return (
+                              <span title={`Granted without a referral code. ${b.meaning} Reason: ${u.recipientGrantNote ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: b.bg, color: b.fg, border: `1px solid ${b.border}`, borderRadius: 10, padding: "2px 7px", cursor: "help" }}>{b.label}</span>
+                            );
+                          })()}
                           {/* Identity verified by an admin vouching rather than
                               by Persona — permanently distinguishable because
                               personaStatus stays null. */}
                           {u.identityOverrideByAdminId && (
-                            <span title={`Identity verified by an admin, not Persona. Reason: ${u.identityOverrideReason ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#dbeafe", color: "#1d4ed8", border: "1px solid #93c5fd", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>🪪 ID OVERRIDE</span>
+                            <span title={`Identity verified by an admin, not Persona. Reason: ${u.identityOverrideReason ?? "—"}`} style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, background: "#ede9fe", color: "#6d28d9", border: "1px solid #c4b5fd", borderRadius: 10, padding: "2px 7px", cursor: "help" }}>🪪 ID OVERRIDE</span>
                           )}
                         </td>
                         <td>
@@ -1335,7 +1370,7 @@ export default function AdminPage() {
                           {u.role === "RECIPIENT" && !u.identityVerified && (
                             <button
                               className="action-btn"
-                              style={{ background: "rgba(29,78,216,0.1)", color: "#1d4ed8", fontWeight: 800 }}
+                              style={{ background: "rgba(109,40,217,0.1)", color: "#6d28d9", fontWeight: 800 }}
                               title="Vouch for her identity without Persona — unlocks bundles, items, registers, address"
                               onClick={() => overrideIdentity(u)}
                             >
