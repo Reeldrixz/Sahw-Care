@@ -24,32 +24,32 @@ async function main() {
     prisma.user.upsert({
       where: { email: "amara@carecircle.ng" },
       update: {},
-      create: { name: "Amara Okafor", email: "amara@carecircle.ng", password: hash, role: "DONOR", location: "Ikeja, Lagos", trustRating: 4.8, status: "ACTIVE" },
+      create: { name: "Amara Okafor", email: "amara@carecircle.ng", password: hash, role: "DONOR", location: "Ikeja, Lagos", status: "ACTIVE" },
     }),
     prisma.user.upsert({
       where: { email: "fatima@carecircle.ng" },
       update: {},
-      create: { name: "Fatima Bello", email: "fatima@carecircle.ng", password: hash, role: "DONOR", location: "Lekki, Lagos", trustRating: 4.6, status: "ACTIVE" },
+      create: { name: "Fatima Bello", email: "fatima@carecircle.ng", password: hash, role: "DONOR", location: "Lekki, Lagos", status: "ACTIVE" },
     }),
     prisma.user.upsert({
       where: { email: "grace@carecircle.ng" },
       update: {},
-      create: { name: "Grace Nwosu", email: "grace@carecircle.ng", password: hash, role: "DONOR", location: "Surulere, Lagos", trustRating: 4.9, status: "ACTIVE" },
+      create: { name: "Grace Nwosu", email: "grace@carecircle.ng", password: hash, role: "DONOR", location: "Surulere, Lagos", status: "ACTIVE" },
     }),
     prisma.user.upsert({
       where: { email: "kemi@carecircle.ng" },
       update: {},
-      create: { name: "Kemi Adeyemi", email: "kemi@carecircle.ng", password: hash, role: "DONOR", location: "Victoria Island, Lagos", trustRating: 4.4, status: "ACTIVE" },
+      create: { name: "Kemi Adeyemi", email: "kemi@carecircle.ng", password: hash, role: "DONOR", location: "Victoria Island, Lagos", status: "ACTIVE" },
     }),
     prisma.user.upsert({
       where: { email: "sandra@carecircle.ng" },
       update: {},
-      create: { name: "Sandra Eze", email: "sandra@carecircle.ng", password: hash, role: "DONOR", location: "Yaba, Lagos", trustRating: 4.7, status: "ACTIVE" },
+      create: { name: "Sandra Eze", email: "sandra@carecircle.ng", password: hash, role: "DONOR", location: "Yaba, Lagos", status: "ACTIVE" },
     }),
     prisma.user.upsert({
       where: { email: "titi@carecircle.ng" },
       update: {},
-      create: { name: "Titi Martins", email: "titi@carecircle.ng", password: hash, role: "DONOR", location: "Gbagada, Lagos", trustRating: 4.3, status: "ACTIVE" },
+      create: { name: "Titi Martins", email: "titi@carecircle.ng", password: hash, role: "DONOR", location: "Gbagada, Lagos", status: "ACTIVE" },
     }),
   ]);
 
@@ -104,7 +104,6 @@ async function main() {
       await prisma.review.create({
         data: { requestId: request.id, reviewerId: reviewer.id, donorId: donor.id, pickupRating: pickup, qualityRating: quality, quantityRating: quantity, comment },
       });
-      await prisma.user.update({ where: { id: donor.id }, data: { trustRating: (pickup + quality + quantity) / 3 } });
       reviewsCreated++;
     }
   }

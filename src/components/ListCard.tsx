@@ -26,7 +26,6 @@ export interface ItemData {
     id: string;
     name: string;
     avatar: string | null;
-    trustRating: number;
     verificationLevel?: number;
     countryFlag?: string | null;
   };

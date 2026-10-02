@@ -31,7 +31,7 @@ interface Item {
   status: string;
   adminBlurred: boolean;
   donorId: string;
-  donor: { id: string; name: string; avatar: string | null; trustRating: number; location: string | null; verificationLevel?: number };
+  donor: { id: string; name: string; avatar: string | null; location: string | null; verificationLevel?: number };
   _count: { requests: number };
 }
 

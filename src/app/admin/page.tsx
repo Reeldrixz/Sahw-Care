@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface AdminUser {
   id: string; name: string; email: string | null; phone: string | null;
   role: string; status: string; isPremium: boolean;
-  trustRating: number; trustScore: number;
+  trustScore: number;
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
   docStatus: string | null; createdAt: string;
   activeRequestLockedUntil: string | null;
@@ -39,7 +39,7 @@ interface AdminReport {
 
 interface TrustUser {
   id: string; name: string; email: string | null; phone: string | null;
-  trustScore: number; trustRating: number;
+  trustScore: number;
   verificationLevel: number; phoneVerified: boolean; emailVerified: boolean;
   status: string;
 }

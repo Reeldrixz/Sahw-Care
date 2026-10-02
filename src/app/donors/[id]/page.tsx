@@ -21,7 +21,6 @@ interface DonorUser {
   location: string | null;
   countryFlag: string | null;
   isPremium: boolean;
-  trustRating: number;
   verificationLevel: number;
   createdAt: string;
   _count: { items: number };

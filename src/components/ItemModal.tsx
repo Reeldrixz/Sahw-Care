@@ -16,7 +16,7 @@ interface Item {
   description: string | null;
   images: string[];
   urgent: boolean;
-  donor: { id: string; name: string; avatar: string | null; trustRating: number; verificationLevel?: number };
+  donor: { id: string; name: string; avatar: string | null; verificationLevel?: number };
 }
 
 interface ItemModalProps {
