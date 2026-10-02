@@ -2242,7 +2242,10 @@ model ReferralCode {
   expiresAt    DateTime?
   note         String?
 
-  partner ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade: a used code is the only record of which partner
+  // referred a mother (User has no partner field). Deleting the partner must
+  // not erase that. Retire a partner with active=false instead.
+  partner ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
 
   @@index([partnerId])
   @@index([status])
