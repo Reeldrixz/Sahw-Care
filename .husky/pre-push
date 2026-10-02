@@ -1,1 +1,6 @@
-npm run build
+# The build check from `npm run build`, minus `prisma migrate deploy`.
+# Locally, DATABASE_URL in .env is production, so running the full build script
+# here applied every pushed branch's migrations to prod at push time. Migrations
+# now reach prod only through Vercel's build. Keep in step with "build" in
+# package.json, but never add migrate deploy back.
+prisma generate && next build
