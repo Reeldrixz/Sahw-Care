@@ -236,6 +236,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // ── Standard field updates ────────────────────────────────────────────────
+    // Only DONOR can be set here. RECIPIENT and ADMIN each have their own path:
+    // a bare RECIPIENT write skips referralGrantFields(), leaving a mother with
+    // no stage and no cohort circle who never re-onboards, and records no reason
+    // or granting admin — grantRecipient does all of that. ADMIN has no in-app
+    // path at all, deliberately; it is granted out of band.
+    const roleRedirects: Record<string, string> = {
+      RECIPIENT: "Use action \"grantRecipient\" with a written reason to grant recipient access.",
+      ADMIN:     "Admin access can't be granted here. Use scripts/promote-admin.ts.",
+    };
+    const validRoles = ["DONOR"];
+    if (role !== undefined && !validRoles.includes(role)) {
+      return NextResponse.json({ error: roleRedirects[role] ?? "Invalid role" }, { status: 400 });
+    }
+
     const validStatuses = ["ACTIVE", "PENDING", "FLAGGED", "SUSPENDED"];
     if (status && !validStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
