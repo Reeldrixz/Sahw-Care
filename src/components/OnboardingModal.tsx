@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Baby, Users, Gift, Heart, Leaf } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   onComplete: () => void;
@@ -44,6 +45,8 @@ const DUE_YEARS = [currentYear, currentYear + 1];
 
 export default function OnboardingModal({ onComplete }: Props) {
   const router = useRouter();
+  const { user } = useAuth();
+  const isRecipient = user?.role === "RECIPIENT";
   const [step, setStep]           = useState(0);
   const [journey, setJourney]     = useState<Journey>(null);
   const [dueMonth, setDueMonth]   = useState<number>(now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2);
@@ -287,7 +290,11 @@ export default function OnboardingModal({ onComplete }: Props) {
                   {[
                     { j: "pregnant"   as Journey, Icon: Baby,  title: "I'm pregnant",     sub: "Get support and access items for your pregnancy" },
                     { j: "postpartum" as Journey, Icon: Users, title: "I'm a mother",     sub: "Find items and connect with others on your journey" },
-                    { j: "donor"      as Journey, Icon: Gift,  title: "I want to give", sub: "Share essential items with mothers in need"           },
+                    // Not offered to a RECIPIENT: her onboarding has to place her
+                    // in a stage. The onboarding route refuses it too.
+                    ...(isRecipient ? [] : [
+                      { j: "donor"    as Journey, Icon: Gift,  title: "I want to give", sub: "Share essential items with mothers in need"           },
+                    ]),
                   ].map(({ j, Icon, title, sub }) => (
                     <button
                       key={j!}

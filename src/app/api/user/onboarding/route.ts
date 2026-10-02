@@ -26,6 +26,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid journeyType" }, { status: 400 });
   }
 
+  // A RECIPIENT's first onboarding must assign her a stage. The donor branch
+  // below completes onboarding without one, which would leave a mother with no
+  // stage and no cohort circle who never sees this modal again — breaking
+  // Circles, Reflections and the stage-transition cron. The modal hides the
+  // option from her; this is the server side of that. Once she has a stage,
+  // switching to "giver" on /profile/journey is allowed: the donor branch
+  // leaves currentStage and currentCircleId untouched.
+  if (journeyType === "donor") {
+    const u = await prisma.user.findUnique({
+      where:  { id: auth.userId },
+      select: { role: true, currentStage: true },
+    });
+    if (u?.role === "RECIPIENT" && !u.currentStage) {
+      return NextResponse.json(
+        { error: "Please tell us whether you're pregnant or already a mother, so we can place you with mothers at the same stage." },
+        { status: 400 }
+      );
+    }
+  }
+
   // Only update gender if explicitly provided (preserve existing value on journey-type switches)
   const safeGender = ["male", "female", "unspecified"].includes(gender) ? gender : undefined;
 
