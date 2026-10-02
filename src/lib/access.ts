@@ -99,9 +99,16 @@ export function canApplyForBundle(user: UserForAccess): AccessResult {
   };
 }
 
-export function canReceiveShipment(user: UserForAccess): AccessResult {
+// A partner referral counts as identity here. The partner organisation that
+// issued her code has already vetted that she is a real mother, which is the
+// assurance the Persona check exists to give before an address is committed.
+// referredByPartner comes from hasPartnerReferral(); an admin recipient grant
+// is not a referral and does not pass.
+export function canReceiveShipment(
+  user: UserForAccess & { referredByPartner: boolean },
+): AccessResult {
   if (user.accountHold) return HOLD_RESULT;
-  if (user.identityVerified === true) {
+  if (user.identityVerified === true || user.referredByPartner) {
     return { allowed: true };
   }
   return {

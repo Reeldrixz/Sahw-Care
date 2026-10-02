@@ -100,6 +100,15 @@ model User {
   recipientGrantedAt        DateTime?
   recipientGrantNote        String?   // why the bypass was justified; admin-only, never shown to her
 
+  // The partner code she redeemed, if she came in through one. Set by
+  // consumeReferralCode in the same transaction as the RECIPIENT grant; null
+  // for everyone else, including admin grants. Restrict keeps the code from
+  // being deleted out from under her, the same reason ReferralCode -> partner
+  // is Restrict. ReferralCode.usedByUserId is the older soft pointer the other
+  // way; both are written together.
+  referralCodeId            String?       @unique
+  referralCode              ReferralCode? @relation(fields: [referralCodeId], references: [id], onDelete: Restrict)
+
   // ── Impact Creator program (awareness-first) ──────
   isCreator             Boolean   @default(false) // activated Impact Creator
   creatorCodeAcceptedAt DateTime?                 // Code of Conduct acknowledged; gates activation
@@ -2246,6 +2255,7 @@ model ReferralCode {
   // referred a mother (User has no partner field). Deleting the partner must
   // not erase that. Retire a partner with active=false instead.
   partner ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  redeemedBy User?        // back-relation of User.referralCodeId
 
   @@index([partnerId])
   @@index([status])

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canReceiveShipment } from "@/lib/access";
+import { hasPartnerReferral } from "@/lib/referral";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +38,18 @@ export async function POST(
     return NextResponse.json({ error: "Item is not awaiting address confirmation" }, { status: 400 });
   }
 
-  // Identity gate: recipient must be identity-verified before committing a shipment address
-  const recipient = await prisma.user.findUnique({
-    where:  { id: auth.userId },
-    select: { identityVerified: true, manualReviewStatus: true, accountHold: true },
-  });
+  // Identity gate: recipient must be identity-verified or partner-referred
+  // before committing a shipment address
+  const [recipient, referredByPartner] = await Promise.all([
+    prisma.user.findUnique({
+      where:  { id: auth.userId },
+      select: { identityVerified: true, manualReviewStatus: true, accountHold: true },
+    }),
+    hasPartnerReferral(auth.userId),
+  ]);
   if (!recipient) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const shipmentAccess = canReceiveShipment(recipient);
+  const shipmentAccess = canReceiveShipment({ ...recipient, referredByPartner });
   if (!shipmentAccess.allowed) {
     return NextResponse.json({ error: shipmentAccess.message, code: shipmentAccess.code }, { status: 403 });
   }

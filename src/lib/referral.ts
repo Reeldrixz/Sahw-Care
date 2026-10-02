@@ -20,8 +20,9 @@ export class ReferralConsumeError extends Error {
 // Canonical fields written when a referral code grants the RECIPIENT (mother)
 // role. "Baseline approved" posture: the partner vouches she is a real mother,
 // so she can use circles and claim her first Discover item immediately.
-// identityVerified is intentionally NOT set — care-bundle shipping still
-// requires identity verification (protects her address).
+// identityVerified is intentionally NOT set — care-bundle applications still
+// require identity verification. Register shipments do not: the partner's
+// vetting stands in for it there (see canReceiveShipment / hasPartnerReferral).
 //
 // onboardingComplete MUST stay false and journeyType MUST be null so she runs
 // the existing OnboardingModal -> /api/user/onboarding path, which (seeing an
@@ -75,6 +76,10 @@ export async function lookupRedeemableCode(
 // the role grant. The conditional updateMany is the single-use guarantee: only
 // one caller can flip UNUSED -> USED, so a code can never be consumed twice
 // (no check-then-write race). Returns false if it was already spent/expired.
+//
+// On success it also stamps User.referralCodeId. Doing it here, not in each
+// redemption route, is what keeps all of them (email signup, Google signup and
+// upgrade, logged-in redeem) writing both sides of the link identically.
 export async function consumeReferralCode(
   tx: Prisma.TransactionClient,
   code: string,
@@ -88,5 +93,28 @@ export async function consumeReferralCode(
     },
     data: { status: "USED", usedAt: new Date(), usedByUserId: userId },
   });
-  return res.count === 1;
+  if (res.count !== 1) return false;
+
+  const rc = await tx.referralCode.findUniqueOrThrow({ where: { code }, select: { id: true } });
+  await tx.user.update({ where: { id: userId }, data: { referralCodeId: rc.id } });
+  return true;
+}
+
+// Did this user come in through a partner referral code?
+//
+// Reads User.referralCodeId, which consumeReferralCode sets in the redemption
+// transaction and the 20261003000000 migration backfilled from usedByUserId.
+// A redeemed code cannot later be revoked (the admin revoke only touches UNUSED
+// codes) or deleted (RESTRICT), so the pointer stays true.
+//
+// An admin grantRecipient is deliberately NOT a referral: no partner vetted
+// her, and that path consumes no code.
+//
+// Keep this the one place referral status is derived.
+export async function hasPartnerReferral(userId: string): Promise<boolean> {
+  const u = await prisma.user.findUnique({
+    where:  { id: userId },
+    select: { referralCodeId: true },
+  });
+  return u?.referralCodeId != null;
 }

@@ -56,7 +56,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // ── Identity override (admin bypass of Persona ID verification) ──────────
     // identityVerified is the single boolean four gates read: applying for a
     // bundle, creating an item, creating a register, and confirming a shipment
-    // address. Its only other writer is the Persona webhook on inquiry.approved.
+    // address (where a partner referral also passes, so this override only
+    // matters there for mothers with no code). Its only other writer is the
+    // Persona webhook on inquiry.approved.
     // Without this action there is no path to it at all for a mother Persona
     // cannot serve — which is not a hypothetical, it is the live blocker.
     //
