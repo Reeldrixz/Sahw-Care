@@ -217,6 +217,65 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ user: updated, granted: true });
     }
 
+    // ── Set or change the basis of an existing admin grant ───────────────────
+    // grantRecipient refuses anyone already RECIPIENT, so this is the only way
+    // to record a basis on a grant made before the field existed, or to correct
+    // one. It writes recipientGrantBasis and nothing else on the user: role,
+    // stage, circle, onboarding and the original grant note are untouched.
+    // Every change is appended to RecipientGrantBasisChange with its reason, so
+    // no earlier justification is overwritten.
+    //
+    // Only for a mother who holds an admin grant. A mother who redeemed a
+    // partner code has no grant to have a basis; her referral is recorded by
+    // the code (referralCodeId), and a basis here would misdescribe it.
+    if (action === "setGrantBasis") {
+      if (basis !== "ID" && basis !== "REFERRAL") {
+        return NextResponse.json(
+          { error: "basis must be \"ID\" (an admin checked her identity) or \"REFERRAL\" (a partner vouched for her without a code)." },
+          { status: 400 }
+        );
+      }
+      if (!reason?.trim()) {
+        return NextResponse.json(
+          { error: "A written reason is required — this changes what her admission is recorded as resting on." },
+          { status: 400 }
+        );
+      }
+
+      const target = await prisma.user.findUnique({
+        where:  { id },
+        select: { role: true, recipientGrantedAt: true, recipientGrantBasis: true },
+      });
+      if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+      if (target.role !== "RECIPIENT" || !target.recipientGrantedAt) {
+        return NextResponse.json(
+          { error: "Only a mother admitted by an admin grant has a grant basis to set." },
+          { status: 400 }
+        );
+      }
+      if (target.recipientGrantBasis === basis) {
+        return NextResponse.json({ ok: true, unchanged: true, recipientGrantBasis: basis });
+      }
+
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id },
+          data:  { recipientGrantBasis: basis },
+        }),
+        prisma.recipientGrantBasisChange.create({
+          data: {
+            userId:    id,
+            fromBasis: target.recipientGrantBasis,
+            toBasis:   basis,
+            reason:    reason.trim().slice(0, 1000),
+            adminId:   admin.userId,
+          },
+        }),
+      ]);
+
+      return NextResponse.json({ ok: true, recipientGrantBasis: basis, fromBasis: target.recipientGrantBasis });
+    }
+
     // ── Account hold ─────────────────────────────────────────────────────────
     if (action === "placeHold") {
       if (!reason?.trim()) return NextResponse.json({ error: "Reason is required" }, { status: 400 });

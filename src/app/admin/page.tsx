@@ -1065,6 +1065,43 @@ export default function AdminPage() {
     setToast(`Access granted to ${u.name} — she'll finish onboarding on next visit`);
   };
 
+  // Set or change what an existing admin grant rested on. Changes only the
+  // basis — never her role, stage or circle — and every change is kept with
+  // its reason. Typed, like the grant itself, so it can't be a reflexive click.
+  const setGrantBasis = async (u: AdminUser) => {
+    const current = u.recipientGrantBasis ?? "not recorded";
+    const basisRaw = window.prompt(
+      `${u.name}'s grant basis is currently: ${current}.\n\n` +
+      "Type the basis to record:\n\n" +
+      "  ID        — an admin checked her identity\n" +
+      "  REFERRAL  — a partner or trusted organisation vouched for her without a code\n\n" +
+      "This changes only the basis (and her badge). Her access, stage and circle are untouched."
+    );
+    if (basisRaw === null) return;
+    const basis = basisRaw.trim().toUpperCase();
+    if (basis !== "ID" && basis !== "REFERRAL") {
+      setToast("Not changed — the basis must be ID or REFERRAL");
+      return;
+    }
+    if (basis === u.recipientGrantBasis) { setToast(`Basis is already ${basis}`); return; }
+
+    const reason = window.prompt(
+      `Why record ${basis}? (required, internal only — kept in the basis history, never shown to her)`
+    );
+    if (!reason?.trim()) return;
+
+    const res = await fetch(`/api/admin/users/${u.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "setGrantBasis", basis, reason: reason.trim() }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) { setToast(d.error ?? "Failed to set grant basis"); return; }
+
+    setUsers((p) => p.map((x) => x.id === u.id ? { ...x, recipientGrantBasis: basis } : x));
+    setToast(`Grant basis for ${u.name} recorded as ${basis}`);
+  };
+
   const placeHold = async (userId: string) => {
     const reason = window.prompt("Reason for placing this account on hold (required, internal only, not shown to user):");
     if (!reason?.trim()) return;
@@ -1363,6 +1400,19 @@ export default function AdminPage() {
                               onClick={() => grantRecipient(u)}
                             >
                               🔑 Grant access{u.motherIntentAt ? " •" : ""}
+                            </button>
+                          )}
+                          {/* Set/change the basis of an existing admin grant.
+                              Only where a grant exists — a code-referred mother
+                              has no grant, and the API refuses her. */}
+                          {u.role === "RECIPIENT" && u.recipientGrantedAt && (
+                            <button
+                              className="action-btn"
+                              style={{ background: "rgba(157,23,77,0.1)", color: "#9d174d", fontWeight: 800 }}
+                              title="Record what this admin grant rested on — changes only the basis and badge"
+                              onClick={() => setGrantBasis(u)}
+                            >
+                              🔑 {u.recipientGrantBasis ? "Change basis" : "Set basis"}
                             </button>
                           )}
                           {/* Identity override. Shown only where it can do

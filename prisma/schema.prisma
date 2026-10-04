@@ -186,6 +186,7 @@ model User {
   impactCardUnlockedAt     DateTime?
 
   trustEvents       TrustEvent[]
+  grantBasisChanges RecipientGrantBasisChange[]
   trustScoreLogs    TrustScoreLog[]
   trustScoreHistory TrustScoreHistory[]
   impactScoreLogs   ImpactScoreLog[]
@@ -2227,6 +2228,25 @@ model BugReport {
 enum RecipientGrantBasis {
   ID
   REFERRAL
+}
+
+// Append-only history of an admin setting or changing recipientGrantBasis on a
+// mother who already holds an admin grant. Rows are never edited: each change
+// keeps its own reason and admin, so an earlier justification is not lost when
+// the basis changes again. The original grant's reason stays on
+// User.recipientGrantNote, untouched.
+model RecipientGrantBasisChange {
+  id        String               @id @default(cuid())
+  userId    String
+  fromBasis RecipientGrantBasis? // null = was "basis not recorded"
+  toBasis   RecipientGrantBasis
+  reason    String
+  adminId   String               // soft reference, as identityOverrideByAdminId
+  createdAt DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum ReferralCodeStatus {
