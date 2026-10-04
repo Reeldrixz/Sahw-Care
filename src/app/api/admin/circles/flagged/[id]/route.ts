@@ -27,15 +27,28 @@ export async function PUT(req: NextRequest, { params }: Params) {
     // Unhide the post, close the review, and resolve its open reports — kept
     // as rows, but no longer open. A mother whose report is resolved cannot
     // re-queue the post; only a mother who has never reported it can.
+    //
+    // A REMOVED post cannot be approved: removal is final, and approving it
+    // would put content an admin took down back in the circle. The status
+    // check is part of the update itself, so it holds against a concurrent
+    // Remove; the post is only un-hidden if that update matched.
     const now = new Date();
-    await prisma.$transaction([
-      prisma.circlePost.update({ where: { id: flagged.postId }, data: { isHidden: false } }),
-      prisma.flaggedPost.update({ where: { id }, data: { status: "APPROVED", reviewedAt: now } }),
-      prisma.postReport.updateMany({
+    const approved = await prisma.$transaction(async (tx) => {
+      const res = await tx.flaggedPost.updateMany({
+        where: { id, status: { not: "REMOVED" } },
+        data:  { status: "APPROVED", reviewedAt: now, reviewedByAdminId: auth.userId },
+      });
+      if (res.count !== 1) return false;
+      await tx.circlePost.update({ where: { id: flagged.postId }, data: { isHidden: false } });
+      await tx.postReport.updateMany({
         where: { postId: flagged.postId, resolvedAt: null },
         data:  { resolvedAt: now },
-      }),
-    ]);
+      });
+      return true;
+    });
+    if (!approved) {
+      return NextResponse.json({ error: "This post was removed and can't be approved." }, { status: 409 });
+    }
     return NextResponse.json({ action: "approved" });
   }
 
@@ -44,11 +57,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
     // reports, so nothing recorded what was removed or why, and the REMOVED
     // filter in the admin queue could never show anything. The post stays
     // hidden — every circle read path (posts list, stream, comments) excludes
-    // hidden posts — and the queue entry and reports remain as the record.
-    // reviewedAt records when; there is no field yet for which admin.
+    // hidden posts — and the queue entry and reports remain as the record,
+    // with when (reviewedAt) and which admin (reviewedByAdminId).
     await prisma.$transaction([
       prisma.circlePost.update({ where: { id: flagged.postId }, data: { isHidden: true } }),
-      prisma.flaggedPost.update({ where: { id }, data: { status: "REMOVED", reviewedAt: new Date() } }),
+      prisma.flaggedPost.update({
+        where: { id },
+        data:  { status: "REMOVED", reviewedAt: new Date(), reviewedByAdminId: auth.userId },
+      }),
     ]);
     return NextResponse.json({ action: "removed" });
   }

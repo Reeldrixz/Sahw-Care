@@ -867,6 +867,10 @@ model FlaggedPost {
   reason     String
   status     FlagStatus @default(PENDING)
   reviewedAt DateTime?
+  // The admin who last approved or removed it (soft reference, as
+  // identityOverrideByAdminId). Null until reviewed, and on reviews made before
+  // this field existed.
+  reviewedByAdminId String?
   createdAt  DateTime   @default(now())
 
   post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)

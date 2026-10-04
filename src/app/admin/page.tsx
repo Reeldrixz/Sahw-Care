@@ -1150,6 +1150,10 @@ export default function AdminPage() {
     if (res.ok) {
       fetchFlagged();
       setToast(action === "approve" ? "Post approved. Visible in circle" : "Post removed");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setToast(d.error ?? "Couldn't update this post");
+      fetchFlagged();
     }
   };
 
