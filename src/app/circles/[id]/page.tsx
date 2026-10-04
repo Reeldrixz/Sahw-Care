@@ -657,6 +657,7 @@ export default function CircleDetailPage() {
                 key={post.id}
                 post={post}
                 currentUserId={user.id}
+                viewerRole={user.role}
                 isAdminOrLeader={isAdminOrLeader}
                 onOpenComments={setCommentsPostId}
                 onDelete={handleDelete}

@@ -52,6 +52,9 @@ export interface Post {
 interface Props {
   post: Post;
   currentUserId: string;
+  // The viewer's account role. Admins can read circles but not write in them
+  // (lib/circleAccess), so they get no report button. Leaders are mothers.
+  viewerRole: "DONOR" | "RECIPIENT" | "ADMIN";
   isAdminOrLeader: boolean;
   onOpenComments: (postId: string) => void;
   onDelete: (postId: string) => void;
@@ -91,7 +94,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, onOpenComments, onDelete, onPin }: Props) {
+export default function CirclePostCard({ post, currentUserId, viewerRole, isAdminOrLeader, onOpenComments, onDelete, onPin }: Props) {
   const [reactions, setReactions] = useState(post.reactions);
   const [reported, setReported] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -310,8 +313,10 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
         </button>
 
         {/* "..." on other people's posts opens the report sheet. Not shown on
-            her own post: she can't report it, and her own post has ✕ delete. */}
-        {!isOwn && (
+            her own post (she can't report it; it has ✕ delete), nor to an
+            admin, who reads circles but can't report in them — the API would
+            refuse. Leaders are mothers and keep it. */}
+        {!isOwn && viewerRole !== "ADMIN" && (
           <button
             onClick={() => { setReportError(null); setShowReport(true); }}
             aria-label="Flag this post"
