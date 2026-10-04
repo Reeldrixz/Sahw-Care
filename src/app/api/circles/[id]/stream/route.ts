@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canReadCircle } from "@/lib/circleAccess";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,6 +16,13 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const { id: circleId } = await params;
+
+  // Same read check as the posts list (lib/circleAccess). Checked once, before
+  // the stream opens; 404 so a refusal does not confirm the circle exists.
+  if (!(await canReadCircle(auth.userId, circleId))) {
+    return new Response("Not found", { status: 404 });
+  }
+
   const sinceParam = req.nextUrl.searchParams.get("since");
   let lastCheck = sinceParam ? new Date(sinceParam) : new Date(Date.now() - 10000);
 

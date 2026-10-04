@@ -5,6 +5,7 @@ import { STAGE_META, StageKey, countryCodeToFlag } from "@/lib/stage";
 import { awardTrust } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
 import { sendCircleReplyEmail } from "@/lib/email";
+import { canReadCircle } from "@/lib/circleAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,17 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { postId } = await params;
+
+  // Read check against the circle the post belongs to (lib/circleAccess).
+  // A missing or hidden post, or a circle she may not read, is the same 404,
+  // matching the posts list (which never returns hidden posts) and the POST.
+  const post = await prisma.circlePost.findUnique({
+    where:  { id: postId },
+    select: { circleId: true, isHidden: true },
+  });
+  if (!post || post.isHidden || !(await canReadCircle(auth.userId, post.circleId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const comments = await prisma.postComment.findMany({
     where:   { postId },

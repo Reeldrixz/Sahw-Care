@@ -6,6 +6,7 @@ import { uploadImage } from "@/lib/cloudinary";
 import { countryCodeToFlag } from "@/lib/stage";
 import { awardTrust, validateCirclePost, validateIntroPost } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
+import { canReadCircle } from "@/lib/circleAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -22,23 +23,12 @@ export async function GET(req: NextRequest, { params }: Params) {
   const channelId = searchParams.get("channelId");
   const cursor    = searchParams.get("cursor") ?? undefined;
 
-  // ── Access gate: donors cannot view circles ──────────────────────────────
-  const user = await prisma.user.findUnique({
-    where:  { id: auth.userId },
-    select: { journeyType: true, onboardingComplete: true },
-  });
-  if (user?.journeyType === "donor") {
-    return NextResponse.json({ error: "Circles are only available for mothers." }, { status: 403 });
-  }
-
-  // ── Auto-join as READ_COMMENT if not yet a member ────────────────────────
-  const existing = await prisma.circleMember.findFirst({
-    where: { userId: auth.userId, circleId },
-  });
-  if (!existing) {
-    await prisma.circleMember.create({
-      data: { userId: auth.userId, circleId, accessType: "READ_COMMENT" },
-    }).catch(() => {}); // ignore if race condition creates duplicate
+  // ── Access gate (lib/circleAccess) ───────────────────────────────────────
+  // 404 rather than 403, so a refusal does not confirm the circle exists.
+  // Reading no longer auto-joins: visiting a stage circle is allowed by the
+  // check itself, without creating a membership.
+  if (!(await canReadCircle(auth.userId, circleId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const posts = await prisma.circlePost.findMany({
