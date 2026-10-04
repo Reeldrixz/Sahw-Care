@@ -30,20 +30,14 @@ interface RegisterData {
   city: string;
   dueDate: string;
   createdAt: string;
-  creator: {
-    id: string;
-    name: string;
-    location: string | null;
-    circleContext: string | null;
-  };
+  creator: { id: string; firstName: string };
   items: RegisterItemData[];
 }
 
-interface AisleItem extends RegisterItemData {
-  register: RegisterData;
-}
-
 type TabKey = "all" | "nearby" | "due-soon";
+
+// How many items a card lists before "+N more".
+const CARD_ITEM_LIMIT = 3;
 
 function formatDueDate(dueDate: string) {
   const due = new Date(dueDate);
@@ -60,33 +54,15 @@ function fmtMoney(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
 }
 
-function interleave(registers: RegisterData[]): AisleItem[] {
-  const queues = registers
-    .map((reg) => ({
-      reg,
-      items: reg.items.filter(
-        (i) =>
-          i.fundingStatus !== "FULFILLED" &&
-          i.status !== "CANCELLED" &&
-          i.status !== "PENDING_APPROVAL"
-      ),
-    }))
-    .filter((q) => q.items.length > 0);
+// Items a donor can see on her register: the same set /registers/[id] shows a
+// donor, so the card's progress bar and the register page always agree.
+function visibleItems(reg: RegisterData) {
+  return reg.items.filter((i) => i.status !== "CANCELLED" && i.status !== "PENDING_APPROVAL");
+}
 
-  const result: AisleItem[] = [];
-  let round = 0;
-  while (true) {
-    let added = false;
-    for (const { reg, items } of queues) {
-      if (round < items.length) {
-        result.push({ ...items[round], register: reg });
-        added = true;
-      }
-    }
-    if (!added) break;
-    round++;
-  }
-  return result;
+// Items still needing help — what a card lists. A register with none is not shown.
+function openItems(reg: RegisterData) {
+  return visibleItems(reg).filter((i) => i.fundingStatus !== "FULFILLED");
 }
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -96,9 +72,9 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 const TAB_EMPTY: Record<TabKey, string> = {
-  "all":      "No items available right now.",
-  "nearby":   "No items in this city yet.",
-  "due-soon": "No items from registers due in the next 6 weeks.",
+  "all":      "No registers need help right now.",
+  "nearby":   "No registers in this city yet.",
+  "due-soon": "No registers due in the next 6 weeks.",
 };
 
 export default function RegistersPage() {
@@ -132,46 +108,54 @@ export default function RegistersPage() {
 
   useEffect(() => { fetchRegisters(); }, [fetchRegisters]);
 
-  const handleToggleSave = async (e: React.MouseEvent, item: AisleItem) => {
+  const handleToggleSave = async (e: React.MouseEvent, registerId: string, itemId: string) => {
     e.stopPropagation();
     if (!user) { router.push("/auth"); return; }
-    const prev = savedState[item.id] ?? false;
-    setSavedState((s) => ({ ...s, [item.id]: !prev }));
+    const prev = savedState[itemId] ?? false;
+    setSavedState((s) => ({ ...s, [itemId]: !prev }));
     const res = await fetch(
-      `/api/registers/${item.register.id}/items/${item.id}/save`,
+      `/api/registers/${registerId}/items/${itemId}/save`,
       { method: "POST" }
     );
     if (res.ok) {
       const d = await res.json();
-      setSavedState((s) => ({ ...s, [item.id]: d.saved }));
+      setSavedState((s) => ({ ...s, [itemId]: d.saved }));
     } else {
-      setSavedState((s) => ({ ...s, [item.id]: prev }));
+      setSavedState((s) => ({ ...s, [itemId]: prev }));
       setToast("Failed to save item");
     }
   };
 
-  // Build interleaved aisle from all registers, then filter/search
-  const allItems = interleave(registers);
+  // One card per register that still has something open. Search matches a
+  // register by any open item's name, her first name, or the city; when items
+  // match, they are listed first on the card so the donor sees why it matched.
+  const searchLower = search.trim().toLowerCase();
+  const cards = registers
+    .map((reg) => {
+      const open = openItems(reg);
+      const matching = searchLower ? open.filter((i) => i.name.toLowerCase().includes(searchLower)) : [];
+      const listed = [...matching, ...open.filter((i) => !matching.includes(i))];
+      return { reg, open, listed };
+    })
+    .filter(({ reg, open, listed }) => {
+      if (open.length === 0) return false;
+      if (!searchLower) return true;
+      return (
+        listed.some((i) => i.name.toLowerCase().includes(searchLower)) ||
+        reg.creator.firstName.toLowerCase().includes(searchLower) ||
+        reg.city.toLowerCase().includes(searchLower)
+      );
+    });
 
-  const searchLower = search.toLowerCase();
-  const filtered = allItems.filter((item) => {
-    if (!searchLower) return true;
-    return (
-      item.name.toLowerCase().includes(searchLower) ||
-      item.register.creator.name.toLowerCase().includes(searchLower) ||
-      item.register.city.toLowerCase().includes(searchLower)
-    );
-  });
-
-  const tabFiltered = filtered.filter((item) => {
+  const tabFiltered = cards.filter(({ reg }) => {
     if (tab === "all") return true;
     if (tab === "nearby") {
       if (!activeCity) return false;
-      return item.register.city.toLowerCase() === activeCity.toLowerCase();
+      return reg.city.toLowerCase() === activeCity.toLowerCase();
     }
     if (tab === "due-soon") {
       const diffDays = Math.round(
-        (new Date(item.register.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (new Date(reg.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
       return diffDays <= 42;
     }
@@ -260,7 +244,7 @@ export default function RegistersPage() {
             <div className="empty" style={{ marginTop: 40 }}>
               <div className="empty-icon">📍</div>
               <div className="empty-title">Set your location</div>
-              <div style={{ marginBottom: 20, fontSize: 13, color: "var(--mid)" }}>See items from mothers in your area.</div>
+              <div style={{ marginBottom: 20, fontSize: 13, color: "var(--mid)" }}>See registers from mothers in your area.</div>
               <button className="btn-primary" style={{ width: "auto", padding: "10px 24px" }} onClick={() => setShowLocationSheet(true)}>
                 Set location
               </button>
@@ -278,29 +262,22 @@ export default function RegistersPage() {
               )}
             </div>
           ) : (
-            tabFiltered.map((item) => {
-              const reg        = item.register;
-              const firstName  = reg.creator.name.split(" ")[0];
-              const isSaved    = savedState[item.id] ?? false;
-              const dueLabel   = formatDueDate(reg.dueDate);
-              const qty        = parseInt(item.quantity, 10);
-              const showQty    = !isNaN(qty) && qty > 1;
+            tabFiltered.map(({ reg, open, listed }) => {
+              const shown     = listed.slice(0, CARD_ITEM_LIMIT);
+              const moreCount = open.length - shown.length;
 
-              // Build the "for …" byline
-              const parts = [firstName];
-              if (reg.creator.circleContext) parts.push(reg.creator.circleContext);
-              parts.push(dueLabel);
-              const byline = `for ${parts.join(" · ")}`;
+              // Progress over every item a donor can see, fulfilled included —
+              // the same totals the register page shows.
+              const visible = visibleItems(reg);
+              const funded  = visible.reduce((s, i) => s + i.totalFundedCents, 0);
+              const needed  = visible.reduce((s, i) => s + i.standardPriceCents, 0);
+              const pct     = needed > 0 ? Math.min(100, Math.round((funded / needed) * 100)) : 0;
 
               return (
                 <div
-                  key={`${reg.id}-${item.id}`}
-                  onClick={() => {
-                    // TODO: deep-link to dedicated per-item donation/checkout
-                    router.push(`/registers/${reg.id}?item=${item.id}`);
-                  }}
+                  key={reg.id}
+                  onClick={() => router.push(`/registers/${reg.id}`)}
                   style={{
-                    position: "relative",
                     background: "#faf8f3", borderRadius: 16, padding: "18px 16px 14px",
                     marginBottom: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
                     border: "1px solid #ede8df", cursor: "pointer", transition: "box-shadow 0.2s",
@@ -308,46 +285,69 @@ export default function RegistersPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.1)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.07)"; }}
                 >
-                  {/* Bookmark save button */}
-                  <button
-                    onClick={(e) => handleToggleSave(e, item)}
-                    aria-label={isSaved ? "Unsave item" : "Save item"}
-                    style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", cursor: "pointer", padding: 4, zIndex: 1, lineHeight: 0 }}
-                  >
-                    <Bookmark size={20} strokeWidth={1.75} color="#1a7a5e" fill={isSaved ? "#1a7a5e" : "none"} />
-                  </button>
-
-                  {/* "for [name] · context · stage" */}
-                  <div style={{ fontSize: 11, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginBottom: 6, paddingRight: 32, lineHeight: 1.4 }}>
-                    {byline}
+                  {/* Header: whose register, where, when */}
+                  <div style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3 }}>
+                    {reg.creator.firstName}&apos;s Register
+                  </div>
+                  <div style={{ fontSize: 12, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginTop: 2, marginBottom: 12 }}>
+                    {reg.city} · {formatDueDate(reg.dueDate)}
                   </div>
 
-                  {/* Item name — the headline */}
-                  <div style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: "#1a1a1a", marginBottom: 8, lineHeight: 1.3, paddingRight: 32 }}>
-                    {item.name}
-                    {showQty && (
-                      <span style={{ fontFamily: "Nunito, sans-serif", fontSize: 14, fontWeight: 600, color: "#6b7a70", marginLeft: 6 }}>
-                        × {qty}
+                  {/* Body: up to three open items, matches first when searching */}
+                  <div style={{ borderTop: "1px solid #ede8df" }}>
+                    {shown.map((item) => {
+                      const qty     = parseInt(item.quantity, 10);
+                      const showQty = !isNaN(qty) && qty > 1;
+                      const isSaved = savedState[item.id] ?? false;
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={(e) => { e.stopPropagation(); router.push(`/registers/${reg.id}?item=${item.id}`); }}
+                          style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid #ede8df" }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {item.name}
+                            {showQty && <span style={{ fontWeight: 600, color: "#6b7a70", marginLeft: 6 }}>× {qty}</span>}
+                          </div>
+                          {item.standardPriceCents > 0 && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#7a5a2a", fontFamily: "Nunito, sans-serif", flexShrink: 0 }}>
+                              {fmtMoney(item.standardPriceCents)}
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => handleToggleSave(e, reg.id, item.id)}
+                            aria-label={isSaved ? `Unsave ${item.name}` : `Save ${item.name}`}
+                            style={{ background: "none", border: "none", cursor: "pointer", padding: 2, lineHeight: 0, flexShrink: 0 }}
+                          >
+                            <Bookmark size={17} strokeWidth={1.75} color="#1a7a5e" fill={isSaved ? "#1a7a5e" : "none"} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {moreCount > 0 && (
+                    <div style={{ fontSize: 12, color: "#6b7a70", fontFamily: "Nunito, sans-serif", fontWeight: 600, marginTop: 8 }}>
+                      +{moreCount} more
+                    </div>
+                  )}
+
+                  {/* Footer: progress + link */}
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ height: 7, background: "#ede8df", borderRadius: 5, overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: "#1a7a5e" }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                      <span style={{ fontSize: 12, color: "#555555", fontFamily: "Nunito, sans-serif" }}>
+                        {fmtMoney(funded)} of {fmtMoney(needed)} funded
                       </span>
-                    )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); router.push(`/registers/${reg.id}`); }}
+                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 700 }}
+                      >
+                        View full register →
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Metadata: price */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                    {item.standardPriceCents > 0 && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "#7a5a2a", fontFamily: "Nunito, sans-serif" }}>
-                        {fmtMoney(item.standardPriceCents)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* View full register link */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); router.push(`/registers/${reg.id}`); }}
-                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, color: "#1a7a5e", fontFamily: "Nunito, sans-serif", fontWeight: 600 }}
-                  >
-                    View full register →
-                  </button>
                 </div>
               );
             })

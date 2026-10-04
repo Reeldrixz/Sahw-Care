@@ -23,7 +23,10 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
     include: {
-      creator: { select: { id: true, name: true, location: true, circleContext: true } },
+      // Reduced to { id, firstName } below. This is a public list: no surname,
+      // no location, and no circleContext, which she set as a label for her
+      // circle ("Only visible to other moms"), not for donors.
+      creator: { select: { id: true, name: true } },
       items: {
         select: {
           id: true,
@@ -51,6 +54,7 @@ export async function GET(req: NextRequest) {
 
   const result = registers.map((r) => ({
     ...r,
+    creator: { id: r.creator.id, firstName: r.creator.name.split(" ")[0] || r.creator.name },
     items: r.items.map((i) => ({ ...i, savedByMe: savedItemIds.has(i.id) })),
   }));
   return NextResponse.json({ registers: result });
