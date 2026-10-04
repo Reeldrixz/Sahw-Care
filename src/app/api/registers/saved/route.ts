@@ -31,7 +31,10 @@ export async function GET(req: NextRequest) {
           id: true,
           city: true,
           dueDate: true,
-          creator: { select: { id: true, name: true, circleContext: true } },
+          // Reduced to { id, firstName } below, like the browse list: no
+          // surname, and no circleContext, which she set as a label for her
+          // circle ("Only visible to other moms"), not for donors.
+          creator: { select: { id: true, name: true } },
         },
       },
     },
@@ -40,7 +43,10 @@ export async function GET(req: NextRequest) {
   const items = saved.map((s) => ({
     ...s.item,
     savedByMe: true,
-    register: s.register,
+    register: {
+      ...s.register,
+      creator: { id: s.register.creator.id, firstName: s.register.creator.name.split(" ")[0] || s.register.creator.name },
+    },
   }));
   return NextResponse.json({ items });
 }

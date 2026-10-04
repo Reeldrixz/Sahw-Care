@@ -20,7 +20,7 @@ interface SavedItemData {
     id: string;
     city: string;
     dueDate: string;
-    creator: { id: string; name: string; circleContext: string | null };
+    creator: { id: string; firstName: string };
   };
 }
 
@@ -124,13 +124,12 @@ export default function SavedItemsPage() {
           ) : (
             items.map((item) => {
               const reg        = item.register;
-              const firstName  = reg.creator.name.split(" ")[0];
+              const firstName  = reg.creator.firstName;
               const dueLabel   = formatDueDate(reg.dueDate);
               const qty        = parseInt(item.quantity, 10);
               const showQty    = !isNaN(qty) && qty > 1;
 
               const parts = [firstName];
-              if (reg.creator.circleContext) parts.push(reg.creator.circleContext);
               parts.push(dueLabel);
               const byline = `for ${parts.join(" · ")}`;
 
