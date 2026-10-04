@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Avatar from "./Avatar";
 import {
   Heart, HeartHandshake, Sparkles, MessageCircle,
@@ -93,8 +94,23 @@ function timeAgo(dateStr: string): string {
 export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, onOpenComments, onDelete, onPin }: Props) {
   const [reactions, setReactions] = useState(post.reactions);
   const [reported, setReported] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showReportFlow, setShowReportFlow] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  // While the report sheet is open: Escape closes it, and the page behind
+  // doesn't scroll.
+  useEffect(() => {
+    if (!showReport) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !reporting) setShowReport(false); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showReport, reporting]);
 
   const cat = CATEGORY_META[post.category] ?? CATEGORY_META.STORY;
   const CategoryIcon = cat.Icon;
@@ -125,15 +141,34 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
     }).catch(() => setReactions(post.reactions));
   };
 
+  // Only shows the thank-you once the report was accepted. It used to show it
+  // whatever came back, so a refused report (rate limit, a post no longer
+  // there) still told her it had been flagged.
   const handleReport = async (reason: string) => {
-    setShowReportFlow(false);
-    setShowMenu(false);
-    await fetch(`/api/circles/posts/${post.id}/report`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    setReported(true);
+    setReporting(true);
+    setReportError(null);
+    try {
+      const res = await fetch(`/api/circles/posts/${post.id}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      if (res.ok) {
+        setShowReport(false);
+        setReported(true);
+        return;
+      }
+      const d = await res.json().catch(() => ({}));
+      setReportError(
+        res.status === 429 ? (d.error ?? "You've sent a lot of reports recently. Please try again later.")
+        : res.status === 404 ? "This post isn't available any more."
+        : "Something went wrong. Please try again.",
+      );
+    } catch {
+      setReportError("Network error. Please check your connection.");
+    } finally {
+      setReporting(false);
+    }
   };
 
   if (reported) {
@@ -274,30 +309,17 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
           {post.commentCount > 0 ? post.commentCount : "Reply"}
         </button>
 
-        {/* Context menu for other people's posts */}
+        {/* "..." on other people's posts opens the report sheet. Not shown on
+            her own post: she can't report it, and her own post has ✕ delete. */}
         {!isOwn && (
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => { setShowMenu((p) => !p); setShowReportFlow(false); }}
-              style={{ padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", color: "var(--light)", display: "flex" }}
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {showMenu && !showReportFlow && (
-              <div style={{ position: "absolute", right: 0, bottom: 34, background: "var(--white)", borderRadius: 14, boxShadow: "var(--shadow-lg)", border: "1px solid var(--border)", padding: "8px", zIndex: 50, minWidth: 200 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", padding: "4px 10px 8px" }}>Flag this post</div>
-                <div style={{ fontSize: 11, color: "var(--mid)", padding: "0 10px 8px", lineHeight: 1.5 }}>
-                  Help us keep this space kind and safe.
-                </div>
-                {REPORT_REASONS.map((r) => (
-                  <button key={r} onClick={() => handleReport(r)}
-                    style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 10px", fontSize: 12, color: "var(--ink)", background: "none", border: "none", cursor: "pointer", borderRadius: 8, fontFamily: "Nunito, sans-serif", lineHeight: 1.4 }}>
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => { setReportError(null); setShowReport(true); }}
+            aria-label="Flag this post"
+            aria-haspopup="dialog"
+            style={{ minWidth: 40, minHeight: 36, padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", color: "var(--light)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <MoreHorizontal size={18} />
+          </button>
         )}
 
         {/* Admin/leader actions */}
@@ -327,6 +349,75 @@ export default function CirclePostCard({ post, currentUserId, isAdminOrLeader, o
           </button>
         )}
       </div>
+
+      {/* Report sheet. Portalled to <body> so the card's overflow:hidden
+          (needed for its rounded coloured edge) can't clip it, and fixed above
+          the bottom nav (z-index 100) like the app's other sheets. Bottom
+          padding clears the home indicator on notched phones. */}
+      {showReport && createPortal(
+        <div
+          onClick={() => { if (!reporting) setShowReport(false); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`report-title-${post.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--white)", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 460,
+              maxHeight: "85vh", overflowY: "auto", animation: "sheetRise 0.25s ease",
+              padding: "10px 16px calc(16px + env(safe-area-inset-bottom))",
+              fontFamily: "Nunito, sans-serif",
+            }}
+          >
+            <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "0 auto 14px" }} />
+            <div id={`report-title-${post.id}`} style={{ fontSize: 17, fontWeight: 800, color: "var(--ink)", marginBottom: 4 }}>
+              Flag this post
+            </div>
+            <div style={{ fontSize: 13, color: "var(--mid)", lineHeight: 1.5, marginBottom: 14 }}>
+              Help us keep this space kind and safe. It&apos;s hidden while our team reviews it.
+            </div>
+
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => handleReport(r)}
+                disabled={reporting}
+                style={{
+                  display: "flex", alignItems: "center", width: "100%", minHeight: 52,
+                  textAlign: "left", padding: "12px 14px", marginBottom: 8,
+                  fontSize: 15, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35,
+                  background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12,
+                  cursor: reporting ? "default" : "pointer", opacity: reporting ? 0.6 : 1,
+                  fontFamily: "Nunito, sans-serif",
+                }}
+              >
+                {r}
+              </button>
+            ))}
+
+            {reportError && (
+              <div role="alert" style={{ fontSize: 13, color: "#c0392b", background: "#fdecea", borderRadius: 10, padding: "10px 12px", margin: "4px 0 8px", lineHeight: 1.5 }}>
+                {reportError}
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowReport(false)}
+              disabled={reporting}
+              style={{
+                width: "100%", minHeight: 48, marginTop: 4, fontSize: 15, fontWeight: 700,
+                color: "var(--mid)", background: "transparent", border: "none", borderRadius: 12,
+                cursor: "pointer", fontFamily: "Nunito, sans-serif",
+              }}
+            >
+              {reporting ? "Sending…" : "Cancel"}
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
