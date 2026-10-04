@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { computePopoverPos, POPOVER_MAX_WIDTH, type PopoverPos } from "@/lib/popoverPosition";
 import Avatar from "./Avatar";
 import {
   Heart, HeartHandshake, Sparkles, MessageCircle,
@@ -100,20 +101,41 @@ export default function CirclePostCard({ post, currentUserId, viewerRole, isAdmi
   const [showReport, setShowReport] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [popPos, setPopPos] = useState<PopoverPos | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
-  // While the report sheet is open: Escape closes it, and the page behind
-  // doesn't scroll.
+  // Place the report popover next to the "..." button. It is portalled and
+  // position:fixed, so it is measured against the viewport: opens upward when
+  // it fits above the button (as the old menu did), otherwise downward, and
+  // never runs under the bottom nav. Re-placed on scroll and resize, and when
+  // its height changes (an error message appearing).
+  const placePopover = useCallback(() => {
+    const btn = triggerRef.current;
+    const pop = popoverRef.current;
+    if (!btn || !pop) return;
+    setPopPos(computePopoverPos(btn.getBoundingClientRect(), pop.offsetHeight));
+  }, []);
+
+  useLayoutEffect(() => {
+    if (showReport) placePopover();
+  }, [showReport, reportError, reporting, placePopover]);
+
+  // While it is open: Escape closes it; scrolling or resizing re-places it.
   useEffect(() => {
     if (!showReport) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !reporting) setShowReport(false); };
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", placePopover);
+    window.addEventListener("scroll", placePopover, true);
     return () => {
-      document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", placePopover);
+      window.removeEventListener("scroll", placePopover, true);
     };
-  }, [showReport, reporting]);
+  }, [showReport, reporting, placePopover]);
+
+  const closeReport = () => { if (!reporting) { setShowReport(false); setPopPos(null); } };
 
   const cat = CATEGORY_META[post.category] ?? CATEGORY_META.STORY;
   const CategoryIcon = cat.Icon;
@@ -158,6 +180,7 @@ export default function CirclePostCard({ post, currentUserId, viewerRole, isAdmi
       });
       if (res.ok) {
         setShowReport(false);
+        setPopPos(null);
         setReported(true);
         return;
       }
@@ -318,9 +341,11 @@ export default function CirclePostCard({ post, currentUserId, viewerRole, isAdmi
             refuse. Leaders are mothers and keep it. */}
         {!isOwn && viewerRole !== "ADMIN" && (
           <button
-            onClick={() => { setReportError(null); setShowReport(true); }}
+            ref={triggerRef}
+            onClick={() => { setReportError(null); setPopPos(null); setShowReport((open) => !open); }}
             aria-label="Flag this post"
             aria-haspopup="dialog"
+            aria-expanded={showReport}
             style={{ minWidth: 40, minHeight: 36, padding: "5px 7px", borderRadius: 20, border: "none", background: "transparent", cursor: "pointer", color: "var(--light)", display: "flex", alignItems: "center", justifyContent: "center" }}
           >
             <MoreHorizontal size={18} />
@@ -355,33 +380,33 @@ export default function CirclePostCard({ post, currentUserId, viewerRole, isAdmi
         )}
       </div>
 
-      {/* Report sheet. Portalled to <body> so the card's overflow:hidden
-          (needed for its rounded coloured edge) can't clip it, and fixed above
-          the bottom nav (z-index 100) like the app's other sheets. Bottom
-          padding clears the home indicator on notched phones. */}
+      {/* Report popover, anchored to "...". Portalled to <body> so the card's
+          overflow:hidden (needed for its rounded coloured edge) can't clip it,
+          and at z-index 300, above the bottom nav (100); computePopoverPos
+          also keeps it out from under the nav. First render is invisible, to
+          measure its height before placing it. A transparent layer behind it
+          closes it on any tap outside. */}
       {showReport && createPortal(
-        <div
-          onClick={() => { if (!reporting) setShowReport(false); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-        >
+        <>
+          <div onClick={closeReport} style={{ position: "fixed", inset: 0, zIndex: 299 }} />
           <div
+            ref={popoverRef}
             role="dialog"
-            aria-modal="true"
             aria-labelledby={`report-title-${post.id}`}
-            onClick={(e) => e.stopPropagation()}
             style={{
-              background: "var(--white)", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 460,
-              maxHeight: "85vh", overflowY: "auto", animation: "sheetRise 0.25s ease",
-              padding: "10px 16px calc(16px + env(safe-area-inset-bottom))",
-              fontFamily: "Nunito, sans-serif",
+              position: "fixed", zIndex: 300,
+              top: popPos?.top ?? 0, left: popPos?.left ?? 0, width: popPos?.width ?? POPOVER_MAX_WIDTH,
+              maxHeight: popPos?.maxHeight, overflowY: "auto",
+              visibility: popPos ? "visible" : "hidden",
+              background: "var(--white)", borderRadius: 14, boxShadow: "var(--shadow-lg)",
+              border: "1px solid var(--border)", padding: 8, fontFamily: "Nunito, sans-serif",
             }}
           >
-            <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "0 auto 14px" }} />
-            <div id={`report-title-${post.id}`} style={{ fontSize: 17, fontWeight: 800, color: "var(--ink)", marginBottom: 4 }}>
+            <div id={`report-title-${post.id}`} style={{ fontSize: 13, fontWeight: 800, color: "var(--ink)", padding: "4px 10px 2px" }}>
               Flag this post
             </div>
-            <div style={{ fontSize: 13, color: "var(--mid)", lineHeight: 1.5, marginBottom: 14 }}>
-              Help us keep this space kind and safe. It&apos;s hidden while our team reviews it.
+            <div style={{ fontSize: 12, color: "var(--mid)", padding: "0 10px 6px", lineHeight: 1.45 }}>
+              Help us keep this space kind and safe.
             </div>
 
             {REPORT_REASONS.map((r) => (
@@ -390,11 +415,10 @@ export default function CirclePostCard({ post, currentUserId, viewerRole, isAdmi
                 onClick={() => handleReport(r)}
                 disabled={reporting}
                 style={{
-                  display: "flex", alignItems: "center", width: "100%", minHeight: 52,
-                  textAlign: "left", padding: "12px 14px", marginBottom: 8,
-                  fontSize: 15, fontWeight: 600, color: "var(--ink)", lineHeight: 1.35,
-                  background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12,
-                  cursor: reporting ? "default" : "pointer", opacity: reporting ? 0.6 : 1,
+                  display: "flex", alignItems: "center", width: "100%", minHeight: 44,
+                  textAlign: "left", padding: "9px 10px", fontSize: 14, color: "var(--ink)",
+                  lineHeight: 1.35, background: "none", border: "none", borderRadius: 8,
+                  cursor: reporting ? "default" : "pointer", opacity: reporting ? 0.55 : 1,
                   fontFamily: "Nunito, sans-serif",
                 }}
               >
@@ -402,25 +426,16 @@ export default function CirclePostCard({ post, currentUserId, viewerRole, isAdmi
               </button>
             ))}
 
+            {reporting && (
+              <div style={{ fontSize: 12, color: "var(--mid)", padding: "6px 10px 2px" }}>Sending…</div>
+            )}
             {reportError && (
-              <div role="alert" style={{ fontSize: 13, color: "#c0392b", background: "#fdecea", borderRadius: 10, padding: "10px 12px", margin: "4px 0 8px", lineHeight: 1.5 }}>
+              <div role="alert" style={{ fontSize: 12, color: "#c0392b", background: "#fdecea", borderRadius: 8, padding: "8px 10px", margin: "6px 2px 2px", lineHeight: 1.45 }}>
                 {reportError}
               </div>
             )}
-
-            <button
-              onClick={() => setShowReport(false)}
-              disabled={reporting}
-              style={{
-                width: "100%", minHeight: 48, marginTop: 4, fontSize: 15, fontWeight: 700,
-                color: "var(--mid)", background: "transparent", border: "none", borderRadius: 12,
-                cursor: "pointer", fontFamily: "Nunito, sans-serif",
-              }}
-            >
-              {reporting ? "Sending…" : "Cancel"}
-            </button>
           </div>
-        </div>,
+        </>,
         document.body,
       )}
     </div>
