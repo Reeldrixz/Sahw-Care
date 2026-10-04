@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { awardTrust } from "@/lib/trust";
+import { canWriteInCircle } from "@/lib/circleAccess";
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ postId: string }> };
@@ -14,9 +15,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   const { postId } = await params;
   const post = await prisma.circlePost.findUnique({
     where: { id: postId },
-    select: { id: true, userId: true, isHidden: true, likeCount: true },
+    select: { id: true, userId: true, isHidden: true, likeCount: true, circleId: true },
   });
-  if (!post || post.isHidden) return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  // Mothers allowed in the post's circle only (lib/circleAccess); 404 otherwise.
+  if (!post || post.isHidden || !(await canWriteInCircle(auth.userId, post.circleId))) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
 
   const existing = await prisma.postLike.findUnique({
     where: { postId_userId: { postId, userId: auth.userId } },

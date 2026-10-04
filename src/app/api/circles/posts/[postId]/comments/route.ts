@@ -5,7 +5,7 @@ import { STAGE_META, StageKey, countryCodeToFlag } from "@/lib/stage";
 import { awardTrust } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
 import { sendCircleReplyEmail } from "@/lib/email";
-import { canReadCircle } from "@/lib/circleAccess";
+import { canReadCircle, canWriteInCircle } from "@/lib/circleAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -83,19 +83,19 @@ export async function POST(req: NextRequest, { params }: Params) {
   // ── Fetch commenter's circle context ─────────────────────────────────────
   const commenter = await prisma.user.findUnique({
     where:  { id: auth.userId },
-    select: { journeyType: true, currentCircleId: true, graduatedCircleIds: true, currentStage: true },
+    select: { currentCircleId: true, graduatedCircleIds: true, currentStage: true },
   });
 
-  if (commenter?.journeyType === "donor") {
-    return NextResponse.json({ error: "Only mothers can comment in circles." }, { status: 403 });
-  }
-
-  // ── Fetch post + its circle ───────────────────────────────────────────────
+  // ── Fetch post + its circle, and the write check ─────────────────────────
+  // Mothers allowed in the post's circle only (lib/circleAccess), which
+  // replaces the old journeyType test. 404 otherwise, as on every circle route.
   const post = await prisma.circlePost.findUnique({
     where:  { id: postId },
     select: { id: true, isHidden: true, circleId: true },
   });
-  if (!post || post.isHidden) return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  if (!post || post.isHidden || !(await canWriteInCircle(auth.userId, post.circleId))) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
 
   // ── Resolve reply target (one level of nesting) ───────────────────────────
   // When replying to a comment, we notify the author of the comment that was

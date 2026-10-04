@@ -89,7 +89,7 @@ interface FlaggedPostInfo {
     id: string; content: string; userId: string;
     user: { id: string; name: string; avatar: string | null };
     circle: { name: string };
-    reports: { reason: string; reportedBy: string }[];
+    reports: { reason: string; reportedBy: string; createdAt: string; resolvedAt: string | null }[];
   };
 }
 
@@ -1851,10 +1851,17 @@ export default function AdminPage() {
                           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mid)" }}>
                             {f.post.user.name} · {f.post.circle.name}
                           </div>
-                          <div style={{ fontSize: 11, color: "var(--light)", marginTop: 2 }}>
-                            {f.reason}
-                            {f.post.reports.length > 0 && ` · ${f.post.reports.length} user report${f.post.reports.length > 1 ? "s" : ""}`}
-                          </div>
+                          {/* Counts open reports only; resolved ones (from an
+                              earlier approval) are listed below but greyed. */}
+                          {(() => {
+                            const open = f.post.reports.filter((r) => !r.resolvedAt).length;
+                            return (
+                              <div style={{ fontSize: 11, color: "var(--light)", marginTop: 2 }}>
+                                {f.reason}
+                                {open > 0 && ` · ${open} open report${open > 1 ? "s" : ""}`}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <span style={{ fontSize: 11, color: "var(--light)" }}>{new Date(f.createdAt).toLocaleDateString()}</span>
                       </div>
@@ -1864,7 +1871,10 @@ export default function AdminPage() {
                       {f.post.reports.length > 0 && (
                         <div style={{ marginBottom: 10 }}>
                           {f.post.reports.map((r, i) => (
-                            <div key={i} style={{ fontSize: 11, color: "var(--terra)", marginBottom: 3 }}>🚩 "{r.reason}"</div>
+                            <div key={i} style={{ fontSize: 11, color: r.resolvedAt ? "var(--light)" : "var(--terra)", marginBottom: 3 }}>
+                              🚩 &quot;{r.reason}&quot;
+                              {r.resolvedAt && ` · resolved ${new Date(r.resolvedAt).toLocaleDateString()}`}
+                            </div>
                           ))}
                         </div>
                       )}

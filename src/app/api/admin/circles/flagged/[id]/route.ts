@@ -24,9 +24,18 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!flagged) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (action === "approve") {
-    // Unhide the post
-    await prisma.circlePost.update({ where: { id: flagged.postId }, data: { isHidden: false } });
-    await prisma.flaggedPost.update({ where: { id }, data: { status: "APPROVED", reviewedAt: new Date() } });
+    // Unhide the post, close the review, and resolve its open reports — kept
+    // as rows, but no longer open. A mother whose report is resolved cannot
+    // re-queue the post; only a mother who has never reported it can.
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.circlePost.update({ where: { id: flagged.postId }, data: { isHidden: false } }),
+      prisma.flaggedPost.update({ where: { id }, data: { status: "APPROVED", reviewedAt: now } }),
+      prisma.postReport.updateMany({
+        where: { postId: flagged.postId, resolvedAt: null },
+        data:  { resolvedAt: now },
+      }),
+    ]);
     return NextResponse.json({ action: "approved" });
   }
 

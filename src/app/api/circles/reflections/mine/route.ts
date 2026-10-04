@@ -14,9 +14,10 @@ export async function GET(req: NextRequest) {
 
   const me = await prisma.user.findUnique({
     where:  { id: auth.userId },
-    select: { journeyType: true },
+    select: { role: true },
   });
-  if (me?.journeyType === "donor") {
+  // Role, not journeyType (see lib/circleAccess for why).
+  if (me?.role !== "RECIPIENT") {
     return NextResponse.json({ error: "Reflections are only available for mothers." }, { status: 403 });
   }
 

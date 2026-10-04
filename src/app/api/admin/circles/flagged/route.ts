@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
         include: {
           user: { select: { id: true, name: true, avatar: true } },
           circle: { select: { name: true } },
-          reports: { select: { reason: true, reportedBy: true } },
+          reports: { select: { reason: true, reportedBy: true, createdAt: true, resolvedAt: true }, orderBy: { createdAt: "asc" } },
         },
       },
     },

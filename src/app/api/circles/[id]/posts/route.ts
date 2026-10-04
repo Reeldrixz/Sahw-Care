@@ -120,11 +120,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   // ── Access enforcement ───────────────────────────────────────────────────
   const user = await prisma.user.findUnique({
     where:  { id: auth.userId },
-    select: { journeyType: true, currentCircleId: true, hasPostedIntro: true },
+    select: { role: true, currentCircleId: true, hasPostedIntro: true },
   });
 
-  if (user?.journeyType === "donor") {
-    return NextResponse.json({ error: "Givers cannot post in circles." }, { status: 403 });
+  // Role, not journeyType: a mother who switched her journey to "giver" is
+  // still a mother, and a donor mid-onboarding has no journeyType at all.
+  if (user?.role !== "RECIPIENT") {
+    return NextResponse.json({ error: "Only mothers can post in circles." }, { status: 403 });
   }
 
   if (!user?.currentCircleId || user.currentCircleId !== circleId) {

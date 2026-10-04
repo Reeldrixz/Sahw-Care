@@ -851,6 +851,9 @@ model PostReport {
   reportedBy String
   reason     String
   createdAt  DateTime @default(now())
+  // Set when an admin approves the post: the report is kept as a record but no
+  // longer counts as open, and the same mother cannot re-queue the post.
+  resolvedAt DateTime?
 
   post     CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
   reporter User       @relation(fields: [reportedBy], references: [id], onDelete: Cascade)

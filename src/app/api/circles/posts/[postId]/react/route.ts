@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canWriteInCircle } from "@/lib/circleAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   const VALID = ["HEART", "HUG", "CLAP"];
   if (!VALID.includes(type)) return NextResponse.json({ error: "Invalid reaction type" }, { status: 400 });
 
-  const post = await prisma.circlePost.findUnique({ where: { id: postId }, select: { id: true, isHidden: true } });
-  if (!post || post.isHidden) return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  const post = await prisma.circlePost.findUnique({ where: { id: postId }, select: { id: true, isHidden: true, circleId: true } });
+  // Mothers allowed in the post's circle only (lib/circleAccess); 404 otherwise.
+  if (!post || post.isHidden || !(await canWriteInCircle(auth.userId, post.circleId))) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
 
   const existing = await prisma.postReaction.findUnique({
     where: { postId_userId: { postId, userId: auth.userId } },
