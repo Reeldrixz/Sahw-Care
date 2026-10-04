@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Heart, Bookmark, SlidersHorizontal } from "lucide-react";
+import { Heart, Bookmark, SlidersHorizontal } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import HowKradelWorks from "@/components/HowKradelWorks";
 import TrustAndSafety from "@/components/TrustAndSafety";
@@ -34,7 +34,6 @@ interface RegisterData {
     id: string;
     name: string;
     location: string | null;
-    verificationLevel: number;
     circleContext: string | null;
   };
   items: RegisterItemData[];
@@ -44,7 +43,7 @@ interface AisleItem extends RegisterItemData {
   register: RegisterData;
 }
 
-type TabKey = "all" | "nearby" | "due-soon" | "verified";
+type TabKey = "all" | "nearby" | "due-soon";
 
 function formatDueDate(dueDate: string) {
   const due = new Date(dueDate);
@@ -94,14 +93,12 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "all",      label: "All"      },
   { key: "nearby",   label: "Nearby"   },
   { key: "due-soon", label: "Due Soon" },
-  { key: "verified", label: "Verified" },
 ];
 
 const TAB_EMPTY: Record<TabKey, string> = {
   "all":      "No items available right now.",
   "nearby":   "No items in this city yet.",
   "due-soon": "No items from registers due in the next 6 weeks.",
-  "verified": "No items from verified mothers yet.",
 };
 
 export default function RegistersPage() {
@@ -177,9 +174,6 @@ export default function RegistersPage() {
         (new Date(item.register.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
       return diffDays <= 42;
-    }
-    if (tab === "verified") {
-      return (item.register.creator.verificationLevel ?? 0) >= 2;
     }
     return true;
   });
@@ -287,7 +281,6 @@ export default function RegistersPage() {
             tabFiltered.map((item) => {
               const reg        = item.register;
               const firstName  = reg.creator.name.split(" ")[0];
-              const isVerified = (reg.creator.verificationLevel ?? 0) >= 2;
               const isSaved    = savedState[item.id] ?? false;
               const dueLabel   = formatDueDate(reg.dueDate);
               const qty        = parseInt(item.quantity, 10);
@@ -339,16 +332,11 @@ export default function RegistersPage() {
                     )}
                   </div>
 
-                  {/* Metadata: price · verified */}
+                  {/* Metadata: price */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                     {item.standardPriceCents > 0 && (
                       <span style={{ fontSize: 12, fontWeight: 600, color: "#7a5a2a", fontFamily: "Nunito, sans-serif" }}>
                         {fmtMoney(item.standardPriceCents)}
-                      </span>
-                    )}
-                    {isVerified && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#1a7a5e" }}>
-                        <BadgeCheck size={11} strokeWidth={1.75} /> Verified
                       </span>
                     )}
                   </div>

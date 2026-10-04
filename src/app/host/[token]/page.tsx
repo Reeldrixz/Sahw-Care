@@ -46,7 +46,7 @@ interface Item {
 }
 interface Register {
   id: string; title: string; city: string; dueDate: string; status: string;
-  intro: string | null; firstName: string; verificationLevel: number; items: Item[];
+  intro: string | null; firstName: string; items: Item[];
 }
 interface Payload {
   event: { title: string; hostName: string; goalCents: number; status: string; startedAt: string | null };

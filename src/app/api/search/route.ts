@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
         ],
       },
       include: {
-        creator: { select: { name: true, verificationLevel: true } },
+        creator: { select: { name: true } },
       },
       take: 5,
       orderBy: { createdAt: "desc" },
@@ -67,7 +67,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     items,
     bundles,
-    registers,
+    // First name only, like every other register surface. The full name is
+    // reduced here so it never leaves the server.
+    registers: registers.map(({ creator, ...r }) => ({
+      ...r,
+      creator: { firstName: creator.name.split(" ")[0] || creator.name },
+    })),
     total: items.length + bundles.length + registers.length,
     query: q,
   });

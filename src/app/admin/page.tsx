@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
+import VerificationBadge from "@/components/VerificationBadge";
+import type { VerificationBadge as VerificationBadgeKind } from "@/lib/verificationBadge";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -253,13 +255,13 @@ interface RegQueueEntry {
   registerItem: {
     id: string; name: string; category: string; quantity: string;
     totalFundedCents: number; standardPriceCents: number;
-    register: { id: string; title: string; city: string; creator: { id: string; name: string; location: string | null } };
+    register: { id: string; title: string; city: string; creator: { id: string; name: string; location: string | null; verificationBadge: VerificationBadgeKind } };
   };
 }
 
 interface AwaitingAddressEntry {
   id: string; name: string; updatedAt: string;
-  register: { id: string; creatorId: string; city: string | null; creator: { id: string; name: string } };
+  register: { id: string; creatorId: string; city: string | null; creator: { id: string; name: string; verificationBadge: VerificationBadgeKind } };
 }
 
 interface Financials {
@@ -281,13 +283,13 @@ interface CatalogAdminEntry {
 interface PendingApproval {
   id: string; name: string; category: string; quantity: string; note: string | null; createdAt: string;
   catalogItem: { id: string; name: string; sku: string; requiresApproval: boolean } | null;
-  register: { id: string; title: string; city: string; creator: { id: string; name: string } };
+  register: { id: string; title: string; city: string; creator: { id: string; name: string; verificationBadge: VerificationBadgeKind } };
 }
 
 interface AdminRefundEntry {
   id: string; amountCents: number; createdAt: string; stripePaymentIntentId: string | null;
   donor: { name: string; email: string | null };
-  registerItem: { name: string; register: { title: string; creator: { name: string } } };
+  registerItem: { name: string; register: { title: string; creator: { name: string; verificationBadge: VerificationBadgeKind } } };
 }
 
 function catalogStalePill(lastVerifiedAt: string | null): { label: string; color: string; bg: string } {
@@ -2173,7 +2175,7 @@ export default function AdminPage() {
                             <tr key={entry.id}>
                               <td style={{ fontWeight: 700, fontSize: 12 }}>{entry.name}</td>
                               <td style={{ fontSize: 12 }}>
-                                {entry.register.creator.name.split(" ")[0]}
+                                {entry.register.creator.name.split(" ")[0]} <VerificationBadge badge={entry.register.creator.verificationBadge} />
                                 <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.register.city}</div>
                               </td>
                               <td style={{ fontSize: 12, color: urgency, fontWeight: 700 }}>{daysWaiting}d</td>
@@ -2222,7 +2224,7 @@ export default function AdminPage() {
                             <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.registerItem.register.city}</div>
                           </td>
                           <td style={{ fontSize: 12 }}>
-                            {entry.registerItem.register.creator.name.split(" ")[0]}
+                            {entry.registerItem.register.creator.name.split(" ")[0]} <VerificationBadge badge={entry.registerItem.register.creator.verificationBadge} />
                             <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.registerItem.register.creator.location}</div>
                           </td>
                           <td style={{ fontSize: 12, fontWeight: 700, color: "#1a7a5e" }}>
@@ -2633,7 +2635,7 @@ export default function AdminPage() {
                         <div style={{ background: "#f9fafb", borderRadius: 8, padding: "10px 12px", marginBottom: 12, fontSize: 12 }}>
                           <div style={{ fontWeight: 700, marginBottom: 2 }}>Register: {item.register.title}</div>
                           <div style={{ color: "var(--mid)" }}>
-                            by {item.register.creator.name} · {item.register.city}
+                            by {item.register.creator.name} <VerificationBadge badge={item.register.creator.verificationBadge} /> · {item.register.city}
                           </div>
                         </div>
 
@@ -2743,7 +2745,7 @@ export default function AdminPage() {
                           <td>{r.registerItem.name}</td>
                           <td style={{ fontSize: 12, color: "var(--mid)" }}>
                             <div>{r.registerItem.register.title}</div>
-                            <div style={{ fontSize: 11 }}>{r.registerItem.register.creator.name}</div>
+                            <div style={{ fontSize: 11 }}>{r.registerItem.register.creator.name} <VerificationBadge badge={r.registerItem.register.creator.verificationBadge} /></div>
                           </td>
                           <td style={{ fontWeight: 700 }}>${(r.amountCents / 100).toFixed(2)}</td>
                           <td>

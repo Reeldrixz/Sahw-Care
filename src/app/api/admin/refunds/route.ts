@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 import { getStripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -21,14 +22,19 @@ export async function GET(req: NextRequest) {
         registerItem: {
           select: {
             name: true,
-            register: { select: { title: true, creator: { select: { name: true } } } },
+            register: { select: { title: true, creator: { select: { name: true, ...VERIFICATION_BADGE_FIELDS } } } },
           },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ fundings });
+    return NextResponse.json({
+      fundings: fundings.map((f) => ({
+        ...f,
+        registerItem: { ...f.registerItem, register: { ...f.registerItem.register, creator: withVerificationBadge(f.registerItem.register.creator) } },
+      })),
+    });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

@@ -37,7 +37,7 @@ interface SearchBundle {
 }
 interface SearchRegister {
   id: string; title: string; city: string; dueDate: string;
-  creator: { name: string; verificationLevel: number };
+  creator: { firstName: string };
 }
 interface SearchResults {
   items: SearchItem[];
@@ -131,7 +131,6 @@ function BundleRow({ bundle, onClick }: { bundle: SearchBundle; onClick: () => v
 }
 
 function RegisterRow({ reg, onClick }: { reg: SearchRegister; onClick: () => void }) {
-  const isVerified = reg.creator.verificationLevel >= 1;
   return (
     <button
       onClick={onClick}
@@ -150,7 +149,7 @@ function RegisterRow({ reg, onClick }: { reg: SearchRegister; onClick: () => voi
           {reg.title}
         </div>
         <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
-          {reg.city} · by {isVerified ? "✓ " : ""}{reg.creator.name}
+          {reg.city} · by {reg.creator.firstName}
         </div>
       </div>
     </button>

@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle, Package, Loader2, Users, Heart,
-  BadgeCheck, MapPin, Square, SquareDot, ChevronRight,
+  MapPin, Square, SquareDot, ChevronRight,
   ShieldCheck, ImageOff, HandHeart, AlertCircle, Share2, Check, Megaphone,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import VerificationBadge from "@/components/VerificationBadge";
+import type { VerificationBadge as VerificationBadgeKind } from "@/lib/verificationBadge";
 import Toast from "@/components/Toast";
 import HowKradelWorks from "@/components/HowKradelWorks";
 import { suppressFeedback } from "@/lib/feedbackSuppress";
@@ -47,7 +49,7 @@ interface RegisterData {
   status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
   addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
   featureConsent: boolean;
-  creator: { id: string; name: string; location: string | null; verificationLevel?: number };
+  creator: { id: string; name: string; location: string | null; verificationBadge: VerificationBadgeKind };
   items: RegisterItemData[];
 }
 
@@ -436,7 +438,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const isDonorView  = !isMom;
   const isClosed     = register.status === "CLOSED";
   const firstName    = register.creator.name.split(" ")[0];
-  const isVerified   = (register.creator.verificationLevel ?? 0) >= 2;
+  const badge        = register.creator.verificationBadge;
   const stageLine    = getStageLine(register.dueDate);
 
   // Donors never see PENDING_APPROVAL items (belt and suspenders — API already filters)
@@ -502,11 +504,6 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-            {isVerified && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "rgba(26,122,94,0.12)", padding: "3px 8px", borderRadius: 20 }}>
-                <BadgeCheck size={11} strokeWidth={2.5} /> Verified mother
-              </span>
-            )}
             {allFulfilled && (
               <span style={{ fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "rgba(26,122,94,0.12)", padding: "3px 10px", borderRadius: 20 }}>
                 Completed ✓
@@ -519,8 +516,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
 
-          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4 }}>
-            {firstName}&apos;s Register
+          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {firstName}&apos;s Register <VerificationBadge badge={badge} />
           </div>
           <div style={{ fontSize: 12, color: "#3d7a62", fontWeight: 600, display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
             <MapPin size={11} />
@@ -1047,10 +1044,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   {selectedItem.quantity && selectedItem.quantity !== "1" && ` · Qty: ${selectedItem.quantity}`}
                 </div>
 
-                {/* Verified badge line (Section 3) */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 14, fontSize: 12, fontWeight: 600, color: isVerified ? "#1a7a5e" : "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
-                  {isVerified && <ShieldCheck size={16} color="#1a7a5e" strokeWidth={1.75} />}
-                  {isVerified ? `Helping ${firstName}, Verified mother` : `Helping ${firstName}`}
+                {/* Who she's helping, with the same verification badge as the header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14, fontSize: 12, fontWeight: 600, color: "var(--mid)", fontFamily: "Nunito, sans-serif", flexWrap: "wrap" }}>
+                  Helping {firstName} <VerificationBadge badge={badge} />
                 </div>
 
                 {/* Status badges */}

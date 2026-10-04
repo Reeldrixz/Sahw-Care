@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,16 @@ export async function GET(req: NextRequest) {
           register: {
             select: {
               id: true, creatorId: true, city: true,
-              creator: { select: { id: true, name: true } },
+              creator: { select: { id: true, name: true, ...VERIFICATION_BADGE_FIELDS } },
             },
           },
         },
         orderBy: { updatedAt: "asc" },
         take: 200,
       });
-      return NextResponse.json({ awaitingAddress: items });
+      return NextResponse.json({
+        awaitingAddress: items.map((i) => ({ ...i, register: { ...i.register, creator: withVerificationBadge(i.register.creator) } })),
+      });
     }
 
     const queue = await prisma.fulfillmentQueue.findMany({
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
             register: {
               select: {
                 id: true, title: true, city: true,
-                creator: { select: { id: true, name: true, location: true } },
+                creator: { select: { id: true, name: true, location: true, ...VERIFICATION_BADGE_FIELDS } },
               },
             },
           },
@@ -52,7 +55,12 @@ export async function GET(req: NextRequest) {
       ],
     });
 
-    return NextResponse.json({ queue });
+    return NextResponse.json({
+      queue: queue.map((q) => ({
+        ...q,
+        registerItem: { ...q.registerItem, register: { ...q.registerItem.register, creator: withVerificationBadge(q.registerItem.register.creator) } },
+      })),
+    });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

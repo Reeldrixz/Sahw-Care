@@ -4,11 +4,12 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle, Loader2, Square, SquareDot, ChevronRight, Users,
-  BadgeCheck, MapPin, HandHeart, Heart, ShieldCheck, ImageOff, Share2, Check,
+  MapPin, HandHeart, Heart, ShieldCheck, ImageOff, Share2, Check,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { PublicRegister, PublicRegisterItem } from "@/lib/registers";
 import GuestFundSheet from "@/components/GuestFundSheet";
+import VerificationBadge from "@/components/VerificationBadge";
 
 function fmtMoney(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
@@ -76,7 +77,6 @@ export default function PublicRegisterClient({
   const [guestItem, setGuestItem] = useState<PublicRegisterItem | null>(null);
 
   const firstName  = register.firstName;
-  const isVerified = register.verificationLevel >= 2;
   const isClosed   = register.status === "CLOSED";
   const isCompleted = register.status === "COMPLETED";
   const stageLine  = getStageLine(register.dueDate);
@@ -143,11 +143,6 @@ export default function PublicRegisterClient({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, marginBottom: 6 }}>
-            {isVerified && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "rgba(26,122,94,0.12)", padding: "3px 8px", borderRadius: 20 }}>
-                <BadgeCheck size={11} strokeWidth={2.5} /> Verified mother
-              </span>
-            )}
             {(isCompleted || isFullyFunded) && (
               <span style={{ fontSize: 11, fontWeight: 700, color: "#1a7a5e", background: "rgba(26,122,94,0.12)", padding: "3px 10px", borderRadius: 20 }}>Fully funded ✓</span>
             )}
@@ -156,8 +151,8 @@ export default function PublicRegisterClient({
             )}
           </div>
 
-          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4 }}>
-            {firstName}&apos;s Register
+          <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {firstName}&apos;s Register <VerificationBadge badge={register.verificationBadge} />
           </div>
           <div style={{ fontSize: 12, color: "#3d7a62", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             <MapPin size={11} />

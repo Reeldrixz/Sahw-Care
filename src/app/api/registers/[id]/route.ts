@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const register = await prisma.register.findUnique({
     where: { id },
     include: {
-      creator: { select: { id: true, name: true, location: true, verificationLevel: true } },
+      creator: { select: { id: true, name: true, location: true, ...VERIFICATION_BADGE_FIELDS } },
       items: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -33,9 +34,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const isCreator = auth?.userId === register.creatorId;
+  const withBadge = { ...register, creator: withVerificationBadge(register.creator) };
   const responseRegister = isCreator
-    ? register
-    : { ...register, items: register.items.filter((i) => i.status !== "PENDING_APPROVAL") };
+    ? withBadge
+    : { ...withBadge, items: register.items.filter((i) => i.status !== "PENDING_APPROVAL") };
 
   return NextResponse.json({ register: responseRegister });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
           id: true,
           title: true,
           city: true,
-          creator: { select: { id: true, name: true } },
+          creator: { select: { id: true, name: true, ...VERIFICATION_BADGE_FIELDS } },
         },
       },
       catalogItem: {
@@ -26,5 +27,7 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ items });
+  return NextResponse.json({
+    items: items.map((i) => ({ ...i, register: { ...i.register, creator: withVerificationBadge(i.register.creator) } })),
+  });
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, ArrowLeft, Bookmark } from "lucide-react";
+import { ArrowLeft, Bookmark } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,7 +20,7 @@ interface SavedItemData {
     id: string;
     city: string;
     dueDate: string;
-    creator: { id: string; name: string; verificationLevel: number; circleContext: string | null };
+    creator: { id: string; name: string; circleContext: string | null };
   };
 }
 
@@ -125,7 +125,6 @@ export default function SavedItemsPage() {
             items.map((item) => {
               const reg        = item.register;
               const firstName  = reg.creator.name.split(" ")[0];
-              const isVerified = (reg.creator.verificationLevel ?? 0) >= 2;
               const dueLabel   = formatDueDate(reg.dueDate);
               const qty        = parseInt(item.quantity, 10);
               const showQty    = !isNaN(qty) && qty > 1;
@@ -180,11 +179,6 @@ export default function SavedItemsPage() {
                     {item.standardPriceCents > 0 && (
                       <span style={{ fontSize: 12, fontWeight: 600, color: "#7a5a2a", fontFamily: "Nunito, sans-serif" }}>
                         {fmtMoney(item.standardPriceCents)}
-                      </span>
-                    )}
-                    {isVerified && (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 700, color: "#1a7a5e" }}>
-                        <BadgeCheck size={11} strokeWidth={1.75} /> Verified
                       </span>
                     )}
                   </div>

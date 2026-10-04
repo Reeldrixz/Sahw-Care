@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { AdminFacingRegister, DonorFacingRegister } from "@/types/register-dtos";
+import { VERIFICATION_BADGE_FIELDS, verificationBadgeFor, type VerificationBadge } from "@/lib/verificationBadge";
 
 // ── Public share helper: privacy-safe, no auth required ───────────────────────
 // Powers the shareable /r/[id] page. Exposes the mother's FIRST NAME only and
@@ -29,7 +30,7 @@ export interface PublicRegister {
   status:            string;
   intro:             string | null;
   firstName:         string;
-  verificationLevel: number;
+  verificationBadge: VerificationBadge;
   items:             PublicRegisterItem[];
 }
 
@@ -43,8 +44,10 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
       dueDate: true,
       status:  true,
       intro:   true,
-      // creator: first name + verification only — never full name, location, contact
-      creator: { select: { name: true, verificationLevel: true } },
+      // creator: first name + the inputs to her verification badge only — never
+      // full name, location, contact. The badge inputs are reduced to the badge
+      // below and are not returned.
+      creator: { select: { name: true, ...VERIFICATION_BADGE_FIELDS } },
       items: {
         where:   { status: { notIn: ["PENDING_APPROVAL", "CANCELLED"] } },
         orderBy: { createdAt: "asc" },
@@ -78,7 +81,7 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
     status:            register.status,
     intro:             register.intro ?? null,
     firstName:         register.creator.name.split(" ")[0] || register.creator.name,
-    verificationLevel: register.creator.verificationLevel ?? 0,
+    verificationBadge: verificationBadgeFor(register.creator),
     items: register.items.map((i) => ({
       id:                 i.id,
       name:               i.name,
@@ -105,10 +108,16 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
 //    filter someone can forget to apply, reorder, or drop while refactoring.
 //    The same discipline as status: "PUBLISHED" on the Experiences reader.
 //
-// 2. It returns the EXACT shape fetchPublicRegister returns, by calling it.
-//    That is what makes "consenting reveals nothing new" structurally true
-//    instead of a claim in a comment: there is no second mapping that could
-//    drift and start including a surname, a contact detail, or an address.
+// 2. It returns fetchPublicRegister's shape, by calling it, MINUS the
+//    verification badge. That is what makes "consenting reveals nothing new"
+//    structurally true instead of a claim in a comment: there is no second
+//    mapping that could drift and start including a surname, a contact detail,
+//    or an address. It can only ever be a subset of the public page.
+//
+//    The badge is removed because it belongs to a donor who has opened her
+//    register (/r, /registers/[id]), not to a broadcast, an event listing or a
+//    host's tooling. Stripping it here, not per consumer, means /e, the host
+//    dashboard and the overlay cannot receive it even by accident.
 //
 // ACTIVE only. A COMPLETED register is deliberately excluded even with consent
 // on: she agreed while her register was live and asking for help, and appearing
@@ -118,7 +127,9 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
 //
 // Consent is read LIVE here. Anything that caches this pool must re-check at
 // display time — if she revokes, a cached pool must not keep her featurable.
-export async function fetchFeaturableRegisters(limit = 50): Promise<PublicRegister[]> {
+export type FeaturableRegister = Omit<PublicRegister, "verificationBadge">;
+
+export async function fetchFeaturableRegisters(limit = 50): Promise<FeaturableRegister[]> {
   const rows = await prisma.register.findMany({
     where: {
       featureConsent: true,
@@ -132,7 +143,9 @@ export async function fetchFeaturableRegisters(limit = 50): Promise<PublicRegist
   // Deliberately re-fetched through the public helper rather than selected here.
   // One definition of what is public, one place to audit.
   const full = await Promise.all(rows.map((r) => fetchPublicRegister(r.id)));
-  return full.filter((r): r is PublicRegister => r !== null);
+  return full
+    .filter((r): r is PublicRegister => r !== null)
+    .map(({ verificationBadge: _badge, ...r }) => r);
 }
 
 // ── Admin helper: includes all address data ───────────────────────────────────

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
           id: true,
           city: true,
           dueDate: true,
-          creator: { select: { id: true, name: true, verificationLevel: true, circleContext: true } },
+          creator: { select: { id: true, name: true, circleContext: true } },
         },
       },
     },
