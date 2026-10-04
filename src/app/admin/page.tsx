@@ -85,6 +85,8 @@ interface CircleInfo {
 
 interface FlaggedPostInfo {
   id: string; reason: string; status: string; createdAt: string;
+  reviewedAt: string | null; reviewedByName: string | null;
+  hiddenByUserId: string | null; hiddenByName: string | null; hiddenAt: string | null;
   post: {
     id: string; content: string; userId: string;
     user: { id: string; name: string; avatar: string | null };
@@ -1872,6 +1874,21 @@ export default function AdminPage() {
                       <div style={{ background: "var(--bg)", borderRadius: 8, padding: "10px 12px", fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
                         {f.post.content}
                       </div>
+                      {/* Who acted on it, from the record kept instead of a delete. */}
+                      {(f.hiddenByName || f.reviewedByName) && (
+                        <div style={{ fontSize: 11, color: "var(--mid)", marginBottom: 10, lineHeight: 1.6 }}>
+                          {f.hiddenByName && f.hiddenAt && (
+                            <div>
+                              Hidden by {f.hiddenByUserId === f.post.userId ? "its author" : `circle leader ${f.hiddenByName}`} on {new Date(f.hiddenAt).toLocaleDateString()}
+                            </div>
+                          )}
+                          {f.reviewedByName && f.reviewedAt && (
+                            <div>
+                              {f.status === "REMOVED" ? "Removed" : "Approved"} by {f.reviewedByName} on {new Date(f.reviewedAt).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {f.post.reports.length > 0 && (
                         <div style={{ marginBottom: 10 }}>
                           {f.post.reports.map((r, i) => (

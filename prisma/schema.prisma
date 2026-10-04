@@ -871,6 +871,12 @@ model FlaggedPost {
   // identityOverrideByAdminId). Null until reviewed, and on reviews made before
   // this field existed.
   reviewedByAdminId String?
+  // Who hid it by deleting it while it had open reports, and when: the author
+  // or a circle leader. The post was hidden instead of deleted so the report
+  // survives; the review stays with an admin. (An admin deleting it is a
+  // removal, recorded in reviewedByAdminId instead.) Soft reference.
+  hiddenByUserId    String?
+  hiddenAt          DateTime?
   createdAt  DateTime   @default(now())
 
   post CirclePost @relation(fields: [postId], references: [id], onDelete: Cascade)
