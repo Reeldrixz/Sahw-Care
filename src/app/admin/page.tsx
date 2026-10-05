@@ -1423,13 +1423,17 @@ export default function AdminPage() {
                           )}
                           {/* Identity override. Shown only where it can do
                               something: a mother who is not yet identity
-                              verified. Unlocks bundles, items, registers and
-                              address confirmation together. */}
+                              verified. identityVerified is read by three gates
+                              (lib/access.ts): applying for a bundle, confirming
+                              a shipment address (a partner referral also
+                              passes), and Discover claims after her first. It
+                              does not affect creating a register or adding
+                              items. */}
                           {u.role === "RECIPIENT" && !u.identityVerified && (
                             <button
                               className="action-btn"
                               style={{ background: "rgba(109,40,217,0.1)", color: "#6d28d9", fontWeight: 800 }}
-                              title="Vouch for her identity without Persona — unlocks bundles, items, registers, address"
+                              title="Vouch for her ID without Persona. Unlocks: bundles, shipment address (referral also passes), Discover claims after the first. Registers and items don't need it."
                               onClick={() => overrideIdentity(u)}
                             >
                               🪪 Verify ID
