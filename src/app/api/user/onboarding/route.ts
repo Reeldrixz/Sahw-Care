@@ -96,11 +96,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ user: updated, circleId: null });
   }
 
-  // ── Mother role is referral-only ─────────────────────────────────────────
-  // The RECIPIENT (mother) role is granted ONLY through the referral/partner
-  // path — never self-serve. If a user who is not already a RECIPIENT selects
-  // pregnant/postpartum, do NOT promote them or run mother onboarding. Complete
-  // a donor-role account and route them to the partner directory instead.
+  // ── Mother role is never self-serve ──────────────────────────────────────
+  // The RECIPIENT (mother) role is granted only by a partner referral code or an
+  // admin grant (both via referralGrantFields). If a user who is not already a
+  // RECIPIENT selects pregnant/postpartum, do NOT promote them or run mother
+  // onboarding. Complete a donor-role account and route them to the partner
+  // directory instead.
   const currentUser = await prisma.user.findUnique({
     where:  { id: auth.userId },
     select: { role: true, motherIntentAt: true },
@@ -216,12 +217,14 @@ export async function POST(req: NextRequest) {
       ...(countryCode && { countryCode }),
       ...(countryFlag && { countryFlag }),
       // Role is intentionally NOT set here. This block is reached only by users
-      // who are already RECIPIENT (granted via the referral/partner path); the
+      // who are already RECIPIENT (granted by a partner code or an admin); the
       // self-serve DONOR → RECIPIENT promotion has been removed.
-      // The referral grant (src/lib/referral.ts `referralGrantFields`, applied
-      // in api/auth/register, api/auth/google, and api/referral/redeem) is the
-      // ONLY place that sets role=RECIPIENT. It sets onboardingComplete=false
-      // and journeyType=null precisely so the newly-granted mother re-runs this
+      // role=RECIPIENT is set only by referralGrantFields (src/lib/referral.ts),
+      // used by both grant paths: a partner referral code (api/auth/register,
+      // api/auth/google, api/referral/redeem) and the admin grantRecipient
+      // action (api/admin/users/[id]). The generic admin update refuses
+      // RECIPIENT. referralGrantFields sets onboardingComplete=false and
+      // journeyType=null precisely so the newly-granted mother re-runs this
       // onboarding here (stage + cohort circle assignment).
     },
     select: {

@@ -20,12 +20,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (action === "manualVerify") {
       // Step 1: contact + document verification.
       //
-      // This does NOT set identityVerified, and so does NOT unlock bundles,
-      // item creation, register creation, or address confirmation — all four
-      // read identityVerified, which only Persona or the overrideIdentity
-      // action above can set. This comment previously claimed the user was
-      // "fully unlocked" here, which was untrue and made a missing feature look
-      // like a bug for a long time. Use overrideIdentity for those gates.
+      // This does NOT set identityVerified, so it does not unlock what that
+      // gates (see lib/access.ts): applying for a care bundle, confirming a
+      // shipment address (unless she was partner-referred), and claiming a
+      // Discover item after her first. Only Persona or the overrideIdentity
+      // action below sets identityVerified; use that for those gates.
+      // Register creation and adding register items do not read it at all.
       await prisma.user.update({
         where: { id },
         data: {
@@ -54,11 +54,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // ── Identity override (admin bypass of Persona ID verification) ──────────
-    // identityVerified is the single boolean four gates read: applying for a
-    // bundle, creating an item, creating a register, and confirming a shipment
-    // address (where a partner referral also passes, so this override only
-    // matters there for mothers with no code). Its only other writer is the
-    // Persona webhook on inquiry.approved.
+    // identityVerified is read by three gates in lib/access.ts:
+    //   canApplyForBundle    — applying for a care bundle
+    //   canReceiveShipment   — confirming a register shipment address; a
+    //                          partner referral also passes, so this override
+    //                          only matters there for mothers with no code
+    //   canClaimDiscoverItem — Discover claims after her first (the first
+    //                          needs manual review approval instead)
+    // Creating a register or adding items to one does not read it. Its only
+    // other writer is the Persona webhook on inquiry.approved.
     // Without this action there is no path to it at all for a mother Persona
     // cannot serve — which is not a hypothetical, it is the live blocker.
     //

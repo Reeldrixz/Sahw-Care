@@ -72,6 +72,9 @@ export function canReadExperiences(user: {
 }
 
 export function canCreateRegister(user: UserForAccess): AccessResult {
+  // Hold first, like every other gate here: an account under review does not
+  // open a new register for donors to fund while that review is open.
+  if (user.accountHold) return HOLD_RESULT;
   if (
     user.manualReviewStatus === "PENDING" ||
     user.manualReviewStatus === "APPROVED"
