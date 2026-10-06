@@ -19,7 +19,7 @@ import RegisterIntroEditor from "@/components/RegisterIntroEditor";
 import RegisterTour from "@/components/RegisterTour";
 import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
-import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
+import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkoutFees";
 
 interface FundingEntry {
   firstName: string;
@@ -299,7 +299,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     setFunded(false);
     setFundedAmount(0);
     const remaining = item.standardPriceCents - item.totalFundedCents;
-    setFundAmount(remaining > 0 ? String(Math.ceil(remaining / 100)) : "");
+    setFundAmount(remaining > 0 ? centsToAmountInput(remaining) : "");
 
     if (item._count && item._count.funding > 0 && user) {
       const res = await fetch(`/api/registers/${id}/items/${item.id}/funding`);
@@ -319,7 +319,10 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const handleFund = async () => {
     if (!user) { router.push("/auth"); return; }
     if (!selectedItem || !breakdown) return;
-    if (breakdown.itemSubtotal < MIN_GIFT_CENTS) { setToast(`Minimum contribution is $${MIN_GIFT_CENTS / 100}`); return; }
+    const left = Math.max(0, selectedItem.standardPriceCents - selectedItem.totalFundedCents);
+    const minGift = minGiftFor(left);
+    if (breakdown.itemSubtotal < minGift) { setToast(`Minimum contribution is $${centsToAmountInput(minGift)}`); return; }
+    if (left > 0 && breakdown.itemSubtotal > left) { setToast(`Only $${centsToAmountInput(left)} is still needed for this item.`); return; }
     setProcessing(true);
     const res = await fetch(`/api/registers/${id}/items/${selectedItem.id}/fund`, {
       method: "POST",
@@ -1192,12 +1195,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                     {user ? (
                       <button
                         onClick={handleFund}
-                        disabled={processing || !breakdown || breakdown.itemSubtotal < MIN_GIFT_CENTS}
+                        disabled={processing || !breakdown || breakdown.itemSubtotal < minGiftFor(remaining)}
                         style={{
                           width: "100%", padding: "14px", borderRadius: 12, border: "none",
-                          background: processing || !breakdown || breakdown.itemSubtotal < MIN_GIFT_CENTS ? "#9ca3af" : "var(--green)",
+                          background: processing || !breakdown || breakdown.itemSubtotal < minGiftFor(remaining) ? "#9ca3af" : "var(--green)",
                           color: "white", fontSize: 14, fontWeight: 800,
-                          cursor: processing || !breakdown || breakdown.itemSubtotal < MIN_GIFT_CENTS ? "default" : "pointer",
+                          cursor: processing || !breakdown || breakdown.itemSubtotal < minGiftFor(remaining) ? "default" : "pointer",
                           fontFamily: "Nunito, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                         }}
                       >

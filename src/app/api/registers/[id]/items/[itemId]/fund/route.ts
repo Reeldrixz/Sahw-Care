@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
-import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
+import { computeBreakdown, checkContributionAmount } from "@/lib/checkoutFees";
 import { rateLimitAsync } from "@/lib/rateLimit";
 import { resolveEventIdForAttribution } from "@/lib/fundraisingEvent";
 
@@ -31,10 +31,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!amountCents || typeof amountCents !== "number" || !Number.isInteger(amountCents) || amountCents <= 0) {
     return NextResponse.json({ error: "amountCents must be a positive integer" }, { status: 400 });
   }
-  if (amountCents < MIN_GIFT_CENTS) {
-    return NextResponse.json({ error: `Minimum contribution is $${MIN_GIFT_CENTS / 100}` }, { status: 400 });
-  }
-
   const [item, donor] = await Promise.all([
     prisma.registerItem.findUnique({
       where:   { id: itemId },
@@ -50,6 +46,16 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
   if (["FULLY_FUNDED", "IN_FULFILLMENT", "FULFILLED"].includes(item.fundingStatus)) {
     return NextResponse.json({ error: "This item is already fully funded" }, { status: 409 });
+  }
+
+  // Capped at what the item still needs; the minimum gift, except that the
+  // exact remaining amount is always allowed (lib/checkoutFees).
+  const amountCheck = checkContributionAmount(amountCents, item);
+  if (!amountCheck.ok) {
+    return NextResponse.json(
+      { error: amountCheck.error, remainingCents: amountCheck.remainingCents },
+      { status: amountCheck.status },
+    );
   }
 
   const breakdown = computeBreakdown(amountCents, Boolean(supportOn), Boolean(coverStripe));

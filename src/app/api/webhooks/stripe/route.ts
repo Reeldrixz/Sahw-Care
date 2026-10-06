@@ -4,6 +4,9 @@ import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { awardImpactPoints } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
+import {
+  withStripeEvent, isDuplicateStripeEvent, applyConfirmedPayment, applyRefund,
+} from "@/lib/stripeLedger";
 
 export const dynamic = "force-dynamic";
 
@@ -23,21 +26,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Idempotency guard
+  // Fast path for a redelivery of an event already processed. Not the guard
+  // itself: every handler records the StripeEvent row inside the same
+  // transaction as its work (lib/stripeLedger withStripeEvent), so an event is
+  // marked processed only if its work committed.
   const alreadyProcessed = await prisma.stripeEvent.findUnique({ where: { eventId: event.id } });
   if (alreadyProcessed) return NextResponse.json({ ok: true });
 
-  await prisma.stripeEvent.create({ data: { eventId: event.id, type: event.type } });
-
   try {
     if (event.type === "checkout.session.completed") {
-      await handleSessionCompleted(event.data.object as Stripe.Checkout.Session);
+      await handleSessionCompleted(event, event.data.object as Stripe.Checkout.Session);
     } else if (event.type === "checkout.session.expired") {
-      await handleSessionExpired(event.data.object as Stripe.Checkout.Session);
+      await handleSessionExpired(event, event.data.object as Stripe.Checkout.Session);
     } else if (event.type === "charge.refunded") {
-      await handleChargeRefunded(event.data.object as Stripe.Charge);
+      await handleChargeRefunded(event, event.data.object as Stripe.Charge);
+    } else {
+      // Not one we act on; recorded so redeliveries short-circuit.
+      await withStripeEvent(event.id, event.type, async () => {});
     }
   } catch (err) {
+    // The same event delivered twice at once: the other delivery committed it.
+    if (isDuplicateStripeEvent(err)) return NextResponse.json({ ok: true });
+    // Anything else rolled back with its StripeEvent row, so Stripe's retry
+    // will process it.
     console.error(`Webhook handler error for ${event.type}:`, err);
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
@@ -45,27 +56,30 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-async function handlePlatformSupportCompleted(session: Stripe.Checkout.Session) {
+function paymentIntentIdOf(pi: string | Stripe.PaymentIntent | null): string | null {
+  return typeof pi === "string" ? pi : pi?.id ?? null;
+}
+
+async function handlePlatformSupportCompleted(event: Stripe.Event, session: Stripe.Checkout.Session) {
   const contributionId = session.metadata?.contributionId;
   const donorId        = session.metadata?.donorId;
-  if (!contributionId || !donorId) return;
 
-  const contribution = await prisma.supportContribution.findUnique({ where: { id: contributionId } });
-  if (!contribution || contribution.status !== "PENDING") return;
-
-  const paymentIntentId = typeof session.payment_intent === "string"
-    ? session.payment_intent
-    : session.payment_intent?.id ?? null;
-
-  await prisma.supportContribution.update({
-    where: { id: contributionId },
-    data:  { status: "CONFIRMED", stripePaymentIntentId: paymentIntentId, confirmedAt: new Date() },
+  await withStripeEvent(event.id, event.type, async (tx) => {
+    if (!contributionId || !donorId) return;
+    await tx.supportContribution.updateMany({
+      where: { id: contributionId, status: "PENDING" },
+      data:  {
+        status: "CONFIRMED",
+        stripePaymentIntentId: paymentIntentIdOf(session.payment_intent),
+        confirmedAt: new Date(),
+      },
+    });
   });
 }
 
-async function handleSessionCompleted(session: Stripe.Checkout.Session) {
+async function handleSessionCompleted(event: Stripe.Event, session: Stripe.Checkout.Session) {
   if (session.metadata?.type === "platform_support") {
-    await handlePlatformSupportCompleted(session);
+    await handlePlatformSupportCompleted(event, session);
     return;
   }
 
@@ -83,12 +97,14 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
   // fundingId, itemId and registerId remain REQUIRED. Without fundingId there is
   // no row to mark paid and nothing this function can safely do, which means a
   // real payment is sitting at Stripe unrecorded — the loudest possible failure,
-  // so it is logged as an error rather than returning quietly.
+  // so it is logged as an error. The event is still recorded: a retry carries
+  // the same metadata and could not do better.
   if (!fundingId || !itemId || !registerId) {
     console.error(
       "[stripe-webhook] PAYMENT RECEIVED WITH INCOMPLETE METADATA — money may be unrecorded",
       { sessionId: session.id, fundingId, itemId, registerId },
     );
+    await withStripeEvent(event.id, event.type, async () => {});
     return;
   }
   if (!donorId && !isGuest) {
@@ -100,96 +116,42 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
     );
   }
 
-  const funding = await prisma.registerItemFunding.findUnique({ where: { id: fundingId } });
-  // IDEMPOTENCY. Stripe retries webhooks, and a handler that ran once must not
-  // run twice. This guard is the whole protection against double-counting a
-  // payment, and it must survive any future refactor of this function.
-  if (!funding || funding.status !== "PENDING") return;
-
-  const paymentIntentId = typeof session.payment_intent === "string"
-    ? session.payment_intent
-    : session.payment_intent?.id ?? null;
-
-  const item = await prisma.registerItem.findUnique({
-    where:   { id: itemId },
-    include: {
-      register: {
-        select: {
-          creatorId: true, title: true, addressMode: true,
-          savedAddress: { select: { id: true } },
-        },
-      },
-    },
-  });
-  if (!item) return;
-
-  const { amountCents } = funding;
-  const newTotal       = item.totalFundedCents + amountCents;
-  const isFullyFunded  = item.standardPriceCents > 0 && newTotal >= item.standardPriceCents;
-  const isFullFundInOne = isFullyFunded && item.totalFundedCents === 0;
-
-  const newFundingStatus = isFullyFunded
-    ? "FULLY_FUNDED"
-    : newTotal > 0 ? "PARTIAL" : "UNFUNDED";
-
-  // Other donors who already funded this item, for the "it's complete" notice.
-  // donorId may be null (guest), and `{ not: null }` in Prisma means "has a
-  // value" — which is exactly right here: guests have no inbox to notify, so
-  // they are excluded from the recipient list while still being counted as
-  // contributors everywhere that counts rows rather than users.
-  const previousDonorIds = isFullyFunded
-    ? (await prisma.registerItemFunding.findMany({
-        where: {
-          registerItemId: itemId,
-          status:         "CONFIRMED",
-          donorId:        donorId ? { not: donorId } : { not: null },
-        },
-        select:   { donorId: true },
-        distinct: ["donorId"],
-      }))
-        .map((f) => f.donorId)
-        .filter((d): d is string => d !== null)
-    : [];
-
   // ════════════════════════════════════════════════════════════════════════
-  // PHASE 1 — RECORD THE MONEY. Unconditional, isolated, idempotent.
+  // PHASE 1 — RECORD THE MONEY. Unconditional, isolated, exactly once.
+  //
+  // One transaction: the StripeEvent row, the contribution PENDING → CONFIRMED
+  // (conditional, so it can only happen once), and the item total, computed
+  // from the item row locked FOR UPDATE so two payments landing together are
+  // both counted. See lib/stripeLedger.
   //
   // Nothing donor-keyed may enter this transaction. It previously contained
   // tx.user.update({ where: { id: donorId } }), which for a guest throws and
   // rolls back the CONFIRMED status and the item total — while Stripe keeps the
-  // money and retries into the same failure forever. That single call was the
-  // money-vanishes bug, and it now lives in Phase 3.
-  //
-  // If this transaction commits, the payment is recorded. That is the invariant
-  // the whole restructure exists to protect, and it must hold for a guest
-  // exactly as it does for an account holder.
+  // money and retries into the same failure forever. That lives in Phase 3.
   // ════════════════════════════════════════════════════════════════════════
-  await prisma.$transaction(async (tx) => {
-    await tx.registerItemFunding.update({
-      where: { id: fundingId },
-      data:  { status: "CONFIRMED", stripePaymentIntentId: paymentIntentId },
+  const applied = await withStripeEvent(event.id, event.type, (tx) =>
+    applyConfirmedPayment(tx, fundingId, paymentIntentIdOf(session.payment_intent)),
+  );
+  // Already confirmed by an earlier delivery, or expired and deleted.
+  if (!applied) return;
+
+  if (applied.itemId !== itemId) {
+    console.error("[stripe-webhook] session itemId differs from the funding's item — used the funding's", {
+      fundingId, sessionItemId: itemId, fundingItemId: applied.itemId,
     });
-    await tx.registerItem.update({
-      where: { id: itemId },
-      data:  { totalFundedCents: newTotal, fundingStatus: newFundingStatus },
-    });
-  });
+  }
+
+  // Everything below runs after the money is recorded and must not throw: a
+  // throw here would answer 500, and the retry would find the event processed.
 
   // ── Overlay marker ───────────────────────────────────────────────────────
   // Bump the event's contribution counter so the broadcast overlay's 2s stream
-  // knows something changed and recomputes. Deliberately OUTSIDE the Phase 1
-  // transaction and independently failable: a missed animation is cosmetic, a
-  // payment rolled back for an animation marker would be precisely the bug the
-  // phase split exists to prevent.
-  //
-  // funding.fundraisingEventId is read from the row rather than from metadata,
-  // because attribution was resolved and stored at creation. A non-null value
-  // implies the event still exists — the foreign key is ON DELETE SET NULL, so a
-  // deleted event would have nulled this.
-  if (funding.fundraisingEventId) {
+  // knows something changed. Outside Phase 1 on purpose: a missed animation is
+  // cosmetic; a payment rolled back for an animation marker would not be.
+  if (applied.fundraisingEventId) {
     try {
       await prisma.fundraisingEvent.update({
-        where: { id: funding.fundraisingEventId },
+        where: { id: applied.fundraisingEventId },
         data:  { contributionCounter: { increment: 1 } },
       });
     } catch (err) {
@@ -197,57 +159,80 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
+  // Phase 2 and the completion notices act only for the payment that COMPLETED
+  // the item. Before the item row was locked, a second payment landing on an
+  // already-funded item re-ran fulfilment (a duplicate queue entry, which the
+  // unique registerItemId rejected) and re-sent the "fully funded" notices.
+  const { becameFullyFunded, isFullFundInOne, newTotalCents } = applied;
+
+  let item: {
+    name: string;
+    register: { creatorId: string; addressMode: string; savedAddress: { id: string } | null };
+  } | null = null;
+  try {
+    item = await prisma.registerItem.findUnique({
+      where:  { id: applied.itemId },
+      select: {
+        name: true,
+        register: { select: { creatorId: true, addressMode: true, savedAddress: { select: { id: true } } } },
+      },
+    });
+  } catch (err) {
+    console.error("[stripe-webhook] item lookup after payment failed — payment IS recorded", { fundingId, err });
+  }
+  if (!item) return;
+  const itemName = item.name;
+
   // ════════════════════════════════════════════════════════════════════════
   // PHASE 2 — FULFILMENT. Register-keyed, so already guest-safe: what happens
   // when an item completes depends on the mother's register and address mode,
   // never on who paid. Wrapped separately so a fulfilment failure cannot undo
   // the recorded payment in Phase 1.
   // ════════════════════════════════════════════════════════════════════════
-  try {
-    await prisma.$transaction(async (tx) => {
-    if (isFullyFunded) {
-      const hasSavedAddress = !!item.register.savedAddress;
-      const useSavedAddress = item.register.addressMode === "SAVED_PER_REGISTER" && hasSavedAddress;
+  if (becameFullyFunded) {
+    const register = item.register;
+    try {
+      await prisma.$transaction(async (tx) => {
+        const useSavedAddress = register.addressMode === "SAVED_PER_REGISTER" && !!register.savedAddress;
 
-      if (useSavedAddress) {
-        // Address on file — go straight to fulfilment queue
-        await tx.fulfillmentQueue.create({
-          data: { registerItemId: itemId, totalFundedCents: newTotal, status: "QUEUED" },
-        });
-        await tx.registerItem.update({
-          where: { id: itemId },
-          data:  { status: "AWAITING_PURCHASE", fundingStatus: "IN_FULFILLMENT" },
-        });
-        await tx.notification.create({
-          data: {
-            userId:  item.register.creatorId,
-            type:    "ITEM_FULLY_FUNDED",
-            message: `Your ${item.name} is fully funded and will ship to your saved address. We'll notify you when it's on its way.`,
-            link:    `/registers/${registerId}`,
-          },
-        });
-      } else {
-        // Ask per shipment — hold for address confirmation
-        await tx.registerItem.update({
-          where: { id: itemId },
-          data:  { status: "AWAITING_ADDRESS", fundingStatus: "FULLY_FUNDED" },
-        });
-        await tx.notification.create({
-          data: {
-            userId:  item.register.creatorId,
-            type:    "ITEM_FULLY_FUNDED",
-            message: `Your ${item.name} is fully funded! Please confirm your shipping address so we can send it to you.`,
-            link:    `/registers/${registerId}?confirm=true`,
-          },
-        });
-      }
-
+        if (useSavedAddress) {
+          // Address on file — go straight to fulfilment queue
+          await tx.fulfillmentQueue.create({
+            data: { registerItemId: applied.itemId, totalFundedCents: newTotalCents, status: "QUEUED" },
+          });
+          await tx.registerItem.update({
+            where: { id: applied.itemId },
+            data:  { status: "AWAITING_PURCHASE", fundingStatus: "IN_FULFILLMENT" },
+          });
+          await tx.notification.create({
+            data: {
+              userId:  register.creatorId,
+              type:    "ITEM_FULLY_FUNDED",
+              message: `Your ${itemName} is fully funded and will ship to your saved address. We'll notify you when it's on its way.`,
+              link:    `/registers/${registerId}`,
+            },
+          });
+        } else {
+          // Ask per shipment — hold for address confirmation
+          await tx.registerItem.update({
+            where: { id: applied.itemId },
+            data:  { status: "AWAITING_ADDRESS", fundingStatus: "FULLY_FUNDED" },
+          });
+          await tx.notification.create({
+            data: {
+              userId:  register.creatorId,
+              type:    "ITEM_FULLY_FUNDED",
+              message: `Your ${itemName} is fully funded! Please confirm your shipping address so we can send it to you.`,
+              link:    `/registers/${registerId}?confirm=true`,
+            },
+          });
+        }
+      });
+    } catch (err) {
+      // The payment is already recorded. Fulfilment failing is serious and needs
+      // a human, but it is not a reason to lose the money.
+      console.error("[stripe-webhook] PHASE 2 fulfilment failed — payment IS recorded", { fundingId, itemId: applied.itemId, err });
     }
-    });
-  } catch (err) {
-    // The payment is already recorded. Fulfilment failing is serious and needs
-    // a human, but it is not a reason to lose the money.
-    console.error("[stripe-webhook] PHASE 2 fulfilment failed — payment IS recorded", { fundingId, itemId, err });
   }
 
   // ════════════════════════════════════════════════════════════════════════
@@ -266,108 +251,104 @@ async function handleSessionCompleted(session: Stripe.Checkout.Session) {
   //                        rather than this ledger.
   // ════════════════════════════════════════════════════════════════════════
   if (donorId) {
+    const { amountCents } = applied;
     await Promise.allSettled([
       prisma.user.update({
         where: { id: donorId },
         data:  { totalFundedCents: { increment: amountCents }, fundingCount: { increment: 1 } },
       }),
-      isFullyFunded
+      becameFullyFunded
         ? prisma.notification.create({
             data: {
               userId:  donorId,
               type:    "ITEM_FULLY_FUNDED",
-              message: `You completed funding "${item.name}"! Kradel will purchase and deliver it soon.`,
+              message: `You completed funding "${itemName}"! Kradel will purchase and deliver it soon.`,
               link:    `/registers/${registerId}`,
             },
           })
         : Promise.resolve(null),
-      awardImpactPoints(donorId, "REGISTER_ITEM_FUNDED", itemId),
+      awardImpactPoints(donorId, "REGISTER_ITEM_FUNDED", applied.itemId),
       isFullFundInOne
-        ? awardImpactPoints(donorId, "REGISTER_ITEM_FULL_FUND", itemId)
+        ? awardImpactPoints(donorId, "REGISTER_ITEM_FULL_FUND", applied.itemId)
         : Promise.resolve(null),
-      logAbuseEvent(donorId, "DISCOVER_REQUEST_CREATED", 0, { action: "ITEM_FUNDED", itemId, amountCents }, null as unknown as import("next/server").NextRequest),
+      logAbuseEvent(donorId, "DISCOVER_REQUEST_CREATED", 0, { action: "ITEM_FUNDED", itemId: applied.itemId, amountCents }, null as unknown as import("next/server").NextRequest),
     ]).then((rs) => {
       const failed = rs.filter((r) => r.status === "rejected");
       if (failed.length) console.error("[stripe-webhook] PHASE 3 donor side effects failed", { fundingId, donorId, failed });
     });
   }
 
-  // Previous contributors are notified regardless of who completed the item —
-  // they are account holders by construction, since guests were filtered out of
-  // previousDonorIds above.
-  if (isFullyFunded && previousDonorIds.length) {
-    await Promise.allSettled(previousDonorIds.map((prevDonorId) =>
-      prisma.notification.create({
-        data: {
-          userId:  prevDonorId,
-          type:    "ITEM_FULLY_FUNDED",
-          message: `An item you helped fund, "${item.name}", is now fully funded and will be fulfilled soon.`,
-          link:    `/registers/${registerId}`,
+  // Previous contributors are told the item is complete, once, by the payment
+  // that completed it. Account holders only: guests have no inbox, and
+  // `{ not: null }` in Prisma means "has a value".
+  if (becameFullyFunded) {
+    try {
+      const previousDonorIds = (await prisma.registerItemFunding.findMany({
+        where: {
+          registerItemId: applied.itemId,
+          status:         "CONFIRMED",
+          id:             { not: fundingId },
+          donorId:        donorId ? { not: donorId } : { not: null },
         },
-      })
-    ));
+        select:   { donorId: true },
+        distinct: ["donorId"],
+      }))
+        .map((f) => f.donorId)
+        .filter((d): d is string => d !== null);
+
+      await Promise.allSettled(previousDonorIds.map((prevDonorId) =>
+        prisma.notification.create({
+          data: {
+            userId:  prevDonorId,
+            type:    "ITEM_FULLY_FUNDED",
+            message: `An item you helped fund, "${itemName}", is now fully funded and will be fulfilled soon.`,
+            link:    `/registers/${registerId}`,
+          },
+        })
+      ));
+    } catch (err) {
+      console.error("[stripe-webhook] previous-donor notices failed — payment IS recorded", { fundingId, err });
+    }
   }
 }
 
-async function handleSessionExpired(session: Stripe.Checkout.Session) {
-  const fundingId = session.metadata?.fundingId;
-  if (fundingId) {
-    await prisma.registerItemFunding.deleteMany({ where: { id: fundingId, status: "PENDING" } });
-    return;
-  }
+async function handleSessionExpired(event: Stripe.Event, session: Stripe.Checkout.Session) {
+  const fundingId      = session.metadata?.fundingId;
   const contributionId = session.metadata?.contributionId;
-  if (contributionId) {
-    await prisma.supportContribution.deleteMany({ where: { id: contributionId, status: "PENDING" } });
-  }
+
+  await withStripeEvent(event.id, event.type, async (tx) => {
+    if (fundingId) {
+      await tx.registerItemFunding.deleteMany({ where: { id: fundingId, status: "PENDING" } });
+    } else if (contributionId) {
+      await tx.supportContribution.deleteMany({ where: { id: contributionId, status: "PENDING" } });
+    }
+  });
 }
 
-async function handleChargeRefunded(charge: Stripe.Charge) {
-  const paymentIntentId = typeof charge.payment_intent === "string"
-    ? charge.payment_intent
-    : charge.payment_intent?.id ?? null;
-  if (!paymentIntentId) return;
+async function handleChargeRefunded(event: Stripe.Event, charge: Stripe.Charge) {
+  const paymentIntentId = paymentIntentIdOf(charge.payment_intent);
 
-  const funding = await prisma.registerItemFunding.findFirst({
-    where: { stripePaymentIntentId: paymentIntentId, status: "CONFIRMED" },
-  });
-  if (!funding) return;
-
-  const item = await prisma.registerItem.findUnique({ where: { id: funding.registerItemId } });
-  if (!item) return;
-
-  const newTotal = Math.max(0, item.totalFundedCents - funding.amountCents);
-  const newFundingStatus = newTotal >= (item.standardPriceCents || 1)
-    ? "FULLY_FUNDED"
-    : newTotal > 0 ? "PARTIAL" : "UNFUNDED";
-
-  // PHASE 1 — record the refund. Same rule as a payment, for the same reason:
-  // tx.user.update used to live in here, and for a guest refund it throws and
-  // rolls back the REFUNDED status and the item total. The refund would then have
-  // happened at Stripe while Kradel still showed the money as funded.
-  await prisma.$transaction(async (tx) => {
-    await tx.registerItemFunding.update({
-      where: { id: funding.id },
-      data:  { status: "REFUNDED", refundedAt: new Date() },
-    });
-    await tx.registerItem.update({
-      where: { id: item.id },
-      data:  { totalFundedCents: newTotal, fundingStatus: newFundingStatus },
-    });
-  });
+  // PHASE 1 — record the refund: StripeEvent, CONFIRMED → REFUNDED (once), and
+  // the item total from the locked row, in one transaction. A guest refund must
+  // record exactly like an account holder's, so nothing donor-keyed is in here.
+  const refund = await withStripeEvent(event.id, event.type, async (tx) =>
+    paymentIntentId ? applyRefund(tx, paymentIntentId) : null,
+  );
+  if (!refund) return;
 
   // PHASE 3 — donor counters, outside the transaction and skipped for guests.
   // There is no Phase 2 here: a refund has no fulfilment step.
-  if (funding.donorId) {
+  if (refund.donorId) {
     try {
       await prisma.user.update({
-        where: { id: funding.donorId },
+        where: { id: refund.donorId },
         data:  {
-          totalFundedCents: { decrement: funding.amountCents },
+          totalFundedCents: { decrement: refund.amountCents },
           fundingCount:     { decrement: 1 },
         },
       });
     } catch (err) {
-      console.error("[stripe-webhook] refund donor counters failed — refund IS recorded", { fundingId: funding.id, err });
+      console.error("[stripe-webhook] refund donor counters failed — refund IS recorded", { fundingId: refund.fundingId, err });
     }
   }
 }

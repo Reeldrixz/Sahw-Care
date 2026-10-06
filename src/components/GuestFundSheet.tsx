@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { X, Loader2, ShieldCheck } from "lucide-react";
-import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
+import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkoutFees";
 import type { PublicRegisterItem } from "@/lib/registers";
 
 // Guest funding. A logged-out viewer — typically someone who followed a host
@@ -45,7 +45,7 @@ export default function GuestFundSheet({
 
   const remaining = Math.max(0, item.standardPriceCents - item.totalFundedCents);
 
-  const [amountStr, setAmountStr]   = useState(() => (remaining > 0 ? (remaining / 100).toFixed(0) : "25"));
+  const [amountStr, setAmountStr]   = useState(() => (remaining > 0 ? centsToAmountInput(remaining) : "25"));
   const [email, setEmail]           = useState("");
   const [coverStripe, setCover]     = useState(true);
   const [supportOn, setSupportOn]   = useState(true);
@@ -53,7 +53,8 @@ export default function GuestFundSheet({
   const [error, setError]           = useState<string | null>(null);
 
   const amountCents = Math.round(Number(amountStr) * 100) || 0;
-  const valid = amountCents >= MIN_GIFT_CENTS && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const minGift = minGiftFor(remaining);
+  const valid = amountCents >= minGift && (remaining === 0 || amountCents <= remaining) && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 
   // Same helper the server uses — what you see is what Stripe charges.
   const breakdown = useMemo(
@@ -120,7 +121,7 @@ export default function GuestFundSheet({
         {remaining > 0 && (
           <div style={{ fontSize: 12.5, color: "var(--mid)", marginTop: 10, padding: "8px 11px", background: "var(--bg)", borderRadius: 9 }}>
             ${(item.totalFundedCents / 100).toFixed(0)} of ${(item.standardPriceCents / 100).toFixed(0)} funded
-            {" · "}${(remaining / 100).toFixed(0)} still needed
+            {" · "}${centsToAmountInput(remaining)} still needed
           </div>
         )}
 
@@ -133,9 +134,9 @@ export default function GuestFundSheet({
                 ${c / 100}
               </button>
             ))}
-            {remaining >= MIN_GIFT_CENTS && (
-              <button onClick={() => setAmountStr((remaining / 100).toFixed(0))} style={preset(amountCents === remaining)}>
-                All ${(remaining / 100).toFixed(0)}
+            {remaining > 0 && (
+              <button onClick={() => setAmountStr(centsToAmountInput(remaining))} style={preset(amountCents === remaining)}>
+                All ${centsToAmountInput(remaining)}
               </button>
             )}
           </div>
@@ -148,9 +149,14 @@ export default function GuestFundSheet({
               style={{ ...input, paddingLeft: 26, fontSize: 16, fontWeight: 700 }}
             />
           </div>
-          {amountCents > 0 && amountCents < MIN_GIFT_CENTS && (
+          {amountCents > 0 && amountCents < minGift && (
             <div style={{ fontSize: 11.5, color: "#b91c1c", marginTop: 5 }}>
-              Minimum is ${MIN_GIFT_CENTS / 100}.
+              Minimum is ${centsToAmountInput(minGift)}.
+            </div>
+          )}
+          {remaining > 0 && amountCents > remaining && (
+            <div style={{ fontSize: 11.5, color: "#b91c1c", marginTop: 5 }}>
+              Only ${centsToAmountInput(remaining)} is still needed for this item.
             </div>
           )}
         </div>
@@ -186,7 +192,7 @@ export default function GuestFundSheet({
         </div>
 
         {/* Breakdown — every cent, before committing */}
-        {amountCents >= MIN_GIFT_CENTS && (
+        {amountCents >= minGift && (
           <div style={{ marginTop: 16, padding: "12px 13px", background: "var(--bg)", borderRadius: 11, fontSize: 12.5 }}>
             <Row label={`Toward ${item.name}`} value={breakdown.itemSubtotal} strong />
             <Row label="Kradel platform fee (7%)" value={breakdown.kradelFee} />

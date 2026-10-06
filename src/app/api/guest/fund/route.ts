@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
-import { computeBreakdown, MIN_GIFT_CENTS } from "@/lib/checkoutFees";
+import { computeBreakdown, checkContributionAmount } from "@/lib/checkoutFees";
 import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
 import { resolveEventIdForAttribution } from "@/lib/fundraisingEvent";
 
@@ -48,10 +48,6 @@ export async function POST(req: NextRequest) {
   if (!Number.isInteger(amountCents) || amountCents <= 0) {
     return NextResponse.json({ error: "amountCents must be a positive integer" }, { status: 400 });
   }
-  if (amountCents < MIN_GIFT_CENTS) {
-    return NextResponse.json({ error: `Minimum contribution is $${MIN_GIFT_CENTS / 100}` }, { status: 400 });
-  }
-
   // Email is REQUIRED for a guest, not optional. With no account behind the
   // payment it is the only channel that exists for a receipt or a refund, which
   // makes it part of taking the money responsibly rather than a nice-to-have.
@@ -81,6 +77,16 @@ export async function POST(req: NextRequest) {
   }
   if (["FULLY_FUNDED", "IN_FULFILLMENT", "FULFILLED"].includes(item.fundingStatus)) {
     return NextResponse.json({ error: "This item is already fully funded." }, { status: 409 });
+  }
+
+  // Capped at what the item still needs; the minimum gift, except that the
+  // exact remaining amount is always allowed (lib/checkoutFees).
+  const amountCheck = checkContributionAmount(amountCents, item);
+  if (!amountCheck.ok) {
+    return NextResponse.json(
+      { error: amountCheck.error, remainingCents: amountCheck.remainingCents },
+      { status: amountCheck.status },
+    );
   }
 
   // The self-fund block has no guest equivalent and needs none: a guest has no
