@@ -543,6 +543,9 @@ model Register {
   items        RegisterItem[]
   savedAddress RegisterAddress?
   savedItems   SavedItem[]
+  eventCompletions  EventRegisterCompletion[]
+  eventBundleUnlock EventBundleUnlock?
+  eventCelebrations EventCelebration[]
 }
 
 model RegisterItem {
@@ -568,6 +571,7 @@ model RegisterItem {
   fulfillmentQueue FulfillmentQueue?
   shipmentAddress  ShipmentAddress?
   savedBy          SavedItem[]
+  eventCelebrations EventCelebration[]
 }
 
 model ItemAssignment {
@@ -1447,6 +1451,14 @@ model RegisterItemFunding {
   // than a convenience. Null for authenticated donors — their User record is
   // the contact.
   guestEmail String?
+
+  // The name a donor chose to show if she funds an item in full on a
+  // livestream, first name only (never the cardholder name), and whether she
+  // agreed to show it. The checkout pre-ticks the box; the database default
+  // is true for new rows. Rows from before this existed were set to false by
+  // the migration: those donors never saw the checkbox.
+  displayName     String?
+  showNameConsent Boolean @default(true)
 
   amountCents           Int           // item contribution only — used for progress tracking
   kradelFee             Int           @default(0)
@@ -2397,6 +2409,31 @@ model FundraisingEvent {
   // marker must mean "money arrived" and nothing else.
   contributionCounter Int @default(0)
 
+  // ── Live fundraising: goal, sponsor, display ───────────────────────────
+  // The goal counts REGISTERS fulfilled during the event (0 of 5), not
+  // dollars; goalCents is no longer used for it. A register counts once, when
+  // it completes while on screen in this event with at least one
+  // event-attributed contribution (EventRegisterCompletion). The host can
+  // raise the goal after it is reached.
+  goalRegisters           Int     @default(0)
+  // The event's sponsor and what one sponsor bundle is worth, for the on-air
+  // line "~$200 additional support from <sponsor>". Null until set.
+  sponsorName             String?
+  sponsorBundleValueCents Int?
+  // Set by an admin only after the sponsor's commitment is confirmed. While it
+  // is null: no bundle unlock can be recorded, and the overlay's sponsor line
+  // can't show. The reserved count alone is only what Kradel intends.
+  sponsorConfirmedAt      DateTime?
+  // How many sponsor bundles this event may unlock, and how many it has.
+  // sponsorBundlesUnlocked only moves in the same transaction that creates an
+  // EventBundleUnlock row, by a conditional increment (unlocked < reserved),
+  // so it can't pass the reservation and can't drift from the rows.
+  sponsorBundlesReserved  Int     @default(0)
+  sponsorBundlesUnlocked  Int     @default(0)
+  // Host switch, usable mid-stream: when true, no donor name is shown on air,
+  // whatever donors chose. Read at display time.
+  hideDonorNames          Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2404,6 +2441,9 @@ model FundraisingEvent {
   // with status: CONFIRMED only, which is how refunds drop out with no
   // decrement logic and no drift.
   fundings RegisterItemFunding[]
+  completions   EventRegisterCompletion[]
+  bundleUnlocks EventBundleUnlock[]
+  celebrations  EventCelebration[]
 
   @@index([status])
 }
@@ -2412,4 +2452,85 @@ enum FundraisingEventStatus {
   DRAFT // being set up; no link issued or link not yet live
   LIVE  // running now; the host dashboard reads the featurable pool live
   ENDED // finished; results snapshotted, host link should no longer work
+}
+
+// ── Live fundraising: completions, bundle unlocks, celebrations ───────────
+
+// A register fulfilled during an event: it completed while on screen in that
+// event, with at least one event-attributed contribution. Counts toward the
+// event's goalRegisters. Once per event and register.
+model EventRegisterCompletion {
+  id          String   @id @default(cuid())
+  eventId     String
+  registerId  String
+  completedAt DateTime @default(now())
+
+  event    FundraisingEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  register Register         @relation(fields: [registerId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, registerId])
+}
+
+// One sponsor bundle unlocked by a register completing while featured, drawn
+// against the event's sponsorBundlesReserved. Once per register, EVER
+// (unique registerId). A separate ledger line: it never counts toward any
+// register's funded amount. It names no mother on air; allocating bundles to
+// mothers happens later, in admin, outside the stream code.
+//
+// valueCents and sponsorName are copied from the event when the unlock is
+// recorded, so a later change to the event can't change what was claimed on
+// air for this one. registerId is kept only to enforce once-per-register; if
+// the register is deleted it becomes null and the unlock stays counted.
+// Restrict on the event: an event with unlocks can't be deleted out from
+// under its sponsor reservation.
+model EventBundleUnlock {
+  id          String   @id @default(cuid())
+  eventId     String
+  registerId  String?  @unique
+  valueCents  Int
+  sponsorName String
+  createdAt   DateTime @default(now())
+
+  event       FundraisingEvent  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  register    Register?         @relation(fields: [registerId], references: [id], onDelete: SetNull)
+  celebration EventCelebration?
+
+  @@index([eventId])
+}
+
+enum EventCelebrationType {
+  ITEM_FUNDED         // funded by several contributors: "Aisha's diapers funded ✓", no names
+  ITEM_FUNDED_BY_ONE  // one contributor in total, even across payments: "Sarah funded Aisha's diapers ✓"
+  REGISTER_COMPLETE
+  BUNDLE_UNLOCKED     // "sponsor bundle unlocked": names no mother
+}
+
+// The overlay's celebration queue. dedupeKey is unique, so a webhook retry
+// can't create a second copy of the same moment (e.g. item:<eventId>:<itemId>,
+// complete:<eventId>:<registerId>, bundle:<registerId>). shownAt is set when
+// the one overlay claims it, atomically, so it shows once; unclaimed
+// celebrations expire about 2 minutes after createdAt.
+//
+// BUNDLE_UNLOCKED rows have no registerId or registerItemId: the moment names
+// no mother, structurally. Its value and sponsor come from bundleUnlock.
+// donorDisplayName is only for ITEM_FUNDED_BY_ONE with the donor's consent,
+// copied when created; hideDonorNames on the event is applied at display.
+model EventCelebration {
+  id               String               @id @default(cuid())
+  eventId          String
+  type             EventCelebrationType
+  dedupeKey        String               @unique
+  registerId       String?
+  registerItemId   String?
+  bundleUnlockId   String?              @unique
+  donorDisplayName String?
+  createdAt        DateTime             @default(now())
+  shownAt          DateTime?
+
+  event        FundraisingEvent   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  register     Register?          @relation(fields: [registerId], references: [id], onDelete: SetNull)
+  registerItem RegisterItem?      @relation(fields: [registerItemId], references: [id], onDelete: SetNull)
+  bundleUnlock EventBundleUnlock? @relation(fields: [bundleUnlockId], references: [id], onDelete: SetNull)
+
+  @@index([eventId, shownAt, createdAt])
 }
