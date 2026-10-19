@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe";
 import { computeBreakdown, checkContributionAmount } from "@/lib/checkoutFees";
 import { rateLimitAsync, getClientIp } from "@/lib/rateLimit";
 import { resolveEventIdForAttribution } from "@/lib/fundraisingEvent";
+import { donorNameMetadata } from "@/lib/donorName";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const { registerItemId, amountCents, email, supportOn = true, coverStripe = true, eventSlug } = body ?? {};
+  const { registerItemId, amountCents, email, supportOn = true, coverStripe = true, eventSlug, displayName, showName } = body ?? {};
 
   if (typeof registerItemId !== "string" || !registerItemId) {
     return NextResponse.json({ error: "registerItemId is required" }, { status: 400 });
@@ -159,6 +160,10 @@ export async function POST(req: NextRequest) {
         // rather than metadata having gone missing — the difference between a
         // guest payment and a bug that must be shouted about.
         isGuest: "true",
+        // The donor's livestream name choice (lib/donorName). Only on an event
+        // checkout; the raw name only if she ticked the box. The webhook
+        // cleans it to a first name before anything is stored.
+        ...(fundraisingEventId ? donorNameMetadata({ displayName, showName }) : { showName: "0" }),
       },
       success_url: `${appUrl}/r/${registerId}?payment=success&item=${item.id}`,
       cancel_url:  `${appUrl}/r/${registerId}?payment=cancel`,

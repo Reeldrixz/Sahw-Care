@@ -47,6 +47,10 @@ export default function GuestFundSheet({
 
   const [amountStr, setAmountStr]   = useState(() => (remaining > 0 ? centsToAmountInput(remaining) : "25"));
   const [email, setEmail]           = useState("");
+  // Livestream name (event checkout only). Never prefilled: she types it or
+  // there is none. The box starts ticked; unticking is one tap.
+  const [streamName, setStreamName] = useState("");
+  const [showName, setShowName]     = useState(true);
   const [coverStripe, setCover]     = useState(true);
   const [supportOn, setSupportOn]   = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -79,6 +83,9 @@ export default function GuestFundSheet({
         // an event. The server only attributes while the event is LIVE, which is
         // what stops a stale tag landing in a finished event's total.
         eventSlug: eventSlug ?? undefined,
+        // Her livestream name choice, only on an event checkout. The server
+        // sends the name on only if ticked; the webhook keeps the first name.
+        ...(eventSlug ? { displayName: streamName, showName } : {}),
       }),
     });
     const d = await r.json().catch(() => ({}));
@@ -176,6 +183,34 @@ export default function GuestFundSheet({
             We won&apos;t create an account for you, and we won&apos;t send you marketing.
           </div>
         </div>
+
+        {/* Livestream name — only when she came from a live event */}
+        {eventSlug && (
+          <div style={{ marginTop: 16 }}>
+            <label style={label}>Name to show on the stream <span style={{ fontWeight: 600, color: "var(--mid)" }}>(optional)</span></label>
+            <input
+              value={streamName}
+              onChange={(e) => setStreamName(e.target.value)}
+              placeholder="First name"
+              maxLength={40}
+              autoComplete="off"
+              disabled={!showName}
+              style={{ ...input, opacity: showName ? 1 : 0.5 }}
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, minHeight: 44, cursor: "pointer", fontSize: 13, color: "var(--ink)", fontFamily: "Nunito, sans-serif" }}>
+              <input
+                type="checkbox"
+                checked={showName}
+                onChange={(e) => setShowName(e.target.checked)}
+                style={{ width: 20, height: 20, accentColor: "#1a7a5e", flexShrink: 0 }}
+              />
+              Show my first name on the stream.
+            </label>
+            <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.6, marginTop: 2 }}>
+              Only your first name, and only if you fund this item in full yourself.
+            </div>
+          </div>
+        )}
 
         {/* Options */}
         <div style={{ marginTop: 16, display: "grid", gap: 8 }}>

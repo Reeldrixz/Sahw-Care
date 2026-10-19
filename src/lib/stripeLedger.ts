@@ -130,14 +130,23 @@ export type AppliedPayment = PaymentOutcome & {
 // contribution is missing or no longer PENDING (already confirmed by an earlier
 // delivery, or expired), so it is never counted twice. Run inside
 // withStripeEvent.
+// donorName, when given, is what the donor chose to show on a livestream,
+// already cleaned (lib/donorName). It is written in the same conditional
+// update that confirms the payment, so it is set once, with the payment.
+export type DonorNameChoice = { showNameConsent: boolean; displayName: string | null };
+
 export async function applyConfirmedPayment(
   tx: Tx,
   fundingId: string,
   paymentIntentId: string | null,
+  donorName?: DonorNameChoice,
 ): Promise<AppliedPayment | null> {
   const claimed = await tx.registerItemFunding.updateMany({
     where: { id: fundingId, status: "PENDING" },
-    data:  { status: "CONFIRMED", stripePaymentIntentId: paymentIntentId },
+    data:  {
+      status: "CONFIRMED", stripePaymentIntentId: paymentIntentId,
+      ...(donorName && { showNameConsent: donorName.showNameConsent, displayName: donorName.displayName }),
+    },
   });
   if (claimed.count !== 1) return null;
 
@@ -213,8 +222,9 @@ export async function recordPayment(
   tx: Tx,
   fundingId: string,
   paymentIntentId: string | null,
+  donorName?: DonorNameChoice,
 ): Promise<(AppliedPayment & { effects: EventEffects | null }) | null> {
-  const applied = await applyConfirmedPayment(tx, fundingId, paymentIntentId);
+  const applied = await applyConfirmedPayment(tx, fundingId, paymentIntentId, donorName);
   if (!applied) return null;
   const effects = applied.becameFullyFunded
     ? await applyEventEffects(tx, { fundingId, itemId: applied.itemId, registerId: applied.registerId })
