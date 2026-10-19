@@ -61,6 +61,7 @@ export interface HostEvent {
   status: "DRAFT" | "LIVE" | "ENDED";
   startedAt: Date | null;
   currentRegisterId: string | null; // what the host has on screen, if anything
+  hideDonorNames: boolean;          // host switch: no donor names on the overlay
 }
 
 /**
@@ -94,7 +95,7 @@ export async function resolveEventByToken(token: string | undefined | null): Pro
     where: { accessToken: token },
     select: {
       id: true, title: true, hostName: true, goalCents: true,
-      status: true, startedAt: true, currentRegisterId: true,
+      status: true, startedAt: true, currentRegisterId: true, hideDonorNames: true,
       tokenExpiresAt: true, tokenRevokedAt: true,
     },
   });
@@ -121,5 +122,6 @@ export async function resolveEventByToken(token: string | undefined | null): Pro
     status: event.status,
     startedAt: event.startedAt,
     currentRegisterId: event.currentRegisterId,
+    hideDonorNames: event.hideDonorNames,
   };
 }

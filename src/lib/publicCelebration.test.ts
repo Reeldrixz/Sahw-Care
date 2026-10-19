@@ -1,43 +1,62 @@
 // Unit tests for lib/publicCelebration and lib/donorName. Run: npx tsx --test src/lib/publicCelebration.test.ts
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toPublicCelebration, type CelebrationRow } from "./publicCelebration";
+import { toPublicCelebration, celebrationText, type CelebrationRow } from "./publicCelebration";
 import { donorNameMetadata, donorNameFromMetadata } from "./donorName";
 import { firstNameOnly } from "./eventEffects";
 
 const row = (o: Partial<CelebrationRow>): CelebrationRow => ({
-  id: "cel_1", type: "ITEM_FUNDED", donorDisplayName: null, motherName: "Aisha Bello",
+  type: "ITEM_FUNDED", donorDisplayName: null, motherName: "Aisha Bello",
   itemName: "Diapers", bundle: null, ...o,
 });
+const SHOW = { hideDonorNames: false, sponsorConfirmed: true };
 
-// Any key that could point back to a register, item or unlock.
-const ID_KEYS = /^(registerId|registerItemId|bundleUnlockId|itemId|unlockId|eventId)$/;
+// Any key that could identify a register, item, unlock, event or celebration.
+const ID_KEYS = /(^id$|Id$)/;
 const keysDeep = (v: unknown): string[] =>
   v && typeof v === "object" ? Object.entries(v).flatMap(([k, x]) => [k, ...keysDeep(x)]) : [];
 
-test("a bundle celebration carries only id, type, value and sponsor", () => {
-  const p = toPublicCelebration(row({ type: "BUNDLE_UNLOCKED", motherName: "Aisha Bello", itemName: "Diapers", bundle: { valueCents: 20000, sponsorName: "Acme" } }));
-  assert.deepEqual(p, { id: "cel_1", type: "BUNDLE_UNLOCKED", valueCents: 20000, sponsorName: "Acme" });
-  assert.ok(!JSON.stringify(p).includes("Aisha"), "names no mother");
+test("a bundle celebration carries only its type and the sponsor line — no mother", () => {
+  const p = toPublicCelebration(row({ type: "BUNDLE_UNLOCKED", motherName: "Aisha Bello", itemName: "Diapers", bundle: { valueCents: 20000, sponsorName: "Acme" } }), SHOW);
+  assert.deepEqual(p, { type: "BUNDLE_UNLOCKED", sponsorLine: { valueCents: 20000, sponsorName: "Acme" } });
+  assert.ok(!JSON.stringify(p).includes("Aisha") && !JSON.stringify(p).includes("Diapers"));
+  assert.deepEqual(celebrationText(p), { headline: "Sponsor bundle unlocked", line: "~$200 additional support from Acme" });
 });
 
-test("no public celebration of any type has a register, item or unlock id", () => {
+test("sponsor line only while the sponsor is confirmed", () => {
+  const p = toPublicCelebration(row({ type: "BUNDLE_UNLOCKED", bundle: { valueCents: 20000, sponsorName: "Acme" } }), { ...SHOW, sponsorConfirmed: false });
+  assert.deepEqual(p, { type: "BUNDLE_UNLOCKED", sponsorLine: null });
+  assert.deepEqual(celebrationText(p), { headline: "Sponsor bundle unlocked", line: null });
+});
+
+test("no public celebration of any type has an id", () => {
   for (const type of ["ITEM_FUNDED", "ITEM_FUNDED_BY_ONE", "REGISTER_COMPLETE", "BUNDLE_UNLOCKED"] as const) {
-    const p = toPublicCelebration(row({ type, donorDisplayName: "Sarah", bundle: { valueCents: 1, sponsorName: "S" } }));
+    const p = toPublicCelebration(row({ type, donorDisplayName: "Sarah", bundle: { valueCents: 1, sponsorName: "S" } }), SHOW);
     assert.deepEqual(keysDeep(p).filter((k) => ID_KEYS.test(k)), [], type);
   }
 });
 
 test("mother and donor are first names only", () => {
-  const p = toPublicCelebration(row({ type: "ITEM_FUNDED_BY_ONE", motherName: "Aisha Bello Okafor", donorDisplayName: "Sarah Jane Smith" }));
-  assert.deepEqual(p, { id: "cel_1", type: "ITEM_FUNDED_BY_ONE", motherFirstName: "Aisha", itemName: "Diapers", donorFirstName: "Sarah" });
+  const p = toPublicCelebration(row({ type: "ITEM_FUNDED_BY_ONE", motherName: "Aisha Bello Okafor", donorDisplayName: "Sarah Jane Smith" }), SHOW);
+  assert.deepEqual(p, { type: "ITEM_FUNDED_BY_ONE", motherFirstName: "Aisha", itemName: "Diapers", donorFirstName: "Sarah" });
+  assert.equal(celebrationText(p).headline, "Sarah funded Aisha's diapers ✓");
   assert.ok(!JSON.stringify(p).includes("Bello") && !JSON.stringify(p).includes("Smith"));
 });
 
-test("nothing shown when the row can't be shown safely", () => {
-  assert.equal(toPublicCelebration(row({ type: "BUNDLE_UNLOCKED", bundle: null })), null);
-  assert.equal(toPublicCelebration(row({ motherName: null })), null);
-  assert.equal(toPublicCelebration(row({ itemName: null })), null);
+test("the host switch removes the donor name at show time", () => {
+  const p = toPublicCelebration(row({ type: "ITEM_FUNDED_BY_ONE", donorDisplayName: "Sarah" }), { ...SHOW, hideDonorNames: true });
+  assert.equal((p as { donorFirstName: string | null }).donorFirstName, null);
+  assert.equal(celebrationText(p).headline, "Aisha's diapers funded ✓");
+});
+
+test("a mother whose first name fails the rule still gets her celebration, with no name", () => {
+  const item = toPublicCelebration(row({ motherName: "Ai$ha Bello" }), SHOW);
+  assert.deepEqual(item, { type: "ITEM_FUNDED", motherFirstName: null, itemName: "Diapers" });
+  assert.equal(celebrationText(item).headline, "Diapers funded ✓");
+  const done = toPublicCelebration(row({ type: "REGISTER_COMPLETE", motherName: "123" }), SHOW);
+  assert.deepEqual(celebrationText(done), { headline: "A Register is fully funded", line: "Fully funded ✓" });
+  const missing = toPublicCelebration(row({ motherName: null, itemName: null }), SHOW);
+  assert.equal(celebrationText(missing).headline, "An item funded ✓");
 });
 
 test("checkout metadata: raw name only when ticked", () => {
