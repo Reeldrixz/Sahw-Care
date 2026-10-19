@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { fundedPercent, registerItemCounts, registerMoneyTotals } from "@/lib/eventProgress";
 
 // The host dashboard. Read on a second monitor, mid-broadcast, glanced at while
 // talking — a different instrument from the mother-facing app, so it
@@ -57,11 +58,13 @@ interface Payload {
 
 const money = (c: number) => `$${(c / 100).toFixed(0)}`;
 
+// lib/eventProgress: each item capped at its price (an overfunded item can't
+// inflate the totals), and items in fulfilment count as funded — they were
+// counted as still needed.
 function registerTotals(r: Register) {
-  const target = r.items.reduce((s, i) => s + i.standardPriceCents, 0);
-  const funded = r.items.reduce((s, i) => s + i.totalFundedCents, 0);
-  const remaining = r.items.filter((i) => i.fundingStatus !== "FULLY_FUNDED").length;
-  return { target, funded, remaining, pct: target ? Math.min(100, Math.round((funded / target) * 100)) : 0 };
+  const { fundedCents: funded, targetCents: target } = registerMoneyTotals(r.items);
+  const counts = registerItemCounts(r.items);
+  return { target, funded, remaining: counts.total - counts.funded, pct: fundedPercent(r.items) };
 }
 
 export default function HostDashboardPage() {

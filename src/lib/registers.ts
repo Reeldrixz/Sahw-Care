@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { AdminFacingRegister, DonorFacingRegister } from "@/types/register-dtos";
 import { VERIFICATION_BADGE_FIELDS, verificationBadgeFor, type VerificationBadge } from "@/lib/verificationBadge";
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
+import { isPickableByProgress } from "@/lib/eventProgress";
 
 // ── Public share helper: privacy-safe, no auth required ───────────────────────
 // Powers the shareable /r/[id] page. Exposes the mother's FIRST NAME only and
@@ -104,16 +105,20 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
 // Two reads, deliberately different:
 //
 //   fetchFeaturableRegisters() — the PICKABLE pool: the registers a host may
-//     choose to put on screen. Used for the host's list, the host's "feature
-//     this" check, and the public event page's list.
+//     choose to put on screen: current consent, ACTIVE, and under 30% funded
+//     (lib/eventProgress), oldest first. Used for the host's list and the
+//     public event page's list. isRegisterPickable(id) is the same rule for one
+//     register, used by the host's "feature this" check.
 //   fetchOnScreenRegister(id)  — the register a host has ALREADY put on screen,
-//     for the overlay and the host's "On screen" panel.
+//     for the overlay, the host's "On screen" panel and the top of the public
+//     event page.
 //
-// Consent is checked when a register is PICKED, not while it is on screen. A
-// mother who withdraws stops being pickable at once; a stream already showing
-// her keeps showing her until the host moves on or the event ends. That is
-// what the consent card (lib/featureConsent, version 2) tells her before she
-// agrees, so the on-screen read does not re-check consent.
+// Consent and the 30% rule are checked when a register is PICKED, not while it
+// is on screen: a register that crosses 30%, or completes, stays up until the
+// host moves on. A mother who withdraws stops being pickable at once; a stream
+// already showing her keeps showing her until the host moves on or the event
+// ends. That is what the consent card (lib/featureConsent, version 2) tells her
+// before she agrees, so the on-screen read does not re-check consent.
 //
 // Load-bearing properties of the pickable pool, not to be relaxed:
 //
@@ -149,22 +154,48 @@ function toEventShape(r: PublicRegister): FeaturableRegister {
   return rest;
 }
 
-export async function fetchFeaturableRegisters(limit = 50): Promise<FeaturableRegister[]> {
-  const rows = await prisma.register.findMany({
-    where: {
-      featureConsent:        true,
-      featureConsentVersion: FEATURE_CONSENT_VERSION,
-      status:                "ACTIVE",
-    },
-    orderBy: { featureConsentAt: "desc" },
-    take:    Math.min(limit, 100),
-    select:  { id: true },
+// Who can be picked: current-version consent and ACTIVE, in the query; under
+// 30% funded (lib/eventProgress), in code, on the same items a donor sees.
+// The 30% rule is applied in code rather than SQL so it has one definition;
+// it is a progress rule, not a privacy one, so consent stays in the WHERE.
+const PICKABLE_WHERE = {
+  featureConsent:        true,
+  featureConsentVersion: FEATURE_CONSENT_VERSION,
+  status:                "ACTIVE" as const,
+};
+
+const PROGRESS_ITEMS_SELECT = {
+  where:  { status: { notIn: ["PENDING_APPROVAL", "CANCELLED"] as ("PENDING_APPROVAL" | "CANCELLED")[] } },
+  select: { standardPriceCents: true, totalFundedCents: true, fundingStatus: true },
+};
+
+// The pickable pool, in one stable order: oldest register first (createdAt,
+// then id), never by need or progress. No cap: the host sees every eligible
+// register. The cap used to be applied in the query, before any filtering, so
+// the 51st eligible register was silently missing — and the pick check, which
+// searched the same capped list, would have refused it.
+export async function fetchFeaturableRegisters(): Promise<FeaturableRegister[]> {
+  const candidates = await prisma.register.findMany({
+    where:   PICKABLE_WHERE,
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select:  { id: true, items: PROGRESS_ITEMS_SELECT },
   });
+  const pickable = candidates.filter((r) => isPickableByProgress(r.items));
 
   // Deliberately re-fetched through the public helper rather than selected here.
   // One definition of what is public, one place to audit.
-  const full = await Promise.all(rows.map((r) => fetchPublicRegister(r.id)));
+  const full = await Promise.all(pickable.map((r) => fetchPublicRegister(r.id)));
   return full.filter((r): r is PublicRegister => r !== null).map(toEventShape);
+}
+
+// The pick check for one register: the same rule as the pool, without
+// building the whole pool.
+export async function isRegisterPickable(id: string): Promise<boolean> {
+  const r = await prisma.register.findFirst({
+    where:  { id, ...PICKABLE_WHERE },
+    select: { items: PROGRESS_ITEMS_SELECT },
+  });
+  return !!r && isPickableByProgress(r.items);
 }
 
 // The register an event currently has on screen, by the id the host picked.

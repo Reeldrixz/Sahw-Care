@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { fetchFeaturableRegisters } from "@/lib/registers";
+import { fetchFeaturableRegisters, fetchOnScreenRegister } from "@/lib/registers";
+import { fundedPercent, registerItemCounts, registerMoneyTotals } from "@/lib/eventProgress";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -25,7 +26,7 @@ type Params = { params: Promise<{ slug: string }> };
 async function getEvent(slug: string) {
   return prisma.fundraisingEvent.findUnique({
     where:  { slug: slug.toLowerCase() },
-    select: { id: true, title: true, hostName: true, goalCents: true, status: true },
+    select: { id: true, title: true, hostName: true, goalCents: true, status: true, currentRegisterId: true },
   });
 }
 
@@ -57,7 +58,13 @@ export default async function EventLandingPage({ params }: Params) {
   // explanation.
   if (event.status === "DRAFT") notFound();
 
-  const registers = event.status === "LIVE" ? await fetchFeaturableRegisters() : [];
+  // The register on screen first, always — even over 30% funded or after she
+  // withdrew, since the broadcast is showing her and viewers arrive looking
+  // for her — then the pickable pool for the rest, oldest first.
+  const [onScreen, pool] = event.status === "LIVE"
+    ? await Promise.all([fetchOnScreenRegister(event.currentRegisterId), fetchFeaturableRegisters()])
+    : [null, []];
+  const registers = onScreen ? [onScreen, ...pool.filter((r) => r.id !== onScreen.id)] : pool;
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh", paddingBottom: 60 }}>
@@ -101,10 +108,12 @@ export default async function EventLandingPage({ params }: Params) {
             </p>
 
             {registers.map((r) => {
-              const target = r.items.reduce((s, i) => s + i.standardPriceCents, 0);
-              const funded = r.items.reduce((s, i) => s + i.totalFundedCents, 0);
-              const pct    = target > 0 ? Math.min(100, Math.round((funded / target) * 100)) : 0;
-              const needed = r.items.filter((i) => i.fundingStatus !== "FULLY_FUNDED").length;
+              // lib/eventProgress: each item capped at its price, and items in
+              // fulfilment count as funded (they were counted as still needed).
+              const { fundedCents: funded, targetCents: target } = registerMoneyTotals(r.items);
+              const pct    = fundedPercent(r.items);
+              const counts = registerItemCounts(r.items);
+              const needed = counts.total - counts.funded;
 
               return (
                 // ?e=<slug> is the attribution carrier. Only the slug travels —
