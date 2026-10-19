@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { awardImpactPoints } from "@/lib/trust";
 import { logAbuseEvent } from "@/lib/abuse";
 import {
-  withStripeEvent, isDuplicateStripeEvent, applyConfirmedPayment, applyRefund,
+  withStripeEvent, isDuplicateStripeEvent, recordPayment, applyRefund,
 } from "@/lib/stripeLedger";
 
 export const dynamic = "force-dynamic";
@@ -129,8 +129,11 @@ async function handleSessionCompleted(event: Stripe.Event, session: Stripe.Check
   // rolls back the CONFIRMED status and the item total — while Stripe keeps the
   // money and retries into the same failure forever. That lives in Phase 3.
   // ════════════════════════════════════════════════════════════════════════
+  // recordPayment also applies the live-event effects of an item reaching
+  // full funding — celebrations, the register completing, a sponsor bundle
+  // unlock — in this same transaction (lib/eventEffects).
   const applied = await withStripeEvent(event.id, event.type, (tx) =>
-    applyConfirmedPayment(tx, fundingId, paymentIntentIdOf(session.payment_intent)),
+    recordPayment(tx, fundingId, paymentIntentIdOf(session.payment_intent)),
   );
   // Already confirmed by an earlier delivery, or expired and deleted.
   if (!applied) return;

@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { applyEventEffects, type EventEffects } from "@/lib/eventEffects";
 
 // The money side of the Stripe webhook: recording each Stripe event exactly
 // once, and applying payments and refunds to an item's funded total without
@@ -98,12 +99,21 @@ export function fundingAfterRefund(item: ItemFundingState, amountCents: number) 
   return { newTotalCents: newTotal, fundingStatus };
 }
 
-async function lockItem(tx: Tx, itemId: string): Promise<ItemFundingState | null> {
-  const rows = await tx.$queryRaw<ItemFundingState[]>`
-    SELECT "totalFundedCents", "standardPriceCents", "fundingStatus"::text AS "fundingStatus"
+async function lockItem(tx: Tx, itemId: string): Promise<(ItemFundingState & { registerId: string }) | null> {
+  const rows = await tx.$queryRaw<(ItemFundingState & { registerId: string })[]>`
+    SELECT "totalFundedCents", "standardPriceCents", "fundingStatus"::text AS "fundingStatus", "registerId"
     FROM "RegisterItem" WHERE "id" = ${itemId}
     FOR UPDATE`;
   return rows[0] ?? null;
+}
+
+// Lock the item's register too, AFTER the item (lock order: item → register →
+// event). Payments on different items of one register then apply one after
+// the other, so the payment that finishes the last item sees every other
+// item's committed total and can tell the register is complete
+// (lib/eventEffects).
+async function lockRegister(tx: Tx, registerId: string): Promise<void> {
+  await tx.$queryRaw`SELECT "id" FROM "Register" WHERE "id" = ${registerId} FOR UPDATE`;
 }
 
 // ── Payment ─────────────────────────────────────────────────────────────────
@@ -111,6 +121,7 @@ async function lockItem(tx: Tx, itemId: string): Promise<ItemFundingState | null
 export type AppliedPayment = PaymentOutcome & {
   fundingId:          string;
   itemId:             string;
+  registerId:         string;
   amountCents:        number;
   fundraisingEventId: string | null;
 };
@@ -140,6 +151,7 @@ export async function applyConfirmedPayment(
   // the whole transaction (StripeEvent included) rolls back and Stripe retries.
   const item = await lockItem(tx, funding.registerItemId);
   if (!item) throw new Error(`Item ${funding.registerItemId} missing for confirmed funding ${fundingId}`);
+  await lockRegister(tx, item.registerId);
 
   const outcome = fundingAfterPayment(item, funding.amountCents);
   await tx.registerItem.update({
@@ -151,6 +163,7 @@ export async function applyConfirmedPayment(
     ...outcome,
     fundingId,
     itemId:             funding.registerItemId,
+    registerId:         item.registerId,
     amountCents:        funding.amountCents,
     fundraisingEventId: funding.fundraisingEventId,
   };
@@ -186,4 +199,25 @@ export async function applyRefund(tx: Tx, paymentIntentId: string): Promise<Appl
   });
 
   return { fundingId: funding.id, donorId: funding.donorId, amountCents: funding.amountCents };
+}
+
+// ── Payment with its event effects ──────────────────────────────────────────
+
+// Confirm a payment and, if it brought its item to full funding, apply what
+// that means for a live event showing the register (lib/eventEffects): item
+// and completion celebrations, the completion, a sponsor bundle unlock. All in
+// the caller's transaction (withStripeEvent), so they commit with the payment
+// or not at all, and a webhook retry finds the payment already confirmed and
+// does nothing.
+export async function recordPayment(
+  tx: Tx,
+  fundingId: string,
+  paymentIntentId: string | null,
+): Promise<(AppliedPayment & { effects: EventEffects | null }) | null> {
+  const applied = await applyConfirmedPayment(tx, fundingId, paymentIntentId);
+  if (!applied) return null;
+  const effects = applied.becameFullyFunded
+    ? await applyEventEffects(tx, { fundingId, itemId: applied.itemId, registerId: applied.registerId })
+    : null;
+  return { ...applied, effects };
 }
