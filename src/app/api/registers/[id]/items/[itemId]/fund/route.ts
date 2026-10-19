@@ -5,6 +5,7 @@ import { getStripe } from "@/lib/stripe";
 import { computeBreakdown, checkContributionAmount } from "@/lib/checkoutFees";
 import { rateLimitAsync } from "@/lib/rateLimit";
 import { resolveEventIdForAttribution } from "@/lib/fundraisingEvent";
+import { donorNameMetadata } from "@/lib/donorName";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { itemId } = await params;
   const body = await req.json();
-  const { amountCents, supportOn = true, coverStripe = true, eventSlug } = body;
+  const { amountCents, supportOn = true, coverStripe = true, eventSlug, displayName, showName } = body;
 
   if (!amountCents || typeof amountCents !== "number" || !Number.isInteger(amountCents) || amountCents <= 0) {
     return NextResponse.json({ error: "amountCents must be a positive integer" }, { status: 400 });
@@ -129,6 +130,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         itemId,
         donorId:    auth.userId,
         registerId,
+        // Her livestream name choice (lib/donorName), only when this payment is
+        // attributed to a live event; the raw name only if ticked. The webhook
+        // cleans it to a first name before anything is stored.
+        ...(fundraisingEventId ? donorNameMetadata({ displayName, showName }) : { showName: "0" }),
       },
       success_url: `${appUrl}/registers/${registerId}?payment=success&item=${itemId}`,
       cancel_url:  `${appUrl}/registers/${registerId}?payment=cancel`,

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { X, Loader2, ShieldCheck } from "lucide-react";
 import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkoutFees";
+import StreamNameFields from "@/components/StreamNameFields";
 import type { PublicRegisterItem } from "@/lib/registers";
 
 // Guest funding. A logged-out viewer — typically someone who followed a host
@@ -186,30 +187,11 @@ export default function GuestFundSheet({
 
         {/* Livestream name — only when she came from a live event */}
         {eventSlug && (
-          <div style={{ marginTop: 16 }}>
-            <label style={label}>Name to show on the stream <span style={{ fontWeight: 600, color: "var(--mid)" }}>(optional)</span></label>
-            <input
-              value={streamName}
-              onChange={(e) => setStreamName(e.target.value)}
-              placeholder="First name"
-              maxLength={40}
-              autoComplete="off"
-              disabled={!showName}
-              style={{ ...input, opacity: showName ? 1 : 0.5 }}
-            />
-            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, minHeight: 44, cursor: "pointer", fontSize: 13, color: "var(--ink)", fontFamily: "Nunito, sans-serif" }}>
-              <input
-                type="checkbox"
-                checked={showName}
-                onChange={(e) => setShowName(e.target.checked)}
-                style={{ width: 20, height: 20, accentColor: "#1a7a5e", flexShrink: 0 }}
-              />
-              Show my first name on the stream.
-            </label>
-            <div style={{ fontSize: 11.5, color: "var(--mid)", lineHeight: 1.6, marginTop: 2 }}>
-              Only your first name, and only if you fund this item in full yourself.
-            </div>
-          </div>
+          <StreamNameFields
+            name={streamName} onName={setStreamName}
+            showName={showName} onShowName={setShowName}
+            style={{ marginTop: 16 }}
+          />
         )}
 
         {/* Options */}

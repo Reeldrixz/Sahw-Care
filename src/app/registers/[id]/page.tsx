@@ -20,6 +20,7 @@ import RegisterTour from "@/components/RegisterTour";
 import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
 import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkoutFees";
+import StreamNameFields from "@/components/StreamNameFields";
 import { CURRENT_FEATURE_CONSENT, FEATURE_CONSENT_UPDATED_NOTICE, hasCurrentFeatureConsent } from "@/lib/featureConsent";
 
 interface FundingEntry {
@@ -124,6 +125,13 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [supportOn, setSupportOn]           = useState(true);
   const [coverStripe, setCoverStripe]       = useState(true);
   const [processing, setProcessing]         = useState(false);
+  // The live event she came from, only when /r passed it in the URL (?e=).
+  // Then her payment is attributed to it and the livestream name fields show,
+  // as on the guest sheet. Without it, nothing about paying changes.
+  const [eventSlug] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("e"));
+  const [streamName, setStreamName]         = useState("");
+  const [showName, setShowName]             = useState(true);
   const [funded, setFunded]                 = useState(false);
   const [fundedAmount, setFundedAmount]     = useState(0);
   const [addingItem, setAddingItem]         = useState(false);
@@ -329,7 +337,10 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     const res = await fetch(`/api/registers/${id}/items/${selectedItem.id}/fund`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amountCents: breakdown.itemSubtotal, supportOn, coverStripe }),
+      body: JSON.stringify({
+        amountCents: breakdown.itemSubtotal, supportOn, coverStripe,
+        ...(eventSlug ? { eventSlug, displayName: streamName, showName } : {}),
+      }),
     });
     if (res.ok) {
       const { sessionUrl } = await res.json();
@@ -1219,6 +1230,15 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                           <span>${(breakdown.total / 100).toFixed(2)} CAD</span>
                         </div>
                       </div>
+                    )}
+
+                    {/* Livestream name — only when she came from a live event */}
+                    {eventSlug && (
+                      <StreamNameFields
+                        name={streamName} onName={setStreamName}
+                        showName={showName} onShowName={setShowName}
+                        style={{ marginBottom: 14 }}
+                      />
                     )}
 
                     {/* Trust block */}

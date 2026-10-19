@@ -14,6 +14,13 @@ if (!/@(127\.0\.0\.1|localhost)[:/]/.test(dbUrl)) {
   process.exit(1);
 }
 
+// Prod (Neon) is UTF-8. A database in another encoding can't store names in
+// other scripts, and would fail for the wrong reason.
+async function requireUtf8() {
+  const [{ enc }] = await prisma.$queryRawUnsafe<{ enc: string }[]>(`SELECT pg_encoding_to_char(encoding) AS enc FROM pg_database WHERE datname = current_database()`);
+  if (enc !== "UTF8") { console.error(`Refusing to run: the database encoding is ${enc}; it must be UTF8, like prod.`); process.exit(1); }
+}
+
 let fails = 0;
 const check = (label: string, ok: boolean, detail = "") => { if (!ok) fails++; console.log(ok ? "pass" : "FAIL", label, detail); };
 let n = 0;
@@ -42,8 +49,9 @@ const deliver = (fundingId: string, eventId = `evt_${uid()}`) =>
 const celebrations = (eventId: string) => prisma.eventCelebration.findMany({ where: { eventId }, orderBy: { createdAt: "asc" } });
 
 (async () => {
+  await requireUtf8();
   check("firstNameOnly", firstNameOnly("  Sarah Jane Smith ") === "Sarah" && firstNameOnly("Ngozi-Ade") === "Ngozi-Ade"
-    && firstNameOnly("<b>") === "b" && firstNameOnly("123") === null && firstNameOnly(null) === null
+    && firstNameOnly("<b>") === null && firstNameOnly("123") === null && firstNameOnly(null) === null
     && firstNameOnly("Abcdefghijklmnopqrstuvwxyz") === "Abcdefghijklmnopqrst");
 
   // Item funded by several donors: ITEM_FUNDED, no name.

@@ -41,13 +41,23 @@ export type EventEffects = {
   bundleUnlockedFor: string[];// event ids that unlocked a bundle
 };
 
-// First name only, from what the donor typed: the first word, letters and the
-// few joining marks a name uses, at most 20 characters. Null if nothing usable.
+// First name only, from what someone typed: the first word, taken as it is or
+// not at all. It must be made only of letters from any language (Unicode
+// letters, with their combining accents — "Ọlábísí", "Zoë", "محمد"),
+// apostrophes and hyphens ("O'Neil", "Anne-Marie"), and contain at least one
+// letter. Anything else — digits, symbols, markup — means NO name: a garbled
+// name is never shown, so "<b>Sarah</b>", "123" and "Sa$rah" give null.
+// Normalised to NFC, then capped at 20 characters (whole characters, so an
+// accent is never cut from its letter).
+const NAME_WORD = /^[\p{L}\p{M}'’\-‐]+$/u;
+const HAS_LETTER = /\p{L}/u;
+
 export function firstNameOnly(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const word = raw.trim().split(/\s+/)[0] ?? "";
-  const clean = word.replace(/[^\p{L}\p{M}'’-]/gu, "").slice(0, 20);
-  return clean.length > 0 ? clean : null;
+  const word = (raw.normalize("NFC").trim().split(/\s+/u)[0] ?? "");
+  if (!word || !NAME_WORD.test(word) || !HAS_LETTER.test(word)) return null;
+  const chars = Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(word), (s) => s.segment);
+  return chars.slice(0, 20).join("");
 }
 
 // A donor, for "one donor covered it all": the account, or for a guest the

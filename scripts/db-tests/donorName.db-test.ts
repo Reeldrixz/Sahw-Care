@@ -6,12 +6,20 @@
 // celebration. Writes test rows, so it refuses any non-local DATABASE_URL.
 import { prisma } from "../../src/lib/prisma";
 import { withStripeEvent, isDuplicateStripeEvent, recordPayment } from "../../src/lib/stripeLedger";
-import { donorNameFromMetadata } from "../../src/lib/donorName";
+import { donorNameFromMetadata, donorNameMetadata } from "../../src/lib/donorName";
+import { resolveEventIdForAttribution } from "../../src/lib/fundraisingEvent";
 
 const dbUrl = process.env.DATABASE_URL ?? "";
 if (!/@(127\.0\.0\.1|localhost)[:/]/.test(dbUrl)) {
   console.error("Refusing to run: DATABASE_URL must point at a local throwaway Postgres (127.0.0.1 or localhost).");
   process.exit(1);
+}
+
+// Prod (Neon) is UTF-8. A database in another encoding can't store names in
+// other scripts, and would fail for the wrong reason.
+async function requireUtf8() {
+  const [{ enc }] = await prisma.$queryRawUnsafe<{ enc: string }[]>(`SELECT pg_encoding_to_char(encoding) AS enc FROM pg_database WHERE datname = current_database()`);
+  if (enc !== "UTF8") { console.error(`Refusing to run: the database encoding is ${enc}; it must be UTF8, like prod.`); process.exit(1); }
 }
 
 let fails = 0;
@@ -47,6 +55,7 @@ async function outcome(fundingId: string, eventId: string) {
 }
 
 (async () => {
+  await requireUtf8();
   // Ticked, with a full name typed: first name stored and shown.
   {
     const { ev, f } = await setup();
@@ -76,17 +85,49 @@ async function outcome(fundingId: string, eventId: string) {
     check("blank: celebration has no name", o.celebrations[0]?.donorDisplayName === null);
   }
 
-  // Markup typed as the name: cleaned by the first-name rule, never stored raw.
+  // Names that must work: stored and shown as typed (first word, NFC).
+  for (const [typed, expected] of [
+    ["Ọlábísí", "Ọlábísí"], ["O\u0323la\u0301bi\u0301si\u0301", "Ọlábísí"], ["Zoë", "Zoë"],
+    ["O'Neil", "O'Neil"], ["Anne-Marie", "Anne-Marie"], ["فاطمة", "فاطمة"],
+  ] as const) {
+    const { ev, f } = await setup();
+    await webhook(f.id, { showName: "1", displayName: typed });
+    const o = await outcome(f.id, ev.id);
+    check(`name "${typed}": stored and shown as "${expected}"`,
+      o.stored.displayName === expected && o.celebrations[0]?.donorDisplayName === expected, `stored=${o.stored.displayName}`);
+  }
+
+  // Names that must give no name: anything but letters, apostrophes, hyphens.
+  for (const typed of ["<b>Sarah</b>", "123", "Sa$rah"]) {
+    const { ev, f } = await setup();
+    await webhook(f.id, { showName: "1", displayName: typed });
+    const o = await outcome(f.id, ev.id);
+    check(`name "${typed}": no name stored or shown`,
+      o.stored.displayName === null && o.celebrations[0]?.donorDisplayName === null && !/[<>$]/.test(JSON.stringify(o)));
+  }
+
+  // A signed-in donor paying from the event: what the signed-in checkout now
+  // does — resolve the event from ?e= and send her name choice in the
+  // metadata — then the webhook. Attributed to the event, carrying her name.
   {
     const { ev, f } = await setup();
-    await webhook(f.id, { showName: "1", displayName: "<b>Sarah</b>" });
+    const donor = await prisma.user.create({ data: { name: "Ngozi Okafor", email: `d${uid()}@t.test`, password: "x" } });
+    const fundraisingEventId = await resolveEventIdForAttribution(ev.slug);
+    await prisma.registerItemFunding.update({
+      where: { id: f.id }, data: { donorId: donor.id, guestEmail: null, fundraisingEventId },
+    });
+    const metadata = {
+      fundingId: f.id, donorId: donor.id,
+      ...(fundraisingEventId ? donorNameMetadata({ displayName: "Ngozi Okafor", showName: true }) : { showName: "0" }),
+    };
+    await webhook(f.id, metadata);
+    const row = await prisma.registerItemFunding.findUniqueOrThrow({ where: { id: f.id } });
     const o = await outcome(f.id, ev.id);
-    check("<b>Sarah</b>: stored without markup", o.stored.displayName === "bSarahb", `stored=${o.stored.displayName}`);
-    check("<b>Sarah</b>: no < or > anywhere", !/[<>]/.test(JSON.stringify(o)));
-    const { ev: ev2, f: f2 } = await setup();
-    await webhook(f2.id, { showName: "1", displayName: "<b>" });
-    const o2 = await outcome(f2.id, ev2.id);
-    check("<b> alone: becomes \"b\"", o2.stored.displayName === "b", `stored=${o2.stored.displayName}`);
+    check("signed-in from the event: attributed to the event", fundraisingEventId === ev.id && row.fundraisingEventId === ev.id);
+    check("signed-in from the event: her first name stored and shown, nothing from her account",
+      row.displayName === "Ngozi" && row.showNameConsent === true && o.celebrations[0]?.donorDisplayName === "Ngozi");
+    const notLive = await prisma.fundraisingEvent.create({ data: { title: "D", slug: `d-${uid()}`, hostName: "H", status: "DRAFT" } });
+    check("signed-in, event not LIVE: not attributed", (await resolveEventIdForAttribution(notLive.slug)) === null);
   }
 
   // Missing metadata (a session from before this change) or a forged flag: no consent.

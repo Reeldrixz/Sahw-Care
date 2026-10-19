@@ -119,7 +119,14 @@ export default function PublicRegisterClient({
   // sheet, without leaving the page.
   const goFund = (itemId: string) => {
     if (user) {
-      router.push(`/registers/${register.id}?item=${itemId}`);
+      // Carry the event she came from (the same ?e= / session value the guest
+      // sheet reads), so her payment is attributed to it and her checkout
+      // offers the livestream name, exactly as a guest's does.
+      let e: string | null = null;
+      try {
+        e = new URLSearchParams(window.location.search).get("e") ?? window.sessionStorage.getItem("kradel.eventSlug");
+      } catch { /* private mode */ }
+      router.push(`/registers/${register.id}?item=${itemId}${e ? `&e=${encodeURIComponent(e)}` : ""}`);
       return;
     }
     const item = register.items.find((i) => i.id === itemId);

@@ -3,6 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { toPublicCelebration, type CelebrationRow } from "./publicCelebration";
 import { donorNameMetadata, donorNameFromMetadata } from "./donorName";
+import { firstNameOnly } from "./eventEffects";
 
 const row = (o: Partial<CelebrationRow>): CelebrationRow => ({
   id: "cel_1", type: "ITEM_FUNDED", donorDisplayName: null, motherName: "Aisha Bello",
@@ -50,8 +51,29 @@ test("webhook metadata is untrusted: consent only for exactly \"1\", first name 
   assert.deepEqual(donorNameFromMetadata({ showName: "1", displayName: "Sarah Jane Smith" }), { showNameConsent: true, displayName: "Sarah" });
   assert.deepEqual(donorNameFromMetadata({ showName: "0", displayName: "Sarah" }), { showNameConsent: false, displayName: null });
   assert.deepEqual(donorNameFromMetadata({ showName: "1", displayName: "   " }), { showNameConsent: true, displayName: null });
-  assert.deepEqual(donorNameFromMetadata({ showName: "1", displayName: "<b>" }), { showNameConsent: true, displayName: "b" });
+  assert.deepEqual(donorNameFromMetadata({ showName: "1", displayName: "<b>" }), { showNameConsent: true, displayName: null });
   assert.deepEqual(donorNameFromMetadata({ showName: "yes", displayName: "Sarah" }), { showNameConsent: false, displayName: null });
   assert.deepEqual(donorNameFromMetadata({}), { showNameConsent: false, displayName: null });
   assert.deepEqual(donorNameFromMetadata(null), { showNameConsent: false, displayName: null });
+});
+
+test("first-name rule: letters from any language, apostrophes, hyphens — kept as typed", () => {
+  assert.equal(firstNameOnly("Ọlábísí"), "Ọlábísí");
+  assert.equal(firstNameOnly("O\u0323la\u0301bi\u0301si\u0301"), "Ọlábísí", "decomposed input is normalised to NFC");
+  assert.equal(firstNameOnly("Zoë Smith"), "Zoë");
+  assert.equal(firstNameOnly("O'Neil"), "O'Neil");
+  assert.equal(firstNameOnly("Anne-Marie Jones"), "Anne-Marie");
+  assert.equal(firstNameOnly("فاطمة الزهراء"), "فاطمة");
+  assert.equal(firstNameOnly("Abcdefghijklmnopqrstuvwxyz"), "Abcdefghijklmnopqrst", "20-character cap");
+});
+
+test("first-name rule: anything else in the first word means no name", () => {
+  assert.equal(firstNameOnly("<b>Sarah</b>"), null);
+  assert.equal(firstNameOnly("<b>"), null);
+  assert.equal(firstNameOnly("123"), null);
+  assert.equal(firstNameOnly("Sa$rah"), null);
+  assert.equal(firstNameOnly("Sarah2"), null);
+  assert.equal(firstNameOnly("'-"), null, "punctuation alone is not a name");
+  assert.equal(firstNameOnly("   "), null);
+  assert.equal(firstNameOnly(null), null);
 });
