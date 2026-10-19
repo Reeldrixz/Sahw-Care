@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveEventByToken } from "@/lib/fundraisingEvent";
 import { fetchFeaturableRegisters, fetchOnScreenRegister } from "@/lib/registers";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -47,9 +48,20 @@ export async function GET(
   const event = await resolveEventByToken(token);
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [registers, onScreen] = await Promise.all([
+  const [registers, onScreen, goal, raised] = await Promise.all([
     fetchFeaturableRegisters(),
     fetchOnScreenRegister(event.currentRegisterId),
+    // The goal in registers fulfilled during this event.
+    Promise.all([
+      prisma.eventRegisterCompletion.count({ where: { eventId: event.id } }),
+      prisma.fundraisingEvent.findUnique({ where: { id: event.id }, select: { goalRegisters: true } }),
+    ]),
+    // The dollar total attributed to this event: confirmed item amounts only,
+    // never fees. Shown to the host here, deliberately not on the overlay.
+    prisma.registerItemFunding.aggregate({
+      where: { fundraisingEventId: event.id, status: "CONFIRMED" },
+      _sum:  { amountCents: true },
+    }),
   ]);
 
   return NextResponse.json({
@@ -60,6 +72,8 @@ export async function GET(
       status:    event.status,
       startedAt: event.startedAt,
       hideDonorNames: event.hideDonorNames,
+      goal: { completed: goal[0], target: goal[1]?.goalRegisters ?? 0 },
+      raisedThroughEventCents: raised._sum.amountCents ?? 0,
     },
     registers,
     onScreen,

@@ -50,7 +50,10 @@ interface Register {
   intro: string | null; firstName: string; items: Item[];
 }
 interface Payload {
-  event: { title: string; hostName: string; goalCents: number; status: string; startedAt: string | null };
+  event: {
+    title: string; hostName: string; goalCents: number; status: string; startedAt: string | null;
+    hideDonorNames: boolean; goal: { completed: number; target: number }; raisedThroughEventCents: number;
+  };
   registers: Register[];
   onScreen: Register | null; // what the audience sees now, even if she has since withdrawn
   fetchedAt: string;
@@ -80,6 +83,22 @@ export default function HostDashboardPage() {
   // revoked consent since this list loaded) the selection is rolled back rather
   // than left showing a register the overlay will not display.
   const pending = useRef(false);
+  // Host switch: hide donor names on the overlay. Applied when each
+  // celebration is shown, so turning it on hides names already queued.
+  const [namesBusy, setNamesBusy] = useState(false);
+  const setHideNames = useCallback(async (hide: boolean) => {
+    setNamesBusy(true);
+    setData((d) => (d ? { ...d, event: { ...d.event, hideDonorNames: hide } } : d));
+    const r = await fetch(`/api/host/${token}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hideDonorNames: hide }),
+      cache: "no-store",
+    });
+    if (!r.ok) setData((d) => (d ? { ...d, event: { ...d.event, hideDonorNames: !hide } } : d));
+    setNamesBusy(false);
+  }, [token]);
+
   const feature = useCallback(async (registerId: string | null) => {
     pending.current = true;
     setFeatured(registerId);
@@ -162,18 +181,32 @@ export default function HostDashboardPage() {
         <div style={{ textAlign: "right" }}>
           <div style={{ fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: MUTED, fontWeight: 700 }}>Event goal</div>
           <div style={{ fontSize: 40, fontWeight: 800, color: ACCENT, lineHeight: 1.1 }}>
-            {event.goalCents > 0 ? money(event.goalCents) : "—"}
+            {event.goal.target > 0 ? `${event.goal.completed} of ${event.goal.target}` : "—"}
           </div>
+          <div style={{ fontSize: 13, color: MUTED }}>Registers fulfilled</div>
+          <div style={{ fontSize: 15, color: TEXT, marginTop: 8 }}>
+            {money(event.raisedThroughEventCents)} <span style={{ color: MUTED }}>raised through this event</span>
+          </div>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 10, marginTop: 12, cursor: namesBusy ? "default" : "pointer", fontSize: 15, color: TEXT }}>
+            <input
+              type="checkbox"
+              checked={event.hideDonorNames}
+              disabled={namesBusy}
+              onChange={(e) => setHideNames(e.target.checked)}
+              style={{ width: 20, height: 20, accentColor: ACCENT }}
+            />
+            Hide donor names on the overlay
+          </label>
         </div>
       </div>
 
       {/* Pool summary. Labelled for exactly what it is: the all-time funding
           state of the registers currently featurable — NOT money raised during
-          this event. The event-attributed total now exists and is shown on the
-          broadcast overlay as "raised through this event"; this dashboard figure
-          is deliberately still the all-time one, and says so, because a number
-          that looks like "raised tonight" but isn't would be read aloud as if it
-          were. Surfacing the attributed total here too is a small follow-up. */}
+          this event. The event-attributed total is shown above as "raised through
+          this event", on this dashboard only: the broadcast overlay shows no
+          dollar total. This figure stays the all-time one, and says so, because
+          a number that looks like "raised tonight" but isn't would be read aloud
+          as if it were. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 26, padding: "16px 0", borderBottom: `1px solid ${LINE}` }}>
         <Stat label="Registers featurable" value={String(registers.length)} />
         <Stat label="Items still needed" value={String(registers.reduce((s, r) => s + registerTotals(r).remaining, 0))} />
