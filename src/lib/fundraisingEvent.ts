@@ -60,6 +60,7 @@ export interface HostEvent {
   goalCents: number;
   status: "DRAFT" | "LIVE" | "ENDED";
   startedAt: Date | null;
+  currentRegisterId: string | null; // what the host has on screen, if anything
 }
 
 /**
@@ -93,7 +94,7 @@ export async function resolveEventByToken(token: string | undefined | null): Pro
     where: { accessToken: token },
     select: {
       id: true, title: true, hostName: true, goalCents: true,
-      status: true, startedAt: true,
+      status: true, startedAt: true, currentRegisterId: true,
       tokenExpiresAt: true, tokenRevokedAt: true,
     },
   });
@@ -119,5 +120,6 @@ export async function resolveEventByToken(token: string | undefined | null): Pro
     goalCents: event.goalCents,
     status: event.status,
     startedAt: event.startedAt,
+    currentRegisterId: event.currentRegisterId,
   };
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveEventByToken } from "@/lib/fundraisingEvent";
-import { fetchFeaturableRegisters } from "@/lib/registers";
+import { fetchFeaturableRegisters, fetchOnScreenRegister } from "@/lib/registers";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +21,12 @@ export const dynamic = "force-dynamic";
 // guarantee evaporates — add aggregates ALONGSIDE the call, never instead of it.
 //
 // THE POOL IS READ LIVE on every request. Nothing is cached and nothing is
-// pinned to the event. If a mother revokes consent mid-stream she is gone from
-// the next call, which is the entire reason the featurable pool is a query
-// rather than a stored list.
+// pinned to the event. If a mother withdraws consent she is gone from the pool
+// on the next call, so she can't be picked again. The register already on
+// screen is returned separately as onScreen, read without a consent check:
+// she stays on screen until the host moves on or the event ends (as the
+// consent card tells her), and the host must still see — and be able to clear —
+// what the audience sees.
 
 export async function GET(
   req: NextRequest,
@@ -44,7 +47,10 @@ export async function GET(
   const event = await resolveEventByToken(token);
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const registers = await fetchFeaturableRegisters();
+  const [registers, onScreen] = await Promise.all([
+    fetchFeaturableRegisters(),
+    fetchOnScreenRegister(event.currentRegisterId),
+  ]);
 
   return NextResponse.json({
     event: {
@@ -55,6 +61,7 @@ export async function GET(
       startedAt: event.startedAt,
     },
     registers,
+    onScreen,
     // Returned so a dashboard can show "as of", and so it is obvious in the
     // payload that this is a live read rather than something cached.
     fetchedAt: new Date().toISOString(),

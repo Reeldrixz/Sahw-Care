@@ -1,0 +1,22 @@
+-- Register.featureConsentVersion: which wording of the feature-consent card a
+-- mother agreed to, stored with featureConsentAt (when she agreed).
+--
+-- The wording itself lives in code, in lib/featureConsent.ts, one entry per
+-- version, never edited once published; a wording change is a new version. A
+-- host can pick a register only when its consent is for the current version,
+-- so agreeing to an earlier wording never counts as agreeing to a later one.
+--
+-- No backfill, deliberately. Consents given before versions existed were to
+-- version 1 (the original wording), which does not describe what events now
+-- show. They stay NULL, which is not the current version, so those registers
+-- cannot be picked until she reads the new card and says yes again. On prod at
+-- the time of writing no register has ever consented, so no mother is affected.
+--
+-- Withdrawing consent clears this with featureConsentAt: no record is kept of
+-- consent she withdrew.
+--
+-- DDL is verbatim from a read-only `prisma migrate diff --from-url <prod>
+-- --to-schema-datamodel`. Additive only: one nullable column.
+
+-- AlterTable
+ALTER TABLE "Register" ADD COLUMN     "featureConsentVersion" INTEGER;

@@ -530,6 +530,11 @@ model Register {
   // the opposite of honouring it.
   featureConsent   Boolean   @default(false)
   featureConsentAt DateTime?
+  // Which wording of the consent card she agreed to (lib/featureConsent). Only
+  // the current version lets a host pick her register: a wording change never
+  // counts as agreeing to the new text. Cleared with featureConsentAt when she
+  // withdraws (no record is kept of consent she withdrew).
+  featureConsentVersion Int?
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 

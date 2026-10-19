@@ -20,6 +20,7 @@ import RegisterTour from "@/components/RegisterTour";
 import { calculateNeedLevel } from "@/lib/need-levels";
 import { useAuth } from "@/contexts/AuthContext";
 import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkoutFees";
+import { CURRENT_FEATURE_CONSENT, FEATURE_CONSENT_UPDATED_NOTICE, hasCurrentFeatureConsent } from "@/lib/featureConsent";
 
 interface FundingEntry {
   firstName: string;
@@ -49,6 +50,7 @@ interface RegisterData {
   status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
   addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
   featureConsent: boolean;
+  featureConsentVersion: number | null;
   creator: { id: string; name: string; location: string | null; verificationBadge: VerificationBadgeKind };
   items: RegisterItemData[];
 }
@@ -835,42 +837,76 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             controls: this is a privacy choice about where she may appear, not
             a lever for raising more money. Presenting it beside funding
             options would invite her to read it as something that helps her
-            register do better, which is not a fair basis for consent. */}
-        {isMom && (
+            register do better, which is not a fair basis for consent.
+
+            Rendered from lib/featureConsent, so the words here are exactly the
+            version stored when she says yes. Everything, including what
+            happens if she stops during a live event, is shown before she
+            agrees. Consent to an earlier wording shows the update notice: it
+            no longer lets a host pick her register until she says yes again. */}
+        {isMom && (() => {
+          const copy = CURRENT_FEATURE_CONSENT;
+          const consentCurrent  = hasCurrentFeatureConsent(register);
+          const consentOutdated = register.featureConsent && !consentCurrent;
+          return (
           <div style={{ margin: "24px 16px 0", padding: "16px", background: "white", border: "1.5px solid var(--border)", borderRadius: 16 }}>
+            {consentOutdated && (
+              <div role="status" style={{ fontSize: 12.5, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 10, padding: "9px 12px", marginBottom: 12, lineHeight: 1.5 }}>
+                {FEATURE_CONSENT_UPDATED_NOTICE}
+              </div>
+            )}
+
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
               <Megaphone size={17} strokeWidth={2} color="#1a7a5e" style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ fontFamily: "Lora, serif", fontSize: 15, fontWeight: 700, color: "var(--ink)", lineHeight: 1.4 }}>
-                Allow my Register to be featured in Kradel fundraising events
+                {copy.heading}
               </div>
             </div>
 
             <p style={{ fontSize: 12.5, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 10px" }}>
-              Your first name, Register items, and information you&apos;ve chosen to share on your
-              Register may be shown to audiences outside Kradel during livestreams and other Kradel
-              fundraising campaigns.
+              {copy.intro}
             </p>
 
-            {/* Stated plainly, because the reasonable assumption is the opposite. */}
-            <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 14px", padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
-              This doesn&apos;t share anything new — your Register is already viewable by anyone with
-              the link. This is about whether we may show it during fundraising.
-            </p>
+            {copy.mayShowHeading && (
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: "var(--ink)", margin: "0 0 6px" }}>{copy.mayShowHeading}</div>
+            )}
+            <ul style={{ margin: "0 0 10px", paddingLeft: 18, fontSize: 12.5, color: "var(--mid)", lineHeight: 1.6 }}>
+              {copy.mayShow.map((p) => (
+                <li key={p.lead} style={{ marginBottom: 4 }}>
+                  <strong style={{ color: "var(--ink)" }}>{p.lead}</strong> {p.text}
+                </li>
+              ))}
+            </ul>
+
+            {copy.neverShow && (
+              <p style={{ fontSize: 12.5, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 10px" }}>
+                <strong style={{ color: "var(--ink)" }}>{copy.neverShow.lead}</strong> {copy.neverShow.text}
+              </p>
+            )}
+
+            {copy.changingMind && (
+              <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 14px", padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
+                <strong style={{ color: "var(--ink)" }}>{copy.changingMind.lead}</strong>{" "}
+                {copy.changingMind.before}{" "}
+                <strong style={{ color: "var(--ink)" }}>{copy.changingMind.bold}</strong>{" "}
+                {copy.changingMind.after}
+              </p>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                disabled={savingConsent || register.featureConsent}
+                disabled={savingConsent || consentCurrent}
                 onClick={() => setFeatureConsent(true)}
                 style={{
                   flex: 1, padding: "11px 0", borderRadius: 12,
-                  border: `2px solid ${register.featureConsent ? "#1a7a5e" : "var(--border)"}`,
-                  background: register.featureConsent ? "#e8f5f1" : "white",
-                  color: register.featureConsent ? "#1a7a5e" : "var(--ink)",
+                  border: `2px solid ${consentCurrent ? "#1a7a5e" : "var(--border)"}`,
+                  background: consentCurrent ? "#e8f5f1" : "white",
+                  color: consentCurrent ? "#1a7a5e" : "var(--ink)",
                   fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif",
-                  cursor: register.featureConsent ? "default" : "pointer",
+                  cursor: consentCurrent ? "default" : "pointer",
                 }}
               >
-                Yes, you can feature it{register.featureConsent ? " ✓" : ""}
+                {copy.yes}{consentCurrent ? " ✓" : ""}
               </button>
               <button
                 disabled={savingConsent || !register.featureConsent}
@@ -883,15 +919,16 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   cursor: !register.featureConsent ? "default" : "pointer",
                 }}
               >
-                No
+                {copy.no}
               </button>
             </div>
 
             <p style={{ fontSize: 11.5, color: "var(--light)", lineHeight: 1.6, margin: "10px 0 0", textAlign: "center" }}>
-              You can change this anytime.
+              {copy.footer}
             </p>
           </div>
-        )}
+          );
+        })()}
 
         {!isDonorView && <div style={{ height: 140 }} />}
       </div>

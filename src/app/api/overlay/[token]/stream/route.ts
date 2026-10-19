@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveEventByToken } from "@/lib/fundraisingEvent";
-import { fetchFeaturableRegisters } from "@/lib/registers";
+import { fetchOnScreenRegister } from "@/lib/registers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,15 +30,12 @@ type Params = { params: Promise<{ token: string }> };
 //
 // WHAT THIS SENDS IS A SUBSET OF THE PUBLIC SHAPE, DELIBERATELY NARROWER. The
 // overlay is ON the broadcast: whatever it renders is seen by the whole audience,
-// not by one host. The consent copy is the display spec — "your first name,
-// Register items, and information you've chosen to share" — so first name, item
-// names, prices and progress, and nothing else. City is in the public shape and
-// is withheld here: first name plus city plus visible need is aggregate-
-// identifying at broadcast scale, which is a different exposure from a link
-// recipient reading the same page. The highest-exposure surface shows less than
-// it is allowed to.
+// not by one host. The consent card (lib/featureConsent) is the display spec —
+// first name, item names, prices and progress, and nothing else. City and due
+// date are never sent: the card promises viewers never see her area or her due
+// date, and the event shape (lib/registers) strips both.
 //
-// Registers come only from fetchFeaturableRegisters -> fetchPublicRegister. This
+// The register comes only from fetchOnScreenRegister -> fetchPublicRegister. This
 // route builds no select of its own, so it cannot widen what is visible.
 
 const POLL_MS      = 2_000;
@@ -78,14 +75,11 @@ async function buildFrame(eventId: string, currentRegisterId: string | null) {
     _count: true,
   });
 
-  const pool = await fetchFeaturableRegisters();
-
-  // The featured register is re-resolved against the LIVE pool every frame, so a
-  // mother who revokes consent mid-broadcast drops off the overlay on the next
-  // frame rather than persisting because an id was stored.
-  const featured = currentRegisterId
-    ? pool.find((r) => r.id === currentRegisterId) ?? null
-    : null;
+  // The register the host picked, read live for its current progress. Consent
+  // was checked when the host picked it (lib/registers fetchOnScreenRegister):
+  // a mother who withdraws mid-stream stays on screen until the host moves on
+  // or the event ends, which is what the consent card tells her.
+  const featured = await fetchOnScreenRegister(currentRegisterId);
 
   const purchasedIds = featured
     ? new Set(

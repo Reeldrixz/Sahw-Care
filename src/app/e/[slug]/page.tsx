@@ -118,7 +118,6 @@ export default async function EventLandingPage({ params }: Params) {
                     <span style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, color: "var(--ink)" }}>
                       {r.firstName}
                     </span>
-                    <span style={{ fontSize: 12.5, color: "var(--mid)" }}>{r.city}</span>
                   </div>
                   <div style={{ fontSize: 13, color: "var(--mid)", marginTop: 3, lineHeight: 1.5 }}>{r.title}</div>
 

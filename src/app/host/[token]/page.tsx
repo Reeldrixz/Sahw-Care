@@ -45,12 +45,13 @@ interface Item {
   fundingStatus: string; contributorCount: number; imageUrl: string | null;
 }
 interface Register {
-  id: string; title: string; city: string; dueDate: string; status: string;
+  id: string; title: string; status: string; // no city or due date: an event never receives them
   intro: string | null; firstName: string; items: Item[];
 }
 interface Payload {
   event: { title: string; hostName: string; goalCents: number; status: string; startedAt: string | null };
   registers: Register[];
+  onScreen: Register | null; // what the audience sees now, even if she has since withdrawn
   fetchedAt: string;
 }
 
@@ -75,7 +76,9 @@ export default function HostDashboardPage() {
   // dashboard stays responsive, then reconciled — if the server refuses (she
   // revoked consent since this list loaded) the selection is rolled back rather
   // than left showing a register the overlay will not display.
+  const pending = useRef(false);
   const feature = useCallback(async (registerId: string | null) => {
+    pending.current = true;
     setFeatured(registerId);
     const r = await fetch(`/api/host/${token}/featured`, {
       method: "PATCH",
@@ -84,13 +87,20 @@ export default function HostDashboardPage() {
       cache: "no-store",
     });
     if (!r.ok) setFeatured(null);
+    pending.current = false;
   }, [token]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/host/${token}`, { cache: "no-store" });
     if (r.status === 404) { setDead(true); setData(null); setLoading(false); return; }
-    if (r.ok) { setData(await r.json()); setDead(false); }
+    if (r.ok) {
+      const d: Payload = await r.json();
+      setData(d); setDead(false);
+      // The server's on-screen register is the truth (a reload, or another
+      // tab), unless a pick from this tab is still being saved.
+      if (!pending.current) setFeatured(d.onScreen?.id ?? null);
+    }
     setLoading(false);
   }, [token]);
 
@@ -126,7 +136,10 @@ export default function HostDashboardPage() {
   const { event, registers } = data;
   const poolTarget = registers.reduce((s, r) => s + registerTotals(r).target, 0);
   const poolFunded = registers.reduce((s, r) => s + registerTotals(r).funded, 0);
-  const featuredReg = registers.find((r) => r.id === featured) ?? null;
+  // The pool first (fresh after a pick); onScreen covers a mother who withdrew
+  // while on screen — gone from the pool, still on the broadcast.
+  const featuredReg = registers.find((r) => r.id === featured)
+    ?? (data.onScreen && data.onScreen.id === featured ? data.onScreen : null);
 
   return (
     <Shell>
@@ -204,7 +217,6 @@ function RegisterCard({ reg, active, onSelect }: { reg: Register; active: boolea
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: TEXT }}>{reg.firstName}</div>
-        <div style={{ fontSize: 13, color: MUTED }}>{reg.city}</div>
       </div>
       <div style={{ fontSize: 14, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>{reg.title}</div>
 
@@ -233,7 +245,7 @@ function FeaturedPanel({ reg, onClose }: { reg: Register; onClose: () => void })
             On screen
           </div>
           <div style={{ fontSize: 40, fontWeight: 800, color: TEXT, lineHeight: 1.1 }}>{reg.firstName}</div>
-          <div style={{ fontSize: 17, color: MUTED, marginTop: 6 }}>{reg.city} · {reg.title}</div>
+          <div style={{ fontSize: 17, color: MUTED, marginTop: 6 }}>{reg.title}</div>
         </div>
         <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${LINE}`, color: MUTED, borderRadius: 10, padding: "8px 14px", fontSize: 14, cursor: "pointer" }}>
           Clear

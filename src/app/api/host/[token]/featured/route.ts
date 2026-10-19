@@ -48,9 +48,12 @@ export async function PATCH(
     return NextResponse.json({ error: "registerId must be a string or null" }, { status: 400 });
   }
 
-  // Consent re-checked here, live, against the pool rather than trusted from the
-  // client. A register that has had consent withdrawn since the dashboard loaded
-  // cannot be put on screen.
+  // Consent checked here, live, against the pickable pool rather than trusted
+  // from the client: given, and for the current consent wording
+  // (lib/featureConsent). A register whose consent was withdrawn since the
+  // dashboard loaded, or given to an earlier wording, cannot be put on screen.
+  // This is the only consent check while a register is featured — once on
+  // screen it stays until the host moves on (lib/registers).
   const pool = await fetchFeaturableRegisters();
   if (!pool.some((r) => r.id === registerId)) {
     return NextResponse.json(

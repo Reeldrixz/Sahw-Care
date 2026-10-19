@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
+import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
 
 export const dynamic = "force-dynamic";
 
@@ -82,13 +83,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // turn OFF. On a consent flag that failure mode is unacceptable, so revocation
   // has to be as easy as granting.
   //
-  // Granting stamps featureConsentAt; revoking nulls it. No revoked-at history:
-  // keeping a record of consent she withdrew is the opposite of honouring it.
+  // Granting stamps when she agreed and which wording she agreed to — always the
+  // current one, since that is the card she was shown (lib/featureConsent).
+  // Revoking nulls both. No revoked-at history: keeping a record of consent she
+  // withdrew is the opposite of honouring it.
   const consentPatch =
     typeof featureConsent === "boolean"
       ? featureConsent
-        ? { featureConsent: true,  featureConsentAt: new Date() }
-        : { featureConsent: false, featureConsentAt: null }
+        ? { featureConsent: true,  featureConsentAt: new Date(), featureConsentVersion: FEATURE_CONSENT_VERSION }
+        : { featureConsent: false, featureConsentAt: null,       featureConsentVersion: null }
       : {};
 
   const updated = await prisma.register.update({

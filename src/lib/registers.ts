@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { AdminFacingRegister, DonorFacingRegister } from "@/types/register-dtos";
 import { VERIFICATION_BADGE_FIELDS, verificationBadgeFor, type VerificationBadge } from "@/lib/verificationBadge";
+import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
 
 // ── Public share helper: privacy-safe, no auth required ───────────────────────
 // Powers the shareable /r/[id] page. Exposes the mother's FIRST NAME only and
@@ -98,42 +99,62 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
   };
 }
 
-// ── Featurable pool: registers a mother has consented to be featured ─────────
+// ── Event registers: what fundraising events can show ────────────────────────
 //
-// The pool a creator/fundraising surface reads from. Two properties are
-// load-bearing and should not be relaxed:
+// Two reads, deliberately different:
 //
-// 1. featureConsent: true lives IN THE WHERE, never as a post-filter. A
-//    register without consent is unreachable by construction rather than by a
-//    filter someone can forget to apply, reorder, or drop while refactoring.
-//    The same discipline as status: "PUBLISHED" on the Experiences reader.
+//   fetchFeaturableRegisters() — the PICKABLE pool: the registers a host may
+//     choose to put on screen. Used for the host's list, the host's "feature
+//     this" check, and the public event page's list.
+//   fetchOnScreenRegister(id)  — the register a host has ALREADY put on screen,
+//     for the overlay and the host's "On screen" panel.
 //
-// 2. It returns fetchPublicRegister's shape, by calling it, MINUS the
-//    verification badge. That is what makes "consenting reveals nothing new"
-//    structurally true instead of a claim in a comment: there is no second
-//    mapping that could drift and start including a surname, a contact detail,
-//    or an address. It can only ever be a subset of the public page.
+// Consent is checked when a register is PICKED, not while it is on screen. A
+// mother who withdraws stops being pickable at once; a stream already showing
+// her keeps showing her until the host moves on or the event ends. That is
+// what the consent card (lib/featureConsent, version 2) tells her before she
+// agrees, so the on-screen read does not re-check consent.
 //
-//    The badge is removed because it belongs to a donor who has opened her
-//    register (/r, /registers/[id]), not to a broadcast, an event listing or a
-//    host's tooling. Stripping it here, not per consumer, means /e, the host
-//    dashboard and the overlay cannot receive it even by accident.
+// Load-bearing properties of the pickable pool, not to be relaxed:
 //
-// ACTIVE only. A COMPLETED register is deliberately excluded even with consent
-// on: she agreed while her register was live and asking for help, and appearing
-// in a campaign months after it was fulfilled is a materially different thing
-// to have agreed to. That is a separate consent, not an assumption to make
-// forward on her behalf.
+// 1. Consent lives IN THE WHERE, never as a post-filter: featureConsent true
+//    AND featureConsentVersion = the current wording. A register without
+//    current consent is unreachable by construction rather than by a filter
+//    someone can forget to apply, reorder, or drop while refactoring. Consent
+//    to an earlier wording does not count.
 //
-// Consent is read LIVE here. Anything that caches this pool must re-check at
-// display time — if she revokes, a cached pool must not keep her featurable.
-export type FeaturableRegister = Omit<PublicRegister, "verificationBadge">;
+// 2. Both reads return fetchPublicRegister's shape, by calling it, MINUS the
+//    verification badge, her city and her due date. There is no second mapping
+//    that could drift and start including a surname, a contact detail or an
+//    address; an event can only ever see a subset of the public page.
+//      badge    — for a donor who has opened her register (/r, /registers/[id]),
+//                 not for a broadcast, an event listing or a host's tooling
+//      city     — the consent card promises viewers never see her area
+//      due date — the consent card promises viewers never see her due date
+//    Stripped here, not per consumer, so no event surface can receive them.
+//
+// ACTIVE only in the pickable pool. A COMPLETED register is deliberately
+// excluded even with consent on: she agreed while her register was live and
+// asking for help, and appearing in a campaign months after it was fulfilled
+// is a materially different thing to have agreed to. (The on-screen read keeps
+// showing a register that completes while featured — that is the moment the
+// event exists for.)
+//
+// Both are read LIVE. Anything that caches the pickable pool must re-check
+// before picking.
+export type FeaturableRegister = Omit<PublicRegister, "verificationBadge" | "city" | "dueDate">;
+
+function toEventShape(r: PublicRegister): FeaturableRegister {
+  const { verificationBadge: _badge, city: _city, dueDate: _due, ...rest } = r;
+  return rest;
+}
 
 export async function fetchFeaturableRegisters(limit = 50): Promise<FeaturableRegister[]> {
   const rows = await prisma.register.findMany({
     where: {
-      featureConsent: true,
-      status:         "ACTIVE",
+      featureConsent:        true,
+      featureConsentVersion: FEATURE_CONSENT_VERSION,
+      status:                "ACTIVE",
     },
     orderBy: { featureConsentAt: "desc" },
     take:    Math.min(limit, 100),
@@ -143,9 +164,15 @@ export async function fetchFeaturableRegisters(limit = 50): Promise<FeaturableRe
   // Deliberately re-fetched through the public helper rather than selected here.
   // One definition of what is public, one place to audit.
   const full = await Promise.all(rows.map((r) => fetchPublicRegister(r.id)));
-  return full
-    .filter((r): r is PublicRegister => r !== null)
-    .map(({ verificationBadge: _badge, ...r }) => r);
+  return full.filter((r): r is PublicRegister => r !== null).map(toEventShape);
+}
+
+// The register an event currently has on screen, by the id the host picked.
+// No consent check — see above: consent was checked when it was picked.
+export async function fetchOnScreenRegister(id: string | null): Promise<FeaturableRegister | null> {
+  if (!id) return null;
+  const r = await fetchPublicRegister(id);
+  return r ? toEventShape(r) : null;
 }
 
 // ── Admin helper: includes all address data ───────────────────────────────────
