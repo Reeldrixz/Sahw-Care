@@ -101,7 +101,13 @@ export async function claimNextCelebration(eventId: string, now = new Date()): P
             )
           )
         )
-      ORDER BY e."createdAt" ASC, e."id" ASC
+      -- One payment writes its item celebration, register-complete and bundle
+      -- in one transaction, so they share createdAt (now() is the
+      -- transaction's start) and their ids are random: rank by type within a
+      -- timestamp so the item always goes on air before its register-complete.
+      ORDER BY e."createdAt" ASC,
+               CASE e."type" WHEN 'REGISTER_COMPLETE' THEN 1 WHEN 'BUNDLE_UNLOCKED' THEN 2 ELSE 0 END ASC,
+               e."id" ASC
       LIMIT 1
       FOR UPDATE SKIP LOCKED
     )

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { isChromeless } from "@/lib/chromeless";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasMotherIntent } from "@/lib/motherIntent";
 
@@ -15,6 +16,7 @@ export default function BetaWelcomeBanner() {
   const [hidden, setHidden] = useState(false);
 
   if (!user || user.betaWelcomeSeenAt || hidden) return null;
+  if (isChromeless(pathname)) return null;
   // Don't stack on a mother-intent user's first visit — the open-door panel is
   // the more important message and gets the stage; the feedback pill remains.
   if (hasMotherIntent(user)) return null;

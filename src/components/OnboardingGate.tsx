@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { isChromeless } from "@/lib/chromeless";
 import OnboardingModal from "./OnboardingModal";
 
 export default function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user, loading, refreshUser } = useAuth();
   const stageChecked = useRef(false);
   const [upgradeMsg, setUpgradeMsg] = useState<string | null>(null);
+  const chromeless = isChromeless(usePathname());
 
   // Run stage check once after user loads (only if onboarding complete)
   useEffect(() => {
@@ -31,12 +34,12 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
       {children}
 
       {/* Onboarding modal — shown once after signup */}
-      {!loading && user && !user.onboardingComplete && (
+      {!chromeless && !loading && user && !user.onboardingComplete && (
         <OnboardingModal onComplete={() => refreshUser()} />
       )}
 
       {/* Stage upgrade toast */}
-      {upgradeMsg && (
+      {!chromeless && upgradeMsg && (
         <div
           role="status"
           style={{

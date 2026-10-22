@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { isChromeless } from "@/lib/chromeless";
 import Avatar from "@/components/Avatar";
 import NotificationBell from "@/components/NotificationBell";
 import { Compass, ClipboardList, Users, Gift, PackageCheck, Search } from "lucide-react";
@@ -24,6 +25,7 @@ export default function DesktopNav() {
   // the app nav on top of it. While auth is resolving, user is null, so this
   // also avoids briefly flashing app links to a logged-out visitor.
   if (pathname === "/" && !user) return null;
+  if (isChromeless(pathname)) return null;
 
   const isDonor = user?.journeyType === "donor";
   const NAV_LINKS = ALL_NAV_LINKS.filter(({ momOnly }) => !(isDonor && momOnly));

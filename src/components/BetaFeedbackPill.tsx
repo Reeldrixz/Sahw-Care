@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
+import { isChromeless } from "@/lib/chromeless";
 import {
   subscribeFeedbackSuppress,
   getFeedbackSuppressed,
@@ -51,7 +52,8 @@ export default function BetaFeedbackPill() {
   const hiddenRoute =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/report-bug") ||
-    pathname.startsWith("/coordination");
+    pathname.startsWith("/coordination") ||
+    isChromeless(pathname);
   if (dismissed || suppressed || inPayment || hiddenRoute) return null;
 
   return (
