@@ -51,7 +51,7 @@ export async function GET(
   const [registers, onScreen, goal, raised] = await Promise.all([
     fetchFeaturableRegisters(),
     fetchOnScreenRegister(event.currentRegisterId),
-    // The goal in registers fulfilled during this event.
+    // The goal: registers fully funded during this event.
     Promise.all([
       prisma.eventRegisterCompletion.count({ where: { eventId: event.id } }),
       prisma.fundraisingEvent.findUnique({ where: { id: event.id }, select: { goalRegisters: true } }),

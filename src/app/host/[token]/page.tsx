@@ -62,8 +62,8 @@ interface Payload {
 const money = (c: number) => `$${(c / 100).toFixed(0)}`;
 
 // lib/eventProgress: each item capped at its price (an overfunded item can't
-// inflate the totals), and items in fulfilment count as funded — they were
-// counted as still needed.
+// inflate the totals), and items past funding (IN_FULFILLMENT, FULFILLED)
+// count as funded — they were counted as still needed.
 function registerTotals(r: Register) {
   const { fundedCents: funded, targetCents: target } = registerMoneyTotals(r.items);
   const counts = registerItemCounts(r.items);
@@ -183,7 +183,7 @@ export default function HostDashboardPage() {
           <div style={{ fontSize: 40, fontWeight: 800, color: ACCENT, lineHeight: 1.1 }}>
             {event.goal.target > 0 ? `${event.goal.completed} of ${event.goal.target}` : "—"}
           </div>
-          <div style={{ fontSize: 13, color: MUTED }}>Registers fulfilled</div>
+          <div style={{ fontSize: 13, color: MUTED }}>Registers fully funded this event</div>
           <div style={{ fontSize: 15, color: TEXT, marginTop: 8 }}>
             {money(event.raisedThroughEventCents)} <span style={{ color: MUTED }}>raised through this event</span>
           </div>

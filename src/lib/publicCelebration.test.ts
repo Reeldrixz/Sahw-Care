@@ -59,6 +59,15 @@ test("a mother whose first name fails the rule still gets her celebration, with 
   assert.equal(celebrationText(missing).headline, "An item funded ✓");
 });
 
+test("register complete says funded, never fulfilled or delivered", () => {
+  const done = toPublicCelebration(row({ type: "REGISTER_COMPLETE" }), SHOW);
+  assert.deepEqual(celebrationText(done), { headline: "Everything Aisha needed is funded", line: "Fully funded ✓" });
+  for (const type of ["ITEM_FUNDED", "ITEM_FUNDED_BY_ONE", "REGISTER_COMPLETE", "BUNDLE_UNLOCKED"] as const) {
+    const t = celebrationText(toPublicCelebration(row({ type, bundle: { valueCents: 20000, sponsorName: "Acme" } }), SHOW));
+    assert.doesNotMatch(`${t.headline} ${t.line ?? ""}`, /fulfil|deliver/i);
+  }
+});
+
 test("checkout metadata: raw name only when ticked", () => {
   assert.deepEqual(donorNameMetadata({ displayName: "  Sarah Jane ", showName: true }), { showName: "1", displayName: "Sarah Jane" });
   assert.deepEqual(donorNameMetadata({ displayName: "Sarah", showName: false }), { showName: "0", displayName: "" });

@@ -53,7 +53,7 @@ function ItemCard({ item, compact }: { item: OverlayItem; compact: boolean }) {
       <div style={{ ...twoLines, fontSize: compact ? 15 : 17, fontWeight: 700 }}>{item.name}</div>
       {done ? (
         <div style={{ fontSize: compact ? 13 : 15, fontWeight: 800, color: PAL.accent }}>
-          {item.state === "ORDERED" ? "Order placed ✓" : "Funded ✓"}
+          {item.state === "DELIVERED" ? "Delivered ✓" : item.state === "ORDERED" ? "Order placed ✓" : "Funded ✓"}
         </div>
       ) : (
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", columnGap: 8, fontSize: compact ? 13 : 15 }}>
@@ -146,7 +146,7 @@ export default function OverlayStage({ frame, showing, scale = 1 }: {
               </div>
               {frame.event.goal.target > 0 && (
                 <div style={{ fontSize: 14, color: PAL.muted }}>
-                  {frame.event.goal.completed} of {frame.event.goal.target} Registers fulfilled
+                  {frame.event.goal.completed} of {frame.event.goal.target} Registers fully funded
                 </div>
               )}
             </div>

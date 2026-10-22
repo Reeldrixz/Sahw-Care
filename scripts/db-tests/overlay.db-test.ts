@@ -66,6 +66,21 @@ async function pay(itemId: string, eventId: string, cents: number, displayName: 
     check("state: goal progress", f.event.goal.completed === 0 && f.event.goal.target === 5);
   }
 
+  // ── Item states: only what is literally true ──────────────────────────────
+  // FUNDED from the funding alone (a QUEUED row is not an order), ORDERED from
+  // a recorded purchase, DELIVERED only when an admin marked it delivered.
+  {
+    const { items, ev } = await scene({ items: [1000, 1000, 1000, 1000, 1000, 9000] });
+    for (const it of items.slice(0, 5)) await pay(it.id, ev.id, 1000);
+    const q = (i: number, status: "QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED") =>
+      prisma.fulfillmentQueue.create({ data: { registerItemId: items[i].id, totalFundedCents: 1000, status } });
+    await q(1, "QUEUED"); await q(2, "PURCHASED"); await q(3, "DISPATCHED"); await q(4, "DELIVERED");
+    const f = await frame(ev.id, false);
+    const states = f.register?.items.map((i) => i.state).join(",");
+    check("item states: funded, queued = funded, purchased/dispatched = order placed, delivered = delivered, unpaid = needed",
+      states === "FUNDED,FUNDED,ORDERED,ORDERED,DELIVERED,NEEDED", states);
+  }
+
   // ── Two overlays claiming the same celebration at once ────────────────────
   {
     const { items, ev } = await scene({ items: [1000, 5000] });

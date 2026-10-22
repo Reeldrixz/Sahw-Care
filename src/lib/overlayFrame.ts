@@ -59,7 +59,9 @@ export type OverlayItem = {
   priceCents:     number;
   fundedCents:    number;   // capped at the price
   remainingCents: number;
-  state:          "NEEDED" | "FUNDED" | "ORDERED";
+  // Only what is literally true: FUNDED (paid for), ORDERED (a purchase is
+  // recorded), DELIVERED (an admin marked it delivered). Never "fulfilled".
+  state:          "NEEDED" | "FUNDED" | "ORDERED" | "DELIVERED";
 };
 
 export type OverlayFrame = {
@@ -158,11 +160,11 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
 
   let register: OverlayFrame["register"] = null;
   if (onScreen) {
-    const ordered = new Set(
+    const queue = new Map(
       (await prisma.fulfillmentQueue.findMany({
         where:  { registerItemId: { in: onScreen.items.map((i) => i.id) }, status: { in: ["PURCHASED", "DISPATCHED", "DELIVERED"] } },
-        select: { registerItemId: true },
-      })).map((q) => q.registerItemId),
+        select: { registerItemId: true, status: true },
+      })).map((q) => [q.registerItemId, q.status]),
     );
     const counts = registerItemCounts(onScreen.items);
     register = {
@@ -172,9 +174,12 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
         priceCents:     i.standardPriceCents,
         fundedCents:    itemCappedFundedCents(i),
         remainingCents: itemRemainingCents(i),
-        // ORDERED ("order placed ✓") only from a purchase record: "it's
-        // funded" and "we bought it" are different statements.
-        state: ordered.has(i.id) ? "ORDERED" : isItemFunded(i) ? "FUNDED" : "NEEDED",
+        // From the purchase record only: "it's funded", "we bought it" and "it
+        // arrived" are different statements. The item's IN_FULFILLMENT status
+        // is NOT an order: the webhook sets it at funding when an address is on
+        // file. DELIVERED is an admin marking it delivered; the mother does not
+        // confirm receipt.
+        state: queue.get(i.id) === "DELIVERED" ? "DELIVERED" : queue.has(i.id) ? "ORDERED" : isItemFunded(i) ? "FUNDED" : "NEEDED",
       })),
       counts,
       percent: fundedPercent(onScreen.items),

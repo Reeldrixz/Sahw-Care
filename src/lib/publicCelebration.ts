@@ -71,7 +71,7 @@ export function celebrationText(p: PublicCelebration): { headline: string; line:
       };
     }
     case "REGISTER_COMPLETE":
-      return { headline: p.motherFirstName ? `Everything ${p.motherFirstName} needed` : "A Register is fully funded", line: "Fully funded ✓" };
+      return { headline: p.motherFirstName ? `Everything ${p.motherFirstName} needed is funded` : "A Register is fully funded", line: "Fully funded ✓" };
     case "BUNDLE_UNLOCKED":
       return {
         headline: "Sponsor bundle unlocked",

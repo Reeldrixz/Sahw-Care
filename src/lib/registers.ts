@@ -140,7 +140,7 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
 //
 // ACTIVE only in the pickable pool. A COMPLETED register is deliberately
 // excluded even with consent on: she agreed while her register was live and
-// asking for help, and appearing in a campaign months after it was fulfilled
+// asking for help, and appearing in a campaign months after it was fully funded
 // is a materially different thing to have agreed to. (The on-screen read keeps
 // showing a register that completes while featured — that is the moment the
 // event exists for.)

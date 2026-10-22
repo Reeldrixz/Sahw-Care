@@ -26,7 +26,7 @@ type Params = { params: Promise<{ slug: string }> };
 async function getEvent(slug: string) {
   return prisma.fundraisingEvent.findUnique({
     where:  { slug: slug.toLowerCase() },
-    select: { id: true, title: true, hostName: true, goalCents: true, status: true, currentRegisterId: true },
+    select: { id: true, title: true, hostName: true, goalRegisters: true, status: true, currentRegisterId: true },
   });
 }
 
@@ -76,7 +76,8 @@ export default async function EventLandingPage({ params }: Params) {
           </h1>
           <div style={{ fontSize: 14, color: "#2f5d4d" }}>
             Hosted by {event.hostName}
-            {event.goalCents > 0 && <> · goal {money(event.goalCents)}</>}
+            {/* The goal in Registers, as on the overlay and the host dashboard. */}
+            {event.goalRegisters > 0 && <> · goal: {event.goalRegisters} Register{event.goalRegisters === 1 ? "" : "s"} fully funded</>}
           </div>
         </div>
       </div>
@@ -108,8 +109,9 @@ export default async function EventLandingPage({ params }: Params) {
             </p>
 
             {registers.map((r) => {
-              // lib/eventProgress: each item capped at its price, and items in
-              // fulfilment count as funded (they were counted as still needed).
+              // lib/eventProgress: each item capped at its price, and items past
+              // funding (IN_FULFILLMENT, FULFILLED) count as funded (they were
+              // counted as still needed).
               const { fundedCents: funded, targetCents: target } = registerMoneyTotals(r.items);
               const pct    = fundedPercent(r.items);
               const counts = registerItemCounts(r.items);
