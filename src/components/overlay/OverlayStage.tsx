@@ -1,5 +1,5 @@
 import type { OverlayFrame, OverlayItem } from "@/lib/overlayFrame";
-import { celebrationText, type PublicCelebration } from "@/lib/publicCelebration";
+import { celebrationText, recapText, type PublicCelebration } from "@/lib/publicCelebration";
 
 // What the broadcast overlay draws, as a pure function of the latest frame and
 // the celebration on screen. The page (/overlay/[token]) does the polling; this
@@ -100,6 +100,20 @@ export default function OverlayStage({ frame, showing, scale = 1 }: {
             padding: "12px 22px", fontSize: 22, fontWeight: 800, maxWidth: "100%",
           }}>
             {text.headline}
+          </div>
+        )}
+
+        {/* The recap: registers completed earlier in this event, one line,
+            small and muted — secondary to the active register below it. */}
+        {frame.recap.entries.length > 0 && !full && (
+          <div data-recap style={{
+            maxWidth: "100%", boxSizing: "border-box", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            background: "rgba(11,18,16,0.6)", borderRadius: 10, padding: "6px 14px",
+            fontSize: 14, color: PAL.muted,
+          }}>
+            <span style={{ fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", fontSize: 11, marginRight: 10 }}>Earlier this event</span>
+            {frame.recap.entries.map(recapText).join("  ·  ")}
+            {frame.recap.more > 0 && `  ·  +${frame.recap.more} more`}
           </div>
         )}
 

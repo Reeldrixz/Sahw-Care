@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { MAX_GOAL_REGISTERS } from "@/lib/eventRecap";
 
 export const dynamic = "force-dynamic";
 
 // Create a fundraising event. Admin only.
 //
-// Minimal on purpose: title, goalCents, hostName. Everything else has a sensible
+// Minimal on purpose: title, hostName, goalRegisters (the goal the overlay,
+// host dashboard and event page show: Registers fully funded), goalCents. Everything else has a sensible
 // default — status is DRAFT, and no access token exists until one is explicitly
 // issued through .../[id]/token. Creating an event does NOT mint a credential,
 // because those are two different decisions and collapsing them means every
@@ -45,7 +47,7 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     take: 100,
     select: {
-      id: true, title: true, slug: true, hostName: true, goalCents: true,
+      id: true, title: true, slug: true, hostName: true, goalCents: true, goalRegisters: true,
       status: true, startedAt: true, endedAt: true, createdAt: true,
       // Presence only — never the value itself.
       accessToken: true,
@@ -93,14 +95,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "goalCents must be a non-negative whole number of cents." }, { status: 400 });
   }
 
+  // The goal in Registers fully funded: optional, 0 = none set. The host can
+  // raise it later during the event (never lower it).
+  const goalRegRaw = body?.goalRegisters;
+  const goalRegisters =
+    goalRegRaw === undefined || goalRegRaw === null
+      ? 0
+      : Number.isInteger(goalRegRaw) && goalRegRaw >= 0 && goalRegRaw <= MAX_GOAL_REGISTERS
+        ? goalRegRaw
+        : NaN;
+  if (Number.isNaN(goalRegisters)) {
+    return NextResponse.json({ error: `goalRegisters must be a whole number from 0 to ${MAX_GOAL_REGISTERS}.` }, { status: 400 });
+  }
+
   // Slug uniqueness is enforced by the database. Retry with a short random
   // suffix on collision rather than pre-checking, which would race.
   let slug = slugify(title);
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const event = await prisma.fundraisingEvent.create({
-        data: { title, hostName, goalCents, slug, status: "DRAFT" },
-        select: { id: true, title: true, slug: true, hostName: true, goalCents: true, status: true, createdAt: true },
+        data: { title, hostName, goalCents, goalRegisters, slug, status: "DRAFT" },
+        select: { id: true, title: true, slug: true, hostName: true, goalCents: true, goalRegisters: true, status: true, createdAt: true },
       });
       return NextResponse.json(
         {

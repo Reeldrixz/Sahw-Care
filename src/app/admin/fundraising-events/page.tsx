@@ -20,7 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface EventRow {
   id: string; title: string; slug: string; hostName: string;
-  goalCents: number; status: "DRAFT" | "LIVE" | "ENDED";
+  goalCents: number; goalRegisters: number; status: "DRAFT" | "LIVE" | "ENDED";
   startedAt: string | null; endedAt: string | null; createdAt: string;
   hasToken: boolean; tokenIssuedAt: string | null;
   tokenExpiresAt: string | null; tokenRevokedAt: string | null; tokenExpired: boolean;
@@ -37,7 +37,7 @@ export default function AdminFundraisingEventsPage() {
   const [toast, setToast]     = useState<string | null>(null);
   const [busy, setBusy]       = useState<string | null>(null);
 
-  const [form, setForm] = useState({ title: "", hostName: "", goalDollars: "" });
+  const [form, setForm] = useState({ title: "", hostName: "", goalDollars: "", goalRegisters: "" });
   const [creating, setCreating] = useState(false);
 
   // The one-time token reveal. Held in memory only — never re-fetched, gone on
@@ -66,12 +66,16 @@ export default function AdminFundraisingEventsPage() {
         title: form.title.trim(),
         hostName: form.hostName.trim(),
         goalCents: Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0,
+        // Sent as typed (a number when it is one) so the server, not this
+        // form, decides what is valid and says why.
+        goalRegisters: form.goalRegisters.trim() === "" ? 0
+          : Number.isInteger(Number(form.goalRegisters)) ? Number(form.goalRegisters) : form.goalRegisters,
       }),
     });
     const d = await r.json().catch(() => ({}));
     setCreating(false);
     if (!r.ok) { setToast(d.error ?? "Could not create event"); return; }
-    setForm({ title: "", hostName: "", goalDollars: "" });
+    setForm({ title: "", hostName: "", goalDollars: "", goalRegisters: "" });
     setToast(`Created "${d.event.title}" as DRAFT — no link issued yet`);
     load();
   };
@@ -176,6 +180,8 @@ export default function AdminFundraisingEventsPage() {
             <div style={{ display: "flex", gap: 8 }}>
               <input placeholder="Host name" value={form.hostName}
                 onChange={(e) => setForm({ ...form, hostName: e.target.value })} style={{ ...input, flex: 1 }} />
+              <input placeholder="Goal (Registers)" value={form.goalRegisters} inputMode="numeric"
+                onChange={(e) => setForm({ ...form, goalRegisters: e.target.value })} style={{ ...input, width: 170 }} />
               <input placeholder="Goal ($, optional)" value={form.goalDollars} inputMode="decimal"
                 onChange={(e) => setForm({ ...form, goalDollars: e.target.value })} style={{ ...input, width: 170 }} />
             </div>
@@ -210,7 +216,7 @@ export default function AdminFundraisingEventsPage() {
                     <span style={{ fontFamily: "Lora, serif", fontSize: 15.5, fontWeight: 700, color: "var(--ink)" }}>{e.title}</span>
                   </div>
                   <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 4 }}>
-                    {e.hostName} · goal {e.goalCents > 0 ? money(e.goalCents) : "none"} · /{e.slug}
+                    {e.hostName} · goal {e.goalRegisters > 0 ? `${e.goalRegisters} Registers` : "none"}{e.goalCents > 0 ? ` (${money(e.goalCents)})` : ""} · /{e.slug}
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--light)", marginTop: 3 }}>
                     {e.startedAt ? `started ${new Date(e.startedAt).toLocaleString()}` : "not started"}

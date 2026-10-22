@@ -3,6 +3,7 @@ import { resolveEventByToken } from "@/lib/fundraisingEvent";
 import { fetchFeaturableRegisters, fetchOnScreenRegister } from "@/lib/registers";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { prisma } from "@/lib/prisma";
+import { fetchEventCompletions, hostCompletions } from "@/lib/eventRecap";
 
 export const dynamic = "force-dynamic";
 
@@ -48,14 +49,13 @@ export async function GET(
   const event = await resolveEventByToken(token);
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [registers, onScreen, goal, raised] = await Promise.all([
+  const [registers, onScreen, completions, ev, raised] = await Promise.all([
     fetchFeaturableRegisters(),
     fetchOnScreenRegister(event.currentRegisterId),
-    // The goal: registers fully funded during this event.
-    Promise.all([
-      prisma.eventRegisterCompletion.count({ where: { eventId: event.id } }),
-      prisma.fundraisingEvent.findUnique({ where: { id: event.id }, select: { goalRegisters: true } }),
-    ]),
+    // Registers fully funded during this event: the goal count, and the
+    // fulfilment panel (lib/eventRecap) with any delays — for the host only.
+    fetchEventCompletions(event.id),
+    prisma.fundraisingEvent.findUnique({ where: { id: event.id }, select: { goalRegisters: true } }),
     // The dollar total attributed to this event: confirmed item amounts only,
     // never fees. Shown to the host here, deliberately not on the overlay.
     prisma.registerItemFunding.aggregate({
@@ -72,11 +72,12 @@ export async function GET(
       status:    event.status,
       startedAt: event.startedAt,
       hideDonorNames: event.hideDonorNames,
-      goal: { completed: goal[0], target: goal[1]?.goalRegisters ?? 0 },
+      goal: { completed: completions.length, target: ev?.goalRegisters ?? 0 },
       raisedThroughEventCents: raised._sum.amountCents ?? 0,
     },
     registers,
     onScreen,
+    completions: hostCompletions(completions),
     // Returned so a dashboard can show "as of", and so it is obvious in the
     // payload that this is a live read rather than something cached.
     fetchedAt: new Date().toISOString(),

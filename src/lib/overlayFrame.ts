@@ -2,7 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { fetchOnScreenRegister } from "@/lib/registers";
 import { firstNameOnly } from "@/lib/eventEffects";
 import { registerItemCounts, fundedPercent, itemRemainingCents, itemCappedFundedCents, isItemFunded } from "@/lib/eventProgress";
-import { toPublicCelebration, type PublicCelebration } from "@/lib/publicCelebration";
+import { toPublicCelebration, type PublicCelebration, type PublicRecap } from "@/lib/publicCelebration";
+import { fetchEventCompletions, publicRecap } from "@/lib/eventRecap";
 
 // What the broadcast overlay receives on each poll (POST /api/overlay/[token]/frame).
 //
@@ -15,6 +16,8 @@ import { toPublicCelebration, type PublicCelebration } from "@/lib/publicCelebra
 //                amounts (capped at the price, lib/eventProgress) and state,
 //                and "funded N of M items" with the percent
 //   celebration  one PublicCelebration (lib/publicCelebration), or null
+//   recap        registers completed earlier in this event, each a first
+//                name and one literally true status (lib/eventRecap)
 //
 // NO IDS, NO FULL NAMES, NO DOLLAR TOTAL. Nothing here carries a register,
 // item, event, unlock or celebration id. The register title is not sent: it
@@ -76,6 +79,7 @@ export type OverlayFrame = {
     percent:   number;
   } | null;
   celebration: PublicCelebration | null;
+  recap:       PublicRecap;
 };
 
 // Claim the oldest eligible celebration for the event, atomically. Returns its
@@ -152,12 +156,13 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
   });
   if (!ev) return null;
 
-  const [onScreen, completed, itemsFunded] = await Promise.all([
+  const [onScreen, completions, itemsFunded] = await Promise.all([
     fetchOnScreenRegister(ev.currentRegisterId),
-    prisma.eventRegisterCompletion.count({ where: { eventId } }),
+    fetchEventCompletions(eventId),
     prisma.eventCelebration.count({ where: { eventId, type: { in: ["ITEM_FUNDED", "ITEM_FUNDED_BY_ONE"] } } }),
   ]);
 
+  const completed = completions.length;
   let register: OverlayFrame["register"] = null;
   if (onScreen) {
     const queue = new Map(
@@ -196,5 +201,6 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
     },
     register,
     celebration,
+    recap: publicRecap(completions, ev.currentRegisterId),
   };
 }

@@ -54,6 +54,22 @@ export function toPublicCelebration(c: CelebrationRow, at: ShowTimeSettings): Pu
   };
 }
 
+// ── The recap: registers completed earlier in this event ────────────────────
+// Public shape: a first name (or null, if it fails the name rule) and one
+// status. No id, no date, no place. Built by lib/eventRecap.
+
+export type PublicRecapEntry = { firstName: string | null; status: "FUNDED" | "ORDERED" | "DELIVERED" };
+export type PublicRecap = { entries: PublicRecapEntry[]; more: number };
+
+const RECAP_STATUS_TEXT: Record<PublicRecapEntry["status"], string> = {
+  FUNDED: "Funded ✓", ORDERED: "Order placed ✓", DELIVERED: "Delivered ✓",
+};
+
+// "Maryam — Order placed ✓", or "A mother — Funded ✓" without a valid name.
+export function recapText(e: PublicRecapEntry): string {
+  return `${e.firstName ?? "A mother"} — ${RECAP_STATUS_TEXT[e.status]}`;
+}
+
 // The words the overlay shows, with generic wording wherever a name is
 // missing or withheld. Kept here, next to the shape, so the screen and the
 // tests agree on exactly what is said on air.

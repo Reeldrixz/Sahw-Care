@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { fundedPercent, registerItemCounts, registerMoneyTotals } from "@/lib/eventProgress";
+import type { HostCompletion, ItemStage } from "@/lib/eventRecap";
 
 // The host dashboard. Read on a second monitor, mid-broadcast, glanced at while
 // talking — a different instrument from the mother-facing app, so it
@@ -55,6 +56,7 @@ interface Payload {
     hideDonorNames: boolean; goal: { completed: number; target: number }; raisedThroughEventCents: number;
   };
   registers: Register[];
+  completions: HostCompletion[]; // fully funded this event, with any delays
   onScreen: Register | null; // what the audience sees now, even if she has since withdrawn
   fetchedAt: string;
 }
@@ -98,6 +100,30 @@ export default function HostDashboardPage() {
     if (!r.ok) setData((d) => (d ? { ...d, event: { ...d.event, hideDonorNames: !hide } } : d));
     setNamesBusy(false);
   }, [token]);
+
+  // Raise the goal (in Registers fully funded). The server refuses lowering it
+  // or setting it below the number already funded; the message is shown.
+  const [goalInput, setGoalInput] = useState("");
+  const [goalMsg, setGoalMsg]     = useState<string | null>(null);
+  const [goalBusy, setGoalBusy]   = useState(false);
+  const raiseGoal = useCallback(async () => {
+    const n = Number(goalInput);
+    setGoalBusy(true); setGoalMsg(null);
+    const r = await fetch(`/api/host/${token}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goalRegisters: Number.isInteger(n) ? n : goalInput }),
+      cache: "no-store",
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) {
+      setData((d) => (d ? { ...d, event: { ...d.event, goal: { ...d.event.goal, target: j.goalRegisters } } } : d));
+      setGoalInput("");
+    } else {
+      setGoalMsg(j.error ?? "Could not change the goal.");
+    }
+    setGoalBusy(false);
+  }, [token, goalInput]);
 
   const feature = useCallback(async (registerId: string | null) => {
     pending.current = true;
@@ -184,6 +210,22 @@ export default function HostDashboardPage() {
             {event.goal.target > 0 ? `${event.goal.completed} of ${event.goal.target}` : "—"}
           </div>
           <div style={{ fontSize: 13, color: MUTED }}>Registers fully funded this event</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+            <input
+              type="number" inputMode="numeric"
+              min={Math.max(event.goal.target, event.goal.completed)}
+              placeholder={event.goal.target > 0 ? "Raise to…" : "Set goal…"}
+              value={goalInput} onChange={(e) => setGoalInput(e.target.value)}
+              style={{ width: 110, background: PANEL_2, border: `1px solid ${LINE}`, borderRadius: 8, color: TEXT, padding: "6px 10px", fontSize: 14 }}
+            />
+            <button
+              onClick={raiseGoal} disabled={goalBusy || goalInput === ""}
+              style={{ background: ACCENT, color: "#0b1210", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 800, fontSize: 14, cursor: goalBusy ? "default" : "pointer", opacity: goalBusy || goalInput === "" ? 0.5 : 1 }}
+            >
+              {event.goal.target > 0 ? "Raise goal" : "Set goal"}
+            </button>
+          </div>
+          {goalMsg && <div style={{ fontSize: 13, color: "#e3b341", marginTop: 6, maxWidth: 320, marginLeft: "auto" }}>{goalMsg}</div>}
           <div style={{ fontSize: 15, color: TEXT, marginTop: 8 }}>
             {money(event.raisedThroughEventCents)} <span style={{ color: MUTED }}>raised through this event</span>
           </div>
@@ -214,6 +256,8 @@ export default function HostDashboardPage() {
       </div>
 
       {featuredReg && <FeaturedPanel reg={featuredReg} onClose={() => feature(null)} />}
+
+      {data.completions.length > 0 && <CompletionsPanel rows={data.completions} />}
 
       {registers.length === 0 ? (
         <div style={{ marginTop: 60, textAlign: "center", color: MUTED, fontSize: 16, lineHeight: 1.7 }}>
@@ -312,6 +356,42 @@ function FeaturedPanel({ reg, onClose }: { reg: Register; onClose: () => void })
       <div style={{ marginTop: 16, fontSize: 20, fontWeight: 800, color: TEXT }}>
         {money(t.funded)} of {money(t.target)} · {t.pct}%
       </div>
+    </div>
+  );
+}
+
+// Registers fully funded in this event, and how far each has got. For the
+// host only: a delayed order is flagged here and never on the overlay, where
+// the register simply stays at its last true status.
+const STAGE_LABEL: Record<ItemStage, string> = {
+  NEEDED: "Needed", FUNDED: "Funded", ORDERED: "Order placed", DELIVERED: "Delivered",
+};
+function CompletionsPanel({ rows }: { rows: HostCompletion[] }) {
+  return (
+    <div style={{ marginTop: 20, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
+      <div style={{ fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: MUTED, fontWeight: 700, marginBottom: 10 }}>
+        Fully funded this event
+      </div>
+      {rows.map((r, n) => (
+        <div key={n} style={{ padding: "10px 0", borderTop: n ? `1px solid ${LINE}` : "none" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: TEXT }}>{r.firstName ?? "A mother"}</span>
+            <span style={{ fontSize: 13, color: MUTED }}>
+              {r.status ? STAGE_LABEL[r.status] : "Not fully funded now"} · funded {new Date(r.completedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+            {r.items.map((i, k) => (
+              <span key={k} style={{ fontSize: 12.5, color: i.stage === "NEEDED" ? "#e3b341" : TEXT, background: PANEL_2, border: `1px solid ${LINE}`, borderRadius: 8, padding: "3px 8px" }}>
+                {i.name} · {STAGE_LABEL[i.stage]}
+              </span>
+            ))}
+          </div>
+          {r.flags.map((f, k) => (
+            <div key={k} style={{ fontSize: 13, color: "#e3b341", marginTop: 6 }}>⚠ {f}</div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
