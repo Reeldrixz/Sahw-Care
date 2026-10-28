@@ -32,13 +32,14 @@ test("version 3 covers the recap line after her turn on screen", () => {
   }
 });
 
-test("version 3 says what the host sees, and only that the tracking page shows delivery progress", () => {
+test("version 3 says what the host sees, word for word", () => {
   const h = FEATURE_CONSENT_COPY[3].hostSees;
   assert.ok(h);
-  for (const s of ["first name", "items in each order", "order total including tax", "estimated delivery date", "tracking page", "it shows delivery progress", "never to show this page"]) {
-    assert.ok(h.text.includes(s) || h.lead.includes(s), `missing: ${s}`);
-  }
-  assert.doesNotMatch(h.text, /address|price|city|photo/i);
+  assert.equal(`${h.lead} ${h.text}`,
+    "The host also sees, on a separate host page: your first name, the items in each order we place for you, " +
+    "the order total including tax, and the delivery status and date.");
+  // No link, and nothing about whether the page is shown on stream.
+  assert.doesNotMatch(`${h.lead} ${h.text}`, /link|tracking|stream|on screen|private|shown/i);
 });
 
 test("version 3 keeps version 2's other promises word for word", () => {

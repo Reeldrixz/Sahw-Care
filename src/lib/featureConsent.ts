@@ -147,11 +147,10 @@ export const FEATURE_CONSENT_COPY: Record<number, FeatureConsentCopy> = {
         "or anything you haven’t put on your Register.",
     },
     hostSees: {
-      lead: "The host also sees, on a private page that isn’t shown on screen:",
+      lead: "The host also sees, on a separate host page:",
       text:
         "your first name, the items in each order we place for you, the order total including tax, " +
-        "the estimated delivery date, and a link to the delivery tracking page for that order; it shows delivery progress. " +
-        "Hosts are asked never to show this page during a stream.",
+        "and the delivery status and date.",
     },
     changingMind: {
       lead: "Changing your mind.",
