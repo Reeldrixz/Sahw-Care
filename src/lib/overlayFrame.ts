@@ -168,8 +168,8 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
     const queue = new Map(
       (await prisma.fulfillmentQueue.findMany({
         where:  { registerItemId: { in: onScreen.items.map((i) => i.id) }, status: { in: ["PURCHASED", "DISPATCHED", "DELIVERED"] } },
-        select: { registerItemId: true, status: true },
-      })).map((q) => [q.registerItemId, q.status]),
+        select: { registerItemId: true, status: true, orderId: true },
+      })).map((q) => [q.registerItemId, !q.orderId ? null : q.status === "DELIVERED" ? "DELIVERED" as const : "ORDERED" as const]),
     );
     const counts = registerItemCounts(onScreen.items);
     register = {
@@ -183,8 +183,9 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
         // arrived" are different statements. The item's IN_FULFILLMENT status
         // is NOT an order: the webhook sets it at funding when an address is on
         // file. DELIVERED is an admin marking it delivered; the mother does not
-        // confirm receipt.
-        state: queue.get(i.id) === "DELIVERED" ? "DELIVERED" : queue.has(i.id) ? "ORDERED" : isItemFunded(i) ? "FUNDED" : "NEEDED",
+        // confirm receipt. ORDERED and DELIVERED need an order attached (the
+        // evidence): a purchase without one reads "Funded", delivered or not.
+        state: queue.get(i.id) ?? (isItemFunded(i) ? "FUNDED" : "NEEDED"),
       })),
       counts,
       percent: fundedPercent(onScreen.items),

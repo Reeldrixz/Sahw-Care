@@ -895,6 +895,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               </p>
             )}
 
+            {copy.hostSees && (
+              <p style={{ fontSize: 12.5, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 10px" }}>
+                <strong style={{ color: "var(--ink)" }}>{copy.hostSees.lead}</strong> {copy.hostSees.text}
+              </p>
+            )}
+
             {copy.changingMind && (
               <p style={{ fontSize: 12, color: "var(--mid)", lineHeight: 1.65, margin: "0 0 14px", padding: "10px 12px", background: "var(--bg)", borderRadius: 10 }}>
                 <strong style={{ color: "var(--ink)" }}>{copy.changingMind.lead}</strong>{" "}

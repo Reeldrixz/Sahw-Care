@@ -36,6 +36,10 @@ export async function GET(req: NextRequest) {
     const queue = await prisma.fulfillmentQueue.findMany({
       where: status ? { status: status as never } : undefined,
       include: {
+        // Admin-only: the full order, including its number.
+        order: {
+          select: { id: true, orderNumber: true, totalCents: true, taxCents: true, trackingUrl: true, estimatedDeliveryOn: true },
+        },
         registerItem: {
           select: {
             id: true, name: true, category: true, quantity: true,

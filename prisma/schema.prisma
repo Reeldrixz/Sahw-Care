@@ -252,6 +252,8 @@ model User {
   profileSnapshots   ProfileSnapshot[]
   suggestions        RegisterSuggestion[]
   bugReports         BugReport[]
+  fulfillmentOrdersCreated FulfillmentOrder[] @relation("FulfillmentOrdersCreated")
+  fulfillmentOrdersUpdated FulfillmentOrder[] @relation("FulfillmentOrdersUpdated")
 
   suggestionSubmissionDisabled Boolean @default(false)
 }
@@ -546,6 +548,7 @@ model Register {
   eventCompletions  EventRegisterCompletion[]
   eventBundleUnlock EventBundleUnlock?
   eventCelebrations EventCelebration[]
+  fulfillmentOrders FulfillmentOrder[]
 }
 
 model RegisterItem {
@@ -1503,8 +1506,50 @@ model FulfillmentQueue {
   purchasedAt      DateTime?
   dispatchedAt     DateTime?
   deliveredAt      DateTime?
+  // The order this item was bought in (step 9). Set when an admin records the
+  // order; "Order placed" is only said of items that have one.
+  orderId          String?
 
-  registerItem RegisterItem @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
+  registerItem RegisterItem      @relation(fields: [registerItemId], references: [id], onDelete: Cascade)
+  order        FulfillmentOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+// One retailer order: the evidence behind "Order placed". It covers one or more
+// items of a SINGLE register (one mother per order), never several registers.
+//
+// SET NULL on the register: deleting a register (or its mother) is never
+// blocked. The order stays as a financial record with registerId null, so it
+// no longer points at her. Its items are deleted with her register, so it
+// covers none. Before the delete, the register- and user-delete routes clear
+// trackingUrl (it leads to her package) and orderNumber in the same
+// transaction (lib/fulfillmentOrder scrubOrdersFor*). Totals, dates and the
+// edit trail stay.
+//
+// WHO SEES WHAT. orderNumber, createdById, updatedById and the timestamps are
+// admin-only.
+// The streamer page reads this table through lib/fulfillmentOrder
+// STREAMER_ORDER_SELECT, which never names them.
+model FulfillmentOrder {
+  id                  String   @id @default(cuid())
+  registerId          String? // null once her register is deleted
+  orderNumber         String? // the retailer's order number; admin-only
+  totalCents          Int // order total, tax and shipping included
+  taxCents            Int? // the tax within totalCents, when recorded
+  trackingUrl         String? // validated by lib/trackingLink; cleared (with orderNumber) when her register is deleted
+  estimatedDeliveryOn DateTime @db.Date
+  createdById         String? // the admin who recorded it
+  updatedById         String? // the admin who last edited it
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  register  Register?          @relation(fields: [registerId], references: [id], onDelete: SetNull)
+  createdBy User?              @relation("FulfillmentOrdersCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User?              @relation("FulfillmentOrdersUpdated", fields: [updatedById], references: [id], onDelete: SetNull)
+  items     FulfillmentQueue[]
+
+  @@index([registerId])
 }
 
 // ==================== ADDRESS HANDLING ====================

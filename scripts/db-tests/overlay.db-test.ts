@@ -72,8 +72,10 @@ async function pay(itemId: string, eventId: string, cents: number, displayName: 
   {
     const { items, ev } = await scene({ items: [1000, 1000, 1000, 1000, 1000, 9000] });
     for (const it of items.slice(0, 5)) await pay(it.id, ev.id, 1000);
+    // Step 9: ORDERED needs an order attached.
+    const order = await prisma.fulfillmentOrder.create({ data: { registerId: items[0].registerId, totalCents: 3000, trackingUrl: "https://a.co/d/x", estimatedDeliveryOn: new Date() } });
     const q = (i: number, status: "QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED") =>
-      prisma.fulfillmentQueue.create({ data: { registerItemId: items[i].id, totalFundedCents: 1000, status } });
+      prisma.fulfillmentQueue.create({ data: { registerItemId: items[i].id, totalFundedCents: 1000, status, orderId: status === "QUEUED" ? null : order.id } });
     await q(1, "QUEUED"); await q(2, "PURCHASED"); await q(3, "DISPATCHED"); await q(4, "DELIVERED");
     const f = await frame(ev.id, false);
     const states = f.register?.items.map((i) => i.state).join(",");

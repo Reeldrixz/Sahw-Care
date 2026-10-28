@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
+import { scrubOrdersForRegister } from "@/lib/fulfillmentOrder";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +118,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!register) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.register.delete({ where: { id } });
+  // Never blocked. Her orders stay as financial records with registerId set
+  // to null; their tracking link and order number are cleared first, in the
+  // same transaction, so nothing left points back at her.
+  await prisma.$transaction(async (tx) => {
+    await scrubOrdersForRegister(tx, id);
+    await tx.register.delete({ where: { id } });
+  });
   return NextResponse.json({ ok: true });
 }

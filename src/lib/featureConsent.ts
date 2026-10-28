@@ -17,7 +17,10 @@
 //
 // No server imports, so the card can render from this directly.
 
-export const FEATURE_CONSENT_VERSION = 2;
+// Version 3 adds what the host sees on the private orders page (step 9), and
+// spells out that the recap line can show her first name and status after her
+// register has left the screen. The withdrawal rules are unchanged.
+export const FEATURE_CONSENT_VERSION = 3;
 
 export type ConsentPoint = { lead: string; text: string };
 
@@ -28,6 +31,7 @@ export type FeatureConsentCopy = {
   mayShowHeading?: string;
   mayShow: ConsentPoint[];
   neverShow?: ConsentPoint;
+  hostSees?: ConsentPoint; // version 3+: off screen, for the host only
   changingMind?: { lead: string; before: string; bold: string; after: string };
   yes: string;
   no: string;
@@ -85,6 +89,69 @@ export const FEATURE_CONSENT_COPY: Record<number, FeatureConsentCopy> = {
       text:
         "your surname, your address or area, your phone number or email, your due date, delivery dates, " +
         "or anything you haven’t put on your Register.",
+    },
+    changingMind: {
+      lead: "Changing your mind.",
+      before: "You can stop at any time, right here, with one tap.",
+      bold: "If you stop while a live event is showing your Register, it stays on screen until the host moves on or the event ends.",
+      after:
+        "After that, no new event can feature you. We can’t take back what viewers have already seen, " +
+        "or recordings a host or viewer made.",
+    },
+    yes: "Yes, feature my Register",
+    no: "No",
+    footer: "You can change this anytime.",
+  },
+
+  // Version 2's text plus: the recap line after her register leaves the
+  // screen (replacing v2's shorter "Delivery progress" point), and what the
+  // host sees on the private orders page.
+  3: {
+    version: 3,
+    heading: "Feature my Register in live fundraising events",
+    intro:
+      "Kradel runs live fundraising events: a host streams online and invites viewers to help mothers. " +
+      "If you say yes, your Register can be shown on screen during these events, to people outside Kradel. " +
+      "If you say no, nothing else about your Register changes.",
+    mayShowHeading: "If you say yes, viewers may see:",
+    mayShow: [
+      { lead: "Your first name.", text: "Never your surname." },
+      {
+        lead: "Your Register.",
+        text:
+          "Your items, how much each one still needs, and how many are funded, for example “3 of 8 items funded”. " +
+          "Also your Register’s title, and the introduction you wrote if you added one.",
+      },
+      {
+        lead: "Celebrations, live, using your first name,",
+        text: "like “Aisha’s diapers funded ✓”, and a celebration when your whole Register is complete.",
+      },
+      {
+        lead: "A donor’s first name next to yours",
+        text:
+          "when that person funds an item in full by themselves, like “Sarah funded Aisha’s diapers ✓”. " +
+          "Donors choose whether their name is shown.",
+      },
+      {
+        lead: "Your progress after your turn on screen.",
+        text:
+          "Once your Register is fully funded and the host moves on, a short line may stay on screen for the rest " +
+          "of the event, next to other mothers’ names: “Aisha — Funded ✓”, “Aisha — Order placed ✓” or " +
+          "“Aisha — Delivered ✓”. Only your first name and the status.",
+      },
+    ],
+    neverShow: {
+      lead: "Viewers never see",
+      text:
+        "your surname, your address or area, your phone number or email, your due date, delivery dates, " +
+        "or anything you haven’t put on your Register.",
+    },
+    hostSees: {
+      lead: "The host also sees, on a private page that isn’t shown on screen:",
+      text:
+        "your first name, the items in each order we place for you, the order total including tax, " +
+        "the estimated delivery date, and a link to the delivery tracking page for that order; it shows delivery progress. " +
+        "Hosts are asked never to show this page during a stream.",
     },
     changingMind: {
       lead: "Changing your mind.",

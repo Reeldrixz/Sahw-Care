@@ -13,11 +13,28 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const { id } = await params;
-    const { status, purchasedFrom, actualCostCents, trackingRef, notes } = await req.json();
+    const { status, trackingRef, notes: rawNotes, purchasedFrom } = await req.json();
+    const notes = typeof rawNotes === "string" && rawNotes.trim() ? rawNotes.trim().slice(0, 1000) : null;
 
-    const validStatuses = ["PURCHASED", "DISPATCHED", "DELIVERED"];
-    if (!validStatuses.includes(status)) {
+    // Two ways to Purchased:
+    //   - Record order (api/admin/fulfillment-orders): an order with a
+    //     tracking link is attached, and the item reads "Order placed ✓".
+    //   - Here, a purchase WITHOUT a tracking link: a note saying why is
+    //     required, no order is attached, and the item reads "Funded ✓"
+    //     everywhere, never "Order placed ✓".
+    // From Purchased: Dispatched, or straight to Delivered when the order
+    // page shows "Delivered" (Amazon orders often skip a separate dispatch
+    // step). Both work with or without an order. No other jumps.
+    const ALLOWED_FROM: Record<string, string[]> = {
+      PURCHASED:  ["QUEUED"],
+      DISPATCHED: ["PURCHASED"],
+      DELIVERED:  ["PURCHASED", "DISPATCHED"],
+    };
+    if (!ALLOWED_FROM[status]) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+    if (status === "PURCHASED" && !notes) {
+      return NextResponse.json({ error: "A purchase without a tracking link needs a note saying why." }, { status: 400 });
     }
 
     const entry = await prisma.fulfillmentQueue.findUnique({
@@ -34,14 +51,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     });
 
     if (!entry) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!ALLOWED_FROM[status].includes(entry.status)) {
+      return NextResponse.json({ error: `Can't mark ${entry.status.toLowerCase()} item as ${status.toLowerCase()}.` }, { status: 400 });
+    }
 
     const now = new Date();
     const updateData: Record<string, unknown> = { status };
 
     if (status === "PURCHASED") {
       updateData.purchasedAt = now;
-      if (purchasedFrom) updateData.purchasedFrom = purchasedFrom;
-      if (actualCostCents !== undefined) updateData.actualCostCents = actualCostCents;
+      if (typeof purchasedFrom === "string" && purchasedFrom.trim()) updateData.purchasedFrom = purchasedFrom.trim().slice(0, 100);
     }
     if (status === "DISPATCHED") {
       updateData.dispatchedAt = now;
@@ -53,7 +72,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (notes) updateData.notes = notes;
 
     await prisma.$transaction(async (tx) => {
-      await tx.fulfillmentQueue.update({ where: { id }, data: updateData });
+      // Conditional on the status just checked, so a double click can't
+      // deliver (and notify donors) twice.
+      const moved = await tx.fulfillmentQueue.updateMany({ where: { id, status: entry.status }, data: updateData });
+      if (moved.count !== 1) throw new Error("RACE");
 
       const creatorId = entry.registerItem.register.creatorId;
       const itemId    = entry.registerItem.id;
@@ -157,7 +179,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const updated = await prisma.fulfillmentQueue.findUnique({ where: { id } });
     return NextResponse.json({ entry: updated });
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === "RACE") {
+      return NextResponse.json({ error: "This item changed meanwhile. Reload and try again." }, { status: 409 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

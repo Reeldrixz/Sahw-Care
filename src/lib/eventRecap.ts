@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { isItemFunded, type ProgressItem } from "@/lib/eventProgress";
 import { firstNameOnly } from "@/lib/eventEffects";
+import { orderDifference, differenceText, type OrderDifference } from "@/lib/fulfillmentOrder";
 
 // The live fulfilment layer: registers completed in this event, and how far
 // each has got since. One read (fetchEventCompletions) feeds two views:
@@ -10,9 +11,11 @@ import { firstNameOnly } from "@/lib/eventEffects";
 //     quiet flags for anything delayed. Problems go here, never on air.
 //
 // ONLY WHAT IS LITERALLY TRUE. An item is FUNDED (paid for), ORDERED (a
-// purchase is recorded: FulfillmentQueue PURCHASED or DISPATCHED) or
-// DELIVERED (an admin marked it delivered — the mother does not confirm
-// receipt). The item's IN_FULFILLMENT status is not an order: the webhook sets
+// purchase is recorded WITH EVIDENCE: FulfillmentQueue PURCHASED or DISPATCHED
+// and an order attached, see lib/fulfillmentOrder) or
+// DELIVERED (an admin marked an item with an order delivered — the mother
+// does not confirm receipt). A purchase without a tracking link has no order,
+// so it stays FUNDED on air even once delivered. The item's IN_FULFILLMENT status is not an order: the webhook sets
 // it at funding when an address is on file. A register's status is that of its
 // LEAST advanced item, so it is true of every item: "Order placed" only when
 // every item has been ordered. "Fulfilled" is never said.
@@ -36,6 +39,8 @@ export const RECAP_MAX = 5;
 export type CompletionItem = ProgressItem & {
   name:          string;
   queueStatus:   "QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED" | null;
+  hasOrder:      boolean;   // an order (the evidence) is attached
+  orderId?:      string | null; // server-side only, to group items by order
   purchasedAt:   Date | null;
   dispatchedAt:  Date | null;
 };
@@ -46,11 +51,14 @@ export type CompletionRow = {
   featureConsent: boolean;
   completedAt:    Date;
   items:          CompletionItem[];
+  orders?:        { id: string; totalCents: number }[]; // server-side only; for the host's difference line
 };
 
 export function itemStage(i: CompletionItem): ItemStage {
-  if (i.queueStatus === "DELIVERED") return "DELIVERED";
-  if (i.queueStatus === "PURCHASED" || i.queueStatus === "DISPATCHED") return "ORDERED";
+  // Both need an order (the evidence). Bought without a tracking link reads
+  // "Funded" on air at every stage, delivered included.
+  if (i.queueStatus === "DELIVERED" && i.hasOrder) return "DELIVERED";
+  if ((i.queueStatus === "PURCHASED" || i.queueStatus === "DISPATCHED") && i.hasOrder) return "ORDERED";
   return isItemFunded(i) ? "FUNDED" : "NEEDED";
 }
 
@@ -75,12 +83,13 @@ export async function fetchEventCompletions(eventId: string): Promise<Completion
         select: {
           id: true, featureConsent: true,
           creator: { select: { name: true } },
+          fulfillmentOrders: { orderBy: { createdAt: "asc" }, select: { id: true, totalCents: true } },
           items: {
             where:   { status: { notIn: ["PENDING_APPROVAL", "CANCELLED"] } },
             orderBy: { createdAt: "asc" },
             select: {
               name: true, standardPriceCents: true, totalFundedCents: true, fundingStatus: true,
-              fulfillmentQueue: { select: { status: true, purchasedAt: true, dispatchedAt: true } },
+              fulfillmentQueue: { select: { status: true, purchasedAt: true, dispatchedAt: true, orderId: true } },
             },
           },
         },
@@ -92,10 +101,13 @@ export async function fetchEventCompletions(eventId: string): Promise<Completion
     motherName:     c.register.creator.name,
     featureConsent: c.register.featureConsent,
     completedAt:    c.completedAt,
+    orders:         c.register.fulfillmentOrders,
     items: c.register.items.map((i) => ({
       name: i.name, standardPriceCents: i.standardPriceCents, totalFundedCents: i.totalFundedCents,
       fundingStatus: i.fundingStatus,
       queueStatus:  i.fulfillmentQueue?.status ?? null,
+      hasOrder:     !!i.fulfillmentQueue?.orderId,
+      orderId:      i.fulfillmentQueue?.orderId ?? null,
       purchasedAt:  i.fulfillmentQueue?.purchasedAt ?? null,
       dispatchedAt: i.fulfillmentQueue?.dispatchedAt ?? null,
     })),
@@ -125,9 +137,18 @@ export type HostCompletion = {
   firstName:   string | null;
   completedAt: string;
   status:      RecapStatus | null;
-  items:       { name: string; stage: ItemStage }[];
+  // noTrackingLink: bought without a tracking link (admin, with a note). It
+  // reads "Funded" on air at every stage; the host is told it was bought and,
+  // once an admin marks it, that it was delivered.
+  items:       { name: string; stage: ItemStage; noTrackingLink: boolean; delivered: boolean }[];
+  // Order total vs. what was funded for its items. Host only, neutral wording.
+  orders:      (OrderDifference & { items: string[]; text: string })[];
   flags:       string[];
 };
+
+// Bought, but with no order (evidence) attached.
+const purchasedNoLink = (i: CompletionItem) =>
+  !i.hasOrder && (i.queueStatus === "PURCHASED" || i.queueStatus === "DISPATCHED" || i.queueStatus === "DELIVERED");
 
 const ago = (ms: number) => {
   const h = Math.floor(ms / 3_600_000);
@@ -140,13 +161,15 @@ export function hostCompletions(rows: CompletionRow[], now = new Date()): HostCo
   return rows.filter((r) => r.featureConsent).map((r) => {
     const flags: string[] = [];
     const sinceComplete = now.getTime() - r.completedAt.getTime();
-    const notOrdered = r.items.filter((i) => RANK[itemStage(i)] < RANK.ORDERED).length;
+    // Not bought at all. A purchase without a tracking link was bought, so it
+    // isn't counted here even though it reads "Funded" on air.
+    const notOrdered = r.items.filter((i) => RANK[itemStage(i)] < RANK.ORDERED && !purchasedNoLink(i)).length;
     if (notOrdered > 0 && sinceComplete > FLAG_NO_ORDER_HOURS * 3_600_000) {
       flags.push(`${notOrdered} item${notOrdered === 1 ? "" : "s"} not ordered yet — fully funded ${ago(sinceComplete)} ago`);
     }
     for (const i of r.items) {
       if (i.queueStatus === "PURCHASED" && i.purchasedAt && now.getTime() - i.purchasedAt.getTime() > FLAG_ORDERED_NOT_SENT_DAYS * 86_400_000) {
-        flags.push(`${i.name}: ordered ${ago(now.getTime() - i.purchasedAt.getTime())} ago, not dispatched`);
+        flags.push(`${i.name}: purchased ${ago(now.getTime() - i.purchasedAt.getTime())} ago, not dispatched`);
       }
       if (i.queueStatus === "DISPATCHED" && i.dispatchedAt && now.getTime() - i.dispatchedAt.getTime() > FLAG_SENT_NOT_DELIVERED_DAYS * 86_400_000) {
         flags.push(`${i.name}: dispatched ${ago(now.getTime() - i.dispatchedAt.getTime())} ago, not marked delivered`);
@@ -156,7 +179,15 @@ export function hostCompletions(rows: CompletionRow[], now = new Date()): HostCo
       firstName:   firstNameOnly(r.motherName),
       completedAt: r.completedAt.toISOString(),
       status:      registerStatus(r.items),
-      items:       r.items.map((i) => ({ name: i.name, stage: itemStage(i) })),
+      items:       r.items.map((i) => ({
+        name: i.name, stage: itemStage(i), noTrackingLink: purchasedNoLink(i), delivered: i.queueStatus === "DELIVERED",
+      })),
+      orders:      (r.orders ?? []).flatMap((o) => {
+        const covered = r.items.filter((i) => i.orderId === o.id);
+        if (covered.length === 0) return [];
+        const d = orderDifference(o.totalCents, covered);
+        return [{ ...d, items: covered.map((i) => i.name), text: differenceText(d) }];
+      }),
       flags,
     };
   });

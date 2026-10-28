@@ -7,6 +7,7 @@ import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import VerificationBadge from "@/components/VerificationBadge";
 import type { VerificationBadge as VerificationBadgeKind } from "@/lib/verificationBadge";
+import { RecordOrderModal, EditOrderModal, NoLinkPurchaseModal, OrderCell, DeliveredNote, type QueueOrder } from "./FulfillmentOrderUI";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -254,6 +255,7 @@ interface RegQueueEntry {
   id: string; status: string; totalFundedCents: number; purchasedFrom: string | null;
   actualCostCents: number | null; trackingRef: string | null; notes: string | null;
   queuedAt: string; purchasedAt: string | null; dispatchedAt: string | null; deliveredAt: string | null;
+  orderId: string | null; order: QueueOrder | null;
   registerItem: {
     id: string; name: string; category: string; quantity: string;
     totalFundedCents: number; standardPriceCents: number;
@@ -359,6 +361,10 @@ export default function AdminPage() {
   const [regQueueLoading,      setRegQueueLoading]      = useState(false);
   const [regQueueModal,        setRegQueueModal]        = useState<{ id: string; name: string; nextStatus: string } | null>(null);
   const [regQueueForm,         setRegQueueForm]         = useState<Record<string, string>>({});
+  const [regTicked,            setRegTicked]            = useState<string[]>([]); // queued items for Record order
+  const [recordOrderOpen,      setRecordOrderOpen]      = useState(false);
+  const [editOrder,            setEditOrder]            = useState<QueueOrder | null>(null);
+  const [noLinkPurchase,       setNoLinkPurchase]       = useState<{ id: string; name: string } | null>(null);
   const [financials,         setFinancials]         = useState<Financials | null>(null);
 
   // Catalog management state
@@ -2220,7 +2226,7 @@ export default function AdminPage() {
                 {/* Sub-tabs */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
                   {(["AWAITING_ADDRESS", "QUEUED", "PURCHASED", "DISPATCHED", "DELIVERED"] as const).map((s) => (
-                    <button key={s} onClick={() => setRegQueueTab(s)}
+                    <button key={s} onClick={() => { setRegQueueTab(s); setRegTicked([]); }}
                       style={{
                         padding: "7px 16px", borderRadius: 20,
                         border: `1.5px solid ${regQueueTab === s ? "#1a7a5e" : "var(--border)"}`,
@@ -2286,20 +2292,56 @@ export default function AdminPage() {
                     No items in {regQueueTab.toLowerCase()} status.
                   </div>
                 ) : (
+                  <>
+                  {/* Record order: tick queued items of ONE register, then record
+                      the retailer order that covers them. The only way an item
+                      becomes Purchased. */}
+                  {regQueueTab === "QUEUED" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+                      <button
+                        disabled={regTicked.length === 0}
+                        onClick={() => setRecordOrderOpen(true)}
+                        style={{ fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 8, border: "none", background: regTicked.length ? "#1a7a5e" : "var(--border)", color: "white", cursor: regTicked.length ? "pointer" : "default", fontFamily: "Nunito, sans-serif" }}>
+                        Record order{regTicked.length ? ` (${regTicked.length})` : ""}
+                      </button>
+                      <span style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif" }}>
+                        Tick the items one order covers. An order covers items of one register only.
+                      </span>
+                    </div>
+                  )}
                   <table className="admin-table">
                     <thead>
                       <tr>
+                        {regQueueTab === "QUEUED" && <th></th>}
                         <th>Item</th>
                         <th>Register</th>
                         <th>Mother</th>
                         <th>Funded</th>
-                        <th>{regQueueTab === "PURCHASED" ? "Supplier / Cost" : regQueueTab === "DISPATCHED" ? "Tracking" : "Date"}</th>
+                        <th>{regQueueTab === "QUEUED" ? "Queued" : "Order"}</th>
                         <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {regQueue.filter((e) => e.status === regQueueTab).map((entry) => (
+                      {regQueue.filter((e) => e.status === regQueueTab).map((entry) => {
+                        const tickedRegister = regQueue.find((e) => e.id === regTicked[0])?.registerItem.register.id;
+                        const tickable = !tickedRegister || tickedRegister === entry.registerItem.register.id;
+                        const markDelivered = async () => {
+                          if (!confirm(`Mark "${entry.registerItem.name}" as delivered?\n\nOnly if this register's order page shows "Delivered".`)) return;
+                          const r = await fetch(`/api/admin/fulfillment-queue/${entry.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "DELIVERED" }) });
+                          const d = await r.json().catch(() => ({}));
+                          fetchRegQueue(regQueueTab);
+                          setToast(r.ok ? "Marked as delivered!" : (d.error ?? "Couldn't mark delivered"));
+                        };
+                        return (
                         <tr key={entry.id}>
+                          {regQueueTab === "QUEUED" && (
+                            <td>
+                              <input type="checkbox" aria-label={`Include ${entry.registerItem.name}`}
+                                checked={regTicked.includes(entry.id)} disabled={!tickable}
+                                title={tickable ? undefined : "An order covers items of one register only"}
+                                onChange={(e) => setRegTicked((p) => e.target.checked ? [...p, entry.id] : p.filter((x) => x !== entry.id))} />
+                            </td>
+                          )}
                           <td style={{ fontWeight: 700, fontSize: 12 }}>
                             {entry.registerItem.name}
                             <div style={{ fontSize: 11, color: "var(--mid)", fontWeight: 400 }}>{entry.registerItem.category} · Qty: {entry.registerItem.quantity}</div>
@@ -2316,69 +2358,86 @@ export default function AdminPage() {
                             ${(entry.totalFundedCents / 100).toFixed(0)}
                           </td>
                           <td style={{ fontSize: 11, color: "var(--mid)" }}>
-                            {regQueueTab === "QUEUED" && new Date(entry.queuedAt).toLocaleDateString()}
-                            {regQueueTab === "PURCHASED" && (
-                              <>{entry.purchasedFrom ?? "—"}<br/>{entry.actualCostCents ? `$${(entry.actualCostCents / 100).toFixed(0)}` : "—"}</>
+                            {regQueueTab === "QUEUED" ? new Date(entry.queuedAt).toLocaleDateString() : (
+                              <>
+                                <OrderCell order={entry.order} notes={entry.notes}
+                                  onEdit={() => entry.order && setEditOrder(entry.order)}
+                                  onSaved={() => { fetchRegQueue(regQueueTab); setToast("Order number saved"); }}
+                                  onError={setToast} />
+                                {regQueueTab === "DISPATCHED" && entry.trackingRef && <div style={{ marginTop: 4 }}>Ref: {entry.trackingRef}</div>}
+                                {regQueueTab === "DELIVERED" && entry.deliveredAt && <div style={{ marginTop: 4 }}>Delivered {new Date(entry.deliveredAt).toLocaleDateString()}</div>}
+                              </>
                             )}
-                            {regQueueTab === "DISPATCHED" && (entry.trackingRef ?? "—")}
-                            {regQueueTab === "DELIVERED" && (entry.deliveredAt ? new Date(entry.deliveredAt).toLocaleDateString() : "—")}
                           </td>
                           <td>
                             {regQueueTab === "QUEUED" && (
                               <button
-                                onClick={() => { setRegQueueModal({ id: entry.id, name: entry.registerItem.name, nextStatus: "PURCHASED" }); setRegQueueForm({}); }}
-                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
-                                Mark Purchased
+                                onClick={() => setNoLinkPurchase({ id: entry.id, name: entry.registerItem.name })}
+                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "1.5px solid var(--border)", background: "none", color: "var(--ink)", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                Purchased, no tracking link
                               </button>
                             )}
                             {regQueueTab === "PURCHASED" && (
                               <button
                                 onClick={() => { setRegQueueModal({ id: entry.id, name: entry.registerItem.name, nextStatus: "DISPATCHED" }); setRegQueueForm({}); }}
-                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#d97706", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#d97706", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif", marginRight: 6, marginBottom: 6 }}>
                                 Mark Dispatched
                               </button>
                             )}
-                            {regQueueTab === "DISPATCHED" && (
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`Mark "${entry.registerItem.name}" as delivered?`)) return;
-                                  await fetch(`/api/admin/fulfillment-queue/${entry.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "DELIVERED" }) });
-                                  fetchRegQueue(regQueueTab);
-                                  setToast("Marked as delivered!");
-                                }}
-                                style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
-                                Mark Delivered
-                              </button>
+                            {(regQueueTab === "PURCHASED" || regQueueTab === "DISPATCHED") && (
+                              <>
+                                <button
+                                  onClick={markDelivered}
+                                  style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#1a7a5e", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
+                                  Mark Delivered
+                                </button>
+                                <DeliveredNote />
+                              </>
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
+                  </>
                 )}
 
-                {/* Purchase / Dispatch modal */}
+                {recordOrderOpen && (() => {
+                  const picked = regQueue.filter((e) => regTicked.includes(e.id));
+                  if (picked.length === 0) return null;
+                  return (
+                    <RecordOrderModal
+                      queueIds={picked.map((e) => e.id)}
+                      itemNames={picked.map((e) => e.registerItem.name)}
+                      motherFirstName={picked[0].registerItem.register.creator.name.split(" ")[0]}
+                      fundedCents={picked.reduce((s, e) => s + e.totalFundedCents, 0)}
+                      onClose={() => setRecordOrderOpen(false)}
+                      onDone={() => { setRecordOrderOpen(false); setRegTicked([]); fetchRegQueue(regQueueTab); fetchFinancials(); setToast("Order recorded"); }}
+                    />
+                  );
+                })()}
+                {noLinkPurchase && (
+                  <NoLinkPurchaseModal queueId={noLinkPurchase.id} itemName={noLinkPurchase.name}
+                    onClose={() => setNoLinkPurchase(null)}
+                    onDone={() => { setNoLinkPurchase(null); setRegTicked((p) => p.filter((x) => x !== noLinkPurchase.id)); fetchRegQueue(regQueueTab); fetchFinancials(); setToast("Marked purchased (no tracking link)"); }} />
+                )}
+                {editOrder && (
+                  <EditOrderModal order={editOrder}
+                    onClose={() => setEditOrder(null)}
+                    onDone={() => { setEditOrder(null); fetchRegQueue(regQueueTab); setToast("Order updated"); }} />
+                )}
+
+                {/* Dispatch modal (purchasing is Record order, above) */}
                 {regQueueModal && (
                   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
                     <div style={{ background: "white", borderRadius: 16, padding: 24, maxWidth: 400, width: "100%" }}>
                       <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 16 }}>
-                        {regQueueModal.nextStatus === "PURCHASED" ? "Mark as Purchased" : "Mark as Dispatched"}
+                        Mark as Dispatched
                       </div>
                       <div style={{ fontSize: 13, color: "var(--mid)", marginBottom: 16, fontFamily: "Nunito, sans-serif" }}>
                         {regQueueModal.name}
                       </div>
-                      {regQueueModal.nextStatus === "PURCHASED" && (
-                        <>
-                          <div className="form-group">
-                            <label className="form-label">Supplier name</label>
-                            <input className="form-input" placeholder="e.g. Jumia, Amazon" value={regQueueForm.purchasedFrom ?? ""} onChange={(e) => setRegQueueForm((p) => ({ ...p, purchasedFrom: e.target.value }))} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Actual cost ($)</label>
-                            <input className="form-input" type="number" placeholder="e.g. 35" value={regQueueForm.actualCost ?? ""} onChange={(e) => setRegQueueForm((p) => ({ ...p, actualCost: e.target.value }))} />
-                          </div>
-                        </>
-                      )}
                       {regQueueModal.nextStatus === "DISPATCHED" && (
                         <div className="form-group">
                           <label className="form-label">Tracking reference</label>
@@ -2394,14 +2453,13 @@ export default function AdminPage() {
                         <button
                           onClick={async () => {
                             const body: Record<string, unknown> = { status: regQueueModal.nextStatus };
-                            if (regQueueForm.purchasedFrom) body.purchasedFrom = regQueueForm.purchasedFrom;
-                            if (regQueueForm.actualCost) body.actualCostCents = Math.round(parseFloat(regQueueForm.actualCost) * 100);
                             if (regQueueForm.trackingRef) body.trackingRef = regQueueForm.trackingRef;
                             if (regQueueForm.notes) body.notes = regQueueForm.notes;
-                            await fetch(`/api/admin/fulfillment-queue/${regQueueModal.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                            const r = await fetch(`/api/admin/fulfillment-queue/${regQueueModal.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                            const d = await r.json().catch(() => ({}));
                             setRegQueueModal(null);
                             fetchRegQueue(regQueueTab);
-                            setToast(`Marked as ${regQueueModal.nextStatus.toLowerCase()}!`);
+                            setToast(r.ok ? `Marked as ${regQueueModal.nextStatus.toLowerCase()}!` : (d.error ?? "Couldn't update"));
                           }}
                           className="btn-apply" style={{ flex: 2 }}>
                           Confirm

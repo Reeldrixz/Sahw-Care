@@ -257,7 +257,7 @@ export default function HostDashboardPage() {
 
       {featuredReg && <FeaturedPanel reg={featuredReg} onClose={() => feature(null)} />}
 
-      {data.completions.length > 0 && <CompletionsPanel rows={data.completions} />}
+      {data.completions.length > 0 && <CompletionsPanel rows={data.completions} token={token} />}
 
       {registers.length === 0 ? (
         <div style={{ marginTop: 60, textAlign: "center", color: MUTED, fontSize: 16, lineHeight: 1.7 }}>
@@ -366,11 +366,15 @@ function FeaturedPanel({ reg, onClose }: { reg: Register; onClose: () => void })
 const STAGE_LABEL: Record<ItemStage, string> = {
   NEEDED: "Needed", FUNDED: "Funded", ORDERED: "Order placed", DELIVERED: "Delivered",
 };
-function CompletionsPanel({ rows }: { rows: HostCompletion[] }) {
+function CompletionsPanel({ rows, token }: { rows: HostCompletion[]; token: string }) {
   return (
     <div style={{ marginTop: 20, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
       <div style={{ fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", color: MUTED, fontWeight: 700, marginBottom: 10 }}>
         Fully funded this event
+        {/* Evidence for each order: tracking links, delivery dates, totals. */}
+        <a href={`/host/${encodeURIComponent(token)}/orders`} style={{ marginLeft: 12, color: ACCENT, textTransform: "none", letterSpacing: 0, fontSize: 13 }}>
+          See orders →
+        </a>
       </div>
       {rows.map((r, n) => (
         <div key={n} style={{ padding: "10px 0", borderTop: n ? `1px solid ${LINE}` : "none" }}>
@@ -383,10 +387,22 @@ function CompletionsPanel({ rows }: { rows: HostCompletion[] }) {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
             {r.items.map((i, k) => (
               <span key={k} style={{ fontSize: 12.5, color: i.stage === "NEEDED" ? "#e3b341" : TEXT, background: PANEL_2, border: `1px solid ${LINE}`, borderRadius: 8, padding: "3px 8px" }}>
-                {i.name} · {STAGE_LABEL[i.stage]}
+                {i.name} · {i.noTrackingLink
+                  ? `${i.delivered ? "Delivered" : "Purchased"}, no tracking link (shows Funded on air)`
+                  : STAGE_LABEL[i.stage]}
               </span>
             ))}
           </div>
+          {/* Order total vs. funded: host only, neutral, highlighted past the
+              larger of $5 or 15%. Never on the overlay or the streamer page. */}
+          {r.orders.map((o, k) => (
+            <div key={k} style={{
+              fontSize: 13, marginTop: 6, color: o.highlight ? WARN : MUTED,
+              fontWeight: o.highlight ? 700 : 400,
+            }}>
+              {o.items.join(", ")}: {o.text}
+            </div>
+          ))}
           {r.flags.map((f, k) => (
             <div key={k} style={{ fontSize: 13, color: "#e3b341", marginTop: 6 }}>⚠ {f}</div>
           ))}

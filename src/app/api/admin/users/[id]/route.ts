@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { recalculateTrustScore, awardTrust } from "@/lib/trust";
 import { referralGrantFields } from "@/lib/referral";
 import { notifyUser } from "@/lib/notify";
+import { scrubOrdersForCreator } from "@/lib/fulfillmentOrder";
 
 export const dynamic = "force-dynamic";
 
@@ -354,7 +355,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const { id } = await params;
-    await prisma.user.delete({ where: { id } });
+    // Her registers cascade with her. Their orders stay as financial records,
+    // with the tracking link and order number cleared first, in the same
+    // transaction.
+    await prisma.$transaction(async (tx) => {
+      await scrubOrdersForCreator(tx, id);
+      await tx.user.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

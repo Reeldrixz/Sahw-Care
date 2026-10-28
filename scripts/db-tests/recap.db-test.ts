@@ -6,6 +6,7 @@
 // buildOverlayFrame the endpoint runs, plus the host's goal raise. Writes test
 // rows, so it refuses any non-local or non-UTF-8 database.
 import { prisma } from "../../src/lib/prisma";
+import { FEATURE_CONSENT_VERSION } from "../../src/lib/featureConsent";
 import { withStripeEvent, recordPayment } from "../../src/lib/stripeLedger";
 import { buildOverlayFrame, type OverlayFrame } from "../../src/lib/overlayFrame";
 import { recapText } from "../../src/lib/publicCelebration";
@@ -39,7 +40,7 @@ async function register(motherName: string, prices: number[]) {
   const mom = await prisma.user.create({ data: { name: motherName, email: `m${uid()}@t.test`, password: "x" } });
   const r = await prisma.register.create({ data: {
     title: `${motherName}'s list for Ikeja`, city: "Lagos", dueDate: new Date(), creatorId: mom.id, status: "ACTIVE",
-    featureConsent: true, featureConsentAt: new Date(), featureConsentVersion: 2,
+    featureConsent: true, featureConsentAt: new Date(), featureConsentVersion: FEATURE_CONSENT_VERSION,
   } });
   const items = [];
   for (const p of prices) items.push(await prisma.registerItem.create({ data: { name: `Item ${items.length}`, registerId: r.id, standardPriceCents: p } }));
@@ -56,8 +57,16 @@ async function pay(itemId: string, eventId: string, cents: number) {
 }
 const onScreen = (eventId: string, registerId: string) =>
   prisma.fundraisingEvent.update({ where: { id: eventId }, data: { currentRegisterId: registerId } });
-const queue = (itemId: string, status: "QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED") =>
-  prisma.fulfillmentQueue.create({ data: { registerItemId: itemId, totalFundedCents: 1000, status, purchasedAt: status === "QUEUED" ? null : new Date() } });
+// Past QUEUED, an order is attached (step 9: "Order placed" needs the evidence),
+// unless noOrder is set.
+const queue = async (itemId: string, status: "QUEUED" | "PURCHASED" | "DISPATCHED" | "DELIVERED", o: { noOrder?: boolean } = {}) => {
+  let orderId: string | null = null;
+  if (status !== "QUEUED" && !o.noOrder) {
+    const { registerId } = await prisma.registerItem.findUniqueOrThrow({ where: { id: itemId }, select: { registerId: true } });
+    orderId = (await prisma.fulfillmentOrder.create({ data: { registerId, totalCents: 1000, trackingUrl: "https://a.co/d/x1", estimatedDeliveryOn: new Date() } })).id;
+  }
+  return prisma.fulfillmentQueue.create({ data: { registerItemId: itemId, totalFundedCents: 1000, status, orderId, purchasedAt: status === "QUEUED" ? null : new Date() } });
+};
 
 (async () => {
   await requireUtf8();
@@ -85,7 +94,11 @@ const queue = (itemId: string, status: "QUEUED" | "PURCHASED" | "DISPATCHED" | "
   await queue(A.items[0].id, "DELIVERED");
   const f3 = await frame(ev.id);
   check("least advanced: one delivered, one only funded -> Funded", recap(f3)[0] === "Maryam — Funded ✓", recap(f3)[0]);
-  await queue(A.items[1].id, "PURCHASED");
+  await queue(A.items[1].id, "PURCHASED", { noOrder: true });
+  const f4n = await frame(ev.id);
+  check("least advanced: purchased with no order attached -> still Funded", recap(f4n)[0] === "Maryam — Funded ✓", recap(f4n)[0]);
+  const { id: orderId } = await prisma.fulfillmentOrder.create({ data: { registerId: A.r.id, totalCents: 1000, trackingUrl: "https://a.co/d/x2", estimatedDeliveryOn: new Date() } });
+  await prisma.fulfillmentQueue.update({ where: { registerItemId: A.items[1].id }, data: { orderId } });
   const f4 = await frame(ev.id);
   check("least advanced: one delivered, one purchased -> Order placed", recap(f4)[0] === "Maryam — Order placed ✓", recap(f4)[0]);
   await prisma.fulfillmentQueue.update({ where: { registerItemId: A.items[1].id }, data: { status: "DELIVERED", deliveredAt: new Date() } });

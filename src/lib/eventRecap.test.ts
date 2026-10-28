@@ -9,7 +9,7 @@ import { recapText } from "./publicCelebration";
 
 const item = (o: Partial<CompletionItem> = {}): CompletionItem => ({
   name: "Diapers", standardPriceCents: 1000, totalFundedCents: 1000, fundingStatus: "FULLY_FUNDED",
-  queueStatus: null, purchasedAt: null, dispatchedAt: null, ...o,
+  queueStatus: null, hasOrder: false, purchasedAt: null, dispatchedAt: null, ...o,
 });
 const row = (o: Partial<CompletionRow> = {}): CompletionRow => ({
   registerId: "reg_1", motherName: "Maryam Okafor", featureConsent: true,
@@ -17,9 +17,9 @@ const row = (o: Partial<CompletionRow> = {}): CompletionRow => ({
 });
 
 test("status comes from the least advanced item", () => {
-  const delivered = item({ queueStatus: "DELIVERED" });
-  const ordered   = item({ queueStatus: "PURCHASED" });
-  const sent      = item({ queueStatus: "DISPATCHED" });
+  const delivered = item({ queueStatus: "DELIVERED", hasOrder: true });
+  const ordered   = item({ queueStatus: "PURCHASED", hasOrder: true });
+  const sent      = item({ queueStatus: "DISPATCHED", hasOrder: true });
   assert.equal(registerStatus([delivered, delivered]), "DELIVERED");
   assert.equal(registerStatus([delivered, ordered]), "ORDERED");
   assert.equal(registerStatus([delivered, sent]), "ORDERED");
@@ -28,6 +28,50 @@ test("status comes from the least advanced item", () => {
   assert.equal(registerStatus([ordered, item({ queueStatus: "QUEUED", fundingStatus: "IN_FULFILLMENT" })]), "FUNDED");
   // An item no longer funded (added after completion): no true status, so none.
   assert.equal(registerStatus([delivered, item({ totalFundedCents: 0, fundingStatus: "UNFUNDED" })]), null);
+});
+
+test("\"Order placed\" needs an order attached (the evidence)", () => {
+  const delivered = item({ queueStatus: "DELIVERED", hasOrder: true });
+  assert.equal(registerStatus([item({ queueStatus: "PURCHASED" })]), "FUNDED");
+  assert.equal(registerStatus([item({ queueStatus: "DISPATCHED" })]), "FUNDED");
+  assert.equal(registerStatus([delivered, item({ queueStatus: "PURCHASED" })]), "FUNDED");
+  assert.equal(registerStatus([delivered, item({ queueStatus: "PURCHASED", hasOrder: true })]), "ORDERED");
+  // Bought without a tracking link: Funded on air, but the host is told it
+  // was bought and isn't flagged "not ordered yet".
+  const now = new Date("2026-10-25T18:00:00Z");
+  const [h] = hostCompletions([row({ items: [item({ queueStatus: "PURCHASED", purchasedAt: new Date("2026-10-24T00:00:00Z") }), item({ name: "Car seat" })] })], now);
+  assert.equal(h.items[0].stage, "FUNDED");
+  assert.equal(h.items[0].noTrackingLink, true);
+  assert.equal(h.items[1].noTrackingLink, false);
+  assert.deepEqual(h.flags, ["1 item not ordered yet — fully funded 3 days ago"]);
+});
+
+test("bought without a tracking link stays Funded on air even when delivered; the host sees delivered", () => {
+  const noLinkDelivered = item({ queueStatus: "DELIVERED" });
+  assert.equal(registerStatus([noLinkDelivered]), "FUNDED");
+  assert.equal(registerStatus([noLinkDelivered, item({ queueStatus: "DELIVERED", hasOrder: true })]), "FUNDED");
+  assert.deepEqual(publicRecap([row({ items: [noLinkDelivered] })], null).entries, [{ firstName: "Maryam", status: "FUNDED" }]);
+  const [h] = hostCompletions([row({ items: [noLinkDelivered, item({ name: "Wipes", queueStatus: "DELIVERED", hasOrder: true })] })]);
+  assert.deepEqual(h.items.map((i) => [i.stage, i.noTrackingLink, i.delivered]), [["FUNDED", true, true], ["DELIVERED", false, true]]);
+  assert.equal(h.status, "FUNDED");
+});
+
+test("the order-total difference is on the host panel only, per order", () => {
+  const rows = [row({
+    orders: [{ id: "ord_1", totalCents: 5437 }, { id: "ord_gone", totalCents: 999 }],
+    items: [
+      item({ name: "Diapers", standardPriceCents: 2000, totalFundedCents: 2000, queueStatus: "PURCHASED", hasOrder: true, orderId: "ord_1" }),
+      item({ name: "Wipes", standardPriceCents: 3000, totalFundedCents: 3000, queueStatus: "PURCHASED", hasOrder: true, orderId: "ord_1" }),
+    ],
+  })];
+  const [h] = hostCompletions(rows);
+  assert.equal(h.orders.length, 1);   // an order covering none of her items isn't shown
+  assert.deepEqual(h.orders[0].items, ["Diapers", "Wipes"]);
+  assert.equal(h.orders[0].text, "Funded for these items: $50.00 · Order total $54.37 · Difference +$4.37");
+  assert.equal(h.orders[0].highlight, false);
+  assert.ok(!JSON.stringify(h).includes("ord_1"), "an order id reached the host payload");
+  // The overlay's recap carries no money at all.
+  assert.doesNotMatch(JSON.stringify(publicRecap(rows, null)), /54|50\.00|Difference|ord_/);
 });
 
 test("recap text uses only funded, order placed and delivered", () => {
@@ -73,7 +117,7 @@ test("the overlay shows the latest few and counts the rest", () => {
 
 test("host flags delays; the overlay status stays true and positive", () => {
   const now = new Date("2026-10-25T18:00:00Z");   // 3 days after completion
-  const rows = [row({ items: [item(), item({ name: "Car seat", queueStatus: "DISPATCHED", dispatchedAt: new Date("2026-10-01T00:00:00Z") })] })];
+  const rows = [row({ items: [item(), item({ name: "Car seat", queueStatus: "DISPATCHED", hasOrder: true, dispatchedAt: new Date("2026-10-01T00:00:00Z") })] })];
   const [h] = hostCompletions(rows, now);
   assert.equal(h.flags.length, 2);
   assert.match(h.flags[0], /1 item not ordered yet — fully funded 3 days ago/);
