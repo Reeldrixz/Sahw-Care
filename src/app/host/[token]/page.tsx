@@ -384,6 +384,9 @@ function CompletionsPanel({ rows, token }: { rows: HostCompletion[]; token: stri
               {r.status ? STAGE_LABEL[r.status] : "Not fully funded now"} · funded {new Date(r.completedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </span>
           </div>
+          <div style={{ fontSize: 13, color: r.orderPlaced.withOrder === r.orderPlaced.total ? ACCENT : MUTED, marginTop: 4 }}>
+            {r.orderPlaced.text}
+          </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
             {r.items.map((i, k) => (
               <span key={k} style={{ fontSize: 12.5, color: i.stage === "NEEDED" ? "#e3b341" : TEXT, background: PANEL_2, border: `1px solid ${LINE}`, borderRadius: 8, padding: "3px 8px" }}>

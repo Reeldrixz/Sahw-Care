@@ -141,10 +141,18 @@ export type HostCompletion = {
   // reads "Funded" on air at every stage; the host is told it was bought and,
   // once an admin marks it, that it was delivered.
   items:       { name: string; stage: ItemStage; noTrackingLink: boolean; delivered: boolean }[];
+  // How many of her items have an order (the evidence) attached, of all her
+  // items, e.g. "Order placed for 1 of 4 items". Host only.
+  orderPlaced: { withOrder: number; total: number; text: string };
   // Order total vs. what was funded for its items. Host only, neutral wording.
   orders:      (OrderDifference & { items: string[]; text: string })[];
   flags:       string[];
 };
+
+export function orderPlacedCount(items: CompletionItem[]): HostCompletion["orderPlaced"] {
+  const withOrder = items.filter((i) => i.hasOrder).length;
+  return { withOrder, total: items.length, text: `Order placed for ${withOrder} of ${items.length} item${items.length === 1 ? "" : "s"}` };
+}
 
 // Bought, but with no order (evidence) attached.
 const purchasedNoLink = (i: CompletionItem) =>
@@ -182,6 +190,7 @@ export function hostCompletions(rows: CompletionRow[], now = new Date()): HostCo
       items:       r.items.map((i) => ({
         name: i.name, stage: itemStage(i), noTrackingLink: purchasedNoLink(i), delivered: i.queueStatus === "DELIVERED",
       })),
+      orderPlaced: orderPlacedCount(r.items),
       orders:      (r.orders ?? []).flatMap((o) => {
         const covered = r.items.filter((i) => i.orderId === o.id);
         if (covered.length === 0) return [];

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
           id: true, name: true, updatedAt: true,
           register: {
             select: {
-              id: true, creatorId: true, city: true,
+              id: true, title: true, creatorId: true, city: true,
               creator: { select: { id: true, name: true, ...VERIFICATION_BADGE_FIELDS } },
             },
           },

@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canReceiveShipment } from "@/lib/access";
 import { hasPartnerReferral } from "@/lib/referral";
+import { confirmAddressForMother, type ConfirmedItem } from "@/lib/addressConfirm";
 
 export const dynamic = "force-dynamic";
 
@@ -54,35 +55,44 @@ export async function POST(
     return NextResponse.json({ error: shipmentAccess.message, code: shipmentAccess.code }, { status: 403 });
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.shipmentAddress.create({
-      data: {
-        registerItemId: itemId,
-        fullName:       fullName.trim(),
-        streetAddress:  streetAddress.trim(),
-        unit:           unit?.trim() || null,
-        city:           city.trim(),
-        province:       province.trim(),
-        postalCode:     postalCode.trim(),
-        phone:          phone.trim(),
-      },
+  // The address applies to EVERY funded item of hers waiting for one, across
+  // all her registers, not only the item in the URL (lib/addressConfirm).
+  let confirmed: ConfirmedItem[];
+  try {
+    confirmed = await prisma.$transaction(async (tx) => {
+      const items = await confirmAddressForMother(tx, auth.userId, {
+        fullName:      fullName.trim(),
+        streetAddress: streetAddress.trim(),
+        unit:          unit?.trim() || null,
+        city:          city.trim(),
+        province:      province.trim(),
+        postalCode:    postalCode.trim(),
+        phone:         phone.trim(),
+      });
+      if (items.length > 0) {
+        const names = items.map((i) => i.name);
+        await tx.notification.create({
+          data: {
+            userId:  auth.userId,
+            type:    "ITEM_FULLY_FUNDED",
+            message: names.length === 1
+              ? `Address confirmed. We'll order your ${names[0]} shortly.`
+              : `Address confirmed. We'll order your ${names.length} items shortly: ${names.join(", ")}.`,
+            link:    `/registers/${registerId}`,
+          },
+        });
+      }
+      return items;
     });
-    await tx.registerItem.update({
-      where: { id: itemId },
-      data:  { status: "AWAITING_PURCHASE", fundingStatus: "IN_FULFILLMENT" },
-    });
-    await tx.fulfillmentQueue.create({
-      data: { registerItemId: itemId, totalFundedCents: item.totalFundedCents, status: "QUEUED" },
-    });
-    await tx.notification.create({
-      data: {
-        userId:  auth.userId,
-        type:    "ITEM_FULLY_FUNDED",
-        message: `Address confirmed. We'll order your ${item.name} shortly.`,
-        link:    `/registers/${registerId}`,
-      },
-    });
-  });
+  } catch (err) {
+    if (err instanceof Error && err.message === "ADDRESS_RACE") {
+      return NextResponse.json({ error: "Your address was just confirmed. Refresh to see your items." }, { status: 409 });
+    }
+    throw err;
+  }
+  if (confirmed.length === 0) {
+    return NextResponse.json({ error: "Item is not awaiting address confirmation" }, { status: 400 });
+  }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, confirmedCount: confirmed.length });
 }

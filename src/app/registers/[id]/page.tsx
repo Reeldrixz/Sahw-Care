@@ -431,7 +431,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       url.searchParams.delete("item");
       window.history.replaceState({}, "", url.toString());
       await fetchRegister();
-      setToast("Address confirmed! We'll begin fulfilling your item.");
+      const d = await res.json().catch(() => ({}));
+      const n = typeof d.confirmedCount === "number" ? d.confirmedCount : 1;
+      setToast(n > 1 ? `Address confirmed for ${n} items! We'll begin fulfilling them.` : "Address confirmed! We'll begin fulfilling your item.");
     } else {
       const d = await res.json();
       if (d.code === "NEEDS_IDENTITY_VERIFICATION" || d.code === "ACCOUNT_UNDER_REVIEW") {
@@ -1350,7 +1352,10 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 4, margin: "0 auto 16px" }} />
             <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700, marginBottom: 4 }}>Confirm shipping address</div>
             <div style={{ fontSize: 12, color: "var(--mid)", fontFamily: "Nunito, sans-serif", marginBottom: 16 }}>
-              For: <strong>{addressItem.name}</strong>
+              {/* One address covers every funded item waiting for one, on all
+                  her registers (lib/addressConfirm). */}
+              For: <strong>{awaitingItems.length > 1 ? awaitingItems.map((i) => i.name).join(", ") : addressItem.name}</strong>
+              <div style={{ marginTop: 4 }}>This address is used for every funded item waiting for an address.</div>
             </div>
 
             <div className="form-group">

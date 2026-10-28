@@ -56,6 +56,20 @@ test("bought without a tracking link stays Funded on air even when delivered; th
   assert.equal(h.status, "FUNDED");
 });
 
+test("host panel: how many items have an order, of all her items", () => {
+  const rows = [row({ items: [
+    item({ queueStatus: "PURCHASED", hasOrder: true }), item({ queueStatus: "QUEUED" }),
+    item({ queueStatus: "PURCHASED" }), item({ queueStatus: "DELIVERED", hasOrder: true }),
+  ] })];
+  const [h] = hostCompletions(rows);
+  assert.deepEqual(h.orderPlaced, { withOrder: 2, total: 4, text: "Order placed for 2 of 4 items" });
+  assert.equal(hostCompletions([row({ items: [item({ queueStatus: "PURCHASED", hasOrder: true })] })])[0].orderPlaced.text, "Order placed for 1 of 1 item");
+  assert.equal(hostCompletions([row({ items: [item(), item()] })])[0].orderPlaced.text, "Order placed for 0 of 2 items");
+  // The overlay rule is unchanged: the least advanced item still decides.
+  assert.deepEqual(publicRecap(rows, null).entries, [{ firstName: "Maryam", status: "FUNDED" }]);
+  assert.doesNotMatch(JSON.stringify(publicRecap(rows, null)), /Order placed for/);
+});
+
 test("the order-total difference is on the host panel only, per order", () => {
   const rows = [row({
     orders: [{ id: "ord_1", totalCents: 5437 }, { id: "ord_gone", totalCents: 999 }],

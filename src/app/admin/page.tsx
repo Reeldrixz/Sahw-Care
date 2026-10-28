@@ -7,6 +7,7 @@ import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import VerificationBadge from "@/components/VerificationBadge";
 import type { VerificationBadge as VerificationBadgeKind } from "@/lib/verificationBadge";
+import { AwaitingAddressTable, type AwaitingAddressEntry } from "./AwaitingAddressTable";
 import { RecordOrderModal, EditOrderModal, NoLinkPurchaseModal, OrderCell, DeliveredNote, type QueueOrder } from "./FulfillmentOrderUI";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -263,10 +264,6 @@ interface RegQueueEntry {
   };
 }
 
-interface AwaitingAddressEntry {
-  id: string; name: string; updatedAt: string;
-  register: { id: string; creatorId: string; city: string | null; creator: { id: string; name: string; verificationBadge: VerificationBadgeKind } };
-}
 
 interface Financials {
   month: string; totalFundedCents: number; totalSpentCents: number; surplusCents: number;
@@ -2247,45 +2244,11 @@ export default function AdminPage() {
                       No items awaiting address confirmation.
                     </div>
                   ) : (
-                    <table className="admin-table">
-                      <thead>
-                        <tr>
-                          <th>Item</th>
-                          <th>Mother</th>
-                          <th>Days waiting</th>
-                          <th>Days left</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {awaitingAddressItems.map((entry) => {
-                          const daysWaiting = Math.floor((Date.now() - new Date(entry.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-                          const daysLeft    = 14 - daysWaiting;
-                          const urgency     = daysLeft <= 3 ? "#c0392b" : daysLeft <= 7 ? "#d97706" : "#1a7a5e";
-                          return (
-                            <tr key={entry.id}>
-                              <td style={{ fontWeight: 700, fontSize: 12 }}>{entry.name}</td>
-                              <td style={{ fontSize: 12 }}>
-                                {entry.register.creator.name.split(" ")[0]} <VerificationBadge badge={entry.register.creator.verificationBadge} />
-                                <div style={{ fontSize: 11, color: "var(--mid)" }}>{entry.register.city}</div>
-                              </td>
-                              <td style={{ fontSize: 12, color: urgency, fontWeight: 700 }}>{daysWaiting}d</td>
-                              <td style={{ fontSize: 12, color: urgency, fontWeight: 700 }}>{Math.max(0, daysLeft)}d</td>
-                              <td>
-                                <button
-                                  onClick={async () => {
-                                    await fetch("/api/admin/fulfillment-queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: entry.id }) });
-                                    setToast("Nudge sent to mother");
-                                  }}
-                                  style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", background: "#d97706", color: "white", cursor: "pointer", fontFamily: "Nunito, sans-serif" }}>
-                                  Nudge mother
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <AwaitingAddressTable items={awaitingAddressItems}
+                      onNudge={async (itemId) => {
+                        await fetch("/api/admin/fulfillment-queue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId }) });
+                        setToast("Nudge sent to mother");
+                      }} />
                   )
                 ) : regQueue.filter((e) => e.status === regQueueTab).length === 0 ? (
                   <div style={{ textAlign: "center", color: "var(--mid)", padding: "32px 0", fontFamily: "Nunito, sans-serif" }}>
