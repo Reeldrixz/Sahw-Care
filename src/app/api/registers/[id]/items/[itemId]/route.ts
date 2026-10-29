@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { removalFactsLocked, removalRefusal, REMOVAL_REFUSED } from "@/lib/registerItemRules";
 
 export const dynamic = "force-dynamic";
 
@@ -82,10 +83,19 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (item.register.creatorId !== auth.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  if (item.totalFundedCents > 0) {
-    return NextResponse.json({ error: "Items with contributions cannot be removed. Contact Kradel for help." }, { status: 400 });
-  }
-
-  await prisma.registerItem.delete({ where: { id: itemId } });
+  // lib/registerItemRules: never anything with a payment attached; on a live
+  // register, nothing reserved, being ordered, in progress, in a live event or
+  // on a register that unlocked a bundle. Checked under a lock on the item row,
+  // in the same transaction as the delete.
+  const refusal = await prisma.$transaction(async (tx) => {
+    const facts = await removalFactsLocked(tx, itemId);
+    if (!facts) return "GONE" as const;
+    const why = removalRefusal(facts);
+    if (why) return why;
+    await tx.registerItem.delete({ where: { id: itemId } });
+    return null;
+  });
+  if (refusal === "GONE") return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (refusal) return NextResponse.json({ error: REMOVAL_REFUSED[refusal], code: refusal }, { status: 400 });
   return NextResponse.json({ ok: true });
 }

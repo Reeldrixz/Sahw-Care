@@ -54,6 +54,13 @@ export default function NewRegisterPage() {
   const [catalogSearch, setCatalogSearch] = useState<Record<number, string>>({});
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  // Setting up a register is three steps: create it (a draft), add each item
+  // one after another, then publish it. If a step fails it stays a draft, and
+  // "Try again" resumes where it stopped: the same register, from the first
+  // item not yet added. The form is locked once the draft exists, so the list
+  // can't drift from what was saved.
+  const [setup, setSetup] = useState<{ registerId: string; added: number } | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   // Suggestion modal
   const [showSuggest,      setShowSuggest]      = useState(false);
@@ -106,35 +113,58 @@ export default function NewRegisterPage() {
     if (validItems.length === 0) { setToast("Add at least one item from the catalog"); return; }
 
     setLoading(true);
+    setSetupError(null);
+    const errorOf = async (res: Response, fallback: string) => {
+      const d = await res.json().catch(() => ({}));
+      return typeof d.error === "string" ? d.error : fallback;
+    };
+    let state = setup;
     try {
-      const body: Record<string, unknown> = { title, city, dueDate, addressMode };
-      if (addressMode === "SAVED_PER_REGISTER") body.savedAddress = savedAddress;
+      // 1. Create the draft, once.
+      if (!state) {
+        const body: Record<string, unknown> = { title, city, dueDate, addressMode };
+        if (addressMode === "SAVED_PER_REGISTER") body.savedAddress = savedAddress;
+        const res = await fetch("/api/registers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(await errorOf(res, "We couldn't create your register."));
+        const { register } = await res.json();
+        state = { registerId: register.id, added: 0 };
+        setSetup(state);
+      }
 
-      const res = await fetch("/api/registers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed"); }
-      const { register } = await res.json();
+      // 2. Add the items one after another, from where a failed try stopped.
+      for (let i = state.added; i < validItems.length; i++) {
+        const item = validItems[i];
+        const payload: Record<string, unknown> = item.isCustom
+          ? { name: item.customName, quantity: item.quantity || "1", note: item.note || null }
+          : { catalogItemId: item.catalogItemId, quantity: item.quantity || "1", note: item.note || null };
+        if (item.sizeNote) payload.note = [item.note, item.sizeNote].filter(Boolean).join(" · ");
+        const res = await fetch(`/api/registers/${state.registerId}/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const name = item.isCustom ? item.customName : (catalog.find((c) => c.id === item.catalogItemId)?.name ?? "an item");
+          throw new Error(`We couldn't add "${name}": ${await errorOf(res, "please try again.")}`);
+        }
+        state = { ...state, added: i + 1 };
+        setSetup(state);
+      }
 
-      await Promise.all(
-        validItems.map((item) => {
-          const payload: Record<string, unknown> = item.isCustom
-            ? { name: item.customName, quantity: item.quantity || "1", note: item.note || null }
-            : { catalogItemId: item.catalogItemId, quantity: item.quantity || "1", note: item.note || null };
-          if (item.sizeNote) payload.note = [item.note, item.sizeNote].filter(Boolean).join(" · ");
-          return fetch(`/api/registers/${register.id}/items`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-        })
-      );
+      // 3. Publish.
+      const pub = await fetch(`/api/registers/${state.registerId}/publish`, { method: "POST" });
+      if (!pub.ok) throw new Error(await errorOf(pub, "We couldn't publish your register."));
 
-      router.push(`/registers/${register.id}?created=1`);
+      router.push(`/registers/${state.registerId}?created=1`);
     } catch (err) {
-      setToast(err instanceof Error ? err.message : "Something went wrong");
+      const why = err instanceof Error ? err.message : "Something went wrong.";
+      setSetupError(state
+        ? `${why} Your register is saved as a draft and isn't live yet. Tap "Try again" to finish.`
+        : why);
       setLoading(false);
     }
   };
@@ -222,6 +252,8 @@ export default function NewRegisterPage() {
             💛 Only your first name and city will be shown publicly.
           </div>
 
+          {/* Locked once the draft exists: "Try again" finishes what was saved. */}
+          <fieldset disabled={!!setup} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, opacity: setup ? 0.6 : 1 }}>
           <div className="form-group">
             <label className="form-label">Register title</label>
             <input className="form-input" placeholder="e.g. Baby things for March arrival" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -479,8 +511,15 @@ export default function NewRegisterPage() {
             </div>
           )}
 
+          </fieldset>
+
+          {setupError && (
+            <div role="alert" style={{ fontSize: 13, color: "#c0392b", background: "#fdecea", borderRadius: 10, padding: "10px 12px", marginBottom: 12, lineHeight: 1.5, fontFamily: "Nunito, sans-serif" }}>
+              {setupError}
+            </div>
+          )}
           <button className="btn-primary" onClick={handleSubmit} disabled={loading}>
-            {loading ? "Creating..." : "Publish Register 📋"}
+            {loading ? "Creating..." : setup ? "Try again" : "Publish Register 📋"}
           </button>
         </div>
       </div>

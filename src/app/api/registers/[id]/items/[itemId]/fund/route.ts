@@ -35,7 +35,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const [item, donor] = await Promise.all([
     prisma.registerItem.findUnique({
       where:   { id: itemId },
-      include: { register: { select: { id: true, creatorId: true, title: true } } },
+      include: { register: { select: { id: true, creatorId: true, title: true, status: true } } },
     }),
     prisma.user.findUnique({ where: { id: auth.userId }, select: { id: true, name: true, email: true } }),
   ]);
@@ -44,6 +44,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!donor) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (item.register.creatorId === auth.userId) {
     return NextResponse.json({ error: "You cannot fund your own register item" }, { status: 400 });
+  }
+  // A draft isn't public yet, and now stays a draft until she publishes it
+  // (api/registers/[id]/publish), so its items can't be funded. The same
+  // wording as the guest route. Other statuses behave exactly as before.
+  if (item.register.status === "DRAFT") {
+    return NextResponse.json({ error: "This register isn't accepting contributions right now." }, { status: 409 });
   }
   if (["FULLY_FUNDED", "IN_FULFILLMENT", "FULFILLED"].includes(item.fundingStatus)) {
     return NextResponse.json({ error: "This item is already fully funded" }, { status: 409 });

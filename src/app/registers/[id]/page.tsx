@@ -375,6 +375,20 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const [publishing, setPublishing] = useState(false);
+  const handlePublish = async () => {
+    setPublishing(true);
+    const res = await fetch(`/api/registers/${id}/publish`, { method: "POST" });
+    setPublishing(false);
+    if (res.ok) {
+      await fetchRegister();
+      setToast("Your register is live");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setToast(d.error ?? "We couldn't publish your register. Please try again.");
+    }
+  };
+
   const handleRemoveItem = async (itemId: string) => {
     setRemovingItemId(itemId);
     const res = await fetch(`/api/registers/${id}/items/${itemId}`, { method: "DELETE" });
@@ -453,6 +467,9 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const isMom        = user?.id === register.creator.id;
   const isDonorView  = !isMom;
   const isClosed     = register.status === "CLOSED";
+  // Items can be added only while the register is a draft; publishing makes
+  // it live (lib/registerItemRules). Live registers are unchanged otherwise.
+  const isDraft      = register.status === "DRAFT";
   const firstName    = register.creator.name.split(" ")[0];
   const badge        = register.creator.verificationBadge;
   const stageLine    = getStageLine(register.dueDate);
@@ -654,11 +671,22 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             <div style={{ fontFamily: "Lora, serif", fontSize: 17, fontWeight: 700 }}>What she needs</div>
             {isMom && !isClosed && (
               <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  data-tour="add-item"
-                  onClick={() => setAddingItem(true)}
-                  style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
-                >+ Add item</button>
+                {/* Adding items, and publishing, are for drafts only. */}
+                {isDraft && (
+                  <>
+                    <button
+                      data-tour="add-item"
+                      onClick={() => setAddingItem(true)}
+                      style={{ background: "var(--green)", color: "white", border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
+                    >+ Add item</button>
+                    <button
+                      onClick={handlePublish}
+                      disabled={publishing || register.items.length === 0}
+                      title={register.items.length === 0 ? "Add at least one item before publishing your register." : undefined}
+                      style={{ background: "none", color: "var(--green)", border: "1.5px solid var(--green)", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: publishing || register.items.length === 0 ? "default" : "pointer", opacity: register.items.length === 0 ? 0.5 : 1, fontFamily: "Nunito, sans-serif" }}
+                    >{publishing ? "Publishing…" : "Publish"}</button>
+                  </>
+                )}
                 <button
                   onClick={() => setShowCloseConfirm(true)}
                   style={{ background: "none", color: "var(--terra)", border: "1.5px solid var(--terra)", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "Nunito, sans-serif" }}
