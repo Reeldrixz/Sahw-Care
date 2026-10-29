@@ -39,7 +39,7 @@ interface SearchBundle {
 // withheld by the title check.
 interface SearchRegister {
   id: string; firstName: string; title: string | null; city: string;
-  label: string;   // "Amina · baby things for March", or "Amina's Register"
+  displayName: string;   // "Amina · baby things for March", or "Amina's Register" (lib/registerName)
 }
 interface SearchResults {
   items: SearchItem[];
@@ -148,7 +148,7 @@ function RegisterRow({ reg, onClick }: { reg: SearchRegister; onClick: () => voi
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {reg.label}
+          {reg.displayName}
         </div>
         <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
           {reg.city}

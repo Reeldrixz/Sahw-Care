@@ -20,7 +20,8 @@ interface SavedItemData {
     id: string;
     city: string;
     dueLabel: string;
-    creator: { id: string; firstName: string };
+    displayName: string;   // lib/registerName, built on the server from the checked title
+    creator: { firstName: string };
   };
 }
 
@@ -113,12 +114,11 @@ export default function SavedItemsPage() {
           ) : (
             items.map((item) => {
               const reg        = item.register;
-              const firstName  = reg.creator.firstName;
               const dueLabel   = reg.dueLabel;
               const qty        = parseInt(item.quantity, 10);
               const showQty    = !isNaN(qty) && qty > 1;
 
-              const parts = [firstName];
+              const parts = [reg.displayName];
               parts.push(dueLabel);
               const byline = `for ${parts.join(" · ")}`;
 

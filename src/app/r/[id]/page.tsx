@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { fetchPublicRegister } from "@/lib/registers";
 import PublicRegisterClient from "@/components/PublicRegisterClient";
-import { toSharePageRegister } from "@/lib/publicRegisterShapes";
+import { fetchSharePageRegister } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +14,10 @@ const NOINDEX: Metadata["robots"] = { index: false, follow: false };
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const register = await fetchPublicRegister(id);
+  const register = await fetchSharePageRegister(id);
   if (!register) return { title: "Register not found · Kradel", robots: NOINDEX };
 
-  const title = `${register.firstName}'s Register · Kradel`;
+  const title = `${register.displayName} · Kradel`;
   const description = `Help provide real essentials for ${register.firstName}'s baby. Every item is a genuine need, delivered directly to her.`;
   const url = `${APP_URL}/r/${register.id}`;
 
@@ -44,10 +43,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PublicRegisterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const register = await fetchPublicRegister(id);
+  const register = await fetchSharePageRegister(id);
   if (!register) notFound();
 
   // Only the fields the page renders go into it (and so into the page's HTML):
-  // no title, no due date (its stage line instead), no item notes.
-  return <PublicRegisterClient register={toSharePageRegister(register)} appUrl={APP_URL} />;
+  // the display name, not the raw title; a stage line, not the due date; no
+  // item notes.
+  return <PublicRegisterClient register={register} appUrl={APP_URL} />;
 }

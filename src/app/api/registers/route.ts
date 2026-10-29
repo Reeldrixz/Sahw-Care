@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canCreateRegister } from "@/lib/access";
-import { isAdminUser, toPublicListRegister } from "@/lib/publicRegisterShapes";
+import { isAdminUser, toPublicListRegister, publicDisplayName } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
 
   const result = registers.map((r) => ({
     ...r,
+    displayName: publicDisplayName(r.title, r.creator.name),
     creator: { id: r.creator.id, firstName: r.creator.name.split(" ")[0] || r.creator.name },
     items: r.items.map((i) => ({ ...i, savedByMe: savedItemIds.has(i.id) })),
   }));

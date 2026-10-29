@@ -33,6 +33,7 @@ interface RegisterData {
   city: string;
   dueLabel?: string;
   dueSoon?: boolean;
+  displayName: string;   // lib/registerName, built on the server from the checked title
   dueDate?: string;
   creator: { firstName: string };
   items: RegisterItemData[];
@@ -282,7 +283,7 @@ export default function RegistersPage() {
                 >
                   {/* Header: whose register, where, when */}
                   <div style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, color: "#1a1a1a", lineHeight: 1.3 }}>
-                    {reg.creator.firstName}&apos;s Register
+                    {reg.displayName}
                   </div>
                   <div style={{ fontSize: 12, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginTop: 2, marginBottom: 12 }}>
                     {reg.city} · {reg.dueLabel ?? (reg.dueDate ? browseDueLabel(new Date(reg.dueDate)) : "")}

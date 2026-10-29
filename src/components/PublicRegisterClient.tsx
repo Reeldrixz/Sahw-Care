@@ -84,7 +84,7 @@ export default function PublicRegisterClient({
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? `${window.location.origin}/r/${register.id}` : shareUrl;
     const shareData = {
-      title: `${firstName}'s Register on Kradel`,
+      title: `${register.displayName} on Kradel`,
       text: `Help provide real essentials for ${firstName}'s baby. Every item is a genuine need.`,
       url,
     };
@@ -147,7 +147,7 @@ export default function PublicRegisterClient({
           </div>
 
           <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            {firstName}&apos;s Register <VerificationBadge badge={register.verificationBadge} />
+            {register.displayName} <VerificationBadge badge={register.verificationBadge} />
           </div>
           <div style={{ fontSize: 12, color: "#3d7a62", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             <MapPin size={11} />

@@ -3,7 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
-import { isAdminUser, toPublicRegisterView } from "@/lib/publicRegisterShapes";
+import { isAdminUser, toPublicRegisterView, publicDisplayName } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Her and admins: the full record, as before.
   if (isCreator || await isAdminUser(auth?.userId)) {
-    return NextResponse.json({ register: withBadge });
+    return NextResponse.json({ register: { ...withBadge, displayName: publicDisplayName(register.title, register.creator.name) } });
   }
 
   // Everyone else gets only what the register page renders for a donor

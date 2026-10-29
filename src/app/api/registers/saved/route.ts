@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       register: {
         select: {
           id: true,
+          title: true,   // for displayName only (lib/publicRegisterShapes)
           city: true,
           dueDate: true,
           // Reduced to { id, firstName } below, like the browse list: no

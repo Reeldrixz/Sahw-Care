@@ -51,6 +51,7 @@ interface RegisterData {
   city: string;
   dueDate?: string;
   stageLine?: string;
+  displayName: string;   // lib/registerName, built on the server from the checked title
   intro: string | null;
   status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
   addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
@@ -192,7 +193,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
     const fn = register.creator.name.split(" ")[0];
     const url = `${window.location.origin}/r/${register.id}`;
     const shareData = {
-      title: `${fn}'s Register on Kradel`,
+      title: `${register.displayName} on Kradel`,
       text: `Help provide real essentials for ${fn}'s baby. Every item is a genuine need.`,
       url,
     };
@@ -537,7 +538,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           <div style={{ fontFamily: "Lora, serif", fontSize: 22, fontWeight: 700, color: "#1a3a2e", marginBottom: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            {firstName}&apos;s Register <VerificationBadge badge={badge} />
+            {register.displayName} <VerificationBadge badge={badge} />
           </div>
           <div style={{ fontSize: 12, color: "#3d7a62", fontWeight: 600, display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
             <MapPin size={11} />

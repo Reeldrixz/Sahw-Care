@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { checkLiveTitle } from "@/lib/registerTitle";
-import type { PublicRegister } from "@/lib/registers";
+import { registerDisplayName } from "@/lib/registerName";
+import { fetchPublicRegister, type PublicRegister } from "@/lib/registers";
 import type { VerificationBadge } from "@/lib/verificationBadge";
 
 // What a register looks like to someone who is NOT her and NOT an admin.
@@ -24,6 +25,13 @@ export async function isAdminUser(userId: string | null | undefined): Promise<bo
 
 const firstNameOf = (name: string) => name.trim().split(/\s+/)[0] || name;
 
+// The one way a public shape names a register: the title through the check
+// (with her full name, for the surname rule), then lib/registerName. The raw
+// title never leaves; only this name (and, in search, the checked title).
+export function publicDisplayName(title: string | null | undefined, motherName: string): string {
+  return registerDisplayName(firstNameOf(motherName), checkLiveTitle(title, motherName));
+}
+
 // ── Derived dates (instead of the due date itself): lib/dueLabel ──────────
 
 export { stageLine, browseDueLabel, isDueSoon, DUE_SOON_DAYS } from "@/lib/dueLabel";
@@ -31,12 +39,7 @@ import { stageLine, browseDueLabel, isDueSoon } from "@/lib/dueLabel";
 
 // ── Search ──────────────────────────────────────────────────────────────────
 
-export type SearchRegister = { id: string; firstName: string; title: string | null; city: string; label: string };
-
-// How a register result is named: "Amina · baby things for March", or
-// "Amina's Register" when the title is withheld. Never a surname.
-export const searchRegisterLabel = (firstName: string, title: string | null) =>
-  title ? `${firstName} · ${title}` : `${firstName}'s Register`;
+export type SearchRegister = { id: string; firstName: string; title: string | null; city: string; displayName: string };
 
 // A register matches on its title only when the title passes the check, so a
 // search for, say, her surname can't find her through a title we would hide.
@@ -52,7 +55,7 @@ export function toSearchRegister(
   const cityMatch = r.city.toLocaleLowerCase().includes(needle);
   const nameMatch = firstName.toLocaleLowerCase().includes(needle);
   if (!titleMatch && !cityMatch && !nameMatch) return null;
-  return { id: r.id, firstName, title, city: r.city, label: searchRegisterLabel(firstName, title) };
+  return { id: r.id, firstName, title, city: r.city, displayName: registerDisplayName(firstName, title) };
 }
 
 // ── Search: Discover items ──────────────────────────────────────────────────
@@ -82,15 +85,17 @@ export type SharePageItem = {
   contributorCount: number; imageUrl: string | null;
 };
 export type SharePageRegister = {
-  id: string; firstName: string; city: string; status: string; intro: string | null;
+  id: string; firstName: string; displayName: string; city: string; status: string; intro: string | null;
   stageLine: string; verificationBadge: VerificationBadge; items: SharePageItem[];
 };
 
-// Only what PublicRegisterClient renders. Not the title (it isn't shown), not
-// the due date (the stage line is), not item notes.
-export function toSharePageRegister(r: PublicRegister, now = new Date()): SharePageRegister {
+// Only what PublicRegisterClient renders: the display name rather than the
+// raw title, a stage line rather than the due date, no item notes. motherName
+// (her full name) is used for the title's surname rule only and not returned.
+export function toSharePageRegister(r: PublicRegister, motherName: string, now = new Date()): SharePageRegister {
   return {
-    id: r.id, firstName: r.firstName, city: r.city, status: r.status, intro: r.intro,
+    id: r.id, firstName: r.firstName, displayName: publicDisplayName(r.title, motherName),
+    city: r.city, status: r.status, intro: r.intro,
     stageLine: stageLine(new Date(r.dueDate), now), verificationBadge: r.verificationBadge,
     items: r.items.map((i) => ({
       id: i.id, name: i.name, category: i.category, quantity: i.quantity,
@@ -114,11 +119,11 @@ type RegisterRow = {
 
 // Only what the register page renders for a donor. creator.name carries her
 // FIRST name only (the page reads it as a first name); creator.id stays so the
-// page can tell she isn't the viewer. The title is left out: the page doesn't
-// show it.
+// page can tell she isn't the viewer. The title reaches it only through
+// displayName.
 export function toPublicRegisterView(r: RegisterRow, now = new Date()) {
   return {
-    id: r.id, city: r.city, intro: r.intro, status: r.status,
+    id: r.id, displayName: publicDisplayName(r.title, r.creator.name), city: r.city, intro: r.intro, status: r.status,
     stageLine: stageLine(r.dueDate, now),
     creator: { id: r.creator.id, name: firstNameOf(r.creator.name), verificationBadge: r.creator.verificationBadge },
     items: r.items.filter((i) => i.status !== "PENDING_APPROVAL").map((i) => ({
@@ -131,14 +136,17 @@ export function toPublicRegisterView(r: RegisterRow, now = new Date()) {
 
 // ── GET /api/registers/saved: other mothers' registers, for a donor ─────────
 
-export function toSavedRegister(r: { id: string; city: string; dueDate: Date; creator: { name: string } }, now = new Date()) {
-  return { id: r.id, city: r.city, dueLabel: browseDueLabel(r.dueDate, now), creator: { firstName: firstNameOf(r.creator.name) } };
+export function toSavedRegister(r: { id: string; title: string; city: string; dueDate: Date; creator: { name: string } }, now = new Date()) {
+  return {
+    id: r.id, displayName: publicDisplayName(r.title, r.creator.name), city: r.city,
+    dueLabel: browseDueLabel(r.dueDate, now), creator: { firstName: firstNameOf(r.creator.name) },
+  };
 }
 
 // ── GET /api/registers (browse) for everyone but her and admins ─────────────
 
 type ListRow = {
-  id: string; city: string; dueDate: Date;
+  id: string; title: string; city: string; dueDate: Date;
   creator: { id: string; name: string };
   items: {
     id: string; name: string; quantity: string; status: string; fundingStatus: string;
@@ -150,7 +158,8 @@ type ListRow = {
 // Only what the browse page renders.
 export function toPublicListRegister(r: ListRow, savedItemIds: Set<string>, now = new Date()) {
   return {
-    id: r.id, city: r.city, dueLabel: browseDueLabel(r.dueDate, now), dueSoon: isDueSoon(r.dueDate, now),
+    id: r.id, displayName: publicDisplayName(r.title, r.creator.name), city: r.city,
+    dueLabel: browseDueLabel(r.dueDate, now), dueSoon: isDueSoon(r.dueDate, now),
     creator: { firstName: firstNameOf(r.creator.name) },
     items: r.items.map((i) => ({
       id: i.id, name: i.name, quantity: i.quantity, status: i.status, fundingStatus: i.fundingStatus,
@@ -159,4 +168,16 @@ export function toPublicListRegister(r: ListRow, savedItemIds: Set<string>, now 
       savedByMe: savedItemIds.has(i.id),
     })),
   };
+}
+
+// ── The share page's read ───────────────────────────────────────────────────
+
+// fetchPublicRegister plus her full name (for the title check only), shaped
+// for the page. null when the register isn't public.
+export async function fetchSharePageRegister(id: string): Promise<SharePageRegister | null> {
+  const [pub, owner] = await Promise.all([
+    fetchPublicRegister(id),
+    prisma.register.findUnique({ where: { id }, select: { creator: { select: { name: true } } } }),
+  ]);
+  return pub && owner ? toSharePageRegister(pub, owner.creator.name) : null;
 }

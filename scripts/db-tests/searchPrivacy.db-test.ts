@@ -10,8 +10,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "../../src/lib/prisma";
 import { signToken } from "../../src/lib/auth";
-import { fetchPublicRegister } from "../../src/lib/registers";
-import { toSharePageRegister } from "../../src/lib/publicRegisterShapes";
+import { fetchSharePageRegister } from "../../src/lib/publicRegisterShapes";
 import { GET as search } from "../../src/app/api/search/route";
 import { GET as getRegister } from "../../src/app/api/registers/[id]/route";
 import { GET as listRegisters } from "../../src/app/api/registers/route";
@@ -58,7 +57,8 @@ const PRIVATE_KEYS = ["dueDate", "featureConsent", "featureConsentAt", "featureC
     title, city: "Torontoville", dueDate, creatorId: mom.id, status, featureConsent: true, featureConsentVersion: 2, featureConsentAt: new Date(),
   } });
   const active = await reg("baby things for March", "ACTIVE");
-  const surname = await reg("Okafor twins babylist", "ACTIVE");
+  const surname = await reg("Okafor twins babylist", "ACTIVE");   // withheld: her surname
+  const empty = await reg("", "ACTIVE");                           // no title at all
   const draft = await reg("draft baby list", "DRAFT");
   const closed = await reg("closed baby list", "CLOSED");
   const diapers = await prisma.registerItem.create({ data: { name: "Diapers", registerId: active.id, standardPriceCents: 2000, note: "SecretNoteText" } });
@@ -72,7 +72,7 @@ const PRIVATE_KEYS = ["dueDate", "featureConsent", "featureConsentAt", "featureC
   check("search: no drafts", !ids.includes(draft.id));
   check("search: no closed registers", !ids.includes(closed.id));
   check("search: a title withheld by the check can't be matched", !ids.includes(surname.id));
-  check("search: only id, first name, title, city and label", s1.registers.every((r: object) => JSON.stringify(Object.keys(r).sort()) === JSON.stringify(["city", "firstName", "id", "label", "title"])),
+  check("search: only id, first name, title, city and display name", s1.registers.every((r: object) => JSON.stringify(Object.keys(r).sort()) === JSON.stringify(["city", "displayName", "firstName", "id", "title"])),
     JSON.stringify(s1.registers));
   const s1text = JSON.stringify(s1);
   check("search: no due date, consent fields, status or surname", !/dueDate|featureConsent|addressMode|"status"|Okafor|2027-03-14/.test(s1text), s1text.slice(0, 200));
@@ -84,16 +84,17 @@ const PRIVATE_KEYS = ["dueDate", "featureConsent", "featureConsentAt", "featureC
   check("search: city match returns it with the title withheld", !!bySurnameReg && bySurnameReg.title === null, JSON.stringify(s3.registers));
   check("search: city match still no drafts", !s3.registers.some((r: { id: string }) => r.id === draft.id));
 
-  // The label: "First · title", or "First's Register" when the title is withheld.
-  check("search label: first name and title", s1.registers.find((r: { id: string }) => r.id === active.id)?.label === "Amina · baby things for March",
+  // The display name: "First · title", or "First's Register" when the title is withheld or empty.
+  check("search name: first name and title", s1.registers.find((r: { id: string }) => r.id === active.id)?.displayName === "Amina · baby things for March",
     JSON.stringify(s1.registers));
-  check("search label: title withheld → her Register", bySurnameReg?.label === "Amina's Register", JSON.stringify(bySurnameReg));
-  check("search label: never a surname", !/Okafor/.test(JSON.stringify(s3)));
+  check("search name: title withheld → her Register", bySurnameReg?.displayName === "Amina's Register", JSON.stringify(bySurnameReg));
+  check("search name: title empty → her Register", s3.registers.find((r: { id: string }) => r.id === empty.id)?.displayName === "Amina's Register");
+  check("search name: never a surname", !/Okafor/.test(JSON.stringify(s3)));
   // Her first name finds her registers (draft and closed still excluded).
   const s4 = await (await search(get("/api/search?q=amina&type=registers"))).json();
   const s4ids = s4.registers.map((r: { id: string }) => r.id);
   check("search: her first name finds her active registers", s4ids.includes(active.id) && s4ids.includes(surname.id) && !s4ids.includes(draft.id) && !s4ids.includes(closed.id),
-    JSON.stringify(s4.registers.map((r: { label: string }) => r.label)));
+    JSON.stringify(s4.registers.map((r: { displayName: string }) => r.displayName)));
 
   // Discover items: the donor by first name only.
   const si = await (await search(get("/api/search?q=crib&type=items"))).json();
@@ -105,9 +106,13 @@ const PRIVATE_KEYS = ["dueDate", "featureConsent", "featureConsentAt", "featureC
   check("search items: only the fields the page shows", crib && JSON.stringify(Object.keys(crib).sort()) === JSON.stringify(["category", "condition", "createdAt", "donor", "id", "images", "location", "title"]));
 
   // ── The share page /r/[id] data ──────────────────────────────────────────
-  const share = toSharePageRegister((await fetchPublicRegister(active.id))!);
-  check("share page: only what it renders", JSON.stringify(Object.keys(share).sort()) === JSON.stringify(["city", "firstName", "id", "intro", "items", "stageLine", "status", "verificationBadge"]));
-  check("share page: no title, due date or note", !/baby things|2027-03-14|dueDate|SecretNoteText|Okafor/.test(JSON.stringify(share)));
+  const share = (await fetchSharePageRegister(active.id))!;
+  check("share page: only what it renders", JSON.stringify(Object.keys(share).sort()) === JSON.stringify(["city", "displayName", "firstName", "id", "intro", "items", "stageLine", "status", "verificationBadge"]));
+  check("share page: no raw title, due date or note", !/"title"|2027-03-14|dueDate|SecretNoteText|Okafor/.test(JSON.stringify(share)));
+  check("share page heading: first name and title", share.displayName === "Amina · baby things for March", share.displayName);
+  check("share page heading: title withheld → her Register", (await fetchSharePageRegister(surname.id))?.displayName === "Amina's Register");
+  check("share page heading: title empty → her Register", (await fetchSharePageRegister(empty.id))?.displayName === "Amina's Register");
+  check("share page: a draft has no page", (await fetchSharePageRegister(draft.id)) === null);
 
   // ── GET /api/registers/[id] ──────────────────────────────────────────────
   for (const [who, token] of [["unauthenticated", undefined], ["another user", strangerToken]] as const) {
@@ -120,6 +125,13 @@ const PRIVATE_KEYS = ["dueDate", "featureConsent", "featureConsentAt", "featureC
     check(`register (${who}): stage line instead of due date`, typeof body.register?.stageLine === "string" && !JSON.stringify(body).includes("2027-03-14"));
     check(`register (${who}): a draft is not found`, (await getRegister(get(`/api/registers/${draft.id}`, token), p({ id: draft.id }))).status === 404);
   }
+  const viewName = async (id: string, token?: string) => (await (await getRegister(get(`/api/registers/${id}`, token), p({ id }))).json()).register?.displayName;
+  check("register page heading: first name and title", await viewName(active.id) === "Amina · baby things for March");
+  check("register page heading: title withheld → her Register", await viewName(surname.id) === "Amina's Register");
+  check("register page heading: title empty → her Register", await viewName(empty.id) === "Amina's Register");
+  check("register page heading: the same name for her and admins", await viewName(surname.id, momToken) === "Amina's Register"
+    && await viewName(active.id, adminToken) === "Amina · baby things for March");
+  check("register (unauthenticated): the withheld title is nowhere in it", !JSON.stringify(await (await getRegister(get(`/api/registers/${surname.id}`), p({ id: surname.id }))).json()).includes("twins"));
   const own = (await (await getRegister(get(`/api/registers/${active.id}`, momToken), p({ id: active.id }))).json()).register;
   check("register (owner): her full record", own.dueDate?.startsWith("2027-03-14") && own.title === "baby things for March"
     && own.addressMode === "ASK_PER_SHIPMENT" && own.featureConsent === true && own.featureConsentVersion === 2
@@ -149,14 +161,27 @@ const PRIVATE_KEYS = ["dueDate", "featureConsent", "featureConsentAt", "featureC
   const adminBrowse = await list("/api/registers", adminToken);
   check("list (admin, browse): unchanged, ACTIVE full records", adminBrowse.some((r) => r.id === active.id) && !adminBrowse.some((r) => r.id === draft.id)
     && adminBrowse.every((r) => "dueDate" in r));
-  const label = (await list("/api/registers"))?.find((r) => r.id === active.id) as { dueLabel?: string; dueSoon?: boolean } | undefined;
+  const browse = await list("/api/registers");
+  const card = (id: string) => browse.find((r) => r.id === id) as { displayName?: string } | undefined;
+  check("browse card: first name and title", card(active.id)?.displayName === "Amina · baby things for March");
+  check("browse card: title withheld → her Register", card(surname.id)?.displayName === "Amina's Register");
+  check("browse card: title empty → her Register", card(empty.id)?.displayName === "Amina's Register");
+  check("browse: the withheld title is nowhere in it", !JSON.stringify(browse).includes("twins"));
+  check("browse (admin): cards named the same way", (await list("/api/registers", adminToken)).find((r) => r.id === surname.id)?.displayName === "Amina's Register");
+  const label = browse.find((r) => r.id === active.id) as { dueLabel?: string; dueSoon?: boolean } | undefined;
   check("list (browse): a rough due label, no day or month", /^Due in \d+ weeks$/.test(label?.dueLabel ?? "") && label?.dueSoon === false, JSON.stringify(label));
 
   // The saved list (another mother's register, to a donor): rough label, first name.
   await prisma.savedItem.create({ data: { userId: stranger.id, itemId: diapers.id, registerId: active.id } });
+  const twinsItem = await prisma.registerItem.create({ data: { name: "Wipes", registerId: surname.id, standardPriceCents: 500 } });
+  await prisma.savedItem.create({ data: { userId: stranger.id, itemId: twinsItem.id, registerId: surname.id } });
   const saved = await (await savedRegisters(get("/api/registers/saved", strangerToken))).json();
-  const sreg = saved.items?.[0]?.register;
-  check("saved list: id, city, rough due label, first name only", sreg && JSON.stringify(Object.keys(sreg).sort()) === JSON.stringify(["city", "creator", "dueLabel", "id"])
+  const sreg = saved.items?.find((i: { register: { id: string } }) => i.register.id === active.id)?.register;
+  const sregW = saved.items?.find((i: { register: { id: string } }) => i.register.id === surname.id)?.register;
+  check("saved list: first name and title", sreg?.displayName === "Amina · baby things for March", JSON.stringify(sreg));
+  check("saved list: title withheld → her Register", sregW?.displayName === "Amina's Register", JSON.stringify(sregW));
+  check("saved list: the withheld title is nowhere in it", !JSON.stringify(saved).includes("twins"));
+  check("saved list: id, city, rough due label, first name only", sreg && JSON.stringify(Object.keys(sreg).sort()) === JSON.stringify(["city", "creator", "displayName", "dueLabel", "id"])
     && JSON.stringify(sreg.creator) === JSON.stringify({ firstName: "Amina" }) && /^Due in \d+ weeks$/.test(sreg.dueLabel), JSON.stringify(sreg));
 
   // No due date, in any form, in any public response.

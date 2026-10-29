@@ -30,7 +30,7 @@ function highlight(text: string, query: string) {
 interface SearchResults {
   items: Array<{ id: string; title: string; category: string; location: string }>;
   bundles: Array<{ id: string; name: string; targetStage: string | null }>;
-  registers: Array<{ id: string; firstName: string; title: string | null; city: string; label: string }>;
+  registers: Array<{ id: string; firstName: string; title: string | null; city: string; displayName: string }>;
   total: number;
   query: string;
 }
@@ -244,7 +244,7 @@ export default function SearchBar({ value, onChange }: Props) {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {reg.label}
+                            {reg.displayName}
                           </div>
                           <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>{reg.city}</div>
                         </div>
