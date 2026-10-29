@@ -25,19 +25,35 @@ test("version 3 is current; earlier consent no longer lets a host pick her", () 
   assert.equal(hasCurrentFeatureConsent({ featureConsent: false, featureConsentVersion: 3 }), false);
 });
 
-test("version 3 covers the recap line after her turn on screen", () => {
+test("version 3 covers the recap line after her turn on screen, with her title", () => {
   const all = JSON.stringify(FEATURE_CONSENT_COPY[3].mayShow);
-  for (const s of ["Funded ✓", "Order placed ✓", "Delivered ✓", "rest of the event", "Only your first name and the status"]) {
+  for (const s of ["Funded ✓", "Order placed ✓", "Delivered ✓", "rest of the event",
+    "“Aisha · baby things for March — Funded ✓”", "Only your first name, your Register’s title and the status"]) {
     assert.ok(all.includes(s), `missing: ${s}`);
   }
+  assert.ok(!all.includes("Only your first name and the status"), "the old first-name-only wording is still there");
+});
+
+test("version 3 says her Register's title is shown next to her first name, word for word", () => {
+  const point = FEATURE_CONSENT_COPY[3].mayShow[1];
+  assert.equal(`${point.lead} ${point.text}`,
+    "Your Register’s title next to your first name, like “Aisha · baby things for March”. " +
+    "If your title looks like it contains contact details, your surname or a date, we show only your first name.");
+});
+
+test("version 3 still says viewers never see her surname, address, phone, email, due date or delivery dates", () => {
+  const n = FEATURE_CONSENT_COPY[3].neverShow!;
+  assert.equal(`${n.lead} ${n.text}`,
+    "Viewers never see your surname, your address or area, your phone number or email, your due date, delivery dates, " +
+    "or anything you haven’t put on your Register.");
 });
 
 test("version 3 says what the host sees, word for word", () => {
   const h = FEATURE_CONSENT_COPY[3].hostSees;
   assert.ok(h);
   assert.equal(`${h.lead} ${h.text}`,
-    "The host also sees, on a separate host page: your first name, the items in each order we place for you, " +
-    "the order total including tax, and the delivery status and date.");
+    "The host also sees, on a separate host page: your first name and your Register’s title, the items in each " +
+    "order we place for you, the order total including tax, and the delivery status and date.");
   // No link, and nothing about whether the page is shown on stream.
   assert.doesNotMatch(`${h.lead} ${h.text}`, /link|tracking|stream|on screen|private|shown/i);
 });
@@ -46,6 +62,9 @@ test("version 3 keeps version 2's other promises word for word", () => {
   const [v2, v3] = [FEATURE_CONSENT_COPY[2], FEATURE_CONSENT_COPY[3]];
   assert.deepEqual(v3.neverShow, v2.neverShow);
   assert.deepEqual(v3.changingMind, v2.changingMind);
-  assert.deepEqual(v3.mayShow.slice(0, 4), v2.mayShow.slice(0, 4));
+  // v3 inserts the title point at index 1; v2's first four points are
+  // otherwise kept word for word, in order.
+  assert.deepEqual([v3.mayShow[0], ...v3.mayShow.slice(2, 5)], v2.mayShow.slice(0, 4));
+  assert.equal(v3.mayShow.length, 6);
   for (const k of ["heading", "intro", "mayShowHeading", "yes", "no", "footer"] as const) assert.equal(v3[k], v2[k]);
 });

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { isItemFunded, type ProgressItem } from "@/lib/eventProgress";
 import { firstNameOnly } from "@/lib/eventEffects";
 import { orderDifference, differenceText, type OrderDifference } from "@/lib/fulfillmentOrder";
+import { liveRegisterTitle } from "@/lib/publicCelebration";
 
 // The live fulfilment layer: registers completed in this event, and how far
 // each has got since. One read (fetchEventCompletions) feeds two views:
@@ -49,6 +50,8 @@ export type CompletionRow = {
   registerId:     string;          // server-side only
   motherName:     string | null;   // as stored; only a valid first name is used
   featureConsent: boolean;
+  featureConsentVersion?: number | null;
+  title?:         string | null;   // as stored; only liveRegisterTitle's result is used
   completedAt:    Date;
   items:          CompletionItem[];
   orders?:        { id: string; totalCents: number }[]; // server-side only; for the host's difference line
@@ -81,7 +84,7 @@ export async function fetchEventCompletions(eventId: string): Promise<Completion
       completedAt: true,
       register: {
         select: {
-          id: true, featureConsent: true,
+          id: true, featureConsent: true, featureConsentVersion: true, title: true,
           creator: { select: { name: true } },
           fulfillmentOrders: { orderBy: { createdAt: "asc" }, select: { id: true, totalCents: true } },
           items: {
@@ -100,6 +103,8 @@ export async function fetchEventCompletions(eventId: string): Promise<Completion
     registerId:     c.register.id,
     motherName:     c.register.creator.name,
     featureConsent: c.register.featureConsent,
+    featureConsentVersion: c.register.featureConsentVersion,
+    title:          c.register.title,
     completedAt:    c.completedAt,
     orders:         c.register.fulfillmentOrders,
     items: c.register.items.map((i) => ({
@@ -120,21 +125,27 @@ export async function fetchEventCompletions(eventId: string): Promise<Completion
 // appearance on air. A name that fails the rule becomes null, shown as
 // "A mother". The most recent RECAP_MAX, in completion order; the rest counted.
 export function publicRecap(rows: CompletionRow[], onScreenRegisterId: string | null): {
-  entries: { firstName: string | null; status: RecapStatus }[];
+  entries: { firstName: string | null; title: string | null; status: RecapStatus }[];
   more: number;
 } {
   const all = rows
     .filter((r) => r.registerId !== onScreenRegisterId && r.featureConsent)
-    .map((r) => ({ firstName: firstNameOnly(r.motherName), status: registerStatus(r.items) }))
-    .filter((e): e is { firstName: string | null; status: RecapStatus } => e.status !== null);
+    .map((r) => ({ firstName: firstNameOnly(r.motherName), title: liveTitle(r), status: registerStatus(r.items) }))
+    .filter((e): e is { firstName: string | null; title: string | null; status: RecapStatus } => e.status !== null);
   const entries = all.slice(-RECAP_MAX);
   return { entries, more: all.length - entries.length };
 }
 
 // ── Host dashboard ──────────────────────────────────────────────────────────
 
+// Her register's title as a live surface may show it, or null.
+const liveTitle = (r: CompletionRow) => liveRegisterTitle({
+  title: r.title, motherName: r.motherName, featureConsent: r.featureConsent, featureConsentVersion: r.featureConsentVersion ?? null,
+});
+
 export type HostCompletion = {
   firstName:   string | null;
+  title:       string | null;
   completedAt: string;
   status:      RecapStatus | null;
   // noTrackingLink: bought without a tracking link (admin, with a note). It
@@ -185,6 +196,7 @@ export function hostCompletions(rows: CompletionRow[], now = new Date()): HostCo
     }
     return {
       firstName:   firstNameOnly(r.motherName),
+      title:       liveTitle(r),
       completedAt: r.completedAt.toISOString(),
       status:      registerStatus(r.items),
       items:       r.items.map((i) => ({

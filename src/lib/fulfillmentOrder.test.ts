@@ -3,6 +3,7 @@
 // scripts/db-tests/streamerOrders.db-test.ts.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { FEATURE_CONSENT_VERSION } from "./featureConsent";
 import {
   STREAMER_ORDER_SELECT, STREAMER_COMPLETION_SELECT, toStreamerOrders,
   parseTotalCents, parseTaxCents, parseDeliveryDate, parseOrderNumber, validateOrderFields,
@@ -37,7 +38,9 @@ const QUEUE_ADMIN_FIELDS: Record<string, unknown> = {
 };
 const FORBIDDEN_KEYS = [...new Set([
   ...Object.keys(ADMIN_FIELDS), ...Object.keys(QUEUE_ADMIN_FIELDS),
-  "title", "city", "email", "phone", "address", "shipmentAddress", "savedAddress", "creatorId", "dueDate",
+  // "title" is allowed as a key: it carries only liveRegisterTitle's result. The
+  // raw stored title (SECRET_TITLE) stays forbidden below.
+  "city", "email", "phone", "address", "shipmentAddress", "savedAddress", "creatorId", "dueDate",
 ])];
 const FORBIDDEN_VALUES = [
   ORDER_NUMBER, "ord_secret_id", "reg_secret_id", "admin_secret_id", "editor_secret_id", "q_secret_id", "item_secret_id",
@@ -54,10 +57,10 @@ test("the streamer's select names only the columns the page shows", () => {
   // ordered yet"; they're read, never sent (checked by the next test).
   const all = selectedKeys(STREAMER_COMPLETION_SELECT);
   assert.deepEqual(all.filter((k) => !k.startsWith("register.fulfillmentOrders.")).sort(), [
-    "register", "register.creator", "register.creator.name", "register.featureConsent",
+    "register", "register.creator", "register.creator.name", "register.featureConsent", "register.featureConsentVersion",
     "register.fulfillmentOrders", "register.items", "register.items.fulfillmentQueue",
     "register.items.fulfillmentQueue.orderId", "register.items.fundingStatus", "register.items.name",
-    "register.items.standardPriceCents", "register.items.totalFundedCents",
+    "register.items.standardPriceCents", "register.items.totalFundedCents", "register.title",
   ]);
   assert.ok(!all.some((k) => k.endsWith("orderNumber")), "the streamer select reads the order number");
 });
@@ -97,15 +100,33 @@ test("a streamer response can't contain the order number or any admin field, eve
   JSON.parse(json, (k, v) => { if (k && Number.isNaN(Number(k))) keys.add(k); return v; });
   for (const k of FORBIDDEN_KEYS) assert.ok(!keys.has(k), `response has key ${k}`);
   assert.deepEqual([...keys].sort(), [
-    "estimatedDelivery", "firstName", "fundedNoRecord", "items", "orders", "registers", "status", "taxCents", "totalCents", "trackingUrl",
+    "estimatedDelivery", "firstName", "fundedNoRecord", "items", "orders", "registers", "status", "taxCents", "title", "totalCents", "trackingUrl",
   ]);
 
   assert.deepEqual(out[0], {
     firstName: "Maryam",
+    title: null,
     orders: [{ items: ["Diapers"], status: "ORDERED", trackingUrl: "https://a.co/d/0aBcDeF", estimatedDelivery: "2026-10-30", totalCents: 2437, taxCents: 281 }],
     fundedNoRecord: ["Car seat"],   // funded, no order; Bottles isn't funded
   });
   assert.equal(out[1].firstName, null); // fails the first-name rule → "A mother"
+});
+
+test("her register's title: shown only with current consent, and only if it passes the checks", () => {
+  const withTitle = (title: string, v: number | null) => {
+    const r = stuffedRow();
+    (r.register as { title: string }).title = title;
+    (r.register as { featureConsentVersion: number | null }).featureConsentVersion = v;
+    return toStreamerOrders([r])[0].title;
+  };
+  assert.equal(withTitle("baby things for March", FEATURE_CONSENT_VERSION), "baby things for March");
+  assert.equal(withTitle("baby things for March", 2), null);      // consent to an older wording
+  assert.equal(withTitle("baby things for March", null), null);   // no current consent
+  assert.equal(withTitle("Okafor family", FEATURE_CONSENT_VERSION), null);  // her surname
+  assert.equal(withTitle("text me 416 555 0100", FEATURE_CONSENT_VERSION), null);
+  assert.equal(withTitle("a very long register title that goes on and on", FEATURE_CONSENT_VERSION), "a very long register title…");
+  // The stored row (SECRET_TITLE, no current consent) never reaches the page.
+  assert.equal(toStreamerOrders([stuffedRow()])[0].title, null);
 });
 
 test("tax not recorded is null, not zero", () => {

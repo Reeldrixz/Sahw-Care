@@ -126,7 +126,9 @@ export default function OverlayStage({ frame, showing, scale = 1 }: {
             display: "flex", gap: 24, alignItems: "center",
             backdropFilter: "blur(8px)",
           }}>
-            {/* First name only, or none if it fails the name rule. */}
+            {/* First name only, or none if it fails the name rule; then her
+                register's title, only as lib/publicCelebration liveRegisterTitle
+                returns it (checked, at most 32 characters), on up to two lines. */}
             <div style={{ width: 220, flexShrink: 0 }}>
               <div style={{ fontSize: 13, letterSpacing: 1.4, textTransform: "uppercase", color: PAL.muted, fontWeight: 800 }}>
                 Helping now
@@ -135,6 +137,11 @@ export default function OverlayStage({ frame, showing, scale = 1 }: {
               {reg.firstName && (
                 <div style={{ fontSize: reg.firstName.length > 11 ? 24 : 34, fontWeight: 800, lineHeight: 1.1, marginTop: 2, overflowWrap: "break-word" }}>
                   {reg.firstName}
+                </div>
+              )}
+              {reg.title && (
+                <div style={{ ...twoLines, fontSize: 15, fontWeight: 700, color: PAL.text, marginTop: 3 }}>
+                  {reg.title}
                 </div>
               )}
               <div style={{ fontSize: 15, color: PAL.muted, marginTop: 4 }}>

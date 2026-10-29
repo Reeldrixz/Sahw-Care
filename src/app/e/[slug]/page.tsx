@@ -130,7 +130,7 @@ export default async function EventLandingPage({ params }: Params) {
                       {r.firstName}
                     </span>
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--mid)", marginTop: 3, lineHeight: 1.5 }}>{r.title}</div>
+                  {r.title && <div style={{ fontSize: 13, color: "var(--mid)", marginTop: 3, lineHeight: 1.5 }}>{r.title}</div>}
 
                   <div style={{ height: 7, background: "var(--border)", borderRadius: 5, overflow: "hidden", marginTop: 12 }}>
                     <div style={{ width: `${pct}%`, height: "100%", background: "#1a7a5e" }} />

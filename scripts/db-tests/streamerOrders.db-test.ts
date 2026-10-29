@@ -216,7 +216,7 @@ const link = "https://a.co/d/0aBcDeF";
   const keys = new Set<string>();
   JSON.parse(text, (k, v) => { if (k && Number.isNaN(Number(k))) keys.add(k); return v; });
   check("streamer: only the page's fields", JSON.stringify([...keys].sort()) === JSON.stringify(
-    ["estimatedDelivery", "fetchedAt", "firstName", "fundedNoRecord", "items", "orders", "registers", "status", "taxCents", "totalCents", "trackingUrl"]),
+    ["estimatedDelivery", "fetchedAt", "firstName", "fundedNoRecord", "items", "orders", "registers", "status", "taxCents", "title", "totalCents", "trackingUrl"]),
     [...keys].sort().join(","));
   const byName = (n: string) => body.registers.find((r: { firstName: string }) => r.firstName === n);
   const a = byName("Maryam");

@@ -103,9 +103,11 @@ export const FEATURE_CONSENT_COPY: Record<number, FeatureConsentCopy> = {
     footer: "You can change this anytime.",
   },
 
-  // Version 2's text plus: the recap line after her register leaves the
-  // screen (replacing v2's shorter "Delivery progress" point), and what the
-  // host sees on the private orders page.
+  // Version 2's text plus: her Register's title shown next to her first name
+  // on live surfaces (lib/publicCelebration liveRegisterTitle), the recap line
+  // after her register leaves the screen (replacing v2's shorter "Delivery
+  // progress" point), and what the host sees on the separate host page.
+  // Never shipped to production before these edits, so edited in place.
   3: {
     version: 3,
     heading: "Feature my Register in live fundraising events",
@@ -116,6 +118,12 @@ export const FEATURE_CONSENT_COPY: Record<number, FeatureConsentCopy> = {
     mayShowHeading: "If you say yes, viewers may see:",
     mayShow: [
       { lead: "Your first name.", text: "Never your surname." },
+      {
+        lead: "Your Register’s title next to your first name,",
+        text:
+          "like “Aisha · baby things for March”. If your title looks like it contains contact details, " +
+          "your surname or a date, we show only your first name.",
+      },
       {
         lead: "Your Register.",
         text:
@@ -136,8 +144,8 @@ export const FEATURE_CONSENT_COPY: Record<number, FeatureConsentCopy> = {
         lead: "Your progress after your turn on screen.",
         text:
           "Once your Register is fully funded and the host moves on, a short line may stay on screen for the rest " +
-          "of the event, next to other mothers’ names: “Aisha — Funded ✓”, “Aisha — Order placed ✓” or " +
-          "“Aisha — Delivered ✓”. Only your first name and the status.",
+          "of the event, next to other mothers’ names: “Aisha · baby things for March — Funded ✓”, " +
+          "“Order placed ✓” or “Delivered ✓”. Only your first name, your Register’s title and the status.",
       },
     ],
     neverShow: {
@@ -149,8 +157,8 @@ export const FEATURE_CONSENT_COPY: Record<number, FeatureConsentCopy> = {
     hostSees: {
       lead: "The host also sees, on a separate host page:",
       text:
-        "your first name, the items in each order we place for you, the order total including tax, " +
-        "and the delivery status and date.",
+        "your first name and your Register’s title, the items in each order we place for you, " +
+        "the order total including tax, and the delivery status and date.",
     },
     changingMind: {
       lead: "Changing your mind.",

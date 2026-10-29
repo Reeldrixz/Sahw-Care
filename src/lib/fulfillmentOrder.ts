@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { validateTrackingUrl } from "@/lib/trackingLink";
 import { firstNameOnly } from "@/lib/eventEffects";
 import { isItemFunded, itemCappedFundedCents, type ProgressItem } from "@/lib/eventProgress";
+import { liveRegisterTitle } from "@/lib/publicCelebration";
 
 // Fulfilment evidence (step 9): the admin records a retailer order covering
 // one or more queued items of one register; the streamer sees it on
@@ -161,6 +162,9 @@ export const STREAMER_COMPLETION_SELECT = Prisma.validator<Prisma.EventRegisterC
   register: {
     select: {
       featureConsent: true,
+      // Inputs to liveRegisterTitle only: the title leaves as its result.
+      featureConsentVersion: true,
+      title: true,
       creator: { select: { name: true } },
       // Funded items with no order record, listed as "Funded ✓".
       items: {
@@ -183,6 +187,8 @@ type StreamerOrderRow = {
 export type StreamerCompletionRow = {
   register: {
     featureConsent: boolean;
+    featureConsentVersion: number | null;
+    title: string;
     creator: { name: string | null };
     items: {
       name: string; standardPriceCents: number; totalFundedCents: number; fundingStatus: string;
@@ -202,6 +208,7 @@ export type StreamerOrder = {
 };
 export type StreamerRegister = {
   firstName:      string | null;    // null → "A mother"
+  title:          string | null;    // checked and trimmed, or null (lib/publicCelebration)
   orders:         StreamerOrder[];
   // Funded items with no order record: not ordered yet, or bought without a
   // tracking link. Both read "Funded ✓"; the page doesn't say which.
@@ -214,6 +221,10 @@ export type StreamerRegister = {
 export function toStreamerOrders(rows: StreamerCompletionRow[]): StreamerRegister[] {
   return rows.filter((r) => r.register.featureConsent).map((r) => ({
     firstName: firstNameOnly(r.register.creator.name),
+    title:     liveRegisterTitle({
+      title: r.register.title, motherName: r.register.creator.name,
+      featureConsent: r.register.featureConsent, featureConsentVersion: r.register.featureConsentVersion,
+    }),
     // An order with no items or no link (her register was deleted) is not shown.
     orders: r.register.fulfillmentOrders.filter((o) => o.items.length > 0 && o.trackingUrl).map((o) => ({
       items:             o.items.map((i) => String(i.registerItem.name)),

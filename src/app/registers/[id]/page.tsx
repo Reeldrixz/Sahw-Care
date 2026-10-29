@@ -23,6 +23,7 @@ import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkout
 import StreamNameFields from "@/components/StreamNameFields";
 import { CURRENT_FEATURE_CONSENT, FEATURE_CONSENT_UPDATED_NOTICE, hasCurrentFeatureConsent } from "@/lib/featureConsent";
 import { LiveAddressSheet } from "./LiveAddressSheet";
+import { consentButtons } from "@/lib/consentCard";
 
 interface FundingEntry {
   firstName: string;
@@ -873,6 +874,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
           const consentCurrent  = hasCurrentFeatureConsent(register);
           const consentOutdated = register.featureConsent && !consentCurrent;
           const needsLiveAddress = !liveAddress?.ready;
+          const buttons = consentButtons({ saving: savingConsent, consentCurrent, liveAddressReady: !needsLiveAddress });
           return (
           <div style={{ margin: "24px 16px 0", padding: "16px", background: "white", border: "1.5px solid var(--border)", borderRadius: 16 }}>
             {consentOutdated && (
@@ -933,7 +935,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                 Please confirm your shipping address again to keep being featured on live streams.
               </div>
             )}
-            {needsLiveAddress && (
+            {buttons.showConfirmAddress && (
               <button
                 onClick={() => setShowLiveAddress(true)}
                 style={{ width: "100%", marginBottom: 8, padding: "11px 0", borderRadius: 12, border: "2px solid #1a7a5e", background: "#e8f5f1", color: "#1a7a5e", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" }}>
@@ -942,7 +944,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
             )}
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                disabled={savingConsent || consentCurrent || needsLiveAddress}
+                disabled={!buttons.yesEnabled}
                 onClick={() => setFeatureConsent(true)}
                 style={{
                   flex: 1, padding: "11px 0", borderRadius: 12,
@@ -956,15 +958,19 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               >
                 {copy.yes}{consentCurrent ? " ✓" : ""}
               </button>
+              {/* "No" works in every state, address ready or not, consented or
+                  not: saying no is never blocked. It also undoes the card's
+                  switch to saved-address mode for a mother who confirmed an
+                  address here but hasn't said yes (lib/liveAddress). */}
               <button
-                disabled={savingConsent || !register.featureConsent}
+                disabled={!buttons.noEnabled}
                 onClick={() => setFeatureConsent(false)}
                 style={{
                   flex: 1, padding: "11px 0", borderRadius: 12,
                   border: "1.5px solid var(--border)", background: "white",
                   color: "var(--mid)", fontSize: 13, fontWeight: 700,
                   fontFamily: "Nunito, sans-serif",
-                  cursor: !register.featureConsent ? "default" : "pointer",
+                  cursor: savingConsent ? "default" : "pointer",
                 }}
               >
                 {copy.no}

@@ -50,7 +50,7 @@ test("bought without a tracking link stays Funded on air even when delivered; th
   const noLinkDelivered = item({ queueStatus: "DELIVERED" });
   assert.equal(registerStatus([noLinkDelivered]), "FUNDED");
   assert.equal(registerStatus([noLinkDelivered, item({ queueStatus: "DELIVERED", hasOrder: true })]), "FUNDED");
-  assert.deepEqual(publicRecap([row({ items: [noLinkDelivered] })], null).entries, [{ firstName: "Maryam", status: "FUNDED" }]);
+  assert.deepEqual(publicRecap([row({ items: [noLinkDelivered] })], null).entries, [{ firstName: "Maryam", title: null, status: "FUNDED" }]);
   const [h] = hostCompletions([row({ items: [noLinkDelivered, item({ name: "Wipes", queueStatus: "DELIVERED", hasOrder: true })] })]);
   assert.deepEqual(h.items.map((i) => [i.stage, i.noTrackingLink, i.delivered]), [["FUNDED", true, true], ["DELIVERED", false, true]]);
   assert.equal(h.status, "FUNDED");
@@ -66,7 +66,7 @@ test("host panel: how many items have an order, of all her items", () => {
   assert.equal(hostCompletions([row({ items: [item({ queueStatus: "PURCHASED", hasOrder: true })] })])[0].orderPlaced.text, "Order placed for 1 of 1 item");
   assert.equal(hostCompletions([row({ items: [item(), item()] })])[0].orderPlaced.text, "Order placed for 0 of 2 items");
   // The overlay rule is unchanged: the least advanced item still decides.
-  assert.deepEqual(publicRecap(rows, null).entries, [{ firstName: "Maryam", status: "FUNDED" }]);
+  assert.deepEqual(publicRecap(rows, null).entries, [{ firstName: "Maryam", title: null, status: "FUNDED" }]);
   assert.doesNotMatch(JSON.stringify(publicRecap(rows, null)), /Order placed for/);
 });
 
@@ -89,17 +89,17 @@ test("the order-total difference is on the host panel only, per order", () => {
 });
 
 test("recap text uses only funded, order placed and delivered", () => {
-  assert.equal(recapText({ firstName: "Maryam", status: "FUNDED" }), "Maryam — Funded ✓");
-  assert.equal(recapText({ firstName: "Maryam", status: "ORDERED" }), "Maryam — Order placed ✓");
-  assert.equal(recapText({ firstName: "Maryam", status: "DELIVERED" }), "Maryam — Delivered ✓");
+  assert.equal(recapText({ firstName: "Maryam", title: null, status: "FUNDED" }), "Maryam — Funded ✓");
+  assert.equal(recapText({ firstName: "Maryam", title: null, status: "ORDERED" }), "Maryam — Order placed ✓");
+  assert.equal(recapText({ firstName: "Maryam", title: null, status: "DELIVERED" }), "Maryam — Delivered ✓");
   for (const status of ["FUNDED", "ORDERED", "DELIVERED"] as const) {
-    assert.doesNotMatch(recapText({ firstName: "M", status }), /fulfil/i);
+    assert.doesNotMatch(recapText({ firstName: "M", title: null, status }), /fulfil/i);
   }
 });
 
 test("a name that fails the rule gives the generic line", () => {
   const r = publicRecap([row({ motherName: "Ma$ryam" })], null);
-  assert.deepEqual(r.entries, [{ firstName: null, status: "FUNDED" }]);
+  assert.deepEqual(r.entries, [{ firstName: null, title: null, status: "FUNDED" }]);
   assert.equal(recapText(r.entries[0]), "A mother — Funded ✓");
 });
 
@@ -117,7 +117,7 @@ test("withdrawn consent drops the entry, on air and on the host dashboard", () =
 test("no ids, dates or places in a recap", () => {
   const r = publicRecap([row({ motherName: "Maryam Okafor" })], null);
   assert.deepEqual(Object.keys(r).sort(), ["entries", "more"]);
-  assert.deepEqual(Object.keys(r.entries[0]).sort(), ["firstName", "status"]);
+  assert.deepEqual(Object.keys(r.entries[0]).sort(), ["firstName", "status", "title"]);
   assert.doesNotMatch(JSON.stringify(r), /reg_1|Okafor|2026|T\d\d:/);
 });
 
@@ -136,7 +136,7 @@ test("host flags delays; the overlay status stays true and positive", () => {
   assert.equal(h.flags.length, 2);
   assert.match(h.flags[0], /1 item not ordered yet — fully funded 3 days ago/);
   assert.match(h.flags[1], /Car seat: dispatched \d+ days ago, not marked delivered/);
-  assert.deepEqual(publicRecap(rows, null).entries, [{ firstName: "Maryam", status: "FUNDED" }]);
+  assert.deepEqual(publicRecap(rows, null).entries, [{ firstName: "Maryam", title: null, status: "FUNDED" }]);
 });
 
 test("the goal can be raised, never lowered, never below the funded count", () => {

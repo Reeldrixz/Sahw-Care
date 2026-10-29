@@ -4,6 +4,7 @@ import { VERIFICATION_BADGE_FIELDS, verificationBadgeFor, type VerificationBadge
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
 import { isPickableByProgress } from "@/lib/eventProgress";
 import { liveAddressWhere, shipmentIdentity, LIVE_IDENTITY_SELECT } from "@/lib/liveAddress";
+import { liveRegisterTitle } from "@/lib/publicCelebration";
 
 // ── Public share helper: privacy-safe, no auth required ───────────────────────
 // Powers the shareable /r/[id] page. Exposes the mother's FIRST NAME only and
@@ -155,11 +156,20 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
 //
 // Both are read LIVE. Anything that caches the pickable pool must re-check
 // before picking.
-export type FeaturableRegister = Omit<PublicRegister, "verificationBadge" | "city" | "dueDate">;
+// title is REPLACED, not passed through: an event surface gets the title only
+// as lib/publicCelebration liveRegisterTitle returns it (checked, trimmed,
+// and only with her current consent), or null.
+export type FeaturableRegister = Omit<PublicRegister, "verificationBadge" | "city" | "dueDate" | "title"> & { title: string | null };
 
-function toEventShape(r: PublicRegister): FeaturableRegister {
-  const { verificationBadge: _badge, city: _city, dueDate: _due, ...rest } = r;
-  return rest;
+const LIVE_TITLE_INPUTS = { title: true, featureConsent: true, featureConsentVersion: true, creator: { select: { name: true } } } as const;
+
+async function toEventShape(r: PublicRegister): Promise<FeaturableRegister> {
+  const { verificationBadge: _badge, city: _city, dueDate: _due, title: _title, ...rest } = r;
+  const t = await prisma.register.findUnique({ where: { id: r.id }, select: LIVE_TITLE_INPUTS });
+  return {
+    ...rest,
+    title: t ? liveRegisterTitle({ title: t.title, motherName: t.creator.name, featureConsent: t.featureConsent, featureConsentVersion: t.featureConsentVersion }) : null,
+  };
 }
 
 // Who can be picked: current-version consent, ACTIVE and a fresh confirmed
@@ -202,7 +212,7 @@ export async function fetchFeaturableRegisters(): Promise<FeaturableRegister[]> 
   // Deliberately re-fetched through the public helper rather than selected here.
   // One definition of what is public, one place to audit.
   const full = await Promise.all(pickable.map((r) => fetchPublicRegister(r.id)));
-  return full.filter((r): r is PublicRegister => r !== null).map(toEventShape);
+  return Promise.all(full.filter((r): r is PublicRegister => r !== null).map(toEventShape));
 }
 
 // The pick check for one register: the same rule as the pool, without
@@ -220,7 +230,7 @@ export async function isRegisterPickable(id: string): Promise<boolean> {
 export async function fetchOnScreenRegister(id: string | null): Promise<FeaturableRegister | null> {
   if (!id) return null;
   const r = await fetchPublicRegister(id);
-  return r ? toEventShape(r) : null;
+  return r ? await toEventShape(r) : null;
 }
 
 // ── Admin helper: includes all address data ───────────────────────────────────

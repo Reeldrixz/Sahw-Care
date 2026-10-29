@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { fundedPercent, registerItemCounts, registerMoneyTotals } from "@/lib/eventProgress";
 import type { HostCompletion, ItemStage } from "@/lib/eventRecap";
+import { liveNameLine } from "@/lib/publicCelebration";
 
 // The host dashboard. Read on a second monitor, mid-broadcast, glanced at while
 // talking — a different instrument from the mother-facing app, so it
@@ -47,7 +48,8 @@ interface Item {
   fundingStatus: string; contributorCount: number; imageUrl: string | null;
 }
 interface Register {
-  id: string; title: string; status: string; // no city or due date: an event never receives them
+  id: string; status: string; // no city or due date: an event never receives them
+  title: string | null; // checked and trimmed by lib/publicCelebration, or null
   intro: string | null; firstName: string; items: Item[];
 }
 interface Payload {
@@ -298,7 +300,7 @@ function RegisterCard({ reg, active, onSelect }: { reg: Register; active: boolea
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: TEXT }}>{reg.firstName}</div>
       </div>
-      <div style={{ fontSize: 14, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>{reg.title}</div>
+      {reg.title && <div style={{ fontSize: 14, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>{reg.title}</div>}
 
       <div style={{ marginTop: 14 }}>
         <div style={{ height: 8, background: LINE, borderRadius: 6, overflow: "hidden" }}>
@@ -325,7 +327,7 @@ function FeaturedPanel({ reg, onClose }: { reg: Register; onClose: () => void })
             On screen
           </div>
           <div style={{ fontSize: 40, fontWeight: 800, color: TEXT, lineHeight: 1.1 }}>{reg.firstName}</div>
-          <div style={{ fontSize: 17, color: MUTED, marginTop: 6 }}>{reg.title}</div>
+          {reg.title && <div style={{ fontSize: 17, color: MUTED, marginTop: 6 }}>{reg.title}</div>}
         </div>
         <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${LINE}`, color: MUTED, borderRadius: 10, padding: "8px 14px", fontSize: 14, cursor: "pointer" }}>
           Clear
@@ -379,7 +381,7 @@ function CompletionsPanel({ rows, token }: { rows: HostCompletion[]; token: stri
       {rows.map((r, n) => (
         <div key={n} style={{ padding: "10px 0", borderTop: n ? `1px solid ${LINE}` : "none" }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: TEXT }}>{r.firstName ?? "A mother"}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: TEXT }}>{liveNameLine(r.firstName, r.title)}</span>
             <span style={{ fontSize: 13, color: MUTED }}>
               {r.status ? STAGE_LABEL[r.status] : "Not fully funded now"} · funded {new Date(r.completedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </span>

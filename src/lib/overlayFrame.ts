@@ -74,6 +74,7 @@ export type OverlayFrame = {
   };
   register: {
     firstName: string | null;
+    title:     string | null;   // checked and trimmed (lib/publicCelebration liveRegisterTitle), or null
     items:     OverlayItem[];
     counts:    { funded: number; total: number };
     percent:   number;
@@ -174,6 +175,7 @@ export async function buildOverlayFrame(eventId: string, opts: { claim: boolean 
     const counts = registerItemCounts(onScreen.items);
     register = {
       firstName: firstNameOnly(onScreen.firstName),
+      title:     onScreen.title,
       items: onScreen.items.map((i) => ({
         name:           i.name,
         priceCents:     i.standardPriceCents,

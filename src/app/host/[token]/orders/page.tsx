@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { StreamerRegister } from "@/lib/fulfillmentOrder";
 import { STREAMER_TRACKING_NOTE } from "@/lib/trackingLink";
+import { liveNameLine } from "@/lib/publicCelebration";
 
 // The streamer's evidence page: for each register fully funded in this event,
 // the orders placed for it. Read off-air, on the host's own screen.
 //
 // DATA ACCESS: GET /api/host/[token]/orders and nothing else. That route
-// returns first name, items, status, tracking link, estimated delivery and
-// total, and nothing more; this page can't show what it never receives.
+// returns first name, her register's title (checked), items, status, tracking
+// link, estimated delivery and total, and nothing more; this page can't show
+// what it never receives.
 //
 // The tracking link is only ever a plain link opened in a new tab. Never an
 // iframe or a preview, and nothing here fetches it.
@@ -80,7 +82,7 @@ export default function HostOrdersPage() {
         <p style={{ color: MUTED, fontSize: 15, marginTop: 28 }}>No registers fully funded in this event yet.</p>
       ) : data.map((r, n) => (
         <section key={n} style={{ marginTop: 20, background: PANEL, border: `1px solid ${LINE}`, borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>{r.firstName ?? "A mother"}</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>{liveNameLine(r.firstName, r.title)}</div>
 
           {r.orders.map((o, k) => (
             <div key={k} style={{ marginTop: 12, background: PANEL_2, border: `1px solid ${LINE}`, borderRadius: 12, padding: 14 }}>

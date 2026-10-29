@@ -105,3 +105,60 @@ test("first-name rule: anything else in the first word means no name", () => {
   assert.equal(firstNameOnly("   "), null);
   assert.equal(firstNameOnly(null), null);
 });
+
+// ── The register's title on live surfaces ───────────────────────────────────
+
+import { checkLiveTitle, trimLiveTitle, liveRegisterTitle, liveNameLine, LIVE_TITLE_MAX, recapText as recapLine } from "./publicCelebration";
+import { FEATURE_CONSENT_VERSION } from "./featureConsent";
+
+const graphemes = (s: string) => Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s)).length;
+
+test("title shown when it passes, next to her first name", () => {
+  assert.equal(checkLiveTitle("baby things for March", "Idris Okafor"), "baby things for March");
+  assert.equal(liveNameLine("Idris", "baby things for March"), "Idris · baby things for March");
+  assert.equal(liveNameLine("Idris", null), "Idris");
+  assert.equal(liveNameLine(null, "baby things for March"), "A mother · baby things for March");
+  assert.equal(recapLine({ firstName: "Idris", title: "baby things for March", status: "ORDERED" }), "Idris · baby things for March — Order placed ✓");
+  // A month alone is fine; it's not a due date.
+  assert.equal(checkLiveTitle("Twins arriving in June!", "Ada Eze"), "Twins arriving in June!");
+});
+
+test("a title that fails the checks falls back to her first name only", () => {
+  const fails = [
+    "me@example.com", "see www.gofund.me", "kradel.com/ada", "call 416 555 0100", "4165550100",
+    "M5V 2T6 here", "near 90210", "12 Main Street", "45 Bello Close",
+    "Okafor baby", "the OKAFOR twins",                          // her surname
+    "Due March 14", "14 March", "due 14th of March", "14/3", "2027-03-14", "3.14.27", // due dates
+    "<b>hi</b>", "a{b}", "tab\tthere\u0007",                   // markup, control
+    "no shit", "Fuck this", "pay me on cashapp", "e-transfer only", // blocklist
+    "", "   ",
+  ];
+  for (const t of fails) {
+    assert.equal(checkLiveTitle(t, "Ada Okafor"), null, `accepted: ${JSON.stringify(t)}`);
+    assert.equal(liveNameLine("Ada", checkLiveTitle(t, "Ada Okafor")), "Ada");
+  }
+  // Whole words only: a word that merely contains one is fine.
+  assert.equal(checkLiveTitle("Scunthorpe baby shower", "Ada Okafor"), "Scunthorpe baby shower");
+  // Her first name is not a surname.
+  assert.equal(checkLiveTitle("Ada's list", "Ada Okafor"), "Ada's list");
+});
+
+test("a long title is trimmed to the limit with an ellipsis", () => {
+  assert.equal(LIVE_TITLE_MAX, 32);
+  const long = "everything we need for our new little one arriving soon";
+  const t = checkLiveTitle(long, "Ada Eze")!;
+  assert.ok(t.endsWith("…") && graphemes(t) <= LIVE_TITLE_MAX, t);
+  assert.ok(long.startsWith(t.slice(0, -1)), t);
+  assert.equal(trimLiveTitle("x".repeat(40)), `${"x".repeat(31)}…`);
+  assert.equal(trimLiveTitle("x".repeat(32)), "x".repeat(32));     // exactly the limit: untouched
+  assert.ok(graphemes(trimLiveTitle("👶🏽".repeat(40))) <= LIVE_TITLE_MAX);  // counts what is seen
+  assert.equal(checkLiveTitle("  baby   things  ", "Ada Eze"), "baby things"); // spacing tidied
+});
+
+test("no title without her current live consent", () => {
+  const base = { title: "baby things for March", motherName: "Idris Okafor" };
+  assert.equal(liveRegisterTitle({ ...base, featureConsent: true, featureConsentVersion: FEATURE_CONSENT_VERSION }), "baby things for March");
+  assert.equal(liveRegisterTitle({ ...base, featureConsent: false, featureConsentVersion: null }), null);
+  assert.equal(liveRegisterTitle({ ...base, featureConsent: true, featureConsentVersion: 2 }), null);
+  assert.equal(liveRegisterTitle({ ...base, featureConsent: false, featureConsentVersion: FEATURE_CONSENT_VERSION }), null);
+});
