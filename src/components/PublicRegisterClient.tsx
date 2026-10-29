@@ -7,24 +7,12 @@ import {
   MapPin, HandHeart, Heart, ShieldCheck, ImageOff, Share2, Check,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import type { PublicRegister, PublicRegisterItem } from "@/lib/registers";
+import type { SharePageRegister, SharePageItem } from "@/lib/publicRegisterShapes";
 import GuestFundSheet from "@/components/GuestFundSheet";
 import VerificationBadge from "@/components/VerificationBadge";
 
 function fmtMoney(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
-}
-
-function getStageLine(dueDate: string) {
-  const due = new Date(dueDate);
-  const now = new Date();
-  const diffDays = Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays > 0) {
-    const weeks = Math.round(diffDays / 7);
-    return weeks <= 1 ? "Due this week" : `Due in ${weeks} weeks`;
-  }
-  const weeksOld = Math.abs(Math.round(diffDays / 7));
-  return `Newborn · ${weeksOld} weeks old`;
 }
 
 function getWhyItMatters(category: string, name: string): string {
@@ -42,14 +30,14 @@ function getWhyItMatters(category: string, name: string): string {
 
 const CATEGORY_ORDER = ["Feeding", "Sleep", "Diapers & Hygiene", "Clothing", "Health", "Mobility", "Other"];
 
-function groupByCategory(items: PublicRegisterItem[]): [string, PublicRegisterItem[]][] {
-  const map = new Map<string, PublicRegisterItem[]>();
+function groupByCategory(items: SharePageItem[]): [string, SharePageItem[]][] {
+  const map = new Map<string, SharePageItem[]>();
   for (const item of items) {
     const cat = item.category || "Other";
     if (!map.has(cat)) map.set(cat, []);
     map.get(cat)!.push(item);
   }
-  const ordered: [string, PublicRegisterItem[]][] = [];
+  const ordered: [string, SharePageItem[]][] = [];
   for (const cat of CATEGORY_ORDER) {
     if (map.has(cat)) { ordered.push([cat, map.get(cat)!]); map.delete(cat); }
   }
@@ -68,18 +56,18 @@ export default function PublicRegisterClient({
   register,
   appUrl,
 }: {
-  register: PublicRegister;
+  register: SharePageRegister;
   appUrl: string;
 }) {
   const { user } = useAuth();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const [guestItem, setGuestItem] = useState<PublicRegisterItem | null>(null);
+  const [guestItem, setGuestItem] = useState<SharePageItem | null>(null);
 
   const firstName  = register.firstName;
   const isClosed   = register.status === "CLOSED";
   const isCompleted = register.status === "COMPLETED";
-  const stageLine  = getStageLine(register.dueDate);
+  const stageLine  = register.stageLine;   // computed on the server; the due date isn't sent
 
   const totalFunded = useMemo(() => register.items.reduce((s, i) => s + i.totalFundedCents, 0), [register.items]);
   const totalNeeded = useMemo(() => register.items.reduce((s, i) => s + i.standardPriceCents, 0), [register.items]);

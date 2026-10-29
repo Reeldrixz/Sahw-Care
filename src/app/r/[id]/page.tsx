@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { fetchPublicRegister } from "@/lib/registers";
 import PublicRegisterClient from "@/components/PublicRegisterClient";
+import { toSharePageRegister } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -46,5 +47,7 @@ export default async function PublicRegisterPage({ params }: { params: Promise<{
   const register = await fetchPublicRegister(id);
   if (!register) notFound();
 
-  return <PublicRegisterClient register={register} appUrl={APP_URL} />;
+  // Only the fields the page renders go into it (and so into the page's HTML):
+  // no title, no due date (its stage line instead), no item notes.
+  return <PublicRegisterClient register={toSharePageRegister(register)} appUrl={APP_URL} />;
 }

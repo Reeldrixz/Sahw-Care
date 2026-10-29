@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { toSearchRegister, toSearchItem, type SearchRegister } from "@/lib/publicRegisterShapes";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -23,13 +24,12 @@ export async function GET(req: NextRequest) {
           { description: { contains: q, mode: "insensitive" } },
         ],
       },
-      include: {
-        donor: {
-          select: {
-            id: true, name: true, avatar: true,
-            verificationLevel: true, countryFlag: true,
-          },
-        },
+      // Only what the search page renders. The donor's full name is read for
+      // her first name only (lib/publicRegisterShapes toSearchItem); no donor
+      // id, email or avatar leaves the server.
+      select: {
+        id: true, title: true, category: true, condition: true, location: true, images: true, createdAt: true,
+        donor: { select: { name: true, verificationLevel: true } },
       },
       take: 20,
       orderBy: { createdAt: "desc" },
@@ -48,32 +48,40 @@ export async function GET(req: NextRequest) {
       take: 5,
     }),
 
+    // Registers: ACTIVE only (no drafts, nothing closed or abandoned), and only
+    // the columns needed to build lib/publicRegisterShapes SearchRegister: id,
+    // first name, the checked title, city and its label. Her full name is read
+    // for the first name and the surname check only, and never leaves the
+    // server. Fetched wider than shown, because a candidate matched only by a
+    // withheld title or by her surname drops out below (toSearchRegister).
     type === "items" || type === "bundles" ? Promise.resolve([]) :
     prisma.register.findMany({
       where: {
+        status: "ACTIVE",
         OR: [
           { title: { contains: q, mode: "insensitive" } },
           { city:  { contains: q, mode: "insensitive" } },
+          // A candidate only: toSearchRegister keeps it if her FIRST name
+          // matches, never her surname.
+          { creator: { name: { contains: q, mode: "insensitive" } } },
         ],
       },
-      include: {
-        creator: { select: { name: true } },
-      },
-      take: 5,
+      select: { id: true, title: true, city: true, creator: { select: { name: true } } },
+      take: 25,
       orderBy: { createdAt: "desc" },
     }),
   ]);
 
+  const publicRegisters = registers
+    .map((r) => toSearchRegister(r, q))
+    .filter((r): r is SearchRegister => r !== null)
+    .slice(0, 5);
+
   return NextResponse.json({
-    items,
+    items: items.map(toSearchItem),
     bundles,
-    // First name only, like every other register surface. The full name is
-    // reduced here so it never leaves the server.
-    registers: registers.map(({ creator, ...r }) => ({
-      ...r,
-      creator: { firstName: creator.name.split(" ")[0] || creator.name },
-    })),
-    total: items.length + bundles.length + registers.length,
+    registers: publicRegisters,
+    total: items.length + bundles.length + publicRegisters.length,
     query: q,
   });
 }

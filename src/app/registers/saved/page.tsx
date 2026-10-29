@@ -19,20 +19,9 @@ interface SavedItemData {
   register: {
     id: string;
     city: string;
-    dueDate: string;
+    dueLabel: string;
     creator: { id: string; firstName: string };
   };
-}
-
-function formatDueDate(dueDate: string) {
-  const due = new Date(dueDate);
-  const diffDays = Math.round((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) {
-    const weeksOld = Math.abs(Math.round(diffDays / 7));
-    return `Newborn · ${weeksOld}w old`;
-  }
-  if (diffDays <= 7) return "Due this week";
-  return `Due ${due.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
 }
 
 function fmtMoney(cents: number) {
@@ -125,7 +114,7 @@ export default function SavedItemsPage() {
             items.map((item) => {
               const reg        = item.register;
               const firstName  = reg.creator.firstName;
-              const dueLabel   = formatDueDate(reg.dueDate);
+              const dueLabel   = reg.dueLabel;
               const qty        = parseInt(item.quantity, 10);
               const showQty    = !isNaN(qty) && qty > 1;
 

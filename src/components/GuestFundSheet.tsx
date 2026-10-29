@@ -24,7 +24,8 @@ const PRESETS = [1000, 2500, 5000];
 export default function GuestFundSheet({
   item, firstName, onClose,
 }: {
-  item: PublicRegisterItem;
+  // Only what the sheet reads, so the share page's trimmed item fits.
+  item: Pick<PublicRegisterItem, "id" | "name" | "standardPriceCents" | "totalFundedCents">;
   firstName: string;
   onClose: () => void;
 }) {

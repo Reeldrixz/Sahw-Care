@@ -9,6 +9,7 @@ import TrustAndSafety from "@/components/TrustAndSafety";
 import LocationSelector from "@/components/LocationSelector";
 import Toast from "@/components/Toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { browseDueLabel } from "@/lib/dueLabel";
 import { useUserLocation } from "@/hooks/useUserLocation";
 
 interface RegisterItemData {
@@ -24,13 +25,16 @@ interface RegisterItemData {
   catalogItem: { imageUrl: string | null } | null;
 }
 
+// The public browse shape (lib/publicRegisterShapes toPublicListRegister)
+// carries a rough dueLabel and dueSoon instead of the due date; an admin
+// still gets the full record with dueDate, shown with the same rough label.
 interface RegisterData {
   id: string;
-  title: string;
   city: string;
-  dueDate: string;
-  createdAt: string;
-  creator: { id: string; firstName: string };
+  dueLabel?: string;
+  dueSoon?: boolean;
+  dueDate?: string;
+  creator: { firstName: string };
   items: RegisterItemData[];
 }
 
@@ -38,17 +42,6 @@ type TabKey = "all" | "nearby" | "due-soon";
 
 // How many items a card lists before "+N more".
 const CARD_ITEM_LIMIT = 3;
-
-function formatDueDate(dueDate: string) {
-  const due = new Date(dueDate);
-  const diffDays = Math.round((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) {
-    const weeksOld = Math.abs(Math.round(diffDays / 7));
-    return `Newborn · ${weeksOld}w old`;
-  }
-  if (diffDays <= 7) return "Due this week";
-  return `Due ${due.toLocaleDateString("en-US", { month: "long", day: "numeric" })}`;
-}
 
 function fmtMoney(cents: number) {
   return `$${(cents / 100).toFixed(0)}`;
@@ -154,6 +147,8 @@ export default function RegistersPage() {
       return reg.city.toLowerCase() === activeCity.toLowerCase();
     }
     if (tab === "due-soon") {
+      if (reg.dueSoon !== undefined) return reg.dueSoon;
+      if (!reg.dueDate) return false;
       const diffDays = Math.round(
         (new Date(reg.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       );
@@ -290,7 +285,7 @@ export default function RegistersPage() {
                     {reg.creator.firstName}&apos;s Register
                   </div>
                   <div style={{ fontSize: 12, color: "#8a8a8a", fontFamily: "Nunito, sans-serif", marginTop: 2, marginBottom: 12 }}>
-                    {reg.city} · {formatDueDate(reg.dueDate)}
+                    {reg.city} · {reg.dueLabel ?? (reg.dueDate ? browseDueLabel(new Date(reg.dueDate)) : "")}
                   </div>
 
                   {/* Body: up to three open items, matches first when searching */}

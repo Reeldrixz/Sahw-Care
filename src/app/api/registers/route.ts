@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canCreateRegister } from "@/lib/access";
+import { isAdminUser, toPublicListRegister } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,20 @@ export async function GET(req: NextRequest) {
   const token = await getTokenFromRequest(req);
   const auth = token ? await verifyToken(token) : null;
 
+  // Full records only for her own list (?creatorId= her id, every status) or
+  // an admin (unchanged: ?creatorId= every status, otherwise ACTIVE).
+  // Everyone else, with or without ?creatorId=, gets ACTIVE registers only,
+  // in the browse page's shape (lib/publicRegisterShapes): no title, no raw
+  // due date, no drafts.
+  const isOwnList  = !!creatorId && auth?.userId === creatorId;
+  const fullAccess = isOwnList || await isAdminUser(auth?.userId);
+
   const registers = await prisma.register.findMany({
     where: {
       ...(city && { city: { contains: city, mode: "insensitive" } }),
-      ...(creatorId
-        ? { creatorId }
-        : { status: "ACTIVE" }
-      ),
+      ...(fullAccess
+        ? (creatorId ? { creatorId } : { status: "ACTIVE" as const })
+        : { status: "ACTIVE" as const, ...(creatorId && { creatorId }) }),
     },
     orderBy: { createdAt: "desc" },
     include: {
@@ -51,6 +59,10 @@ export async function GET(req: NextRequest) {
         })).map((s) => s.itemId)
       )
     : new Set<string>();
+
+  if (!fullAccess) {
+    return NextResponse.json({ registers: registers.map((r) => toPublicListRegister(r, savedItemIds)) });
+  }
 
   const result = registers.map((r) => ({
     ...r,

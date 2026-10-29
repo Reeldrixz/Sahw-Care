@@ -42,11 +42,15 @@ interface RegisterItemData {
   catalogItem: { imageUrl: string | null; sku: string | null } | null;
 }
 
+// Her own (or an admin's) view has the full record. Anyone else gets
+// lib/publicRegisterShapes toPublicRegisterView: no title, due date, address
+// mode or consent fields, but a stageLine, and creator.name is her first name.
 interface RegisterData {
   id: string;
-  title: string;
+  title?: string;
   city: string;
-  dueDate: string;
+  dueDate?: string;
+  stageLine?: string;
   intro: string | null;
   status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CLOSED";
   addressMode: "ASK_PER_SHIPMENT" | "SAVED_PER_REGISTER";
@@ -455,7 +459,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const isClosed     = register.status === "CLOSED";
   const firstName    = register.creator.name.split(" ")[0];
   const badge        = register.creator.verificationBadge;
-  const stageLine    = getStageLine(register.dueDate);
+  const stageLine    = register.stageLine ?? (register.dueDate ? getStageLine(register.dueDate) : "");
 
   // Donors never see PENDING_APPROVAL items (belt and suspenders — API already filters)
   const visibleItems = isDonorView

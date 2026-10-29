@@ -3,6 +3,7 @@ import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
+import { isAdminUser, toPublicRegisterView } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -36,11 +37,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const isCreator = auth?.userId === register.creatorId;
   const withBadge = { ...register, creator: withVerificationBadge(register.creator) };
-  const responseRegister = isCreator
-    ? withBadge
-    : { ...withBadge, items: register.items.filter((i) => i.status !== "PENDING_APPROVAL") };
 
-  return NextResponse.json({ register: responseRegister });
+  // Her and admins: the full record, as before.
+  if (isCreator || await isAdminUser(auth?.userId)) {
+    return NextResponse.json({ register: withBadge });
+  }
+
+  // Everyone else gets only what the register page renders for a donor
+  // (lib/publicRegisterShapes): her first name, no location, no due date (a
+  // stage line instead), no address mode or consent fields, no assigned
+  // donors, no pending items. A draft or abandoned register is not public.
+  if (register.status === "DRAFT" || register.status === "ABANDONED") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json({ register: toPublicRegisterView(withBadge) });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

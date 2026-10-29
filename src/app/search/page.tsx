@@ -30,14 +30,16 @@ const CAT_ICONS: Record<string, LucideIcon> = {
 interface SearchItem {
   id: string; title: string; category: string; condition: string;
   quantity: string; location: string; images: string[]; createdAt: string;
-  donor: { id: string; name: string; avatar: string | null; verificationLevel?: number };
+  donor: { firstName: string; verified: boolean };   // lib/publicRegisterShapes toSearchItem
 }
 interface SearchBundle {
   id: string; name: string; description: string; targetStage: string | null; estimatedCost: number;
 }
+// lib/publicRegisterShapes SearchRegister: the title is null when it was
+// withheld by the title check.
 interface SearchRegister {
-  id: string; title: string; city: string; dueDate: string;
-  creator: { firstName: string };
+  id: string; firstName: string; title: string | null; city: string;
+  label: string;   // "Amina · baby things for March", or "Amina's Register"
 }
 interface SearchResults {
   items: SearchItem[];
@@ -96,7 +98,7 @@ function ItemRow({ item, onClick }: { item: SearchItem; onClick: () => void }) {
           {item.location} · {item.condition} · {timeAgo(item.createdAt)}
         </div>
       </div>
-      {(item.donor.verificationLevel ?? 0) >= 1 && (
+      {item.donor.verified && (
         <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "#e8f5f1", color: "#1a7a5e", flexShrink: 0, fontFamily: "Nunito, sans-serif" }}>✓</span>
       )}
     </button>
@@ -146,10 +148,10 @@ function RegisterRow({ reg, onClick }: { reg: SearchRegister; onClick: () => voi
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a", fontFamily: "Nunito, sans-serif", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {reg.title}
+          {reg.label}
         </div>
         <div style={{ fontSize: 11, color: "#9ca3af", fontFamily: "Nunito, sans-serif" }}>
-          {reg.city} · by {reg.creator.firstName}
+          {reg.city}
         </div>
       </div>
     </button>

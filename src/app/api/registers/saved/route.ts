@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toSavedRegister } from "@/lib/publicRegisterShapes";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +44,9 @@ export async function GET(req: NextRequest) {
   const items = saved.map((s) => ({
     ...s.item,
     savedByMe: true,
-    register: {
-      ...s.register,
-      creator: { id: s.register.creator.id, firstName: s.register.creator.name.split(" ")[0] || s.register.creator.name },
-    },
+    // Another mother's register: id, city, a rough due label and her first
+    // name only (lib/publicRegisterShapes); never her due date.
+    register: toSavedRegister(s.register),
   }));
   return NextResponse.json({ items });
 }
