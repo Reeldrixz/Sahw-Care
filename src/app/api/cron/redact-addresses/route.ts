@@ -1,142 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
-import { prisma } from "@/lib/prisma";
-
 import { isAuthorizedCron } from "@/lib/cronAuth";
+import { runAddressRedaction } from "@/lib/addressRedactionJob";
 
 export const dynamic = "force-dynamic";
 
-
-function hashAddress(
-  streetAddress: string,
-  unit: string | null,
-  city: string,
-  province: string,
-  postalCode: string,
-  country: string
-): string {
-  return createHash("sha256")
-    .update(`${streetAddress}|${unit ?? ""}|${city}|${province}|${postalCode}|${country}`)
-    .digest("hex");
-}
-
 /**
  * POST /api/cron/redact-addresses
- * Runs daily at 03:00 UTC. Two jobs:
+ * Runs daily at 03:00 UTC. The rules are in lib/addressRedaction.
  *
- * A. Redact ShipmentAddress rows where the linked RegisterItem has reached
- *    a terminal status (DELIVERED or CANCELLED) at least 24 hours ago.
+ * A. Blank a per-item ShipmentAddress 24 hours after its item reaches a
+ *    terminal status (FULFILLED, DELIVERED or CANCELLED). Unchanged.
  *
- * B. Redact RegisterAddress rows where the linked Register has reached a
- *    terminal status (COMPLETED, CLOSED, or ABANDONED) at least 24 hours ago.
+ * B. Blank a register's saved RegisterAddress:
+ *      - never while a funded item is still waiting to be ordered or shipped;
+ *      - 24 hours after every funded item is delivered;
+ *      - 24 hours after the register is closed (or ended);
+ *      - with nothing funded, 90 days after she confirmed it.
  *
- * Each redaction: captures an AddressAuditSnapshot then clears PII fields.
- * Idempotent — rows with redactedAt already set are skipped.
+ * C. Finish a live-consent withdrawal: a register the consent card switched
+ *    into saved-address mode, whose mother has since withdrawn and which has
+ *    no funded item still waiting, goes back to ask-per-shipment and its saved
+ *    address is deleted (lib/liveAddress).
+ *
+ * Each blanking keeps an AddressAuditSnapshot first, then clears the
+ * personal fields. Idempotent: rows already blanked are skipped.
  */
 export async function POST(req: NextRequest) {
   if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-
-  const now = new Date();
-  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-  let shipmentRedacted = 0;
-  let savedRedacted = 0;
-
-  // ── Job A: Per-item ShipmentAddress ─────────────────────────────────────────
-  const shipmentAddresses = await prisma.shipmentAddress.findMany({
-    where: {
-      redactedAt: null,
-      registerItem: {
-        // Delivered register items are set to FULFILLED (not DELIVERED) by the
-        // fulfillment queue, so FULFILLED must be included or delivered
-        // shipping addresses are never redacted.
-        status: { in: ["FULFILLED", "DELIVERED", "CANCELLED"] },
-        updatedAt: { lte: cutoff },
-      },
-    },
-    include: {
-      registerItem: { select: { id: true, registerId: true } },
-    },
-    take: 200,
-  });
-
-  for (const addr of shipmentAddresses) {
-    const snapshot = {
-      registerItemId:   addr.registerItem.id,
-      registerId:       null,
-      city:             addr.city,
-      province:         addr.province,
-      country:          addr.country,
-      postalCodeFirst3: addr.postalCode.slice(0, 3).toUpperCase(),
-      addressHash:      hashAddress(addr.streetAddress, addr.unit, addr.city, addr.province, addr.postalCode, addr.country),
-    };
-
-    await prisma.$transaction([
-      prisma.addressAuditSnapshot.create({ data: snapshot }),
-      prisma.shipmentAddress.update({
-        where: { id: addr.id },
-        data: {
-          fullName:      "[REDACTED]",
-          streetAddress: "[REDACTED]",
-          unit:          null,
-          postalCode:    "",
-          phone:         "[REDACTED]",
-          redactedAt:    now,
-        },
-      }),
-    ]);
-    shipmentRedacted++;
-  }
-
-  // ── Job B: Per-register RegisterAddress ─────────────────────────────────────
-  const savedAddresses = await prisma.registerAddress.findMany({
-    where: {
-      redactedAt: null,
-      register: {
-        status: { in: ["COMPLETED", "CLOSED", "ABANDONED"] },
-        updatedAt: { lte: cutoff },
-      },
-    },
-    include: {
-      register: { select: { id: true } },
-    },
-    take: 200,
-  });
-
-  for (const addr of savedAddresses) {
-    const snapshot = {
-      registerId:       addr.register.id,
-      registerItemId:   null,
-      city:             addr.city,
-      province:         addr.province,
-      country:          addr.country,
-      postalCodeFirst3: addr.postalCode.slice(0, 3).toUpperCase(),
-      addressHash:      hashAddress(addr.streetAddress, addr.unit, addr.city, addr.province, addr.postalCode, addr.country),
-    };
-
-    await prisma.$transaction([
-      prisma.addressAuditSnapshot.create({ data: snapshot }),
-      prisma.registerAddress.update({
-        where: { id: addr.id },
-        data: {
-          fullName:      "[REDACTED]",
-          streetAddress: "[REDACTED]",
-          unit:          null,
-          postalCode:    "",
-          phone:         "[REDACTED]",
-          redactedAt:    now,
-        },
-      }),
-    ]);
-    savedRedacted++;
-  }
-
-  return NextResponse.json({
-    ok:               true,
-    counts:           { shipmentRedacted, savedRedacted },
-    timestamp:        now.toISOString(),
-  });
+  return NextResponse.json(await runAddressRedaction(new Date()));
 }
 export { POST as GET };

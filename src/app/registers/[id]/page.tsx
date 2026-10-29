@@ -22,6 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { computeBreakdown, minGiftFor, centsToAmountInput } from "@/lib/checkoutFees";
 import StreamNameFields from "@/components/StreamNameFields";
 import { CURRENT_FEATURE_CONSENT, FEATURE_CONSENT_UPDATED_NOTICE, hasCurrentFeatureConsent } from "@/lib/featureConsent";
+import { LiveAddressSheet } from "./LiveAddressSheet";
 
 interface FundingEntry {
   firstName: string;
@@ -153,6 +154,10 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
   const [confirmMode,       setConfirmMode]       = useState(false);
   const [showAddressSheet,  setShowAddressSheet]  = useState(false);
   const [addressItem,       setAddressItem]       = useState<RegisterItemData | null>(null);
+  // Live-feature consent needs a shipping address held ahead of time. Only a
+  // yes/no and a date come from the server, never the address.
+  const [liveAddress,       setLiveAddress]       = useState<{ ready: boolean; reason?: string; confirmedAt?: string } | null>(null);
+  const [showLiveAddress,   setShowLiveAddress]   = useState(false);
   const [addrFullName,      setAddrFullName]      = useState("");
   const [addrStreet,        setAddrStreet]        = useState("");
   const [addrUnit,          setAddrUnit]          = useState("");
@@ -206,7 +211,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
   const fetchRegister = useCallback(async () => {
     const res = await fetch(`/api/registers/${id}`);
-    if (res.ok) { const data = await res.json(); setRegister(data.register); }
+    if (res.ok) { const data = await res.json(); setRegister(data.register); setLiveAddress(data.liveAddress ?? null); }
     setLoading(false);
   }, [id]);
 
@@ -223,6 +228,12 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
       body:    JSON.stringify({ featureConsent: value }),
     });
     if (res.ok) await fetchRegister();
+    else {
+      const d = await res.json().catch(() => ({}));
+      // The server refuses a yes without a confirmed address: open the step.
+      if (d.code === "NEEDS_LIVE_ADDRESS") setShowLiveAddress(true);
+      else setToast(d.error ?? "Couldn't save your choice");
+    }
     setSavingConsent(false);
   }, [id, fetchRegister]);
 
@@ -861,6 +872,7 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
           const copy = CURRENT_FEATURE_CONSENT;
           const consentCurrent  = hasCurrentFeatureConsent(register);
           const consentOutdated = register.featureConsent && !consentCurrent;
+          const needsLiveAddress = !liveAddress?.ready;
           return (
           <div style={{ margin: "24px 16px 0", padding: "16px", background: "white", border: "1.5px solid var(--border)", borderRadius: 16 }}>
             {consentOutdated && (
@@ -912,9 +924,25 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
               </p>
             )}
 
+            {/* A yes needs a shipping address held ahead of time. Until then
+                the yes button opens that step instead. A mother already
+                featured whose address has gone stale drops out of the pool
+                (her consent stays) and is asked to confirm again. */}
+            {needsLiveAddress && consentCurrent && (
+              <div role="status" style={{ fontSize: 12.5, fontWeight: 700, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 10, padding: "9px 12px", marginBottom: 12, lineHeight: 1.5 }}>
+                Please confirm your shipping address again to keep being featured on live streams.
+              </div>
+            )}
+            {needsLiveAddress && (
+              <button
+                onClick={() => setShowLiveAddress(true)}
+                style={{ width: "100%", marginBottom: 8, padding: "11px 0", borderRadius: 12, border: "2px solid #1a7a5e", background: "#e8f5f1", color: "#1a7a5e", fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif", cursor: "pointer" }}>
+                First, confirm where to ship
+              </button>
+            )}
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                disabled={savingConsent || consentCurrent}
+                disabled={savingConsent || consentCurrent || needsLiveAddress}
                 onClick={() => setFeatureConsent(true)}
                 style={{
                   flex: 1, padding: "11px 0", borderRadius: 12,
@@ -922,7 +950,8 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
                   background: consentCurrent ? "#e8f5f1" : "white",
                   color: consentCurrent ? "#1a7a5e" : "var(--ink)",
                   fontSize: 13, fontWeight: 800, fontFamily: "Nunito, sans-serif",
-                  cursor: consentCurrent ? "default" : "pointer",
+                  cursor: consentCurrent || needsLiveAddress ? "default" : "pointer",
+                  opacity: needsLiveAddress && !consentCurrent ? 0.55 : 1,
                 }}
               >
                 {copy.yes}{consentCurrent ? " ✓" : ""}
@@ -951,6 +980,13 @@ export default function RegisterDetailPage({ params }: { params: Promise<{ id: s
 
         {!isDonorView && <div style={{ height: 140 }} />}
       </div>
+
+      {showLiveAddress && isMom && (
+        <LiveAddressSheet registerId={id}
+          onClose={() => setShowLiveAddress(false)}
+          onNeedsIdentity={() => { setShowLiveAddress(false); router.push("/profile"); }}
+          onSaved={async () => { setShowLiveAddress(false); await fetchRegister(); setToast("Address confirmed. You can now choose to be featured."); }} />
+      )}
 
       {/* ── Add Item sheet (mom only) ────────────────────── */}
       {addingItem && (

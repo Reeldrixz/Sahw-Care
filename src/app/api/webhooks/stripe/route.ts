@@ -176,14 +176,14 @@ async function handleSessionCompleted(event: Stripe.Event, session: Stripe.Check
 
   let item: {
     name: string;
-    register: { creatorId: string; addressMode: string; savedAddress: { id: string } | null };
+    register: { creatorId: string; addressMode: string; savedAddress: { id: string; redactedAt: Date | null } | null };
   } | null = null;
   try {
     item = await prisma.registerItem.findUnique({
       where:  { id: applied.itemId },
       select: {
         name: true,
-        register: { select: { creatorId: true, addressMode: true, savedAddress: { select: { id: true } } } },
+        register: { select: { creatorId: true, addressMode: true, savedAddress: { select: { id: true, redactedAt: true } } } },
       },
     });
   } catch (err) {
@@ -202,7 +202,10 @@ async function handleSessionCompleted(event: Stripe.Event, session: Stripe.Check
     const register = item.register;
     try {
       await prisma.$transaction(async (tx) => {
-        const useSavedAddress = register.addressMode === "SAVED_PER_REGISTER" && !!register.savedAddress;
+        // A blanked saved address is no address: the item waits for one like an
+        // ask-per-shipment item (lib/addressRedaction), including the 7-day
+        // reminder and the 14-day address-timeout refund (cron/address-timeout).
+        const useSavedAddress = register.addressMode === "SAVED_PER_REGISTER" && !!register.savedAddress && !register.savedAddress.redactedAt;
 
         if (useSavedAddress) {
           // Address on file — go straight to fulfilment queue

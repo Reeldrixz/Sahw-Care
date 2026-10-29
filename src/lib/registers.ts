@@ -3,6 +3,7 @@ import type { AdminFacingRegister, DonorFacingRegister } from "@/types/register-
 import { VERIFICATION_BADGE_FIELDS, verificationBadgeFor, type VerificationBadge } from "@/lib/verificationBadge";
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
 import { isPickableByProgress } from "@/lib/eventProgress";
+import { liveAddressWhere, shipmentIdentity, LIVE_IDENTITY_SELECT } from "@/lib/liveAddress";
 
 // ── Public share helper: privacy-safe, no auth required ───────────────────────
 // Powers the shareable /r/[id] page. Exposes the mother's FIRST NAME only and
@@ -145,6 +146,13 @@ export async function fetchPublicRegister(id: string): Promise<PublicRegister | 
 // showing a register that completes while featured — that is the moment the
 // event exists for.)
 //
+// 3. A shipping address held ahead of time (lib/liveAddress): saved-address
+//    mode with an address she confirmed in the last 90 days that isn't
+//    blanked, IN THE WHERE; and the same identity check as the per-item
+//    confirm, in code next to the 30% rule (it reads a partner referral). An
+//    item funded on air then queues at once, never waiting for an address.
+//    Only the address's timestamps are read here, never the address.
+//
 // Both are read LIVE. Anything that caches the pickable pool must re-check
 // before picking.
 export type FeaturableRegister = Omit<PublicRegister, "verificationBadge" | "city" | "dueDate">;
@@ -154,20 +162,29 @@ function toEventShape(r: PublicRegister): FeaturableRegister {
   return rest;
 }
 
-// Who can be picked: current-version consent and ACTIVE, in the query; under
-// 30% funded (lib/eventProgress), in code, on the same items a donor sees.
-// The 30% rule is applied in code rather than SQL so it has one definition;
-// it is a progress rule, not a privacy one, so consent stays in the WHERE.
-const PICKABLE_WHERE = {
+// Who can be picked: current-version consent, ACTIVE and a fresh confirmed
+// saved address, in the query; under 30% funded (lib/eventProgress) and the
+// shipment identity check, in code. The 30% rule is applied in code rather
+// than SQL so it has one definition; it is a progress rule, not a privacy one,
+// so consent stays in the WHERE. The address cutoff moves with time, so the
+// WHERE is built per read.
+const pickableWhere = (now = new Date()) => ({
   featureConsent:        true,
   featureConsentVersion: FEATURE_CONSENT_VERSION,
   status:                "ACTIVE" as const,
-};
+  ...liveAddressWhere(now),
+});
 
 const PROGRESS_ITEMS_SELECT = {
   where:  { status: { notIn: ["PENDING_APPROVAL", "CANCELLED"] as ("PENDING_APPROVAL" | "CANCELLED")[] } },
   select: { standardPriceCents: true, totalFundedCents: true, fundingStatus: true },
 };
+
+// What the pick rule reads: progress, and the identity fields for the
+// shipment check. Nothing else of hers.
+const PICKABLE_SELECT = { id: true, items: PROGRESS_ITEMS_SELECT, creator: { select: LIVE_IDENTITY_SELECT } };
+type PickableRow = { items: Parameters<typeof isPickableByProgress>[0]; creator: Parameters<typeof shipmentIdentity>[0] };
+const isPickable = (r: PickableRow) => isPickableByProgress(r.items) && shipmentIdentity(r.creator).allowed;
 
 // The pickable pool, in one stable order: oldest register first (createdAt,
 // then id), never by need or progress. No cap: the host sees every eligible
@@ -176,11 +193,11 @@ const PROGRESS_ITEMS_SELECT = {
 // searched the same capped list, would have refused it.
 export async function fetchFeaturableRegisters(): Promise<FeaturableRegister[]> {
   const candidates = await prisma.register.findMany({
-    where:   PICKABLE_WHERE,
+    where:   pickableWhere(),
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select:  { id: true, items: PROGRESS_ITEMS_SELECT },
+    select:  PICKABLE_SELECT,
   });
-  const pickable = candidates.filter((r) => isPickableByProgress(r.items));
+  const pickable = candidates.filter(isPickable);
 
   // Deliberately re-fetched through the public helper rather than selected here.
   // One definition of what is public, one place to audit.
@@ -192,10 +209,10 @@ export async function fetchFeaturableRegisters(): Promise<FeaturableRegister[]> 
 // building the whole pool.
 export async function isRegisterPickable(id: string): Promise<boolean> {
   const r = await prisma.register.findFirst({
-    where:  { id, ...PICKABLE_WHERE },
-    select: { items: PROGRESS_ITEMS_SELECT },
+    where:  { id, ...pickableWhere() },
+    select: PICKABLE_SELECT,
   });
-  return !!r && isPickableByProgress(r.items);
+  return !!r && isPickable(r);
 }
 
 // The register an event currently has on screen, by the id the host picked.

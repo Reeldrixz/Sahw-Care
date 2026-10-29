@@ -22,11 +22,13 @@ export type AddressFields = {
 
 export type ConfirmedItem = { id: string; name: string; registerId: string };
 
+// opts.registerId limits it to one register (the live-feature card confirms
+// that register's saved address).
 export async function confirmAddressForMother(
-  tx: Prisma.TransactionClient, motherId: string, address: AddressFields,
+  tx: Prisma.TransactionClient, motherId: string, address: AddressFields, opts: { registerId?: string } = {},
 ): Promise<ConfirmedItem[]> {
   const waiting = await tx.registerItem.findMany({
-    where:   { status: "AWAITING_ADDRESS", register: { creatorId: motherId } },
+    where:   { status: "AWAITING_ADDRESS", register: { creatorId: motherId }, ...(opts.registerId && { registerId: opts.registerId }) },
     orderBy: [{ registerId: "asc" }, { createdAt: "asc" }],
     select:  {
       id: true, name: true, registerId: true,

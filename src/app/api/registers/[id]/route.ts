@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { VERIFICATION_BADGE_FIELDS, withVerificationBadge } from "@/lib/verificationBadge";
 import { FEATURE_CONSENT_VERSION } from "@/lib/featureConsent";
 import { scrubOrdersForRegister } from "@/lib/fulfillmentOrder";
+import { LIVE_ADDRESS_STATE_SELECT, liveReadiness, onLiveConsentWithdrawn } from "@/lib/liveAddress";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const responseRegister = isCreator
     ? withBadge
     : { ...withBadge, items: register.items.filter((i) => i.status !== "PENDING_APPROVAL") };
+
+  // For her own consent card only: whether a shipping address is held ahead
+  // of time. A yes/no and a date, never the address.
+  if (isCreator) {
+    const state = await prisma.register.findUnique({ where: { id }, select: LIVE_ADDRESS_STATE_SELECT });
+    const ready = state ? liveReadiness(state) : { ready: false as const, reason: "NO_ADDRESS" as const };
+    return NextResponse.json({
+      register: responseRegister,
+      liveAddress: ready.ready
+        ? { ready: true, confirmedAt: ready.confirmedAt.toISOString() }
+        : { ready: false, reason: ready.reason },
+    });
+  }
 
   return NextResponse.json({ register: responseRegister });
 }
@@ -95,17 +109,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         : { featureConsent: false, featureConsentAt: null,       featureConsentVersion: null }
       : {};
 
-  const updated = await prisma.register.update({
-    where: { id },
-    data: {
-      ...(title && { title }),
-      ...(city && { city }),
-      ...(dueDate && { dueDate: new Date(dueDate) }),
-      ...consentPatch,
-    },
+  // A yes needs a shipping address held ahead of time (lib/liveAddress):
+  // saved-address mode, confirmed in the last 90 days, and the shipment
+  // identity check. Refused here, on the server, whatever the card shows.
+  if (featureConsent === true) {
+    const state = await prisma.register.findUnique({ where: { id }, select: LIVE_ADDRESS_STATE_SELECT });
+    const ready = state ? liveReadiness(state) : null;
+    if (!ready?.ready) {
+      return NextResponse.json({
+        error: "To be featured on a live stream, please confirm your shipping address first.",
+        code:  "NEEDS_LIVE_ADDRESS",
+        reason: ready && !ready.ready ? ready.reason : "NO_ADDRESS",
+      }, { status: 400 });
+    }
+  }
+
+  // Withdrawing undoes the card's switch to saved-address mode, in the same
+  // transaction, unless a funded item is still waiting to ship (then the
+  // redact-addresses job finishes it once they have shipped).
+  const { updated, liveAddressReverted } = await prisma.$transaction(async (tx) => {
+    const updated = await tx.register.update({
+      where: { id },
+      data: {
+        ...(title && { title }),
+        ...(city && { city }),
+        ...(dueDate && { dueDate: new Date(dueDate) }),
+        ...consentPatch,
+        // Saying yes again before a pending revert ran cancels it.
+        ...(featureConsent === true && { liveAddressRevertPendingAt: null }),
+      },
+    });
+    const liveAddressReverted = featureConsent === false ? (await onLiveConsentWithdrawn(tx, id)) === "REVERTED" : false;
+    return { updated, liveAddressReverted };
   });
 
-  return NextResponse.json({ register: updated });
+  return NextResponse.json({ register: updated, liveAddressReverted });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

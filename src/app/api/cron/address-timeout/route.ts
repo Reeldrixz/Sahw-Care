@@ -16,6 +16,13 @@ export async function POST(req: NextRequest) {
   const sevenDaysAgo   = new Date(now.getTime() -  7 * 24 * 60 * 60 * 1000);
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
+  // Both sweeps select items WAITING FOR AN ADDRESS (AWAITING_ADDRESS),
+  // whatever the register's address mode. That includes a newly funded item
+  // on a saved-address register whose saved address was blanked: it waits for
+  // an address like any ask-per-shipment item, so it gets the reminder and the
+  // refund too. An item already queued with an address is never
+  // AWAITING_ADDRESS, so neither sweep touches it.
+
   // ── Sweep A: 7-day reminder ────────────────────────────────────────────────
   const reminderCandidates = await prisma.registerItem.findMany({
     where: {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canCreateRegister } from "@/lib/access";
+import { canCreateRegister, canReceiveShipment } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
   const creator = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { manualReviewStatus: true, identityVerified: true, accountHold: true },
+    select: { manualReviewStatus: true, identityVerified: true, accountHold: true, referralCodeId: true },
   });
 
   if (!creator) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -99,6 +99,14 @@ export async function POST(req: NextRequest) {
     if (!fullName || !streetAddress || !addrCity || !province || !postalCode || !phone) {
       return NextResponse.json({ error: "All address fields are required" }, { status: 400 });
     }
+    // Saved-address mode commits an address up front, and items then queue at
+    // funding with no per-item confirm. So it runs the same identity check as
+    // the per-item confirm, here at entry. Ask-per-shipment is checked later,
+    // when she confirms an address.
+    const shipment = canReceiveShipment({ ...creator, referredByPartner: creator.referralCodeId != null });
+    if (!shipment.allowed) {
+      return NextResponse.json({ error: shipment.message, code: shipment.code }, { status: 403 });
+    }
   }
 
   const register = await prisma.$transaction(async (tx) => {
@@ -121,6 +129,8 @@ export async function POST(req: NextRequest) {
           province:      String(savedAddress.province),
           postalCode:    String(savedAddress.postalCode),
           phone:         String(savedAddress.phone),
+          // She entered it herself, just now.
+          confirmedAt:   new Date(),
         },
       });
     }

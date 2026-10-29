@@ -504,6 +504,17 @@ model Register {
   dueDate     DateTime
   intro       String? // mother's own (optionally AI-copyedited) intro; null = use default template
   addressMode RegisterAddressMode @default(ASK_PER_SHIPMENT)
+  // Set when the live-feature consent card switched this register from
+  // ASK_PER_SHIPMENT to SAVED_PER_REGISTER (lib/liveAddress). Null for a
+  // register she created in saved-address mode herself. If she withdraws live
+  // consent, only a register with this set goes back to ask-per-shipment
+  // (once nothing funded is still waiting to ship), and it is cleared then.
+  liveAddressSwitchedAt DateTime?
+  // Set when she withdraws live consent while a funded item is still waiting
+  // to ship, so the switch can't be undone yet. The redact-addresses job
+  // finishes the revert once nothing is waiting, then clears both. Cleared if
+  // she says yes again first.
+  liveAddressRevertPendingAt DateTime?
   status      RegisterStatus      @default(DRAFT)
   completedAt DateTime?
   closedAt    DateTime?
@@ -1566,6 +1577,11 @@ model RegisterAddress {
   country       String    @default("Canada")
   phone         String
   redactedAt    DateTime?
+  // When the mother last confirmed this address herself (at register creation
+  // or on the live-feature card). A register is pickable for a live stream
+  // only with an address confirmed in the last 90 days (lib/liveAddress).
+  // Null for an address an admin entered: she hasn't confirmed it.
+  confirmedAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
